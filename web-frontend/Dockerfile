@@ -20,7 +20,6 @@ RUN npm run build
 # static app files.
 FROM nginx:stable-alpine
 COPY --from=build /app/build /usr/share/nginx/html
-EXPOSE 5000
 
 # Serve the app via nginx
 CMD ["nginx", "-g", "daemon off;"]
