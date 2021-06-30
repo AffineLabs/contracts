@@ -1,4 +1,4 @@
-FROM python:3.8-slim as base
+FROM python:3.9-slim as base
 
 # Setup env
 ENV LANG C.UTF-8
@@ -32,4 +32,4 @@ WORKDIR /app
 COPY . .
 
 # Run the application
-ENTRYPOINT ["python3", "./data_pipeline/data_pipeline.py"]
+ENTRYPOINT ["python3", "./data-collection-pipeline/data_pipeline.py"]
