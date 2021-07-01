@@ -1,0 +1,18 @@
+apiVersion: skaffold/v2beta18
+kind: Config
+metadata:
+  name: multiplyr-core
+build:
+  artifacts:
+  - image: web-frontend
+    context: web-frontend
+    docker:
+      dockerfile: Dockerfile
+  - image: backend-api
+    context: backend
+    docker:
+      dockerfile: Dockerfile
+deploy:
+  kubectl:
+    manifests:
+    - deployment/**
