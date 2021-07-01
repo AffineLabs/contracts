@@ -1,5 +1,5 @@
-# backend
-Backend API for web dapp.
+# data-pipeline
+Data Collection and Research Pipeline for various data sources
 
 
 

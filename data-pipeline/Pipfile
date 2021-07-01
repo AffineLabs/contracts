@@ -1,0 +1,23 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+pytest = "==6.2.4"
+scipy = { version="1.7.0", pip_options=['--no-binary :all:', '--no-use-pep517'] }
+coverage = "==5.5"
+jupyterlab = "==3.0.16"
+matplotlib = "==3.4.2"
+seaborn = "==0.11.1"
+
+[packages]
+Cython = "==0.29.23"
+numpy = { version="1.21.0", pip_options=['--no-use-pep517'] }
+pandas = "==1.2.5"
+requests = "==2.25.1"
+yfinance = "==0.1.59"
+pycoingecko = "==2.2.0"
+
+[requires]
+python_version = "3.9"

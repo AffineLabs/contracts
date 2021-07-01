@@ -31,8 +31,5 @@ WORKDIR /app
 # Install application into container
 COPY . .
 
-# Expose port 8000
-EXPOSE 8000
-
 # Run the application
-ENTRYPOINT ["python3", "main.py"]
+ENTRYPOINT ["python3", "./data-collection-pipeline/data_pipeline.py"]
