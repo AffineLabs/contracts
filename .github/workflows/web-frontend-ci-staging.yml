@@ -16,10 +16,13 @@ on:
     types: [ closed ]
     paths:
       - "web-frontend/**"
+  
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
 jobs:
   deploy:
-    if: github.event.pull_request.merged == true
-    name: deploy to cluster
+    name: Build and Deploy Docker Image
     runs-on: ubuntu-latest
     steps:
     - name: Checkout

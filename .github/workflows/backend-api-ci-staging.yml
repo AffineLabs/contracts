@@ -22,8 +22,7 @@ on:
 
 jobs:
   deploy:
-    if: github.event.pull_request.merged == true
-    name: deploy to cluster
+    name: Build and Deploy Docker Image
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
