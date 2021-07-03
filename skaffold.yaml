@@ -15,4 +15,4 @@ build:
 deploy:
   kubectl:
     manifests:
-    - deployment/**
+    - deployment/base/**
