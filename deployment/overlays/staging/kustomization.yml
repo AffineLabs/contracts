@@ -10,3 +10,5 @@ images:
   newTag: 6248a6ee81ea848eb4684551db8e648c8b96b15b
 resources:
 - ../../base
+patchesStrategicMerge:
+- patch.yml
