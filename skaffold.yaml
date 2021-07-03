@@ -15,4 +15,5 @@ build:
 deploy:
   kubectl:
     manifests:
-    - deployment/base/**
+    - deployment/base/backend-api.yml
+    - deployment/base/web-frontend.yml
