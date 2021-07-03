@@ -51,7 +51,7 @@ jobs:
       run: |
        cd deployment/overlays/staging
        kustomize edit set image $ECR_REPOSITORY=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-       cat kustomization.yaml
+       cat kustomization.yml
         
     - name: Commit files
       run: |
