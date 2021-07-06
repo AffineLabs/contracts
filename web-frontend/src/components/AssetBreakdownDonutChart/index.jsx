@@ -20,7 +20,7 @@ class AssetBreakdownDonutChart extends Component {
 
   componentDidMount() {
     this.chart = C3DonutUtils({
-      bindto: "#chart",
+      bindTo: "#donutChart",
       data: this.state.data,
       title: "High Risk",
     });
@@ -28,7 +28,7 @@ class AssetBreakdownDonutChart extends Component {
 
   componentDidUpdate() {
     this.chart.load({ unload: true, columns: this.state.data });
-    d3.select("#chart .c3-chart-arcs-title").node().innerHTML =
+    d3.select("#donutChart .c3-chart-arcs-title").node().innerHTML =
       this.state.title;
   }
 

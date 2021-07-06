@@ -3,7 +3,7 @@ import c3 from "c3";
 let C3DonutUtils = (params) => {
   return c3.generate({
     data: {
-      bindto: params.bindto,
+      bindTo: params.bindTo,
       columns: params.data,
       type: "donut",
     },

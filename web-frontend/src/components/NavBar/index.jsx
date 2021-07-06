@@ -10,16 +10,11 @@ import {
   AccountBalanceWallet,
   AccountBalance,
   SyncAlt,
-  PanoramaSharp,
 } from "@material-ui/icons";
 import "./NavBar.css";
-import { xml } from "d3";
 
 const DropdownItem = (props) => {
   const CustomIcon = props.params.icon;
-  console.log(props.params);
-  // console.log(params.label);
-
   return (
     <li>
       <a className="dropdown-item" href={props.params.url}>
@@ -59,7 +54,8 @@ const MenuItem = (props) => {
     return (
       <li className="nav-item">
         <a className="nav-link" href={params.url}>
-          <CustomIcon className="material-icons" /> {params.label}
+          <CustomIcon className="material-icons" />
+          {params.label}
         </a>
       </li>
     );
@@ -134,7 +130,7 @@ class NavBar extends Component {
         >
           <ul className="navbar-nav ms-auto flex-nowrap me-2">
             {menuHierarchy.map((x) => (
-              <MenuItem params={x} />
+              <MenuItem key={x.label} params={x} />
             ))}
           </ul>
         </div>

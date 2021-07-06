@@ -2,7 +2,10 @@ import React, { Component } from "react";
 import NavBar from "./components/NavBar";
 import PortfolioTable from "./components/PortfolioTable";
 import AssetBreakdownDonutChart from "./components/AssetBreakdownDonutChart";
+import LineChart from "./components/LineChart";
+
 import "./App.css";
+import { SwitchCamera } from "@material-ui/icons";
 
 const lorem =
   "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Non optio illum, temporibus deleniti architecto voluptatum culpa similique magnam sapiente odit doloribus cum ex, suscipit libero, corruptiitaque voluptatem officiis maiores!";
@@ -24,6 +27,7 @@ class App extends Component {
 
   render() {
     return (
+      // ROUTING SHOULD BE HANDLED HERE
       <div className="container-fluid m-2">
         <NavBar />
         <div className="row">
