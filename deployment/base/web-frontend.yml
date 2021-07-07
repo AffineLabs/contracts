@@ -16,8 +16,8 @@ spec:
         image:  web-frontend
         resources:
           limits:
-            memory: "128Mi"
-            cpu: "500m"
+            memory: "512Mi"
+            cpu: "300m"
         ports:
         - containerPort: 80
 ---
