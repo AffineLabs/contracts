@@ -1,0 +1,26 @@
+.material-icons {
+  display: inline-flex;
+  vertical-align: top;
+  color: seagreen;
+}
+
+#main-nav {
+  background: rgb(236, 248, 205);
+  background: radial-gradient(
+    circle,
+    rgba(253, 255, 248, 1) 47%,
+    rgba(250, 250, 252, 1) 100%
+  );
+}
+
+#portfolio-holder {
+  background: #fafafc;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.portfolio-box {
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+  border-radius: 5px;
+  border-right: 7px solid seagreen;
+}

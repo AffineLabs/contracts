@@ -1,58 +1,51 @@
-import React from 'react';
-import logo from './logo.svg';
-import { Counter } from './features/counter/Counter';
-import './App.css';
+import React, { Component } from "react";
+import NavBar from "./components/NavBar";
+import PortfolioTable from "./components/PortfolioTable";
+import AssetBreakdownDonutChart from "./components/AssetBreakdownDonutChart";
+import LineChart from "./components/LineChart";
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <Counter />
-        <p>
-          Edit <code>src/App.js</code> and save to reload (Naaah).
-        </p>
-        <span>
-          <span>Learn </span>
-          <a
-            className="App-link"
-            href="https://reactjs.org/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            React
-          </a>
-          <span>, </span>
-          <a
-            className="App-link"
-            href="https://redux.js.org/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Redux
-          </a>
-          <span>, </span>
-          <a
-            className="App-link"
-            href="https://redux-toolkit.js.org/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Redux Toolkit
-          </a>
-          ,<span> and </span>
-          <a
-            className="App-link"
-            href="https://react-redux.js.org/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            React Redux
-          </a>
-        </span>
-      </header>
-    </div>
-  );
+import "./App.css";
+import { SwitchCamera } from "@material-ui/icons";
+
+const lorem =
+  "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Non optio illum, temporibus deleniti architecto voluptatum culpa similique magnam sapiente odit doloribus cum ex, suscipit libero, corruptiitaque voluptatem officiis maiores!";
+
+class App extends Component {
+  state = {
+    assetPortfolio: [{ assetName: "Nexo", apy: 8.6, perc: 11 }],
+    watchList: [],
+    currentUser: {
+      username: "tarikm",
+      jwt: "blahblah",
+      totalBalance: 11450,
+      defaultRiskLevel: 3,
+    },
+  };
+  updateView = (asset) => {
+    console.log("VIEW", asset);
+  };
+
+  render() {
+    return (
+      // ROUTING SHOULD BE HANDLED HERE
+      <div className="container-fluid m-2">
+        <NavBar />
+        <div className="row">
+          <div className="col-sm-4">
+            <AssetBreakdownDonutChart />
+          </div>
+          <div className="col-sm-8"></div>
+        </div>
+
+        <div className="row">
+          <div className="col-sm-4 portfolio-box">
+            <PortfolioTable updateView={this.updateView} />
+          </div>
+          <div className="col-sm-8 "> {lorem} </div>
+        </div>
+      </div>
+    );
+  }
 }
 
 export default App;
