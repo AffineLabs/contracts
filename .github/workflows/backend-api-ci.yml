@@ -1,7 +1,7 @@
 # This workflow builds docker image of backend-api, then pushes it to multiplyr AWS ECR 
 # container repository.
 
-name: Web Frontend CI Staging
+name: Backend API CI
 
 # Controls when the workflow will run
 on:
@@ -9,7 +9,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - "web-frontend/**"
+      - "backend/**"
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -36,20 +36,30 @@ jobs:
     - name: Build, tag, and push image to Amazon ECR
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: web-frontend
-        DOCKERFILE_PATH: web-frontend
+        ECR_REPOSITORY: backend-api
+        DOCKERFILE_PATH: backend
         IMAGE_TAG: ${{ github.sha }}
       run: |
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./$DOCKERFILE_PATH/
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-    
+
     - name: Update staging kubernetes manifests
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: web-frontend
+        ECR_REPOSITORY: backend-api
         IMAGE_TAG: ${{ github.sha }}
       run: |
        cd deployment/overlays/staging
+       kustomize edit set image $ECR_REPOSITORY=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+       cat kustomization.yml
+
+    - name: Update production kubernetes manifests
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: backend-api
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+       cd deployment/overlays/production
        kustomize edit set image $ECR_REPOSITORY=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
        cat kustomization.yml
         
@@ -57,7 +67,7 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git commit -am "Bump staging docker image tag of Web Frontend"
+        git commit -am "Bump docker image tag of Backend API"
 
     - name: Push changes
       uses: ad-m/github-push-action@master
