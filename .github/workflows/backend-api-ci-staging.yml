@@ -43,7 +43,7 @@ jobs:
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./$DOCKERFILE_PATH/
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-    - name: Update saging kubernetes manifests
+    - name: Update staging kubernetes manifests
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: backend-api
@@ -57,7 +57,7 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git commit -am "Bump docker image tag of Backend API"
+        git commit -am "Bump staging docker image tag of Backend API"
 
     - name: Push changes
       uses: ad-m/github-push-action@master
