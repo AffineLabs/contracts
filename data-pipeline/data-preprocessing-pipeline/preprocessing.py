@@ -108,7 +108,7 @@ def preprocess_lending_data(
     return lp_returns_df
 
 
-def read_asset_prices(args):
+def read_asset_price_and_metadata(args):
     coin_price_df = preprocess_coin_data(
         args.start_date, args.data_dir + "coin_data/", args.exclude_coins
     )
@@ -134,4 +134,15 @@ def read_asset_prices(args):
         zip(asset_metadata_df["Name"], asset_metadata_df["Ticker"])
     )
     asset_price_df.rename(columns=asset_name_to_ticker, inplace=True)
-    return asset_price_df
+    asset_ticker_to_id = {ticker: i for i, ticker in enumerate(asset_price_df.columns)}
+    asset_metadata_df["asset_id"] = [
+        asset_ticker_to_id[ticker] for ticker in asset_metadata_df["Ticker"]
+    ]
+    asset_metadata_df["asset_img_url"] = "placeholder"
+    asset_metadata_df["asset_url"] = "placeholder"
+    asset_metadata_df["asset_description"] = "placeholder"
+    asset_metadata_df.rename(
+        columns={"Name": "asset_name", "Ticker": "asset_ticker"}, inplace=True
+    )
+
+    return asset_price_df, asset_metadata_df, asset_name_to_ticker

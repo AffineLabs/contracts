@@ -4,13 +4,22 @@ from datetime import datetime, timedelta
 from preprocessing import (
     preprocess_coin_data,
     preprocess_lending_data,
-    read_asset_prices,
+    read_asset_price_and_metadata,
 )
 from utils import convert_wide_to_long
 
 
 def main(args):
-    asset_price_df = read_asset_prices(args)
+    """
+    table descriptions: https://docs.google.com/document/d/1nlBXKpbqQwxv4Zypj5nRnNW5GRXQ9gzklQ8v4GuIYUk/edit#
+    (page 4)
+    done: asset_price, asset_metadata
+    """
+    (
+        asset_price_df,
+        asset_metadata_df,
+        asset_ticker_to_id,
+    ) = read_asset_price_and_metadata(args)
     asset_price_long_df = convert_wide_to_long(
         asset_price_df, "asset_ticker", "closing_price"
     )
@@ -19,7 +28,7 @@ def main(args):
     asset_id_wide_df = pd.DataFrame(
         {
             asset_ticker: [i] * len(asset_price_df.index)
-            for i, asset_ticker in enumerate(asset_price_df.columns)
+            for asset_ticker, i in asset_ticker_to_id.items()
         },
         index=asset_price_df.index,
     )
@@ -34,8 +43,10 @@ def main(args):
         left_on=["timestamp", "asset_ticker"],
         right_on=["timestamp", "asset_ticker"],
     )
-    # this is the asset_price table
-    # TODO: convert this df into an sql table
+    # asset_price_long_df is the asset_price table
+    # asset_metadata_df is the asset_metadata table
+    # TODO: convert these dfs into sql tables
+
     return asset_price_long_df
 
 
