@@ -23,9 +23,12 @@ def upgrade():
         sa.Column("asset_ticker", sa.String(64), nullable=False),
         sa.Column("asset_name", sa.String(256), nullable=False),
         sa.Column("asset_type", sa.String(64), nullable=False),
-        sa.Column("asset_description", sa.String(256), nullable=False),
+        sa.Column("asset_description", sa.String(256), nullable=True),
         sa.Column("asset_img_url", sa.String(256), nullable=True),
         sa.Column("asset_url", sa.String(256), nullable=True),
+        sa.Column("risk_score_defi_safety", sa.Float, nullable=True),
+        sa.Column("risk_score_mpl", sa.Float, nullable=True),
+        sa.Column("risk_assesment", sa.ARRAY(sa.String(256)), nullable=True),
     )
 
 
