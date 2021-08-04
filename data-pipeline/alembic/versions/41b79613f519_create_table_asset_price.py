@@ -27,7 +27,7 @@ def upgrade():
         sa.Column("latest_apy", sa.Float(), nullable=True),
     )
 
-    op.create_primary_key(
+    op.create_index(
         "asset_price_index",
         "asset_price",
         ["asset_id", "tick_size", "timestamp"],

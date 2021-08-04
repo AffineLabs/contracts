@@ -22,7 +22,7 @@ def upgrade():
         "asset_daily_metrics",
         sa.Column("asset_id", sa.Integer, nullable=False),
         sa.Column("asset_ticker", sa.String(64), nullable=False),
-        sa.Column("trading_volume_24h", sa.Float(), nullable=False),
+        sa.Column("trading_volume_24h", sa.Float(), nullable=True),
         sa.Column("market_cap", sa.Float(), nullable=True),
         sa.Column("tvl", sa.Float(), nullable=True),
         sa.Column("pool_trading_volume_24h", sa.Float(), nullable=True),
@@ -35,8 +35,10 @@ def upgrade():
         sa.Column("1y_return", sa.Float()),
     )
 
-    op.create_primary_key(
-        "asset_daily_metrics_index", "asset_daily_metrics", ["asset_id", "tick_size", "timestamp"]
+    op.create_index(
+        "asset_daily_metrics_index",
+        "asset_daily_metrics",
+        ["asset_id", "tick_size", "timestamp"],
     )
 
 
