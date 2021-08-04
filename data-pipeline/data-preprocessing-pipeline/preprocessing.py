@@ -1,6 +1,10 @@
 from os import listdir
 from os.path import isfile, join
+
+from sqlalchemy.sql.expression import null
+import numpy as np
 import pandas as pd
+
 from datetime import datetime
 from utils import merge_dfs, impute_data
 
@@ -49,7 +53,7 @@ def preprocess_coin_data(start_date, coin_data_dir, exclude_coins):
     btc = coin_price_df.pop("bitcoin")
     eth = coin_price_df.pop("ethereum")
     coin_price_df.insert(0, "ethereum", eth)
-    coin_price_df.insert(0, "btc", btc)
+    coin_price_df.insert(0, "bitcoin", btc)
     return coin_price_df
 
 
@@ -108,7 +112,48 @@ def preprocess_lending_data(
     return lp_returns_df
 
 
+def read_asset_metadata(args, asset_types):
+    """
+    read the asset_metadata
+    args:        main function args
+    asset_types: a dict from asset name to asset type
+    """
+    asset_metadata_df = pd.read_csv(
+        args.data_dir + "clean_data/asset_metadata.csv", index_col=0
+    )
+    # keep only the metadata about the assets for which we have price data
+    asset_metadata_df = asset_metadata_df[
+        asset_metadata_df["Name"].isin(set(asset_types.keys()))
+    ]
+
+    asset_metadata_df.rename(
+        columns={"Name": "asset_name", "Ticker": "asset_ticker"}, inplace=True
+    )
+    # create a unique id for each asset
+    asset_metadata_df["asset_id"] = range(len(asset_metadata_df))
+    asset_metadata_df["asset_type"] = [
+        asset_types[asset_name] for asset_name in asset_metadata_df["asset_name"]
+    ]
+    asset_metadata_df["asset_img_url"] = "placeholder"
+    asset_metadata_df["asset_url"] = "placeholder"
+    asset_metadata_df["asset_description"] = "placeholder"
+    asset_metadata_df["risk_score_defi_safety"] = None
+    asset_metadata_df["risk_score_mpl"] = None
+    asset_metadata_df["risk_assesment"] = [["placeholder", "placeholder"]] * len(
+        asset_metadata_df
+    )
+
+    # delete the columns that we don't use
+    del asset_metadata_df["Last Price"]
+    del asset_metadata_df["Change"]
+    del asset_metadata_df["Pcnt Change"]
+    del asset_metadata_df["Volume in Currencies (24Hr)"]
+    del asset_metadata_df["Circulating Supply"]
+    return asset_metadata_df
+
+
 def read_asset_price_and_metadata(args):
+    # first read the data from the csv files
     coin_price_df = preprocess_coin_data(
         args.start_date, args.data_dir + "coin_data/", args.exclude_coins
     )
@@ -125,24 +170,20 @@ def read_asset_price_and_metadata(args):
         coin_price_df, lending_return_df, left_index=True, right_index=True, how="inner"
     )
 
-    asset_metadata_df = pd.read_csv(args.data_dir + "clean_data/asset_metadata.csv")
-    # keep only the metadata about the assets for which we have price data
-    asset_metadata_df = asset_metadata_df[
-        asset_metadata_df["Name"].isin(set(asset_price_df.columns))
-    ]
-    asset_name_to_ticker = dict(
-        zip(asset_metadata_df["Name"], asset_metadata_df["Ticker"])
-    )
-    asset_price_df.rename(columns=asset_name_to_ticker, inplace=True)
-    asset_ticker_to_id = {ticker: i for i, ticker in enumerate(asset_price_df.columns)}
-    asset_metadata_df["asset_id"] = [
-        asset_ticker_to_id[ticker] for ticker in asset_metadata_df["Ticker"]
-    ]
-    asset_metadata_df["asset_img_url"] = "placeholder"
-    asset_metadata_df["asset_url"] = "placeholder"
-    asset_metadata_df["asset_description"] = "placeholder"
-    asset_metadata_df.rename(
-        columns={"Name": "asset_name", "Ticker": "asset_ticker"}, inplace=True
-    )
+    # create asset types for all assets
+    asset_types = {
+        asset_name: (
+            "coin" if asset_name in coin_price_df.columns else "lending_protocol"
+        )
+        for asset_name in asset_price_df.columns
+    }
+    asset_metadata_df = read_asset_metadata(args, asset_types)
 
-    return asset_price_df, asset_metadata_df, asset_name_to_ticker
+    asset_name_to_ticker = dict(
+        zip(asset_metadata_df["asset_name"], asset_metadata_df["asset_ticker"])
+    )
+    asset_price_df.rename(
+        columns=asset_name_to_ticker,
+        inplace=True,
+    )
+    return asset_price_df, asset_metadata_df

@@ -1,16 +1,12 @@
 import pandas as pd
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
-import argparse
-import pickle
+from datetime import datetime
+import logging
 
 pd.set_option("display.max_rows", None)
 np.set_printoptions(suppress=True)
-import seaborn as sns
-from pprint import pprint
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score
 
 
 def merge_dfs(dfs, return_col, take_rolling_mean=False):
@@ -58,10 +54,22 @@ def impute_data(X, y, start_date, end_date):
     # data impuatation starts on start_day
     impute_start_idx = (start_date - X.index[0]).days
 
-    assert X_train_start_idx < X_train_end_idx, "end date is too early"
-    assert X_train_end_idx >= 0
-    assert y_train_end_idx >= 0, f"{y.index[0]}, {X.index[0]}, {y_train_end_idx}"
-    assert impute_start_idx >= 0, f"{start_date}, {X.index[0]}"
+    if (
+        X_train_start_idx >= X_train_end_idx
+        or X_train_end_idx < 0
+        or y_train_end_idx < 0
+    ):
+        logging.error(
+            "training end date is too early, using all of the available lending protocol data for training"
+        )
+        X_train_end_idx = len(X) - 1
+        y_train_end_idx = len(y) - 1
+
+    if impute_start_idx < 0:
+        logging.error(
+            "start date is too early, using all of the available lending protocol data for training"
+        )
+        impute_start_idx = 0
 
     X_train = X[X_train_start_idx:X_train_end_idx]
     X_test = X[impute_start_idx:X_train_start_idx]
