@@ -1,12 +1,39 @@
 import argparse
 import pandas as pd
+import logging
+import os
+from sqlalchemy import create_engine
+
 from datetime import datetime, timedelta
-from preprocessing import (
-    preprocess_coin_data,
-    preprocess_lending_data,
-    read_asset_price_and_metadata,
-)
+
+from preprocessing import read_asset_price_and_metadata
 from utils import convert_wide_to_long
+
+
+pd.set_option("display.max_columns", None)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.FileHandler("logs/debug.log", mode="w"), logging.StreamHandler()],
+)
+
+
+def create_asset_daily_metrics_df(asset_metadata_df):
+    asset_daily_metrics_df = asset_metadata_df.copy()
+    asset_daily_metrics_df.rename(columns={"Market Cap": "market_cap"}, inplace=True)
+    asset_daily_metrics_df["timestamp"] = datetime.strptime(
+        "2021-08-04", "%Y-%m-%d"
+    ).date()
+    asset_daily_metrics_df["tick_size"] = "1d"
+    del asset_daily_metrics_df["asset_name"]
+    del asset_daily_metrics_df["asset_type"]
+    del asset_daily_metrics_df["asset_img_url"]
+    del asset_daily_metrics_df["asset_url"]
+    del asset_daily_metrics_df["asset_description"]
+    del asset_daily_metrics_df["risk_score_defi_safety"]
+    del asset_daily_metrics_df["risk_score_mpl"]
+    del asset_daily_metrics_df["risk_assesment"]
+    return asset_daily_metrics_df
 
 
 def main(args):
@@ -15,16 +42,18 @@ def main(args):
     (page 4)
     done: asset_price, asset_metadata
     """
-    (
-        asset_price_df,
-        asset_metadata_df,
-        asset_ticker_to_id,
-    ) = read_asset_price_and_metadata(args)
+    asset_price_df, asset_metadata_df = read_asset_price_and_metadata(args)
+    # asset_price_df is the data from csv files, which are in wide format
+    # convert wide data format to long format
     asset_price_long_df = convert_wide_to_long(
         asset_price_df, "asset_ticker", "closing_price"
     )
     asset_price_long_df["tick_size"] = "1d"
 
+    asset_ticker_to_id = dict(
+        zip(asset_metadata_df["asset_ticker"], asset_metadata_df["asset_id"])
+    )
+    # convert asset_id to long format and add it to the long asset price data
     asset_id_wide_df = pd.DataFrame(
         {
             asset_ticker: [i] * len(asset_price_df.index)
@@ -43,10 +72,34 @@ def main(args):
         left_on=["timestamp", "asset_ticker"],
         right_on=["timestamp", "asset_ticker"],
     )
+
+    # we don't have daily metrics data for the assets
+    # so for now, I'm storing the data I scrapped from
+    # yfinance in asset_daily_metrics
+    asset_daily_metrics_df = create_asset_daily_metrics_df(asset_metadata_df)
+    del asset_metadata_df["Market Cap"]
+
     # asset_price_long_df is the asset_price table
     # asset_metadata_df is the asset_metadata table
-    # TODO: convert these dfs into sql tables
+    # now write the data to the database
+    engine = create_engine(args.postgres_url)
 
+    # first, clear the existing data in the tables
+    with engine.connect() as con:
+        con.execute("DELETE FROM asset_metadata;")
+        con.execute("DELETE FROM asset_price;")
+        con.execute("DELETE FROM asset_daily_metrics;")
+
+    asset_metadata_df.set_index(["asset_id"], inplace=True)
+    asset_metadata_df.to_sql("asset_metadata", con=engine, if_exists="append")
+
+    asset_price_long_df.set_index(["asset_id", "tick_size", "timestamp"], inplace=True)
+    asset_price_long_df.to_sql("asset_price", con=engine, if_exists="append")
+
+    asset_daily_metrics_df.set_index(
+        ["asset_id", "tick_size", "timestamp"], inplace=True
+    )
+    asset_daily_metrics_df.to_sql("asset_daily_metrics", con=engine, if_exists="append")
     return asset_price_long_df
 
 
@@ -62,8 +115,13 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--data_dir",
-        default="../../../notebook/data/",
+        default="../../notebook/data/",
         help="data directory for csv data dump",
+    )
+    parser.add_argument(
+        "--postgres_url",
+        default=os.environ.get("POSTGRES_URL"),
+        help="url for postgres server",
     )
     parser.add_argument(
         "--exclude_coins",
