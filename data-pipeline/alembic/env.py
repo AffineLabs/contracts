@@ -1,7 +1,7 @@
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import pool, create_engine
+import os
 
 from alembic import context
 
@@ -24,6 +24,11 @@ target_metadata = None
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
+def get_url():
+    """
+    get the URL of the db
+    """
+    return os.environ.get("POSTGRES_REMOTE_URL")
 
 def run_migrations_offline():
     """Run migrations in 'offline' mode.
@@ -39,7 +44,7 @@ def run_migrations_offline():
     """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url,
+        url=get_url(),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -56,12 +61,7 @@ def run_migrations_online():
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
-
+    connectable = create_engine(get_url())
     with connectable.connect() as connection:
         context.configure(
             connection=connection, target_metadata=target_metadata
