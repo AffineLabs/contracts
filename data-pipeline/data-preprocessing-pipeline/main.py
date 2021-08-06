@@ -120,7 +120,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--postgres_url",
-        default=os.environ.get("POSTGRES_URL"),
+        default=os.environ.get("POSTGRES_REMOTE_URL"),
         help="url for postgres server",
     )
     parser.add_argument(
