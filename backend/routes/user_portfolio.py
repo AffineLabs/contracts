@@ -3,7 +3,9 @@ from utils.utils import (
     is_valid_user_id,
     asset_error_response,
     user_id_error_response,
-    get_asset_historical_return,
+    get_asset_price_from_sql,
+    calculate_asset_historical_return,
+    get_all_asset_metadata,
 )
 
 
@@ -55,12 +57,15 @@ def user_asset_info(user_id: int, asset_ticker: str):
     """
     return info about user's holdings of the asset
     """
+    asset_metadata_df = get_all_asset_metadata()
+
     if not is_valid_user_id(user_id):
         return user_id_error_response(user_id)
 
-    if not is_valid_ticker(asset_ticker):
+    if not is_valid_ticker(asset_ticker, asset_metadata_df):
         return asset_error_response(asset_ticker)
 
+    asset_price_df = get_asset_price_from_sql(asset_ticker)
     return {
         "userId": user_id,
         "assetTicker": asset_ticker,
@@ -68,11 +73,18 @@ def user_asset_info(user_id: int, asset_ticker: str):
         "assetUnitCount": 2,
         "portfolioPercentage": 20.0,
         "unitPrice": {
-            "price1d": get_asset_historical_return(asset_ticker, 1),
-            "price1w": get_asset_historical_return(asset_ticker, 7),
-            "price1m": get_asset_historical_return(asset_ticker, 30),
-            "price1y": get_asset_historical_return(asset_ticker, 365),
-            "priceTotal": get_asset_historical_return(asset_ticker),
+            "price1w": calculate_asset_historical_return(
+                asset_ticker, asset_price_df, 7
+            ),
+            "price1m": calculate_asset_historical_return(
+                asset_ticker, asset_price_df, 30
+            ),
+            "price1y": calculate_asset_historical_return(
+                asset_ticker, asset_price_df, 365
+            ),
+            "priceTotal": calculate_asset_historical_return(
+                asset_ticker, asset_price_df
+            ),
         },
         "avgCost": 100.0,
         "avgApy": 10.0,

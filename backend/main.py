@@ -48,12 +48,12 @@ async def get_asset_historical_return(asset_ticker: str):
 # routes/trade.py
 
 # all orders are market orders for the mvp
-@app.get("/buy/{user_id}/{asset_ticker}")
+@app.get("/buy/{user_id}/{asset_ticker}/{amount_units}")
 async def buy_asset(user_id: int, asset_ticker: str, amount_units: float):
     return user_trade.buy_asset(user_id, asset_ticker, amount_units)
 
 
-@app.get("/sell/{user_id}/{asset_ticker}")
+@app.get("/sell/{user_id}/{asset_ticker}/{amount_units}")
 async def sell_asset(user_id: int, asset_ticker: str, amount_units: float):
     return user_trade.sell_asset(user_id, asset_ticker, amount_units)
 
