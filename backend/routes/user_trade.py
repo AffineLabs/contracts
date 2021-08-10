@@ -3,6 +3,7 @@ from utils.utils import (
     is_valid_user_id,
     asset_error_response,
     user_id_error_response,
+    get_all_asset_metadata,
 )
 
 
@@ -13,7 +14,8 @@ def buy_asset(user_id, asset_ticker, amount_units):
     if not is_valid_user_id(user_id):
         return user_id_error_response(user_id)
 
-    if not is_valid_ticker(asset_ticker):
+    asset_metadata_df = get_all_asset_metadata()
+    if not is_valid_ticker(asset_ticker, asset_metadata_df):
         return asset_error_response(asset_ticker)
     return {
         "success": True,
@@ -34,7 +36,8 @@ def sell_asset(user_id, asset_ticker, amount_units):
     if not is_valid_user_id(user_id):
         return user_id_error_response(user_id)
 
-    if not is_valid_ticker(asset_ticker):
+    asset_metadata_df = get_all_asset_metadata()
+    if not is_valid_ticker(asset_ticker, asset_metadata_df):
         return asset_error_response(asset_ticker)
 
     return {
