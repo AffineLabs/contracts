@@ -32,4 +32,4 @@ WORKDIR /app
 COPY . .
 
 # Run the application
-ENTRYPOINT ["python3", "./data-collection-pipeline/data_pipeline.py"]
+ENTRYPOINT ["./run.sh"]
