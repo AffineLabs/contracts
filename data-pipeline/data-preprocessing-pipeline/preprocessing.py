@@ -125,6 +125,7 @@ def preprocess_lending_data(
         lend_protocol_dfs[protocol] = df.iloc[::-1]
 
     # impute data
+    logging.info("imputing missing data for lending protocols")
     for protocol in lend_protocol_dfs.keys():
         X = coin_price_df
         y = lend_protocol_dfs[protocol][["lend_rate"]]
