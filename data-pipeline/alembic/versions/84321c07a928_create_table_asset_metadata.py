@@ -20,7 +20,7 @@ def upgrade():
     op.create_table(
         "asset_metadata",
         sa.Column("asset_id", sa.Integer, primary_key=True),
-        sa.Column("asset_ticker", sa.String(64), nullable=False),
+        sa.Column("asset_ticker", sa.String(64), nullable=False, unique=True),
         sa.Column("asset_name", sa.String(256), nullable=False),
         sa.Column("asset_type", sa.String(64), nullable=False),
         sa.Column("asset_description", sa.String(256), nullable=True),
