@@ -61,6 +61,9 @@ def historical_return(asset_ticker):
     return the historical return of the
     asset with ticker asset ticker
     """
+    asset_metadata_df = get_all_asset_metadata()
+    if not is_valid_ticker(asset_ticker, asset_metadata_df):
+        return asset_error_response(asset_ticker)
     asset_price_df = get_asset_price_from_sql(asset_ticker)
     return {
         "assetTicker": asset_ticker,
