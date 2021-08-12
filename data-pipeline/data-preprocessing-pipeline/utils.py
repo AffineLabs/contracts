@@ -3,9 +3,6 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 import logging
-
-pd.set_option("display.max_rows", None)
-np.set_printoptions(suppress=True)
 from sklearn.linear_model import LinearRegression
 
 
@@ -43,6 +40,7 @@ def impute_data(X, y, start_date, end_date):
 
     returns: y from start_date to end_date by imputing earlier missing data
     """
+    logging.info("imputing missing data for lending protocols")
     start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
     end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
 

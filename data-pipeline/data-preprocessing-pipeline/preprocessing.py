@@ -4,30 +4,62 @@ from os.path import isfile, join
 from sqlalchemy.sql.expression import null
 import numpy as np
 import pandas as pd
+import s3fs
+from boto3 import client
+import logging
 
 from datetime import datetime
 from utils import merge_dfs, impute_data
 
 
-def preprocess_coin_data(start_date, coin_data_dir, exclude_coins):
+def get_asset_filepaths(s3_bucket):
+    """
+    get the filepath for most recent csv data dump for each asset
+    returns: a dict of {ticker : filepath to most recent csv datadump}
+    """
+    conn = client("s3")
+    datapaths = {}
+    for key in conn.list_objects(Bucket=s3_bucket)["Contents"]:
+        filepath = key["Key"]
+        ticker = filepath.split("/")[1].lower()
+        # get all filepaths for each ticker
+        datapaths[ticker] = datapaths.get(ticker, [])
+        datapaths[ticker].append(filepath)
+
+    # get the most recent filepath for each asset
+    for ticker, filepaths in list(datapaths.items()):
+        datapaths[ticker] = sorted(filepaths)[-1]
+    return datapaths
+
+
+def preprocess_coin_data(start_date, coin_data_dir, exclude_coins, s3_bucket):
     """
     return a timeseries df with all available coin prices starting
     from the start date. exclude the coins in the exclude_coins
     list
     """
+    logging.info("preprocessing coin data")
     start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
 
     # get all coin filenames
-    datafiles = [
-        str(f)
-        for f in listdir(coin_data_dir)
-        if isfile(join(coin_data_dir, f)) and str(f) not in exclude_coins
-    ]
+    # datafiles = [
+    #     str(f)
+    #     for f in listdir(coin_data_dir)
+    #     if isfile(join(coin_data_dir, f)) and str(f) not in exclude_coins
+    # ]
+    # keep only coins
+    datafiles = {
+        ticker: filepath
+        for ticker, filepath in get_asset_filepaths(s3_bucket).items()
+        if filepath.split("/")[0] == "coin_data"
+    }
 
     # read coin data
+    logging.info("reading csv files from s3")
     coin_dfs = {
-        datafile[:-4]: pd.read_csv(coin_data_dir + datafile, index_col=2)
-        for datafile in datafiles
+        ticker: pd.read_csv(coin_data_dir + filepath, index_col=3)
+        for ticker, filepath in datafiles.items()
+        if ticker not in exclude_coins
     }
 
     for k in list(coin_dfs.keys()):
@@ -50,10 +82,10 @@ def preprocess_coin_data(start_date, coin_data_dir, exclude_coins):
     # merge coin prices into one timeseries df
     coin_price_df = merge_dfs(coin_dfs, "price", take_rolling_mean=True)
     # rearrange the columns so that btc is 1st col and eth is 2nd col
-    btc = coin_price_df.pop("bitcoin")
-    eth = coin_price_df.pop("ethereum")
-    coin_price_df.insert(0, "ethereum", eth)
-    coin_price_df.insert(0, "bitcoin", btc)
+    btc = coin_price_df.pop("btc")
+    eth = coin_price_df.pop("eth")
+    coin_price_df.insert(0, "eth", eth)
+    coin_price_df.insert(0, "btc", btc)
     return coin_price_df
 
 
@@ -74,6 +106,7 @@ def preprocess_lending_data(
        a df of lending protocol lending returns from start_date to present
 
     """
+    logging.info("preprocessing lending protocol data")
     filepaths = [
         str(f)
         for f in listdir(lending_data_dir)
@@ -123,7 +156,7 @@ def read_asset_metadata(args, asset_types):
     )
     # keep only the metadata about the assets for which we have price data
     asset_metadata_df = asset_metadata_df[
-        asset_metadata_df["Name"].isin(set(asset_types.keys()))
+        asset_metadata_df["Ticker"].isin(set(asset_types.keys()))
     ]
 
     asset_metadata_df.rename(
@@ -132,7 +165,7 @@ def read_asset_metadata(args, asset_types):
     # create a unique id for each asset
     asset_metadata_df["asset_id"] = range(len(asset_metadata_df))
     asset_metadata_df["asset_type"] = [
-        asset_types[asset_name] for asset_name in asset_metadata_df["asset_name"]
+        asset_types[asset_ticker] for asset_ticker in asset_metadata_df["asset_ticker"]
     ]
     asset_metadata_df["asset_img_url"] = "placeholder"
     asset_metadata_df["asset_url"] = "placeholder"
@@ -155,7 +188,10 @@ def read_asset_metadata(args, asset_types):
 def read_asset_price_and_metadata(args):
     # first read the data from the csv files
     coin_price_df = preprocess_coin_data(
-        args.start_date, args.data_dir + "coin_data/", args.exclude_coins
+        args.start_date,
+        args.s3_data_dir,
+        args.exclude_coins,
+        args.s3_bucket,
     )
 
     lending_return_df = preprocess_lending_data(
@@ -172,18 +208,10 @@ def read_asset_price_and_metadata(args):
 
     # create asset types for all assets
     asset_types = {
-        asset_name: (
-            "coin" if asset_name in coin_price_df.columns else "lending_protocol"
+        asset_ticker: (
+            "coin" if asset_ticker in coin_price_df.columns else "lending_protocol"
         )
-        for asset_name in asset_price_df.columns
+        for asset_ticker in asset_price_df.columns
     }
     asset_metadata_df = read_asset_metadata(args, asset_types)
-
-    asset_name_to_ticker = dict(
-        zip(asset_metadata_df["asset_name"], asset_metadata_df["asset_ticker"])
-    )
-    asset_price_df.rename(
-        columns=asset_name_to_ticker,
-        inplace=True,
-    )
     return asset_price_df, asset_metadata_df

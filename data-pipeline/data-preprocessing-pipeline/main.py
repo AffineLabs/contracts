@@ -119,14 +119,24 @@ if __name__ == "__main__":
         help="data directory for csv data dump",
     )
     parser.add_argument(
+        "--s3_data_dir",
+        default="s3://apidata-dev/",
+        help="s3 data directory for csv data dump",
+    )
+    parser.add_argument(
         "--postgres_url",
         default=os.environ.get("POSTGRES_REMOTE_URL"),
         help="url for postgres server",
     )
     parser.add_argument(
+        "--s3_bucket",
+        default=os.environ.get("S3_BUCKET"),
+        help="name of the s3 bucket",
+    )
+    parser.add_argument(
         "--exclude_coins",
         nargs="+",
-        default=["markets.csv", "maker.csv"],
+        default=["markets", "maker"],
         help="coins to exclude when parsing coin data",
     )
     parser.add_argument(
