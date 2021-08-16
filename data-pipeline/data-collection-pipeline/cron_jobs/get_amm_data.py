@@ -81,7 +81,7 @@ async def main():
         logging.info("Written ", written_file_path)
         success = upload_to_s3(S3_BUCKET_FOR_API_DATA,
                                written_file_path,
-                               "amm_liquidity_pool" + \
+                               "amm_liquidity_pool/" + \
                                f"{name.split('-')[0]}/{name}/{os.path.basename(written_file_path)}")
 
 if __name__ == '__main__':

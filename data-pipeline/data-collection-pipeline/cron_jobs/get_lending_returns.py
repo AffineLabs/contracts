@@ -20,7 +20,7 @@ for protocol in protocols_of_interest:
     logging.info("Written ", written_file_path)
     success = upload_to_s3(S3_BUCKET_FOR_API_DATA,
                             written_file_path,
-                            "lending_protocols/" + \
-                                f"{protocol}/{os.path.basename(written_file_path)}")
+                            "lending_protocol_data/" + \
+                            f"{protocol}/{os.path.basename(written_file_path)}")
     if not success:
         logging.warning(f"S3 upload failed for {protocol}")

@@ -27,6 +27,7 @@ for asset in assets_of_interest:
     logging.info("Written ", written_file_path)
     success = upload_to_s3(S3_BUCKET_FOR_API_DATA,
                            written_file_path,
+                           "asset_data/" + \
                            f"{asset}/{os.path.basename(written_file_path)}")
     if not success:
         logging.warning(f"S3 upload failed for {asset}")
