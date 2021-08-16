@@ -12,6 +12,10 @@ except ImportError:
     logging.warning('Boto3 integration failed, S3 uploading/downloading is disabled.')
     S3_ENABLED = False
 
+TEMP_LOCAL_SAVE_DIR = os.getenv("TEMP_LOCAL_SAVE_DIR", "test_results")
+S3_BUCKET_FOR_API_DATA = os.getenv("S3_BUCKET_FOR_API_DATA", "testbucketforapidata")
+
+
 def get_timestamp():
     return str(time.time())
     
