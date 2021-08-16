@@ -3,11 +3,9 @@ import sys
 import os.path
 sys.path.append("..")
 
-from cron_utils import write_to_file, upload_to_s3
+from cron_utils import write_to_file, upload_to_s3, \
+    TEMP_LOCAL_SAVE_DIR, S3_BUCKET_FOR_API_DATA
 from scrapers.defi_lending_scraper import DefiPulseScraper, SUPPORTED_PROTOCOLS
-
-TEMP_LOCAL_SAVE_DIR = "test_results"
-S3_BUCKET_FOR_API_DATA = "testbucketforapidata"
 
 protocols_of_interest = SUPPORTED_PROTOCOLS
 
