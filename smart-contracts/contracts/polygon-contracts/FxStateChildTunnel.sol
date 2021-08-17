@@ -2,7 +2,7 @@
 pragma solidity ^0.7.3;
 
 import { FxBaseChildTunnel } from '../tunnel/FxBaseChildTunnel.sol';
-import { BytesLib } from '../lib/BytesLib';
+import { BytesLib } from '../library/BytesLib';
 
 /** 
  * @title FxStateChildTunnel
