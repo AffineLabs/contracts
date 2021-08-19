@@ -1,7 +1,7 @@
 import argparse
 import pandas as pd
-import logging
 import os
+import logging
 from sqlalchemy import create_engine
 
 from datetime import datetime, timedelta
@@ -10,12 +10,11 @@ from preprocessing import read_asset_price_and_metadata
 from utils import convert_wide_to_long
 
 
-pd.set_option("display.max_columns", None)
 logging.basicConfig(
-    level=logging.INFO,
+    level="INFO",
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.FileHandler("logs/debug.log", mode="w"), logging.StreamHandler()],
 )
+pd.set_option("display.max_columns", None)
 
 
 def create_asset_daily_metrics_df(asset_metadata_df):
@@ -40,7 +39,6 @@ def main(args):
     """
     table descriptions: https://docs.google.com/document/d/1nlBXKpbqQwxv4Zypj5nRnNW5GRXQ9gzklQ8v4GuIYUk/edit#
     (page 4)
-    done: asset_price, asset_metadata
     """
     asset_price_df, asset_metadata_df = read_asset_price_and_metadata(args)
     # asset_price_df is the data from csv files, which are in wide format
@@ -82,6 +80,7 @@ def main(args):
     # asset_price_long_df is the asset_price table
     # asset_metadata_df is the asset_metadata table
     # now write the data to the database
+    logging.info("writing to aws database.")
     engine = create_engine(args.postgres_url)
 
     # first, clear the existing data in the tables
@@ -119,18 +118,26 @@ if __name__ == "__main__":
         help="data directory for csv data dump",
     )
     parser.add_argument(
-        "--s3_data_dir",
-        default="s3://apidata-dev/",
-        help="s3 data directory for csv data dump",
-    )
-    parser.add_argument(
         "--postgres_url",
-        default=os.environ.get("POSTGRES_REMOTE_URL"),
+        default=os.environ.get(
+            "POSTGRES_REMOTE_URL",        ),
         help="url for postgres server",
     )
     parser.add_argument(
+        "--aws_access_key",
+        default=os.environ.get("AWS_ACCESS_KEY_ID"),
+        help="aws access key",
+    )
+    parser.add_argument(
+        "--aws_secret_key",
+        default=os.environ.get(
+            "AWS_SECRET_ACCESS_KEY",
+        ),
+        help="aws secret access key",
+    )
+    parser.add_argument(
         "--s3_bucket",
-        default=os.environ.get("S3_BUCKET"),
+        default=os.environ.get("S3_BUCKET_FOR_API_DATA", "apidata-dev"),
         help="name of the s3 bucket",
     )
     parser.add_argument(
