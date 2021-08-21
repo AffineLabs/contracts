@@ -5,38 +5,42 @@ import pandas as pd
 import s3fs
 from boto3 import client
 import logging
+import os
 
 from datetime import datetime
 from utils import merge_dfs, impute_data
 
 
-def get_asset_filepaths(aws_access_key, aws_secret_key, s3_bucket):
+def get_asset_filepaths():
     """
     get the filepath for most recent csv data dump for each asset
     returns: a dict of {ticker : filepath to most recent csv datadump}
     """
     conn = client(
         "s3",
-        aws_access_key_id=aws_access_key,
-        aws_secret_access_key=aws_secret_key,
+        aws_access_key_id=AWS_ACCESS_KEY,
+        aws_secret_access_key=AWS_SECRET_KEY,
     )
     datapaths = {}
-    for key in conn.list_objects(Bucket=s3_bucket)["Contents"]:
+    for key in conn.list_objects(Bucket=S3_BUCKET)["Contents"]:
         filepath = key["Key"]
+        # skip asset metadata
+        if filepath.startswith("asset_metadata"):
+            continue
         ticker = filepath.split("/")[1].lower()
-        # get all filepaths for each ticker
-        datapaths[ticker] = datapaths.get(ticker, [])
-        datapaths[ticker].append(filepath)
-
-    # get the most recent filepath for each asset
-    for ticker, filepaths in list(datapaths.items()):
-        datapaths[ticker] = sorted(filepaths)[-1]
+        old_filepath = datapaths.get(ticker, "")
+        # save the filepath to most recent data
+        datapaths[ticker] = max(old_filepath, filepath)
     return datapaths
 
 
-def preprocess_coin_data(
-    start_date, coin_data_dir, exclude_coins, aws_access_key, aws_secret_key, s3_bucket
-):
+AWS_ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+S3_BUCKET = os.environ.get("S3_BUCKET_FOR_API_DATA", "apidata-dev")
+ASSET_FILEPATHS = get_asset_filepaths()
+
+
+def preprocess_coin_data(start_date, coin_data_dir, exclude_coins):
     """
     return a timeseries df with all available coin prices starting
     from the start date. exclude the coins in the exclude_coins
@@ -45,18 +49,10 @@ def preprocess_coin_data(
     logging.info("preprocessing coin data")
     start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
 
-    # get all coin filenames
-    # datafiles = [
-    #     str(f)
-    #     for f in listdir(coin_data_dir)
-    #     if isfile(join(coin_data_dir, f)) and str(f) not in exclude_coins
-    # ]
     # keep only coins
     datafiles = {
         ticker: filepath
-        for ticker, filepath in get_asset_filepaths(
-            aws_access_key, aws_secret_key, s3_bucket
-        ).items()
+        for ticker, filepath in ASSET_FILEPATHS.items()
         if filepath.split("/")[0] == "coin_data"
     }
 
@@ -66,7 +62,7 @@ def preprocess_coin_data(
         ticker: pd.read_csv(
             coin_data_dir + filepath,
             index_col=3,
-            storage_options={"key": aws_access_key, "secret": aws_secret_key},
+            storage_options={"key": AWS_ACCESS_KEY, "secret": AWS_SECRET_KEY},
         )
         for ticker, filepath in datafiles.items()
         if ticker not in exclude_coins
@@ -105,9 +101,6 @@ def preprocess_lending_data(
     exclude_protocols,
     coin_price_df,
     training_end_date,
-    aws_access_key,
-    aws_secret_key,
-    s3_bucket,
 ):
     """
     preprocess the lending protocol data and return the lending rates of all
@@ -124,17 +117,10 @@ def preprocess_lending_data(
 
     """
     logging.info("preprocessing lending protocol data")
-    # filepaths = [
-    #     str(f)
-    #     for f in listdir(lending_data_dir)
-    #     if isfile(join(lending_data_dir, f)) and str(f) not in exclude_protocols
-    # ]
 
     datafiles = {
         ticker: filepath
-        for ticker, filepath in get_asset_filepaths(
-            aws_access_key, aws_secret_key, s3_bucket
-        ).items()
+        for ticker, filepath in ASSET_FILEPATHS.items()
         if filepath.split("/")[0] == "lending_protocol_data"
     }
 
@@ -144,7 +130,7 @@ def preprocess_lending_data(
         ticker: pd.read_csv(
             lending_data_dir + filepath,
             index_col=0,
-            storage_options={"key": aws_access_key, "secret": aws_secret_key},
+            storage_options={"key": AWS_ACCESS_KEY, "secret": AWS_SECRET_KEY},
         )
         for ticker, filepath in datafiles.items()
         if ticker not in exclude_protocols
@@ -177,7 +163,7 @@ def preprocess_lending_data(
     return lp_returns_df
 
 
-def read_asset_metadata(args, asset_types):
+def read_asset_metadata(asset_types):
     """
     read the asset_metadata
     args:        main function args
@@ -185,9 +171,9 @@ def read_asset_metadata(args, asset_types):
     """
     logging.info("reading asset metadata")
     asset_metadata_df = pd.read_csv(
-        f"s3://{args.s3_bucket}/" + "asset_metadata/asset_metadata.csv",
+        f"s3://{S3_BUCKET}/" + "asset_metadata/asset_metadata.csv",
         index_col=0,
-        storage_options={"key": args.aws_access_key, "secret": args.aws_secret_key},
+        storage_options={"key": AWS_ACCESS_KEY, "secret": AWS_SECRET_KEY},
     )
     # keep only the metadata about the assets for which we have price data
     asset_metadata_df = asset_metadata_df[
@@ -224,22 +210,16 @@ def read_asset_price_and_metadata(args):
     # first read the data from the csv files
     coin_price_df = preprocess_coin_data(
         args.start_date,
-        f"s3://{args.s3_bucket}/",
+        f"s3://{S3_BUCKET}/",
         args.exclude_coins,
-        args.aws_access_key,
-        args.aws_secret_key,
-        args.s3_bucket,
     )
 
     lending_return_df = preprocess_lending_data(
         args.start_date,
-        f"s3://{args.s3_bucket}/",
+        f"s3://{S3_BUCKET}/",
         args.exclude_protocols,
         coin_price_df,
         args.training_end_date,
-        args.aws_access_key,
-        args.aws_secret_key,
-        args.s3_bucket,
     )
 
     asset_price_df = pd.merge(
@@ -253,5 +233,5 @@ def read_asset_price_and_metadata(args):
         )
         for asset_ticker in asset_price_df.columns
     }
-    asset_metadata_df = read_asset_metadata(args, asset_types)
+    asset_metadata_df = read_asset_metadata(asset_types)
     return asset_price_df, asset_metadata_df

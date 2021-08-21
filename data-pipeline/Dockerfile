@@ -31,5 +31,6 @@ WORKDIR /app
 # Install application into container
 COPY . .
 
-# Run the application
+# Makr the application executable and run the application
+RUN chmod +x ./run.sh
 ENTRYPOINT ["./run.sh"]

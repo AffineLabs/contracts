@@ -120,25 +120,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--postgres_url",
         default=os.environ.get(
-            "POSTGRES_REMOTE_URL",        ),
-        help="url for postgres server",
-    )
-    parser.add_argument(
-        "--aws_access_key",
-        default=os.environ.get("AWS_ACCESS_KEY_ID"),
-        help="aws access key",
-    )
-    parser.add_argument(
-        "--aws_secret_key",
-        default=os.environ.get(
-            "AWS_SECRET_ACCESS_KEY",
+            "POSTGRES_REMOTE_URL",
         ),
-        help="aws secret access key",
-    )
-    parser.add_argument(
-        "--s3_bucket",
-        default=os.environ.get("S3_BUCKET_FOR_API_DATA", "apidata-dev"),
-        help="name of the s3 bucket",
+        help="url for postgres server",
     )
     parser.add_argument(
         "--exclude_coins",
