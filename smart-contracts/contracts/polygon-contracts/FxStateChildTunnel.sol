@@ -2,7 +2,7 @@
 pragma solidity ^0.7.3;
 
 import { FxBaseChildTunnel } from '../tunnel/FxBaseChildTunnel.sol';
-import { BytesLib } from '../library/BytesLib';
+import { BytesLib } from '../library/BytesLib.sol';
 
 /** 
  * @title FxStateChildTunnel
@@ -21,7 +21,7 @@ contract FxStateChildTunnel is FxBaseChildTunnel {
         override
         validateSender(sender) {
         address fromAddress = data.slice(0, 20).toAddress(4);
-        uint256 amount = data.slice(20, 32).toUint256();
+        uint256 amount = data.slice(20, 32).toUint256(2);
         _balances[fromAddress] += amount;
     }
 
