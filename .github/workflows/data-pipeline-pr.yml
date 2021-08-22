@@ -1,4 +1,4 @@
-# This workflow builds docker image of backend-api, Used for sanity checking PRs.
+# This workflow builds docker image of data-pipeline, Used for sanity checking PRs.
 
 name: Data Pipeline CI PR
 
