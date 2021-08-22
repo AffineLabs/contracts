@@ -1,4 +1,4 @@
-# This workflow builds docker image of backend-api, then pushes it to multiplyr AWS ECR 
+# This workflow builds docker image of data-pipeline, then pushes it to multiplyr AWS ECR 
 # container repository.
 
 name: Data Pipeline CI
@@ -36,8 +36,8 @@ jobs:
     - name: Build, tag, and push image to Amazon ECR
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: backend-api
-        DOCKERFILE_PATH: backend
+        ECR_REPOSITORY: data-pipeline
+        DOCKERFILE_PATH: data-pipeline
         IMAGE_TAG: ${{ github.sha }}
       run: |
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./$DOCKERFILE_PATH/
@@ -46,7 +46,7 @@ jobs:
     - name: Update staging kubernetes manifests
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: backend-api
+        ECR_REPOSITORY: data-pipeline
         IMAGE_TAG: ${{ github.sha }}
       run: |
        cd deployment/overlays/staging
@@ -56,7 +56,7 @@ jobs:
     - name: Update production kubernetes manifests
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: backend-api
+        ECR_REPOSITORY: data-pipeline
         IMAGE_TAG: ${{ github.sha }}
       run: |
        cd deployment/overlays/production
@@ -67,7 +67,7 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git commit -am "Bump docker image tag of Backend API"
+        git commit -am "Bump docker image tag of Data Pipeline"
 
     - name: Push changes
       uses: ad-m/github-push-action@master
