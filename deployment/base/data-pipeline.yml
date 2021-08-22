@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: data-pipeline
+spec:
+  #      ┌────────────────── timezone (optional)
+  #      |      ┌───────────── minute (0 - 59)
+  #      |      │ ┌───────────── hour (0 - 23)
+  #      |      │ │ ┌───────────── day of the month (1 - 31)
+  #      |      │ │ │ ┌───────────── month (1 - 12)
+  #      |      │ │ │ │ ┌───────────── day of the week (0 - 6) (Sunday to Saturday;
+  #      |      │ │ │ │ │                                   7 is also Sunday on some systems)
+  #      |      │ │ │ │ │
+  #      |      │ │ │ │ │
+  # CRON_TZ=UTC * * * * *
+  # https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#cron-schedule-syntax
+  schedule: "0 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: data-pipeline
+            image:  data-pipeline
+            resources:
+              limits:
+                memory: "512Mi"
+                cpu: "100m"

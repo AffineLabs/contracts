@@ -8,6 +8,9 @@ images:
 - name: web-frontend
   newName: 959984261658.dkr.ecr.us-east-2.amazonaws.com/web-frontend
   newTag: 9bd0f639b757501b58a04ab8b13d481f1a3fc1bc
+- name: data-pipeline
+  newName: 959984261658.dkr.ecr.us-east-2.amazonaws.com/data-pipeline
+  newTag: latest
 resources:
 - ../../base
 patchesStrategicMerge:
