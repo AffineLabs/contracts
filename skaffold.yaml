@@ -12,8 +12,13 @@ build:
     context: backend
     docker:
       dockerfile: Dockerfile
+  - image: data-pipeline
+    context: data-pipeline
+    docker:
+      dockerfile: Dockerfile
 deploy:
   kubectl:
     manifests:
     - deployment/base/backend-api.yml
     - deployment/base/web-frontend.yml
+    - deployment/base/data-pipeline.yml
