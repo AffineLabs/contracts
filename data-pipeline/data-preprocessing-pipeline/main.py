@@ -51,6 +51,20 @@ def main(args):
     asset_ticker_to_id = dict(
         zip(asset_metadata_df["asset_ticker"], asset_metadata_df["asset_id"])
     )
+    assets_without_metadata = sorted(
+        [
+            ticker
+            for ticker in asset_price_df.columns
+            if ticker not in asset_metadata_df["asset_ticker"]
+        ]
+    )
+    # give new ids to assets which currently do not have metadata
+    asset_ticker_to_id.update(
+        {
+            ticker: i + len(asset_metadata_df["asset_id"])
+            for i, ticker in enumerate(assets_without_metadata)
+        }
+    )
     # convert asset_id to long format and add it to the long asset price data
     asset_id_wide_df = pd.DataFrame(
         {

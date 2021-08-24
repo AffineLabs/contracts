@@ -16,21 +16,23 @@ def get_asset_filepaths():
     get the filepath for most recent csv data dump for each asset
     returns: a dict of {ticker : filepath to most recent csv datadump}
     """
-    conn = client(
+    s3 = client(
         "s3",
         aws_access_key_id=AWS_ACCESS_KEY,
         aws_secret_access_key=AWS_SECRET_KEY,
     )
     datapaths = {}
-    for key in conn.list_objects(Bucket=S3_BUCKET)["Contents"]:
-        filepath = key["Key"]
-        # skip asset metadata
-        if filepath.startswith("asset_metadata"):
-            continue
-        ticker = filepath.split("/")[1].lower()
-        old_filepath = datapaths.get(ticker, "")
-        # save the filepath to most recent data
-        datapaths[ticker] = max(old_filepath, filepath)
+    page_iterator = s3.get_paginator("list_objects_v2").paginate(Bucket=S3_BUCKET)
+    for page in page_iterator:
+        for key in page["Contents"]:
+            filepath = key["Key"]
+            # skip asset metadata
+            if filepath.startswith("asset_metadata"):
+                continue
+            ticker = filepath.split("/")[1].lower()
+            old_filepath = datapaths.get(ticker, "")
+            # save the filepath to most recent data
+            datapaths[ticker] = max(old_filepath, filepath)
     return datapaths
 
 
@@ -171,7 +173,7 @@ def read_asset_metadata(asset_types):
     """
     logging.info("reading asset metadata")
     asset_metadata_df = pd.read_csv(
-        f"s3://{S3_BUCKET}/" + "asset_metadata/asset_metadata.csv",
+        f"s3://{S3_BUCKET}/asset_metadata/asset_metadata.csv",
         index_col=0,
         storage_options={"key": AWS_ACCESS_KEY, "secret": AWS_SECRET_KEY},
     )
