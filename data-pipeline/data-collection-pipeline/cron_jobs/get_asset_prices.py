@@ -7,9 +7,6 @@ from cron_utils import write_to_file, upload_to_s3, \
     TEMP_LOCAL_SAVE_DIR, S3_BUCKET_FOR_API_DATA
 from scrapers.cefi_scraper import CeFiScraper
 
-TEMP_LOCAL_SAVE_DIR = "test_results"
-S3_BUCKET_FOR_API_DATA = "testbucketforapidata"
-
 assets_of_interest = ["SPY", 
                       "QQQ",
                       "BND"]

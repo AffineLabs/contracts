@@ -13,6 +13,7 @@ from itertools import chain, repeat
 from cron_utils import write_to_file, upload_to_s3, \
     TEMP_LOCAL_SAVE_DIR, S3_BUCKET_FOR_API_DATA
 
+# Data collected from https://defimarketcap.io/protocol/uniswap-v2
 uniswap_token_pair_data = [
     ('0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc', 'Uniswap-v2-USDC-WETH', 0.3), 
     ('0x0d4a11d5eeaac28ec3f61d100daf4d40471f1852', 'Uniswap-v2-WETH-USDT', 0.3), 
@@ -23,6 +24,7 @@ uniswap_token_pair_data = [
     ('0xb20bd5d04be54f870d5c0d3ca85d82b34b836405', 'Uniswap-v2-DAI-USDT', 0.05)
 ]
 
+# Data collected from https://analytics.sushi.com/
 sushi_token_pair_data = [
     ('0xceff51756c56ceffca006cd410b03ffc46dd3a58', 'Sushiswap-WBTC-WETH', 0.25),
     ('0x397ff1542f962076d0bfe58ea045ffa2d347aca0', 'Sushiswap-USDC-WETH', 0.25),
@@ -57,7 +59,7 @@ async def collect_data(url, address):
 
             result = await session.execute(query)
             overall_data.extend(result['pairDayDatas'])
-            print('Call!', len(result['pairDayDatas']))
+            logging.info(f"Collected {len(result['pairDayDatas'])} datapoints for contract {address}.")
             if len(result['pairDayDatas']) < 1000:
                 break
     return overall_data
@@ -83,6 +85,8 @@ async def main():
                                written_file_path,
                                "amm_liquidity_pool/" + \
                                f"{name.split('-')[0]}/{name}/{os.path.basename(written_file_path)}")
+        if not success:
+            logging.warning(f"S3 upload failed for pair {name}, address {addr}")
 
 if __name__ == '__main__':
     asyncio.run(main())
