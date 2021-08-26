@@ -1,4 +1,4 @@
-FROM python:3.9-slim as base
+FROM python:3.7-slim as base
 
 # Setup env
 ENV LANG C.UTF-8
@@ -31,5 +31,6 @@ WORKDIR /app
 # Install application into container
 COPY . .
 
-# Run the application
+# Make the application executable and run the application
+RUN chmod +x ./run.sh
 ENTRYPOINT ["./run.sh"]

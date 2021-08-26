@@ -1,7 +1,8 @@
 #! /bin/sh
 
 echo "running data collection pipeline"
-cd "./data-collection-pipeline/cron_jobs"
+cd "./data-collection-pipeline/cron_jobs/"
+mkdir -p "test_results"
 python3 "get_asset_prices.py"
 python3 "get_crypto_prices.py"
 python3 "get_amm_data.py"
