@@ -43,52 +43,52 @@ def impute_data(X, y, start_date, end_date):
     start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
     end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
 
-    # training starts on the first day of available data for y
-    X_train_start_idx = (y.index[0] - X.index[0]).days
-    # training ends on end_day
-    X_train_end_idx = (end_date - X.index[0]).days
-    y_train_end_idx = (end_date - y.index[0]).days
-    # data impuatation starts on start_day
-    impute_start_idx = (start_date - X.index[0]).days
-
-    if (
-        X_train_start_idx >= X_train_end_idx
-        or X_train_end_idx < 0
-        or y_train_end_idx < 0
-    ):
+    if end_date < y.index[0] or end_date < X.index[0]:
         logging.error(
             "training end date is too early, using all of the available lending protocol data for training"
         )
-        X_train_end_idx = len(X) - 1
-        y_train_end_idx = len(y) - 1
+        end_date = y.index[-1]
 
-    if impute_start_idx < 0:
+    if start_date < X.index[0]:
         logging.error(
-            "start date is too early, using all of the available lending protocol data for training"
+            "impute start date is too early, using the earliest valid date as start"
         )
-        impute_start_idx = 0
+        start_date = X.index[0]
 
-    X_train = X[X_train_start_idx:X_train_end_idx]
-    X_test = X[impute_start_idx:X_train_start_idx]
-    y_train = y[:y_train_end_idx].to_numpy().reshape((y_train_end_idx,))
-
-    if impute_start_idx < X_train_start_idx:
-        # impute date is before the training start date,
-        # so need to use the model to generate y
-        model = LinearRegression()
-        model.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
-        y_pred_index = X.index[impute_start_idx:X_train_start_idx]
-        # create a DataFrame of the imputed data with index
-        df_y_pred = pd.DataFrame(
-            y_pred.reshape((-1, 1)), index=y_pred_index, columns=y.columns
-        )
-        # append the imputed data to y and return it
-        return df_y_pred.append(y)
-    else:
-        # impute date is after training start date, so we can just
-        # return y
+    # if impute date is after training start date, we can just return y
+    if y.index[0] <= start_date:
         return y
+
+    X_train = X[
+        (X.index >= y.index[0]) & (X.index < end_date) & (X.index.isin(y.index))
+    ]
+    y_train = (
+        y[(y.index < end_date) & (y.index.isin(X_train.index))]
+        .to_numpy()
+        .reshape((-1,))
+    )
+    X_test = X[(X.index >= start_date) & (X.index < y.index[0])]
+    if len(X_train) < 100:
+        logging.error("Not enough data for lending protocol. Not imputing data.")
+        return y
+
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+
+    # make sure the predicted values are not too far off
+    # replace values 2*std far from mean with mean
+    mean, std = y_train.mean(), y_train.std()
+    y_pred = np.where(
+        (y_pred > mean + 2 * std) | (y_pred < mean - 2 * std), mean, y_pred
+    )
+
+    # create a DataFrame of the imputed data with index
+    df_y_pred = pd.DataFrame(
+        y_pred.reshape((-1, 1)), index=X_test.index, columns=y.columns
+    )
+    # append the imputed data to y and return it
+    return df_y_pred.append(y)
 
 
 def convert_wide_to_long(df, variable_col, value_col, index_col="timestamp"):
