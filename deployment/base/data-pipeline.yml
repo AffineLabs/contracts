@@ -18,3 +18,4 @@ spec:
               limits:
                 memory: "512Mi"
                 cpu: "100m"
+          restartPolicy: Never
