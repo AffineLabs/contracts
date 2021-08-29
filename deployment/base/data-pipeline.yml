@@ -14,6 +14,32 @@ spec:
           containers:
           - name: data-pipeline
             image:  data-pipeline
+            env:
+            - name: POSTGRES_REMOTE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: env-secrets
+                  key: postgres-remote-url
+            - name: DEFIPULSE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: env-secrets
+                  key: defipulse-api-key
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: env-secrets
+                  key: aws-access-key
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: env-secrets
+                  key: aws-secret-key
+            - name: S3_BUCKET_FOR_API_DATA
+              valueFrom:
+                secretKeyRef:
+                  name: env-secrets
+                  key: s3-bucket-for-api-data
             resources:
               limits:
                 memory: "512Mi"
