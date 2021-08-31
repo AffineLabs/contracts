@@ -20,7 +20,7 @@ coins_of_interest = {
     "BNB": "binancecoin",
     "UST": "terrausd",
     "DAI": "dai",
-    # "BSV": "bitcoin-cash-sv",
+    "BSV": "bitcoin-cash-sv",
     "BCH": "bitcoin-cash",
     "ADA": "cardano",
     # "CEL": "celsius-degree-token",
@@ -30,7 +30,7 @@ coins_of_interest = {
     "EOS": "eos",
     "ETC": "ethereum-classic",
     # "HT": "huobi-token",
-    # "MIOTA": "iota",
+    "MIOTA": "iota",
     "LTC": "litecoin",
     "XMR": "monero",
     "NEO": "neo",
@@ -38,9 +38,9 @@ coins_of_interest = {
     "XRP": "ripple",
     "XLM": "stellar",
     # "XTZ": "tezos",
-    # "THETA": "theta-token",
+    "THETA": "theta-token",
     "TRX": "tron",
-    # "VET": "vechain",
+    "VET": "vechain",
 }
 
 crypto_price_data = CoinGeckoScraper(assets=coins_of_interest.values()).get_data()
@@ -52,10 +52,21 @@ for coin_ticker in coins_of_interest:
         jsonable_dict[coin_ticker], file_name=coin_ticker, save_dir=TEMP_LOCAL_SAVE_DIR
     )
     logging.info("Written ", written_file_path)
-    success = upload_to_s3(
+    success_cache = upload_to_s3(
         S3_BUCKET_FOR_API_DATA,
         written_file_path,
         "coin_data/" + f"{coin_ticker}/{os.path.basename(written_file_path)}",
     )
-    if not success:
+
+    if not success_cache:
         logging.warning(f"S3 upload failed for {coin_ticker}")
+
+    # update the latest
+    success_update = upload_to_s3(
+        S3_BUCKET_FOR_API_DATA,
+        written_file_path,
+        "coin_data/" + f"{coin_ticker}/latest.csv",
+    )
+
+    if not success_update:
+        logging.warning(f"S3 upload of latest.csv failed for {coin_ticker}")

@@ -19,4 +19,7 @@ echo "running data preprocessing pipeline"
 cd "../../data-preprocessing-pipeline/"
 python3 "main.py"
 
+cd "../portfolio-creation-pipeline/"
+python3 generate_returns.py
+
 exec "$@"

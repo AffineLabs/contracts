@@ -76,7 +76,7 @@ def impute_data(X, y, start_date, end_date):
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
 
-    # make sure the predicted values are not too far off
+    # make sure the predicted values are not too far off from mean interest rate
     # replace values 2*std far from mean with mean
     mean, std = y_train.mean(), y_train.std()
     y_pred = np.where(

@@ -30,9 +30,9 @@ def get_asset_filepaths():
             if filepath.startswith("asset_metadata"):
                 continue
             ticker = filepath.split("/")[1].lower()
-            old_filepath = datapaths.get(ticker, "")
-            # save the filepath to most recent data
-            datapaths[ticker] = max(old_filepath, filepath)
+            # store the filepath to most recent data
+            if filepath.endswith("latest.csv"):
+                datapaths[ticker] = filepath
     return datapaths
 
 
