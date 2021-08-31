@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 import logging
 import json
 import time
+from constant import asset_level_portfolios, user_asset_allocations
 
 try:
     import boto3
@@ -60,146 +61,117 @@ def calculate_annualized_volatility(asset_price):
     return np.round(np.std(log_daily_pcnt_change) * 365 ** 0.5, 3)
 
 
-engine = create_engine(os.environ.get("POSTGRES_REMOTE_URL"))
-logging.info("reading asset price data from aws.")
-asset_price_long_df = pd.read_sql_table("asset_price", engine)
-# convert data from long to wide format
-asset_price_df = asset_price_long_df.pivot(
-    index="timestamp", columns="asset_ticker", values="closing_price"
-)
-asset_price_df.index = [str(date) for date in asset_price_df.index]
+def get_daily_value_of_asset_portfolios(asset_level_portfolios, asset_price_df):
 
-asset_level_portfolios = {
-    "lendingProtocols": {
-        "aave": 0.3,
-        "compound": 0.1,
-        "dydx": 0.2,
-        "definer": 0.1,
-        "c.r.e.a.m.-finance": 0.3,
-    },
-    "btcEth": {"btc": 0.5, "eth": 0.5},
-    "altCoins": {
-        "xrp": 0.2,
-        "bch": 0.05,
-        "eos": 0.05,
-        "xlm": 0.05,
-        "ltc": 0.1,
-        "bsv": 0.05,
-        "trx": 0.2,
-        "ada": 0.05,
-        "miota": 0.05,
-        "xmr": 0.2,
-    },
-    "automatedMarketMaking": {},
-}
-
-user_asset_allocations = {
-    "risk1": {
-        "lendingProtocols": 1.0,
-        "btcEth": 0.0,
-        "altCoins": 0.0,
-    },
-    "risk2": {
-        "lendingProtocols": 0.8,
-        "btcEth": 0.2,
-        "altCoins": 0.0,
-    },
-    "risk3": {
-        "lendingProtocols": 0.6,
-        "btcEth": 0.4,
-        "altCoins": 0.0,
-    },
-    "risk4": {
-        "lendingProtocols": 0.4,
-        "btcEth": 0.4,
-        "altCoins": 0.2,
-    },
-    "risk5": {
-        "lendingProtocols": 0.2,
-        "btcEth": 0.4,
-        "altCoins": 0.4,
-    },
-}
-
-logging.info(
-    "generating daily historical value and roi for each asset class level portfolio."
-)
-lending_protocol_daily_value, _ = generate_daily_value_and_roi(
-    asset_level_portfolios["lendingProtocols"],
-    asset_price_df,
-    rebalance_period=1,
-)
-btceth_daily_value, _ = generate_daily_value_and_roi(
-    asset_level_portfolios["btcEth"], asset_price_df, rebalance_period=90
-)
-altcoins_daily_value, _ = generate_daily_value_and_roi(
-    asset_level_portfolios["altCoins"], asset_price_df, rebalance_period=90
-)
-
-investment_daily_value_df = pd.DataFrame(
-    {
-        "index": asset_price_df.index,
-        "lendingProtocols": lending_protocol_daily_value,
-        "btcEth": btceth_daily_value,
-        "altCoins": altcoins_daily_value,
-    }
-)
-investment_daily_value_df.set_index("index", inplace=True)
-
-logging.info("populating the json object with portfolio returns.")
-output_json = {}
-for i in range(1, 6):
-    user_investment_daily_value, user_roi = generate_daily_value_and_roi(
-        user_asset_allocations[f"risk{i}"],
-        investment_daily_value_df,
-        rebalance_period=90,
+    lending_protocol_daily_value, _ = generate_daily_value_and_roi(
+        asset_level_portfolios["lendingProtocols"],
+        asset_price_df,
+        rebalance_period=1,
     )
-    annual_vol = calculate_annualized_volatility(user_investment_daily_value)
-
-    output_json[f"risk{i}"] = {
-        "lendingProtocols": {
-            "tickers": list(asset_level_portfolios["lendingProtocols"].keys()),
-            "percentage": user_asset_allocations[f"risk{i}"]["lendingProtocols"] * 100,
-        },
-        "automatedMarketMaking": {
-            "tickers": [],
-            "percentage": 0.0,
-        },
-        "btcEth": {
-            "tickers": ["btc", "eth"],
-            "percentage": user_asset_allocations[f"risk{i}"]["btcEth"] * 100,
-        },
-        "altCoins": {
-            "tickers": list(asset_level_portfolios["altCoins"].keys()),
-            "percentage": user_asset_allocations[f"risk{i}"]["altCoins"] * 100,
-        },
-        "historicalRoi": dict(zip(asset_price_df.index, user_roi)),
-        "projectedApy": apy_from_roi(user_roi),
-        "projectedApyRange": [
-            apy_from_roi(user_roi) - annual_vol,
-            apy_from_roi(user_roi) + annual_vol,
-        ],
-    }
-
-output_json["risk1"]["fullname"] = "Multiplyr Cash"
-output_json["risk2"]["fullname"] = "Multiplyr Cash Aggresive"
-output_json["risk3"]["fullname"] = "Multiplyr Balanced"
-output_json["risk4"]["fullname"] = "Multiplyr Coin"
-output_json["risk5"]["fullname"] = "Multiplyr Coin Aggresive"
-
-if S3_ENABLED:
-    logging.info("uploading to S3")
-    s3 = boto3.client("s3")
-    s3.put_object(
-        Body=json.dumps(output_json),
-        Bucket="portfoliodata-dev",
-        Key="portfolio_latest.json",
+    btceth_daily_value, _ = generate_daily_value_and_roi(
+        asset_level_portfolios["btcEth"], asset_price_df, rebalance_period=90
+    )
+    altcoins_daily_value, _ = generate_daily_value_and_roi(
+        asset_level_portfolios["altCoins"], asset_price_df, rebalance_period=90
     )
 
-    s3.put_object(
-        Body=json.dumps(output_json),
-        Bucket="portfoliodata-dev",
-        Key=f"portfolio_{str(time.time())}.json",
+    investment_daily_value_df = pd.DataFrame(
+        {
+            "index": asset_price_df.index,
+            "lendingProtocols": lending_protocol_daily_value,
+            "btcEth": btceth_daily_value,
+            "altCoins": altcoins_daily_value,
+        }
     )
-else:
-    logging.error("failed to upload portfolio returns to S3.")
+    investment_daily_value_df.set_index("index", inplace=True)
+    return investment_daily_value_df
+
+
+def upload_to_s3(file_json):
+    if S3_ENABLED:
+        logging.info("uploading to S3")
+        s3 = boto3.client("s3")
+        s3.put_object(
+            Body=json.dumps(file_json),
+            Bucket="portfoliodata-dev",
+            Key="portfolio_latest.json",
+        )
+        # change permission to public read
+        resource = boto3.resource("s3")
+        object = resource.Bucket("portfoliodata-dev").Object("portfolio_latest.json")
+        object.Acl().put(ACL="public-read")
+
+        timestamp = str(time.time())
+        s3.put_object(
+            Body=json.dumps(file_json),
+            Bucket="portfoliodata-dev",
+            Key=f"portfolio_{timestamp}.json",
+        )
+        object = resource.Bucket("portfoliodata-dev").Object(
+            f"portfolio_{timestamp}.json"
+        )
+        object.Acl().put(ACL="public-read")
+    else:
+        logging.error("failed to upload portfolio returns to S3.")
+
+
+if __name__ == "__main__":
+    logging.info("reading asset price data from aws.")
+    engine = create_engine(os.environ.get("POSTGRES_REMOTE_URL"))
+    asset_price_long_df = pd.read_sql_table("asset_price", engine)
+    # convert data from long to wide format
+    asset_price_df = asset_price_long_df.pivot(
+        index="timestamp", columns="asset_ticker", values="closing_price"
+    )
+    asset_price_df.index = [str(date) for date in asset_price_df.index]
+
+    logging.info(
+        "generating daily historical value and roi for each asset class level portfolio."
+    )
+    investment_daily_value_df = get_daily_value_of_asset_portfolios(
+        asset_level_portfolios, asset_price_df
+    )
+
+    logging.info("populating the json object with portfolio returns.")
+    output_json = {}
+    for i in range(1, 6):
+        user_investment_daily_value, user_roi = generate_daily_value_and_roi(
+            user_asset_allocations[f"risk{i}"],
+            investment_daily_value_df,
+            rebalance_period=90,
+        )
+        annual_vol = calculate_annualized_volatility(user_investment_daily_value)
+
+        output_json[f"risk{i}"] = {
+            "lendingProtocols": {
+                "tickers": list(asset_level_portfolios["lendingProtocols"].keys()),
+                "percentage": user_asset_allocations[f"risk{i}"]["lendingProtocols"]
+                * 100,
+            },
+            "automatedMarketMaking": {
+                "tickers": [],
+                "percentage": 0.0,
+            },
+            "btcEth": {
+                "tickers": ["btc", "eth"],
+                "percentage": user_asset_allocations[f"risk{i}"]["btcEth"] * 100,
+            },
+            "altCoins": {
+                "tickers": list(asset_level_portfolios["altCoins"].keys()),
+                "percentage": user_asset_allocations[f"risk{i}"]["altCoins"] * 100,
+            },
+            "historicalRoi": dict(zip(asset_price_df.index, user_roi)),
+            "projectedApy": apy_from_roi(user_roi),
+            "projectedApyRange": [
+                apy_from_roi(user_roi) - annual_vol,
+                apy_from_roi(user_roi) + annual_vol,
+            ],
+        }
+
+    output_json["risk1"]["fullname"] = "Multiplyr Cash"
+    output_json["risk2"]["fullname"] = "Multiplyr Cash Aggresive"
+    output_json["risk3"]["fullname"] = "Multiplyr Balanced"
+    output_json["risk4"]["fullname"] = "Multiplyr Coin"
+    output_json["risk5"]["fullname"] = "Multiplyr Coin Aggresive"
+
+    upload_to_s3(output_json)
