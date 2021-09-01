@@ -27,7 +27,7 @@ pd.set_option("display.max_columns", None)
 def generate_daily_value_and_roi(asset_weights, assets_df, rebalance_period=1):
     """
     given the asset weights, generate the return on $100 initial investment
-    rebalances on the first day of each rebalance_period
+    rebalances on the last day of each rebalance_period
     """
     investment_total = 100
     asset_allocation = {
@@ -42,7 +42,8 @@ def generate_daily_value_and_roi(asset_weights, assets_df, rebalance_period=1):
             asset_allocation[asset_ticker] *= asset_price_next_day / asset_price_today
         investment_total = sum(asset_allocation.values())
         investment_daily_value.append(investment_total)
-        if rebalance_period > 0 and i % rebalance_period == 0:
+        # rebalance asset on the last day of the period
+        if rebalance_period > 0 and i > 0 and i % rebalance_period == 0:
             asset_allocation = {
                 asset: investment_total * weight
                 for asset, weight in asset_weights.items()
@@ -53,11 +54,11 @@ def generate_daily_value_and_roi(asset_weights, assets_df, rebalance_period=1):
 
 
 def apy_from_roi(roi):
-    return np.round(roi[-1] / len(roi) * 365, 3)
+    return np.round((roi[-1] + 100) ** (365 / len(roi)) - 100, 3)
 
 
 def calculate_annualized_volatility(asset_price):
-    log_daily_pcnt_change = np.log(asset_price[1:] / asset_price[:-1]) * 100
+    log_daily_pcnt_change = np.log(asset_price[1:] / asset_price[:-1])
     return np.round(np.std(log_daily_pcnt_change) * 365 ** 0.5, 3)
 
 
@@ -140,7 +141,7 @@ if __name__ == "__main__":
             investment_daily_value_df,
             rebalance_period=90,
         )
-        annual_vol = calculate_annualized_volatility(user_investment_daily_value)
+        annual_vol = calculate_annualized_volatility(user_investment_daily_value) * 100
 
         output_json[f"risk{i}"] = {
             "lendingProtocols": {
