@@ -12,6 +12,7 @@ import "@typechain/hardhat";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
 
+import "hardhat-change-network";
 import "hardhat-gas-reporter";
 import "@nomiclabs/hardhat-etherscan";
 
