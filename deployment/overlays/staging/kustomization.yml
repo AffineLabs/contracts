@@ -5,6 +5,9 @@ images:
 - name: backend-api
   newName: 959984261658.dkr.ecr.us-east-2.amazonaws.com/backend-api
   newTag: 1f4467b2350a61aac1feb35268d649366862cabb
+- name: data-pipeline
+  newName: 959984261658.dkr.ecr.us-east-2.amazonaws.com/data-pipeline
+  newTag: a4edbb279c2370f821c2964eb24a49605a1882f7
 - name: web-frontend
   newName: 959984261658.dkr.ecr.us-east-2.amazonaws.com/web-frontend
   newTag: 9bd0f639b757501b58a04ab8b13d481f1a3fc1bc

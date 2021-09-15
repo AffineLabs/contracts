@@ -1,3 +1,4 @@
 resources:
 - web-frontend.yml
 - backend-api.yml
+- data-pipeline.yml
