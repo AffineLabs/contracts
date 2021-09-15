@@ -55,12 +55,15 @@ describe("Eth-Matic Bridge Integration Test", () => {
 
       hre.changeNetwork('polygonMumbai');
       // This will be broken if test timed out, or test conditions are met.
+      const startTime = new Date().getTime()
       while (true) {
         await new Promise(f => setTimeout(f, 5000));
         const latestData = await fxStateChildTunnel.latestData()
         if (latestData === message) {
           break;
         }
+        const nowTime = new Date().getTime()
+        console.log(`Still waiting for message to be propagated from L1 -> L2. Elapsed time: ${(nowTime - startTime) * 0.001}s`)
       }
     });
   });
@@ -74,6 +77,7 @@ describe("Eth-Matic Bridge Integration Test", () => {
       const url = `https://apis.matic.network/api/v1/mumbai/exit-payload/${sendMessageToRootTx.hash}?eventSignature=${sendMsgEventSig}`
       console.log(url)
       let proof: string = 'invalid-proof'
+      const startTime = new Date().getTime()
       while (true) {
         await new Promise(f => setTimeout(f, 5000));
         type ResponseObj = {
@@ -84,18 +88,17 @@ describe("Eth-Matic Bridge Integration Test", () => {
         try {
           const resp = await axios.get<ResponseObj>(url);
           const proofObj = resp.data
-          console.log(proofObj)
           if ('result' in proofObj && !('error' in proofObj)) {
             proof = proofObj.result
             break
           }
         } catch(err) {
-          if (axios.isAxiosError(err))  {
-            console.log(err.response?.data)
-          } else {
-            console.log(err)
+          if (!axios.isAxiosError(err)) {
+            throw err
           }
         }
+        const nowTime = new Date().getTime()
+        console.log(`Still waiting for message to be checkpointed from L2 -> L1. Elapsed time: ${(nowTime - startTime) * 0.001}s`)
       }
       await fxStateRootTunnel.receiveMessage(ethers.utils.arrayify(proof))
       await new Promise(f => setTimeout(f, 60000));
