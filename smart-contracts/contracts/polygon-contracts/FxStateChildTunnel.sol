@@ -26,8 +26,4 @@ contract FxStateChildTunnel is FxBaseChildTunnel {
     function sendMessageToRoot(bytes memory message) public {
         _sendMessageToRoot(message);
     }
-
-    function getLatestReceivedDataFromRoot() public returns(uint256, address, bytes memory) {
-        return (latestStateId, latestRootMessageSender, latestData);
-    }
 }

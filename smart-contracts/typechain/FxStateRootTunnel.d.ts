@@ -25,7 +25,6 @@ interface FxStateRootTunnelInterface extends ethers.utils.Interface {
     "checkpointManager()": FunctionFragment;
     "fxChildTunnel()": FunctionFragment;
     "fxRoot()": FunctionFragment;
-    "getLatestReceivedDataFromChild()": FunctionFragment;
     "latestData()": FunctionFragment;
     "processedExits(bytes32)": FunctionFragment;
     "receiveMessage(bytes)": FunctionFragment;
@@ -46,10 +45,6 @@ interface FxStateRootTunnelInterface extends ethers.utils.Interface {
     values?: undefined
   ): string;
   encodeFunctionData(functionFragment: "fxRoot", values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: "getLatestReceivedDataFromChild",
-    values?: undefined
-  ): string;
   encodeFunctionData(
     functionFragment: "latestData",
     values?: undefined
@@ -84,10 +79,6 @@ interface FxStateRootTunnelInterface extends ethers.utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "fxRoot", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "getLatestReceivedDataFromChild",
-    data: BytesLike
-  ): Result;
   decodeFunctionResult(functionFragment: "latestData", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "processedExits",
@@ -161,10 +152,6 @@ export class FxStateRootTunnel extends BaseContract {
 
     fxRoot(overrides?: CallOverrides): Promise<[string]>;
 
-    getLatestReceivedDataFromChild(
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<ContractTransaction>;
-
     latestData(overrides?: CallOverrides): Promise<[string]>;
 
     processedExits(
@@ -196,10 +183,6 @@ export class FxStateRootTunnel extends BaseContract {
 
   fxRoot(overrides?: CallOverrides): Promise<string>;
 
-  getLatestReceivedDataFromChild(
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
-
   latestData(overrides?: CallOverrides): Promise<string>;
 
   processedExits(arg0: BytesLike, overrides?: CallOverrides): Promise<boolean>;
@@ -227,8 +210,6 @@ export class FxStateRootTunnel extends BaseContract {
     fxChildTunnel(overrides?: CallOverrides): Promise<string>;
 
     fxRoot(overrides?: CallOverrides): Promise<string>;
-
-    getLatestReceivedDataFromChild(overrides?: CallOverrides): Promise<string>;
 
     latestData(overrides?: CallOverrides): Promise<string>;
 
@@ -264,10 +245,6 @@ export class FxStateRootTunnel extends BaseContract {
 
     fxRoot(overrides?: CallOverrides): Promise<BigNumber>;
 
-    getLatestReceivedDataFromChild(
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<BigNumber>;
-
     latestData(overrides?: CallOverrides): Promise<BigNumber>;
 
     processedExits(
@@ -301,10 +278,6 @@ export class FxStateRootTunnel extends BaseContract {
     fxChildTunnel(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     fxRoot(overrides?: CallOverrides): Promise<PopulatedTransaction>;
-
-    getLatestReceivedDataFromChild(
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<PopulatedTransaction>;
 
     latestData(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 

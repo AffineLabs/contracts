@@ -12,6 +12,7 @@ import "@typechain/hardhat";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
 
+import "hardhat-change-network";
 import "hardhat-gas-reporter";
 import "@nomiclabs/hardhat-etherscan";
 
@@ -113,6 +114,9 @@ const config: HardhatUserConfig = {
     outDir: "typechain",
     target: "ethers-v5",
   },
+  mocha: {
+    timeout: 900000,
+  }
 };
 
 export default config;
