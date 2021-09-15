@@ -12,10 +12,14 @@ except ImportError:
     logging.warning('Boto3 integration failed, S3 uploading/downloading is disabled.')
     S3_ENABLED = False
 
+TEMP_LOCAL_SAVE_DIR = os.getenv("TEMP_LOCAL_SAVE_DIR", "/tmp")
+S3_BUCKET_FOR_API_DATA = os.getenv("S3_BUCKET_FOR_API_DATA", "testbucketforapidata")
+
+
 def get_timestamp():
     return str(time.time())
     
-def write_to_file(dataframe, save_dir=None, file_name=None):
+def write_to_file(dataframe, save_dir=TEMP_LOCAL_SAVE_DIR, file_name=None):
     filename_hash = get_timestamp()
     if file_name:
         filename_hash = file_name + '_' + filename_hash

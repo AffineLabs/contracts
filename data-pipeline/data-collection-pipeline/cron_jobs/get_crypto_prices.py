@@ -3,11 +3,9 @@ import sys
 import os.path
 sys.path.append("..")
 
-from cron_utils import write_to_file, upload_to_s3
+from cron_utils import write_to_file, upload_to_s3, \
+    TEMP_LOCAL_SAVE_DIR, S3_BUCKET_FOR_API_DATA
 from scrapers.coingecko_scraper import CoinGeckoScraper
-
-TEMP_LOCAL_SAVE_DIR = "test_results"
-S3_BUCKET_FOR_API_DATA = "testbucketforapidata"
 
 coins_of_interest = {
     'BTC': 'bitcoin',
@@ -30,6 +28,7 @@ for coin_ticker in coins_of_interest:
     logging.info("Written ", written_file_path)
     success = upload_to_s3(S3_BUCKET_FOR_API_DATA,
                             written_file_path,
+                            "coin_data/" + \
                             f"{coin_ticker}/{os.path.basename(written_file_path)}")
     if not success:
         logging.warning(f"S3 upload failed for {coin_ticker}")
