@@ -31,6 +31,7 @@ async function main(): Promise<void> {
   const fxStateRootTunnelDeployTxRcpt = await fxStateRootTunnel.deployed();
   console.log('FxStateRootTunnel deployed to:', fxStateRootTunnel.address, 'tx:', getEthGoerliExplorerLink(fxStateRootTunnelDeployTxRcpt.deployTransaction.hash));
 
+
   // Deploy child tunnel in polygon mumbai testnet.
   hre.changeNetwork('polygonMumbai');
   const FxStateChildTunnelFactory: ContractFactory = await ethers.getContractFactory(

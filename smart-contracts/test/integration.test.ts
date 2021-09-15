@@ -1,67 +1,106 @@
 import { ethers } from "hardhat";
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
-import { TestToken__factory } from "../typechain";
+import { config as dotenvConfig } from "dotenv";
+import { resolve } from "path";
+import hre from "hardhat";
+import { assert } from 'console';
+import { Contract, ContractFactory } from 'ethers';
+import axios, { AxiosError } from 'axios';
+
+dotenvConfig({ path: resolve(__dirname, "./.env") });
+
+const CHECKPOINT_MANAGER = process.env.CHECKPOINT_MANAGER || "";
+const FX_ROOT = process.env.FX_ROOT || "";
+const FX_CHILD = process.env.FX_CHILD || "";
+const INFURA_API_KEY = process.env.INFURA_API_KEY || "";
+
+assert(CHECKPOINT_MANAGER !== "", "Checkpint Manager address must not be empty. Please set CHECKPOINT_MANAGER in the .env file.");
+assert(FX_ROOT !== "", "Fx root address must not be empty. Please set FX_ROOT in the .env file.");
+assert(FX_CHILD !== "", "Fx child address must not be empty. Please set FX_CHILD in the .env file.");
+assert(INFURA_API_KEY !== "", "Infura API Key must not be empty. Please set INFURA_API_KEY in the .env file.");
+
 
 chai.use(solidity);
 const { expect } = chai;
 
 describe("Eth-Matic Bridge Integration Test", () => {
+  let fxStateRootTunnel: Contract;
+  let fxStateChildTunnel: Contract;
+
+  // Runs once before running all tests.
   before(async() => {
-    const [deployer] = await ethers.getSigners();
-    
+    hre.changeNetwork('ethGoerli');
+    const FxStateRootTunnelFactory: ContractFactory = await ethers.getContractFactory('FxStateRootTunnel');
+    fxStateRootTunnel = await FxStateRootTunnelFactory.deploy(CHECKPOINT_MANAGER, FX_ROOT);
+    await fxStateRootTunnel.deployed();
+    hre.changeNetwork('polygonMumbai');
+    const FxStateChildTunnelFactory: ContractFactory = await ethers.getContractFactory('FxStateChildTunnel');
+    fxStateChildTunnel = await FxStateChildTunnelFactory.deploy(FX_CHILD);
+    await fxStateChildTunnel.deployed();
+    hre.changeNetwork('ethGoerli');
+    await fxStateRootTunnel.setFxChildTunnel(fxStateChildTunnel.address)
+    hre.changeNetwork('polygonMumbai');
+    await fxStateChildTunnel.setFxRootTunnel(fxStateRootTunnel.address)
   });
 
-  beforeEach(async () => {
-    const [deployer] = await ethers.getSigners();
-    const tokenFactory = new TestToken__factory(deployer);
-    const tokenContract = await tokenFactory.deploy();
-    const tokenAddress = tokenContract.address;
+  // Runs before each test.
+  beforeEach(async () => {});
 
-    expect(await tokenContract.totalSupply()).to.eq(0);
-  });
-  describe("Mint", async () => {
-    it("Should mint some tokens", async () => {
-      const [deployer, user] = await ethers.getSigners();
-      const tokenInstance = new TestToken__factory(deployer).attach(tokenAddress);
-      const toMint = ethers.utils.parseEther("1");
+  describe("L1 -> L2", async () => {
+    it("Send message from L1 to L2", async () => {
+      // hre.changeNetwork('ethGoerli');
+      // const message = '0xabcd'
+      // await fxStateRootTunnel.sendMessageToChild(ethers.utils.arrayify('0xABCD'))
 
-      await tokenInstance.mint(user.address, toMint);
-      expect(await tokenInstance.totalSupply()).to.eq(toMint);
+      // hre.changeNetwork('polygonMumbai');
+      // // This will be broken if test timed out, or test conditions are met.
+      // while (true) {
+      //   await new Promise(f => setTimeout(f, 5000));
+      //   const latestData = await fxStateChildTunnel.latestData()
+      //   if (latestData === message) {
+      //     break;
+      //   }
+      // }
     });
   });
 
-  describe("Transfer", async () => {
-    it("Should transfer tokens between users", async () => {
-      const [deployer, sender, receiver] = await ethers.getSigners();
-      const deployerInstance = new TestToken__factory(deployer).attach(tokenAddress);
-      const toMint = ethers.utils.parseEther("1");
-
-      await deployerInstance.mint(sender.address, toMint);
-      expect(await deployerInstance.balanceOf(sender.address)).to.eq(toMint);
-
-      const senderInstance = new TestToken__factory(sender).attach(tokenAddress);
-      const toSend = ethers.utils.parseEther("0.4");
-      await senderInstance.transfer(receiver.address, toSend);
-
-      expect(await senderInstance.balanceOf(receiver.address)).to.eq(toSend);
-    });
-
-    it("Should fail to transfer with low balance", async () => {
-      const [deployer, sender, receiver] = await ethers.getSigners();
-      const deployerInstance = new TestToken__factory(deployer).attach(tokenAddress);
-      const toMint = ethers.utils.parseEther("1");
-
-      await deployerInstance.mint(sender.address, toMint);
-      expect(await deployerInstance.balanceOf(sender.address)).to.eq(toMint);
-
-      const senderInstance = new TestToken__factory(sender).attach(tokenAddress);
-      const toSend = ethers.utils.parseEther("1.1");
-
-      // Notice await is on the expect
-      await expect(senderInstance.transfer(receiver.address, toSend)).to.be.revertedWith(
-        "transfer amount exceeds balance",
-      );
+  describe("L2 -> L1", async () => {
+    it("Send message from L2 to L1", async () => {
+      hre.changeNetwork('polygonMumbai');
+      const message = '0xabcd'
+      const sendMessageToRootTx = await fxStateChildTunnel.sendMessageToRoot(ethers.utils.arrayify(message))
+      const sendMsgEventSig = '0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036'
+      const url = `https://apis.matic.network/api/v1/mumbai/exit-payload/${sendMessageToRootTx.hash}?eventSignature=${sendMsgEventSig}`
+      console.log(url)
+      let proof: string = 'invalid-proof'
+      while (true) {
+        await new Promise(f => setTimeout(f, 5000));
+        type ResponseObj = {
+          error: boolean
+          message: string
+          result: string
+        }
+        try {
+          const resp = await axios.get<ResponseObj>(url);
+          const proofObj = resp.data
+          console.log(proofObj)
+          if ('result' in proofObj && !('error' in proofObj)) {
+            proof = proofObj.result
+            break
+          }
+        } catch(err) {
+          if (axios.isAxiosError(err))  {
+            console.log(err.response?.data)
+          } else {
+            console.log(err)
+          }
+        }
+      }
+      await fxStateRootTunnel.receiveMessage(ethers.utils.arrayify(proof))
+      await new Promise(f => setTimeout(f, 60000));
+      const latestData = await fxStateRootTunnel.latestData()
+      expect(latestData).to.equal(message)
     });
   });
 });
