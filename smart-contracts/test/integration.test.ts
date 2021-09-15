@@ -49,19 +49,19 @@ describe("Eth-Matic Bridge Integration Test", () => {
 
   describe("L1 -> L2", async () => {
     it("Send message from L1 to L2", async () => {
-      // hre.changeNetwork('ethGoerli');
-      // const message = '0xabcd'
-      // await fxStateRootTunnel.sendMessageToChild(ethers.utils.arrayify('0xABCD'))
+      hre.changeNetwork('ethGoerli');
+      const message = '0xabcd'
+      await fxStateRootTunnel.sendMessageToChild(ethers.utils.arrayify('0xABCD'))
 
-      // hre.changeNetwork('polygonMumbai');
-      // // This will be broken if test timed out, or test conditions are met.
-      // while (true) {
-      //   await new Promise(f => setTimeout(f, 5000));
-      //   const latestData = await fxStateChildTunnel.latestData()
-      //   if (latestData === message) {
-      //     break;
-      //   }
-      // }
+      hre.changeNetwork('polygonMumbai');
+      // This will be broken if test timed out, or test conditions are met.
+      while (true) {
+        await new Promise(f => setTimeout(f, 5000));
+        const latestData = await fxStateChildTunnel.latestData()
+        if (latestData === message) {
+          break;
+        }
+      }
     });
   });
 
