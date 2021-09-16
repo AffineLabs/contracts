@@ -1,26 +1,23 @@
 import { ethers } from "hardhat";
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
-import { TestToken__factory } from "../typechain";
+import { Contract } from 'ethers';
 
 chai.use(solidity);
 const { expect } = chai;
 
 describe("Token", () => {
-  let tokenAddress: string;
+  let tokenInstance: Contract;
 
   beforeEach(async () => {
-    const [deployer] = await ethers.getSigners();
-    const tokenFactory = new TestToken__factory(deployer);
-    const tokenContract = await tokenFactory.deploy();
-    tokenAddress = tokenContract.address;
-
-    expect(await tokenContract.totalSupply()).to.eq(0);
+    const tokenFactory =  await ethers.getContractFactory('TestToken');
+    tokenInstance = await tokenFactory.deploy();
+    expect(await tokenInstance.totalSupply()).to.eq(0);
   });
+
   describe("Mint", async () => {
     it("Should mint some tokens", async () => {
-      const [deployer, user] = await ethers.getSigners();
-      const tokenInstance = new TestToken__factory(deployer).attach(tokenAddress);
+      const [_, user] = await ethers.getSigners();
       const toMint = ethers.utils.parseEther("1");
 
       await tokenInstance.mint(user.address, toMint);
@@ -31,13 +28,13 @@ describe("Token", () => {
   describe("Transfer", async () => {
     it("Should transfer tokens between users", async () => {
       const [deployer, sender, receiver] = await ethers.getSigners();
-      const deployerInstance = new TestToken__factory(deployer).attach(tokenAddress);
+      const deployerInstance = tokenInstance.connect(deployer);
       const toMint = ethers.utils.parseEther("1");
 
       await deployerInstance.mint(sender.address, toMint);
       expect(await deployerInstance.balanceOf(sender.address)).to.eq(toMint);
 
-      const senderInstance = new TestToken__factory(sender).attach(tokenAddress);
+      const senderInstance = tokenInstance.connect(sender);
       const toSend = ethers.utils.parseEther("0.4");
       await senderInstance.transfer(receiver.address, toSend);
 
@@ -46,13 +43,13 @@ describe("Token", () => {
 
     it("Should fail to transfer with low balance", async () => {
       const [deployer, sender, receiver] = await ethers.getSigners();
-      const deployerInstance = new TestToken__factory(deployer).attach(tokenAddress);
+      const deployerInstance = tokenInstance.connect(deployer);
       const toMint = ethers.utils.parseEther("1");
 
       await deployerInstance.mint(sender.address, toMint);
       expect(await deployerInstance.balanceOf(sender.address)).to.eq(toMint);
 
-      const senderInstance = new TestToken__factory(sender).attach(tokenAddress);
+      const senderInstance = tokenInstance.connect(sender);
       const toSend = ethers.utils.parseEther("1.1");
 
       // Notice await is on the expect

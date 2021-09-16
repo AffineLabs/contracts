@@ -6,7 +6,7 @@ import { resolve } from "path";
 import hre from "hardhat";
 import { assert } from 'console';
 import { Contract, ContractFactory } from 'ethers';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 
 dotenvConfig({ path: resolve(__dirname, "./.env") });
 
