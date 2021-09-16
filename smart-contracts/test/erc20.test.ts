@@ -14,7 +14,7 @@ describe("Token", () => {
     tokenInstance = await tokenFactory.deploy();
     expect(await tokenInstance.totalSupply()).to.eq(0);
   });
-  
+
   describe("Mint", async () => {
     it("Should mint some tokens", async () => {
       const [_, user] = await ethers.getSigners();
@@ -49,7 +49,7 @@ describe("Token", () => {
       await deployerInstance.mint(sender.address, toMint);
       expect(await deployerInstance.balanceOf(sender.address)).to.eq(toMint);
 
-      const senderInstance = tokenInstance.connect(deployer);
+      const senderInstance = tokenInstance.connect(sender);
       const toSend = ethers.utils.parseEther("1.1");
 
       // Notice await is on the expect
