@@ -25,18 +25,14 @@ asset_level_portfolios = {
 user_asset_allocations = {
     "risk1": {
         "lendingProtocols": 1.0,
-        "btcEth": 0.0,
-        "altCoins": 0.0,
     },
     "risk2": {
         "lendingProtocols": 0.8,
         "btcEth": 0.2,
-        "altCoins": 0.0,
     },
     "risk3": {
         "lendingProtocols": 0.6,
         "btcEth": 0.4,
-        "altCoins": 0.0,
     },
     "risk4": {
         "lendingProtocols": 0.4,
