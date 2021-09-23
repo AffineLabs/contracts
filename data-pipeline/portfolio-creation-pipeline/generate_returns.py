@@ -149,10 +149,10 @@ if __name__ == "__main__":
                 "percentage": user_asset_allocations[f"risk{i}"]["lendingProtocols"]
                 * 100,
             },
-            "automatedMarketMaking": {
-                "tickers": [],
-                "percentage": 0.0,
-            },
+            # "automatedMarketMaking": {
+            #     "tickers": [],
+            #     "percentage": 0.0,
+            # },
             "btcEth": {
                 "tickers": ["btc", "eth"],
                 "percentage": user_asset_allocations[f"risk{i}"]["btcEth"] * 100,
@@ -169,10 +169,18 @@ if __name__ == "__main__":
             ],
         }
 
+        # delete portfolios with weight 0
+        for portfolio_name in ["btcEth", "altCoins"]:
+            if output_json[f"risk{i}"][portfolio_name]["percentage"] == 0:
+                del output_json[f"risk{i}"][portfolio_name]
+
     output_json["risk1"]["fullname"] = "Multiplyr Cash"
     output_json["risk2"]["fullname"] = "Multiplyr Cash Aggresive"
     output_json["risk3"]["fullname"] = "Multiplyr Balanced"
     output_json["risk4"]["fullname"] = "Multiplyr Coin"
     output_json["risk5"]["fullname"] = "Multiplyr Coin Aggresive"
+
+    with open("out.json", "w") as out:
+        json.dump(output_json, out)
 
     upload_to_s3(output_json)
