@@ -30,9 +30,9 @@ def get_asset_filepaths():
             if filepath.startswith("asset_metadata"):
                 continue
             ticker = filepath.split("/")[1].lower()
-            old_filepath = datapaths.get(ticker, "")
-            # save the filepath to most recent data
-            datapaths[ticker] = max(old_filepath, filepath)
+            # store the filepath to most recent data
+            if filepath.endswith("latest.csv"):
+                datapaths[ticker] = filepath
     return datapaths
 
 
@@ -89,11 +89,6 @@ def preprocess_coin_data(start_date, coin_data_dir, exclude_coins):
 
     # merge coin prices into one timeseries df
     coin_price_df = merge_dfs(coin_dfs, "price", take_rolling_mean=True)
-    # rearrange the columns so that btc is 1st col and eth is 2nd col
-    btc = coin_price_df.pop("btc")
-    eth = coin_price_df.pop("eth")
-    coin_price_df.insert(0, "eth", eth)
-    coin_price_df.insert(0, "btc", btc)
     return coin_price_df
 
 
@@ -138,22 +133,24 @@ def preprocess_lending_data(
         if ticker not in exclude_protocols
     }
 
-    for protocol, df in lend_protocol_dfs.items():
-        x_values = [datetime.strptime(d, "%Y-%m-%d %H:%M:%S").date() for d in df.index]
-        df.index = x_values
-        # reverse the dataframe so that most recent data is at the tail
-        lend_protocol_dfs[protocol] = df.iloc[::-1]
-
-    # impute data
     logging.info("imputing missing data for lending protocols")
-    for protocol in lend_protocol_dfs.keys():
-        X = coin_price_df
-        y = lend_protocol_dfs[protocol][["lend_rate"]]
-        lend_protocol_dfs[protocol] = impute_data(X, y, start_date, training_end_date)
-
+    for protocol, df in lend_protocol_dfs.items():
+        df.index = [datetime.strptime(d, "%Y-%m-%d %H:%M:%S").date() for d in df.index]
+        # reverse the dataframe so that most recent data is at the tail
+        df = df.iloc[::-1]
+        # drop na in the beginning and at the end
+        df = df.dropna()
+        # impute interest rates before the launch date of the protocol
+        # using coin prices
+        lend_protocol_dfs[protocol] = impute_data(
+            X=coin_price_df[["btc", "eth", "usdt", "usdc"]],
+            y=df[["lend_rate"]],
+            start_date=start_date,
+            end_date=training_end_date,
+        )
+    # merge the dataframes
     lend_rates_df = merge_dfs(lend_protocol_dfs, "lend_rate", take_rolling_mean=True)
-    lend_rates_df["nexo"] = 12.0  # usdc, usdt
-    lend_rates_df["celsius"] = 8.8  # usdc, usdt
+
     # start with $1, and apply daily yield each day to convert
     # lend rates to lending protocol (lp) returns
     lp_returns = {protocol: [1.0] for protocol in lend_rates_df.columns}

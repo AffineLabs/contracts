@@ -123,7 +123,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--training_end_date",
-        default="2021-02-25",
+        default="2021-06-25",
         help="training end date for the model that imputes lending data",
     )
     parser.add_argument(
@@ -147,15 +147,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--exclude_protocols",
         nargs="+",
-        default=["maker.csv", "aave.csv"],
+        default=["maker"],
         help="lending protocols to exclude when parsing lending data",
-    )
-
-    parser.add_argument(
-        "--pred_coins",
-        nargs="+",
-        default=["bitcoin", "ethereum", "tether", "usd-coin"],
-        help="coin prices to use to predict missing lending data",
     )
 
     args = parser.parse_args()
