@@ -1,3 +1,6 @@
+from datetime import datetime, timedelta
+import random
+
 from utils.utils import (
     is_valid_ticker,
     is_valid_user_id,
@@ -18,39 +21,32 @@ def user_portfolio(user_id: int):
 
     return {
         "userId": user_id,
-        "portfolio": [
-            {
-                "ticker": "BTC",
-                "name": "bitcoin",
-                "kind": "coin",
-                "imgUrl": "aws3link",
-                "amount": 10.0,
-                "price": 30000,
-                "apy": 300.0,
-            }
-        ],
+        "userAddress": "0xfakeAddr",
+        "portfolio": {
+            "mCash": {"amount": 1200, "price": 1.2},
+            "mLarge": {"amount": 3.1, "price": 27_000},
+            "mAlt": {"amount": 5, "price": 5}
+        }
     }
 
 
-def historical_return(user_id: int):
+def historical_balance(user_id: int):
     """
     get historical return for the user with user_id
     """
     if not is_valid_user_id(user_id):
         return user_id_error_response(user_id)
 
+    now = datetime.utcnow()
+    dates = [now - timedelta(days=num) for num in range(365)]
+    date_strs = [date.strftime("%Y-%m-%d") for date in dates]
+    # rando balances per day
+    balances = [random.randint(10, int(1e6)) for num in range(len(date_strs))]
+    date_balances = {date: bal for date, bal in zip(date_strs, balances)}
     return {
         "userId": user_id,
-        "risk": 2,
-        "avgApy": 30.1,
-        "valueUSD": {
-            "value1d": {},
-            "value1w": {},
-            "value1m": {},
-            "value1y": {},
-            "valueTotal": {},
-        },
-    }
+        "historical_balances": date_balances
+        }
 
 
 def user_asset_info(user_id: int, asset_ticker: str):

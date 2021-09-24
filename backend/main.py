@@ -22,9 +22,9 @@ async def get_user_portfolio(user_id: int):
     return user_portfolio.user_portfolio(user_id)
 
 
-@app.get("/{user_id}/historial_portfolio_return")
-async def get_user_historical_return(user_id: int):
-    return user_portfolio.historical_return(user_id)
+@app.get("/{user_id}/historical_balance")
+async def get_user_historical_balance(user_id: int):
+    return user_portfolio.historical_balance(user_id)
 
 
 @app.get("/{user_id}/{asset_ticker}/user_asset_info")
@@ -67,4 +67,4 @@ async def get_transactions(user_id: int, asset_tickers: List[str] = Query(["all"
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
