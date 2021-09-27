@@ -53,11 +53,26 @@ def generate_daily_value_and_roi(asset_weights, assets_df, rebalance_period=1):
     return np.array(investment_daily_value), roi
 
 
-def apy_from_roi(roi):
-    return np.round((roi[-1] + 100) ** (365 / len(roi)) - 100, 3)
+def apy_from_roi(roi_list):
+    """
+    given the return on investment (roi) for every day in a period,
+    computes the apy at the end of the period
+    params:
+        roi: a list of return on investpent (roi) as percentage
+             for each day in a period
+    returns: apy as percentage
+    """
+    num_years = len(roi_list) / 365
+    investment_total_growth = roi_list[-1] / 100 + 1
+    annual_yield = investment_total_growth ** (1 / num_years) - 1
+    # return apy as percentage
+    return np.round(annual_yield * 100, 3)
 
 
 def calculate_annualized_volatility(asset_price):
+    """
+    calculate annualized volatility from asset price
+    """
     log_daily_pcnt_change = np.log(asset_price[1:] / asset_price[:-1])
     return np.round(np.std(log_daily_pcnt_change) * 365 ** 0.5, 3)
 
@@ -141,7 +156,10 @@ if __name__ == "__main__":
             investment_daily_value_df,
             rebalance_period=90,
         )
+
         annual_vol = calculate_annualized_volatility(user_investment_daily_value) * 100
+        # get apy pcnt from roi
+        apy = apy_from_roi(user_roi)
 
         output_json[f"risk{i}"] = {
             "lendingProtocols": {
@@ -162,10 +180,10 @@ if __name__ == "__main__":
                 "percentage": user_asset_allocations[f"risk{i}"]["altCoins"] * 100,
             },
             "historicalRoi": dict(zip(asset_price_df.index, user_roi)),
-            "projectedApy": apy_from_roi(user_roi),
+            "projectedApy": apy,
             "projectedApyRange": [
-                apy_from_roi(user_roi) - annual_vol,
-                apy_from_roi(user_roi) + annual_vol,
+                apy - annual_vol,
+                apy + annual_vol,
             ],
         }
 
