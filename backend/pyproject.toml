@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "backend"
+version = "0.1.0"
+description = "Basic API Server"
+authors = ["larryob <tosin@multiplyr.ai>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = "^0.68.1"
+uvicorn = "^0.15.0"
+pandas = "^1.3.3"
+SQLAlchemy = "^1.4.25"
+
+[tool.poetry.dev-dependencies]
+black = "^21.9b0"
+psycopg2-binary = "^2.9.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
