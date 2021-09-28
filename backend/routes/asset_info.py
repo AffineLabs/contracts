@@ -15,9 +15,7 @@ def asset_description(asset_ticker: str):
     asset_metadata_df = get_all_asset_metadata()
     if not is_valid_ticker(asset_ticker, asset_metadata_df):
         return asset_error_response(asset_ticker)
-    asset_metadata_df = asset_metadata_df[
-        asset_metadata_df["asset_ticker"] == asset_ticker.lower()
-    ]
+    asset_metadata_df = asset_metadata_df[asset_metadata_df["asset_ticker"] == asset_ticker.lower()]
     asset_price_df = get_asset_price_from_sql(asset_ticker)
     return {
         "assetTicker": asset_ticker,
@@ -28,30 +26,14 @@ def asset_description(asset_ticker: str):
         "defiSafetyScore": None,
         "marketCap": None,
         "dilutedCap": None,
-        "low52wk": min(
-            calculate_asset_historical_return(
-                asset_ticker, asset_price_df, 365, full_data=True
-            ).values()
-        ),
-        "high52wk": max(
-            calculate_asset_historical_return(
-                asset_ticker, asset_price_df, 365, full_data=True
-            ).values()
-        ),
+        "low52wk": min(calculate_asset_historical_return(asset_ticker, asset_price_df, 365, full_data=True).values()),
+        "high52wk": max(calculate_asset_historical_return(asset_ticker, asset_price_df, 365, full_data=True).values()),
         "cvarHistorgram": [],
         "unitPrice": {
-            "price1w": calculate_asset_historical_return(
-                asset_ticker, asset_price_df, 7
-            ),
-            "price1m": calculate_asset_historical_return(
-                asset_ticker, asset_price_df, 30
-            ),
-            "price1y": calculate_asset_historical_return(
-                asset_ticker, asset_price_df, 365
-            ),
-            "priceTotal": calculate_asset_historical_return(
-                asset_ticker, asset_price_df
-            ),
+            "price1w": calculate_asset_historical_return(asset_ticker, asset_price_df, 7),
+            "price1m": calculate_asset_historical_return(asset_ticker, asset_price_df, 30),
+            "price1y": calculate_asset_historical_return(asset_ticker, asset_price_df, 365),
+            "priceTotal": calculate_asset_historical_return(asset_ticker, asset_price_df),
         },
     }
 
@@ -68,17 +50,22 @@ def historical_return(asset_ticker):
     return {
         "assetTicker": asset_ticker,
         "unitPrice": {
-            "price1w": calculate_asset_historical_return(
-                asset_ticker, asset_price_df, 7
-            ),
-            "price1m": calculate_asset_historical_return(
-                asset_ticker, asset_price_df, 30
-            ),
-            "price1y": calculate_asset_historical_return(
-                asset_ticker, asset_price_df, 365
-            ),
-            "priceTotal": calculate_asset_historical_return(
-                asset_ticker, asset_price_df
-            ),
+            "price1w": calculate_asset_historical_return(asset_ticker, asset_price_df, 7),
+            "price1m": calculate_asset_historical_return(asset_ticker, asset_price_df, 30),
+            "price1y": calculate_asset_historical_return(asset_ticker, asset_price_df, 365),
+            "priceTotal": calculate_asset_historical_return(asset_ticker, asset_price_df),
         },
     }
+
+
+def get_vault_stats(vault_addr: str):
+    vault_info = {
+        "element_info": [
+            {"asset_name": "Compound USD Coin", "ticker": "cUSDC", "weight": 0.14, "price": 0.02, "apy": 0.06}
+        ],
+        "vault_apy": 0.11,
+        "target_apy": 0.22,
+        "price": 1.11,
+    }
+
+    return vault_info
