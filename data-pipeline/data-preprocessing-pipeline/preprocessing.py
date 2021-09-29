@@ -8,7 +8,7 @@ import logging
 import os
 
 from datetime import datetime
-from utils import merge_dfs, impute_data
+from utils import merge_dfs, impute_data, convert_wide_to_long
 
 
 def get_asset_filepaths():
@@ -89,7 +89,12 @@ def preprocess_coin_data(start_date, coin_data_dir, exclude_coins):
 
     # merge coin prices into one timeseries df
     coin_price_df = merge_dfs(coin_dfs, "price", take_rolling_mean=True)
-    return coin_price_df
+    coin_market_cap_df = merge_dfs(coin_dfs, "market_cap", take_rolling_mean=False)
+    coin_trading_volume_df = merge_dfs(
+        coin_dfs, "trading_volume_24h", take_rolling_mean=False
+    )
+
+    return coin_price_df, coin_market_cap_df, coin_trading_volume_df
 
 
 def preprocess_lending_data(
@@ -202,12 +207,33 @@ def read_asset_metadata(asset_types):
     del asset_metadata_df["Pcnt Change"]
     del asset_metadata_df["Volume in Currencies (24Hr)"]
     del asset_metadata_df["Circulating Supply"]
+    del asset_metadata_df["Market Cap"]
     return asset_metadata_df
+
+
+def create_asset_daily_metrics_df(asset_market_cap_df, asset_trading_volume_df):
+    asset_market_cap_long_df = convert_wide_to_long(
+        asset_market_cap_df, "asset_ticker", "market_cap"
+    )
+
+    asset_trading_volume_long_df = convert_wide_to_long(
+        asset_trading_volume_df, "asset_ticker", "trading_volume_24h"
+    )
+
+    asset_daily_metrics_long_df = pd.merge(
+        asset_market_cap_long_df,
+        asset_trading_volume_long_df,
+        how="inner",
+        left_on=["timestamp", "asset_ticker"],
+        right_on=["timestamp", "asset_ticker"],
+    )
+    asset_daily_metrics_long_df["tick_size"] = "1d"
+    return asset_daily_metrics_long_df
 
 
 def read_asset_price_and_metadata(args):
     # first read the data from the csv files
-    coin_price_df = preprocess_coin_data(
+    coin_price_df, coin_market_cap_df, coin_trading_volume_df = preprocess_coin_data(
         args.start_date,
         f"s3://{S3_BUCKET}/",
         args.exclude_coins,
@@ -225,6 +251,10 @@ def read_asset_price_and_metadata(args):
         coin_price_df, lending_return_df, left_index=True, right_index=True, how="inner"
     )
 
+    asset_daily_metrics_long_df = create_asset_daily_metrics_df(
+        coin_market_cap_df, coin_trading_volume_df
+    )
+
     # create asset types for all assets
     asset_types = {
         asset_ticker: (
@@ -233,4 +263,4 @@ def read_asset_price_and_metadata(args):
         for asset_ticker in asset_price_df.columns
     }
     asset_metadata_df = read_asset_metadata(asset_types)
-    return asset_price_df, asset_metadata_df
+    return asset_price_df, asset_metadata_df, asset_daily_metrics_long_df
