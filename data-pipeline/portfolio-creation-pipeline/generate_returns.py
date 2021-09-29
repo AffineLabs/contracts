@@ -49,7 +49,7 @@ def generate_daily_value_and_roi(asset_weights, assets_df, rebalance_period=1):
                 for asset, weight in asset_weights.items()
             }
 
-    roi = np.array([np.round(dv - 100, 3) for dv in investment_daily_value])
+    roi = np.array([dv - 100 for dv in investment_daily_value])
     return np.array(investment_daily_value), roi
 
 
@@ -66,7 +66,7 @@ def apy_from_roi(roi_list):
     investment_total_growth = roi_list[-1] / 100 + 1
     annual_yield = investment_total_growth ** (1 / num_years) - 1
     # return apy as percentage
-    return np.round(annual_yield * 100, 3)
+    return annual_yield * 100
 
 
 def calculate_annualized_volatility(asset_price):
