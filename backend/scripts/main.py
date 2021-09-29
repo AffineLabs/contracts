@@ -31,6 +31,11 @@ async def get_user_asset_info(user_id: int, asset_ticker: str):
     return user_portfolio.user_asset_info(user_id, asset_ticker)
 
 
+@app.get("/{user_id}/pubkey")
+async def get_user_pubkey(user_id: int):
+    return user_portfolio.user_pubkey(user_id)
+
+
 # routes/asset_info.py
 
 
@@ -63,11 +68,14 @@ async def sell_asset(user_id: int, asset_ticker: str, amount_units: float):
 
 
 # routes/transactions.py
-
-
 @app.get("/transactions/{user_id}/")
 async def get_transactions(user_id: int, asset_tickers: List[str] = Query(["all"])):
     return transactions.user_transactions(user_id, asset_tickers)
+
+
+@app.get("/{user_id}/withdraw")
+async def user_withdraw(user_id: int):
+    return transactions.withdraw(user_id)
 
 
 def run():

@@ -25,8 +25,8 @@ def user_portfolio(user_id: int):
         "portfolio": {
             "mCash": {"amount": 1200, "price": 1.2},
             "mLarge": {"amount": 3.1, "price": 27_000},
-            "mAlt": {"amount": 5, "price": 5}
-        }
+            "mAlt": {"amount": 5, "price": 5},
+        },
     }
 
 
@@ -43,10 +43,7 @@ def historical_balance(user_id: int):
     # rando balances per day
     balances = [random.randint(10, int(1e6)) for num in range(len(date_strs))]
     date_balances = {date: bal for date, bal in zip(date_strs, balances)}
-    return {
-        "userId": user_id,
-        "historical_balances": date_balances
-        }
+    return {"userId": user_id, "historical_balances": date_balances}
 
 
 def user_asset_info(user_id: int, asset_ticker: str):
@@ -69,20 +66,16 @@ def user_asset_info(user_id: int, asset_ticker: str):
         "assetUnitCount": 2,
         "portfolioPercentage": 20.0,
         "unitPrice": {
-            "price1w": calculate_asset_historical_return(
-                asset_ticker, asset_price_df, 7
-            ),
-            "price1m": calculate_asset_historical_return(
-                asset_ticker, asset_price_df, 30
-            ),
-            "price1y": calculate_asset_historical_return(
-                asset_ticker, asset_price_df, 365
-            ),
-            "priceTotal": calculate_asset_historical_return(
-                asset_ticker, asset_price_df
-            ),
+            "price1w": calculate_asset_historical_return(asset_ticker, asset_price_df, 7),
+            "price1m": calculate_asset_historical_return(asset_ticker, asset_price_df, 30),
+            "price1y": calculate_asset_historical_return(asset_ticker, asset_price_df, 365),
+            "priceTotal": calculate_asset_historical_return(asset_ticker, asset_price_df),
         },
         "avgCost": 100.0,
         "avgApy": 10.0,
         "percentageFee": 0.015,
     }
+
+
+def user_pubkey(user_id: int):
+    return "0xfakeAddr"
