@@ -1,12 +1,8 @@
 firstrun:
-	pip install pipenv
-	pipenv install
+	pip install poetry
+	poetry install
 init:
-	pipenv install
-
-pipenv:
-# OPENBLAS="$(brew --prefix openblas)" pipenv install --dev
-	pipenv install --dev
+	poetry install
 
 test:
 	nosetests tests

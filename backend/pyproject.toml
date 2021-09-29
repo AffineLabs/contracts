@@ -3,6 +3,7 @@ name = "backend"
 version = "0.1.0"
 description = "Basic API Server"
 authors = ["larryob <tosin@multiplyr.ai>"]
+packages = [{include = "scripts"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
@@ -14,6 +15,9 @@ SQLAlchemy = "^1.4.25"
 [tool.poetry.dev-dependencies]
 black = "^21.9b0"
 psycopg2-binary = "^2.9.1"
+
+[tool.poetry.scripts]
+server = "scripts.main:run"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

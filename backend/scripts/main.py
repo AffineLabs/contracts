@@ -1,17 +1,16 @@
 from typing import List
+
 from fastapi import FastAPI, Query
 import uvicorn
-from routes import user_portfolio, asset_info, user_trade, transactions
-import sys
 
-sys.path.append("..")
+from routes import user_portfolio, asset_info, user_trade, transactions
 
 app = FastAPI()
 
 
 @app.get("/")
 async def root():
-    return {"message": "Multiplyr BE Says: Hello World"}
+    return {"message": "Multiplyr Backend Server Says: Hello World"}
 
 
 # routes/user_portfolio.py
@@ -45,6 +44,11 @@ async def get_asset_historical_return(asset_ticker: str):
     return asset_info.historical_return(asset_ticker)
 
 
+@app.get("/{vault_addr}/vault_stats")
+async def get_vault_status(vault_addr: str):
+    return asset_info.get_vault_stats(vault_addr)
+
+
 # routes/trade.py
 
 # all orders are market orders for the mvp
@@ -66,5 +70,9 @@ async def get_transactions(user_id: int, asset_tickers: List[str] = Query(["all"
     return transactions.user_transactions(user_id, asset_tickers)
 
 
+def run():
+    uvicorn.run("scripts.main:app", host="0.0.0.0", port=8000, reload=True)
+
+
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    run()
