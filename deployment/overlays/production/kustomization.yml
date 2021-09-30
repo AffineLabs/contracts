@@ -4,7 +4,7 @@ namespace: production
 images:
 - name: backend-api
   newName: 959984261658.dkr.ecr.us-east-2.amazonaws.com/backend-api
-  newTag: 1f4467b2350a61aac1feb35268d649366862cabb
+  newTag: bcd27ff74a1cf52c8faee7219524d24788dec127
 - name: data-pipeline
   newName: 959984261658.dkr.ecr.us-east-2.amazonaws.com/data-pipeline
   newTag: d5e180b3ddc6c94d1942f9c46d53ba47d97c9a79
