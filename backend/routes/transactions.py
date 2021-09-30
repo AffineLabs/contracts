@@ -42,3 +42,7 @@ def user_transactions(user_id: int, asset_tickers: List):
         ]
 
     return transaction_history
+
+
+def withdraw(user_id: int):
+    return "User has now withdrawn all funds"
