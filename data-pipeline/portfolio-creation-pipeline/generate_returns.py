@@ -24,7 +24,7 @@ logging.basicConfig(
 pd.set_option("display.max_columns", None)
 
 
-def generate_daily_value_and_roi(asset_weights, assets_df, rebalance_period=1):
+def generate_daily_value_and_roi(asset_weights, asset_prices_df, rebalance_period=1):
     """
     given the asset weights, generate the return on $100 initial investment
     rebalances on the last day of each rebalance_period
@@ -35,10 +35,10 @@ def generate_daily_value_and_roi(asset_weights, assets_df, rebalance_period=1):
         for asset_ticker, weight in asset_weights.items()
     }
     investment_daily_value = [investment_total]
-    for i in range(len(assets_df) - 1):
+    for i in range(len(asset_prices_df) - 1):
         for asset_ticker, weight in asset_weights.items():
-            asset_price_today = assets_df[asset_ticker][i]
-            asset_price_next_day = assets_df[asset_ticker][i + 1]
+            asset_price_today = asset_prices_df[asset_ticker][i]
+            asset_price_next_day = asset_prices_df[asset_ticker][i + 1]
             asset_allocation[asset_ticker] *= asset_price_next_day / asset_price_today
         investment_total = sum(asset_allocation.values())
         investment_daily_value.append(investment_total)
@@ -53,17 +53,17 @@ def generate_daily_value_and_roi(asset_weights, assets_df, rebalance_period=1):
     return np.array(investment_daily_value), roi
 
 
-def apy_from_roi(roi_list):
+def apy_from_roi(roi, num_days):
     """
-    given the return on investment (roi) for every day in a period,
+    given the return on investment (roi) and length of a period in days,
     computes the apy at the end of the period
     params:
-        roi: a list of return on investpent (roi) as percentage
-             for each day in a period
+        roi: return on investpent (roi) as percentage
+        num_days: the duration in days
     returns: apy as percentage
     """
-    num_years = len(roi_list) / 365
-    investment_total_growth = roi_list[-1] / 100 + 1
+    num_years = num_days / 365
+    investment_total_growth = roi / 100 + 1
     annual_yield = investment_total_growth ** (1 / num_years) - 1
     # return apy as percentage
     return annual_yield * 100
@@ -77,23 +77,49 @@ def calculate_annualized_volatility(asset_price):
     return np.round(np.std(log_daily_pcnt_change) * 365 ** 0.5, 3)
 
 
-def get_daily_value_of_asset_portfolios(asset_level_portfolios, asset_price_df):
+def calculate_asset_apy(daily_prices):
+    """
+    calculate apy from an asset's daily prices during a period
+    param: daily_prices - a list or pd Series
+    """
+    asset_roi = (daily_prices[-1] / daily_prices[0] - 1) * 100
+    asset_apy = apy_from_roi(asset_roi, len(daily_prices))
+    return asset_apy
 
+
+def asset_last_24h_change(daily_prices):
+    """
+    calculate change in asset price as pct in the last 24 hours
+    """
+    # not enough price data points to compute daily change, so return 0
+    if len(daily_prices) < 2:
+        return 0.0
+    todays_price = daily_prices[-1]
+    previous_price = daily_prices[-2]
+    return (todays_price - previous_price) / previous_price * 100
+
+
+def get_daily_value_of_asset_portfolios(asset_weights, asset_prices_df):
+    """
+    for each asset class (eg. lending protocol, btc-eth etc),
+    given portfolio weights of assets in that class
+    this function calculates the daily value of the portfolio.
+    """
     lending_protocol_daily_value, _ = generate_daily_value_and_roi(
-        asset_level_portfolios["lendingProtocols"],
-        asset_price_df,
+        asset_weights["lendingProtocols"],
+        asset_prices_df,
         rebalance_period=1,
     )
     btceth_daily_value, _ = generate_daily_value_and_roi(
-        asset_level_portfolios["btcEth"], asset_price_df, rebalance_period=90
+        asset_weights["btcEth"], asset_prices_df, rebalance_period=90
     )
     altcoins_daily_value, _ = generate_daily_value_and_roi(
-        asset_level_portfolios["altCoins"], asset_price_df, rebalance_period=90
+        asset_weights["altCoins"], asset_prices_df, rebalance_period=90
     )
 
     investment_daily_value_df = pd.DataFrame(
         {
-            "index": asset_price_df.index,
+            "index": asset_prices_df.index,
             "lendingProtocols": lending_protocol_daily_value,
             "btcEth": btceth_daily_value,
             "altCoins": altcoins_daily_value,
@@ -136,16 +162,16 @@ if __name__ == "__main__":
     engine = create_engine(os.environ.get("POSTGRES_REMOTE_URL"))
     asset_price_long_df = pd.read_sql_table("asset_price", engine)
     # convert data from long to wide format
-    asset_price_df = asset_price_long_df.pivot(
+    asset_prices_df = asset_price_long_df.pivot(
         index="timestamp", columns="asset_ticker", values="closing_price"
     )
-    asset_price_df.index = [str(date) for date in asset_price_df.index]
+    asset_prices_df.index = [str(date) for date in asset_prices_df.index]
 
     logging.info(
         "generating daily historical value and roi for each asset class level portfolio."
     )
     investment_daily_value_df = get_daily_value_of_asset_portfolios(
-        asset_level_portfolios, asset_price_df
+        asset_level_portfolios, asset_prices_df
     )
 
     logging.info("populating the json object with portfolio returns.")
@@ -159,11 +185,19 @@ if __name__ == "__main__":
 
         annual_vol = calculate_annualized_volatility(user_investment_daily_value) * 100
         # get apy pcnt from roi
-        apy = apy_from_roi(user_roi)
+        apy = apy_from_roi(user_roi[-1], len(user_roi))
 
         output_json[f"risk{i}"] = {
             "lendingProtocols": {
-                "tickers": list(asset_level_portfolios["lendingProtocols"].keys()),
+                "tickers": [
+                    {
+                        "ticker": ticker,
+                        "apy": calculate_asset_apy(asset_prices_df[ticker]),
+                        "last24hChange": asset_last_24h_change(asset_prices_df[ticker]),
+                        "lastPrice": asset_prices_df[ticker][-1],
+                    }
+                    for ticker in asset_level_portfolios["lendingProtocols"].keys()
+                ],
                 "percentage": user_asset_allocations[f"risk{i}"]["lendingProtocols"]
                 * 100,
             },
@@ -172,14 +206,30 @@ if __name__ == "__main__":
             #     "percentage": 0.0,
             # },
             "btcEth": {
-                "tickers": ["btc", "eth"],
+                "tickers": [
+                    {
+                        "ticker": ticker,
+                        "apy": calculate_asset_apy(asset_prices_df[ticker]),
+                        "last24hChange": asset_last_24h_change(asset_prices_df[ticker]),
+                        "lastPrice": asset_prices_df[ticker][-1],
+                    }
+                    for ticker in asset_level_portfolios["btcEth"].keys()
+                ],
                 "percentage": user_asset_allocations[f"risk{i}"]["btcEth"] * 100,
             },
             "altCoins": {
-                "tickers": list(asset_level_portfolios["altCoins"].keys()),
+                "tickers": [
+                    {
+                        "ticker": ticker,
+                        "apy": calculate_asset_apy(asset_prices_df[ticker]),
+                        "last24hChange": asset_last_24h_change(asset_prices_df[ticker]),
+                        "lastPrice": asset_prices_df[ticker][-1],
+                    }
+                    for ticker in asset_level_portfolios["altCoins"].keys()
+                ],
                 "percentage": user_asset_allocations[f"risk{i}"]["altCoins"] * 100,
             },
-            "historicalRoi": dict(zip(asset_price_df.index, user_roi)),
+            "historicalRoi": dict(zip(asset_prices_df.index, user_roi)),
             "projectedApy": apy,
             "projectedApyRange": [
                 apy - annual_vol,
@@ -193,10 +243,10 @@ if __name__ == "__main__":
                 del output_json[f"risk{i}"][portfolio_name]
 
     output_json["risk1"]["fullname"] = "Multiplyr Cash"
-    output_json["risk2"]["fullname"] = "Multiplyr Cash Aggresive"
-    output_json["risk3"]["fullname"] = "Multiplyr Balanced"
-    output_json["risk4"]["fullname"] = "Multiplyr Coin"
-    output_json["risk5"]["fullname"] = "Multiplyr Coin Aggresive"
+    output_json["risk2"]["fullname"] = "Multiplyr Balanced"
+    output_json["risk3"]["fullname"] = "Multiplyr Btc-Eth"
+    output_json["risk4"]["fullname"] = "Multiplyr Alt Coin"
+    output_json["risk5"]["fullname"] = "Multiplyr Alt Coin Aggresive"
 
     with open("out.json", "w") as out:
         json.dump(output_json, out)
