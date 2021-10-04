@@ -8,6 +8,8 @@ import logging
 import os
 
 from datetime import datetime
+
+from sqlalchemy.sql.expression import column
 from utils import merge_dfs, impute_data, convert_wide_to_long
 
 
@@ -202,12 +204,17 @@ def read_asset_metadata(asset_types):
     )
 
     # delete the columns that we don't use
-    del asset_metadata_df["Last Price"]
-    del asset_metadata_df["Change"]
-    del asset_metadata_df["Pcnt Change"]
-    del asset_metadata_df["Volume in Currencies (24Hr)"]
-    del asset_metadata_df["Circulating Supply"]
-    del asset_metadata_df["Market Cap"]
+    asset_metadata_df.drop(
+        columns=[
+            "Last Price",
+            "Change",
+            "Pcnt Change",
+            "Volume in Currencies (24Hr)",
+            "Circulating Supply",
+            "Market Cap",
+        ],
+        inplace=True,
+    )
     return asset_metadata_df
 
 
@@ -223,9 +230,7 @@ def create_asset_daily_metrics_df(asset_market_cap_df, asset_trading_volume_df):
     asset_daily_metrics_long_df = pd.merge(
         asset_market_cap_long_df,
         asset_trading_volume_long_df,
-        how="inner",
-        left_on=["timestamp", "asset_ticker"],
-        right_on=["timestamp", "asset_ticker"],
+        on=["timestamp", "asset_ticker"],
     )
     asset_daily_metrics_long_df["tick_size"] = "1d"
     return asset_daily_metrics_long_df

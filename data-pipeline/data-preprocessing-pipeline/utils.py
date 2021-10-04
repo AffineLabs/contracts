@@ -122,12 +122,11 @@ def create_asset_id(asset_price_df, asset_metadata_df):
     # give new ids to assets which currently do not have metadata
     asset_ticker_to_id.update(
         {
-            ticker: i + len(asset_metadata_df["asset_id"])
+            ticker: i + len(asset_metadata_df)
             for i, ticker in enumerate(assets_without_metadata)
         }
     )
 
-    # convert asset_id to long format and add it to the long asset price data
     asset_id_wide_df = pd.DataFrame(
         {
             asset_ticker: [i] * len(asset_price_df.index)
@@ -135,6 +134,7 @@ def create_asset_id(asset_price_df, asset_metadata_df):
         },
         index=asset_price_df.index,
     )
+    # convert asset_id to long format
     asset_id_long_df = convert_wide_to_long(
         asset_id_wide_df, "asset_ticker", "asset_id"
     )

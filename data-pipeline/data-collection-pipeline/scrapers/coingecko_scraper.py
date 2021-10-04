@@ -20,14 +20,21 @@ class CoinGeckoScraper(BaseAPIScraper):
         data = self.cg.get_coin_market_chart_by_id(
             id=asset_name, vs_currency="usd", days="max"
         )
-        # data[prices] is a list of (timestamp, price)
-        df = pd.DataFrame(data["prices"], columns=["timestamp", "price"])
-        df["datetime"] = [
-            datetime.datetime.utcfromtimestamp(t / 1000.0) for t in df.timestamp
-        ]
-        df["market_cap"] = [market_cap for _, market_cap in data["market_caps"]]
-        df["trading_volume_24h"] = [
-            total_volume for _, total_volume in data["total_volumes"]
-        ]
+        # data[x] is a list of (timestamp, x)
+        # zip(*) unzips the tuples
+        timestamps, prices = zip(*data["prices"])
+        _, market_caps = zip(*data["market_caps"])
+        _, total_volumes = zip(*data["total_volumes"])
 
+        df = pd.DataFrame(
+            {
+                "timestamp": timestamps,
+                "price": prices,
+                "datetime": [
+                    datetime.datetime.utcfromtimestamp(t / 1000.0) for t in timestamps
+                ],
+                "market_cap": market_caps,
+                "trading_volume_24h": total_volumes,
+            }
+        )
         return df

@@ -2,13 +2,9 @@ import argparse
 import pandas as pd
 import os
 import logging
-from sqlalchemy import create_engine
-
-from datetime import datetime, timedelta
-
-from preprocessing import read_asset_price_and_metadata
-from utils import convert_wide_to_long, create_asset_id
-
+import sqlalchemy
+import preprocessing
+import utils
 
 logging.basicConfig(
     level="INFO",
@@ -26,36 +22,32 @@ def main(args):
         asset_price_df,
         asset_metadata_df,
         asset_daily_metrics_df,
-    ) = read_asset_price_and_metadata(args)
+    ) = preprocessing.read_asset_price_and_metadata(args)
     # asset_price_df is the data from csv files, which are in wide format
     # convert wide data format to long format
-    asset_price_long_df = convert_wide_to_long(
+    asset_price_long_df = utils.convert_wide_to_long(
         asset_price_df, "asset_ticker", "closing_price"
     )
     asset_price_long_df["tick_size"] = "1d"
-    asset_id_long_df = create_asset_id(asset_price_df, asset_metadata_df)
+    asset_id_long_df = utils.create_asset_id(asset_price_df, asset_metadata_df)
 
     asset_price_long_df = pd.merge(
         asset_price_long_df,
         asset_id_long_df,
-        how="inner",
-        left_on=["timestamp", "asset_ticker"],
-        right_on=["timestamp", "asset_ticker"],
+        on=["timestamp", "asset_ticker"],
     )
 
     asset_daily_metrics_df = pd.merge(
         asset_daily_metrics_df,
         asset_id_long_df,
-        how="inner",
-        left_on=["timestamp", "asset_ticker"],
-        right_on=["timestamp", "asset_ticker"],
+        on=["timestamp", "asset_ticker"],
     )
 
     # asset_price_long_df is the asset_price table
     # asset_metadata_df is the asset_metadata table
     # now write the data to the database
     logging.info("writing to aws database.")
-    engine = create_engine(args.postgres_url)
+    engine = sqlalchemy.create_engine(args.postgres_url)
 
     # first, clear the existing data in the tables
     with engine.connect() as con:
