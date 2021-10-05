@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "chainlink"
+version = "0.1.0"
+description = ""
+authors = ["larryob <tosin@multiplyr.ai>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+requests = "^2.26.0"
+Flask = "^2.0.1"
+web3 = "^5.24.0"
+python-dotenv = "^0.19.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
+black = "^21.9b0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
