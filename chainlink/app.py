@@ -9,6 +9,17 @@ app = Flask(__name__)
 def log_request_info():
     app.logger.debug("Headers: %s", request.headers)
     app.logger.debug("Body: %s", request.get_data())
+    app.logger.debug("Params: %s", print(request.form))
+
+
+@app.after_request
+def after(response):
+    # todo with response
+    print("RESPONSE DEBUG INFO: ", response)
+    print("STATUS: ", response.status)
+    print("HEADERS: ", response.headers)
+    print("DATA: ", response.get_data())
+    return response
 
 
 @app.route("/", methods=["POST"])
@@ -17,9 +28,8 @@ def call_adapter():
     if data == "":
         data = {}
     adapter = Adapter(data)
-    json_result = jsonify(adapter.result)
-    print("result: ", json_result)
-    return json_result
+    print("adapter.result: ", adapter.result)
+    return jsonify(adapter.result)
 
 
 if __name__ == "__main__":

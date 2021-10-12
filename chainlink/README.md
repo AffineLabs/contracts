@@ -16,6 +16,28 @@ poetry install
 poetry run pytest
 ```
 
+# Basic Setup
+
+Note that `--network host` only works on Linux. [Issue](https://github.com/docker/for-mac/issues/2716).
+
+First run `docker network create dev-network` so the containers can recognize each other by name
+
+- Starting the postgres database
+  docker run --network dev-network --name postgres-dev -p 5432:5432 -d -e POSTGRES_PASSWORD=secret123 postgres:14.0
+
+- Starting the mumbai chainlink node
+  cd ~/.chainlink-mumbai && \
+  docker run \
+  --network dev-network \
+  --name chainlink-mumbai \
+  -p 6690:6690 \
+  -v ~/.chainlink-mumbai:/chainlink \
+  -it \
+  --env-file=.env \
+  smartcontract/chainlink:0.10.14 local n
+
+# Running
+
 ## Run with Docker
 
 Build the image
