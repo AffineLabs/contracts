@@ -187,8 +187,6 @@ if __name__ == "__main__":
         index="timestamp", columns="asset_ticker", values="closing_price"
     )
 
-    print(asset_prices_df.index.strftime("%Y-%m-%d %H:%M:%S"))
-
     asset_ticker_to_asset_id = dict(
         zip(asset_price_long_df["asset_ticker"], asset_price_long_df["asset_id"])
     )
