@@ -5,7 +5,8 @@ from sqlalchemy import create_engine
 import logging
 import json
 import time
-from constant import asset_level_portfolios, user_asset_allocations
+import constant
+
 
 try:
     import boto3
@@ -48,7 +49,6 @@ def generate_daily_value_and_roi(asset_weights, asset_prices_df, rebalance_perio
                 asset: investment_total * weight
                 for asset, weight in asset_weights.items()
             }
-
     roi = np.array([dv - 100 for dv in investment_daily_value])
     return np.array(investment_daily_value), roi
 
@@ -157,6 +157,27 @@ def upload_to_s3(file_json):
         logging.error("failed to upload portfolio returns to S3.")
 
 
+def get_asset_info(
+    ticker,
+    asset_id,
+    asset_prices_df,
+    asset_type_weights,
+    asset_weights,
+    asset_type,
+):
+    asset_level_portfolio_weight = asset_type_weights[asset_type]
+    asset_weight = asset_weights[asset_type][ticker]
+
+    return {
+        "ticker": ticker,
+        "assetId": asset_id,
+        "apy": calculate_asset_apy(asset_prices_df[ticker]),
+        "lastPrice": asset_prices_df[ticker][-1],
+        "last24hPercentChange": asset_last_24h_change(asset_prices_df[ticker]),
+        "portfolioPercentage": asset_weight * asset_level_portfolio_weight * 100,
+    }
+
+
 if __name__ == "__main__":
     logging.info("reading asset price data from aws.")
     engine = create_engine(os.environ.get("POSTGRES_REMOTE_URL"))
@@ -165,24 +186,28 @@ if __name__ == "__main__":
     asset_prices_df = asset_price_long_df.pivot(
         index="timestamp", columns="asset_ticker", values="closing_price"
     )
+    asset_ticker_to_asset_id = dict(
+        zip(asset_price_long_df["asset_ticker"], asset_price_long_df["asset_id"])
+    )
     asset_prices_df.index = [str(date) for date in asset_prices_df.index]
 
     logging.info(
         "generating daily historical value and roi for each asset class level portfolio."
     )
     investment_daily_value_df = get_daily_value_of_asset_portfolios(
-        asset_level_portfolios, asset_prices_df
+        constant.asset_level_portfolios, asset_prices_df
     )
 
     logging.info("populating the json object with portfolio returns.")
     output_json = {}
     for i in range(1, 6):
-        user_investment_daily_value, user_roi = generate_daily_value_and_roi(
-            user_asset_allocations[f"risk{i}"],
+        # user_asset_weights is the weight of different asset level portfolios in user portfolio
+        # this changes as the underlying asset_prices_change
+        (user_investment_daily_value, user_roi,) = generate_daily_value_and_roi(
+            constant.user_asset_allocations[f"risk{i}"],
             investment_daily_value_df,
             rebalance_period=90,
         )
-
         annual_vol = calculate_annualized_volatility(user_investment_daily_value) * 100
         # get apy pcnt from roi
         apy = apy_from_roi(user_roi[-1], len(user_roi))
@@ -190,15 +215,21 @@ if __name__ == "__main__":
         output_json[f"risk{i}"] = {
             "lendingProtocols": {
                 "tickers": [
-                    {
-                        "ticker": ticker,
-                        "apy": calculate_asset_apy(asset_prices_df[ticker]),
-                        "last24hChange": asset_last_24h_change(asset_prices_df[ticker]),
-                        "lastPrice": asset_prices_df[ticker][-1],
-                    }
-                    for ticker in asset_level_portfolios["lendingProtocols"].keys()
+                    get_asset_info(
+                        ticker,
+                        asset_ticker_to_asset_id[ticker],
+                        asset_prices_df,
+                        constant.user_asset_allocations[f"risk{i}"],
+                        constant.asset_level_portfolios,
+                        "lendingProtocols",
+                    )
+                    for ticker in constant.asset_level_portfolios[
+                        "lendingProtocols"
+                    ].keys()
                 ],
-                "percentage": user_asset_allocations[f"risk{i}"]["lendingProtocols"]
+                "percentage": constant.user_asset_allocations[f"risk{i}"][
+                    "lendingProtocols"
+                ]
                 * 100,
             },
             # "automatedMarketMaking": {
@@ -207,27 +238,33 @@ if __name__ == "__main__":
             # },
             "btcEth": {
                 "tickers": [
-                    {
-                        "ticker": ticker,
-                        "apy": calculate_asset_apy(asset_prices_df[ticker]),
-                        "last24hChange": asset_last_24h_change(asset_prices_df[ticker]),
-                        "lastPrice": asset_prices_df[ticker][-1],
-                    }
-                    for ticker in asset_level_portfolios["btcEth"].keys()
+                    get_asset_info(
+                        ticker,
+                        asset_ticker_to_asset_id[ticker],
+                        asset_prices_df,
+                        constant.user_asset_allocations[f"risk{i}"],
+                        constant.asset_level_portfolios,
+                        "btcEth",
+                    )
+                    for ticker in constant.asset_level_portfolios["btcEth"].keys()
                 ],
-                "percentage": user_asset_allocations[f"risk{i}"]["btcEth"] * 100,
+                "percentage": constant.user_asset_allocations[f"risk{i}"]["btcEth"]
+                * 100,
             },
             "altCoins": {
                 "tickers": [
-                    {
-                        "ticker": ticker,
-                        "apy": calculate_asset_apy(asset_prices_df[ticker]),
-                        "last24hChange": asset_last_24h_change(asset_prices_df[ticker]),
-                        "lastPrice": asset_prices_df[ticker][-1],
-                    }
-                    for ticker in asset_level_portfolios["altCoins"].keys()
+                    get_asset_info(
+                        ticker,
+                        asset_ticker_to_asset_id[ticker],
+                        asset_prices_df,
+                        constant.user_asset_allocations[f"risk{i}"],
+                        constant.asset_level_portfolios,
+                        "altCoins",
+                    )
+                    for ticker in constant.asset_level_portfolios["altCoins"].keys()
                 ],
-                "percentage": user_asset_allocations[f"risk{i}"]["altCoins"] * 100,
+                "percentage": constant.user_asset_allocations[f"risk{i}"]["altCoins"]
+                * 100,
             },
             "historicalRoi": dict(zip(asset_prices_df.index, user_roi)),
             "projectedApy": apy,
