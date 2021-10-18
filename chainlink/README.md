@@ -1,6 +1,6 @@
 # Chainlink External Adapter for aUSDC and cUSDC prices
 
-This is an external adapter .It can be ran locally, in Docker, AWS Lambda, or GCP Functions.
+This is an external adapter. It can be ran locally, in Docker, AWS Lambda, or GCP Functions.
 
 This code is based on [this template](https://github.com/thodges-gh/CL-EA-Python-Template) from the Chainlink team.
 
@@ -16,16 +16,47 @@ poetry install
 poetry run pytest
 ```
 
-# Basic Setup
+# Running demo
 
-Note that `--network host` only works on Linux. [Issue](https://github.com/docker/for-mac/issues/2716).
+## Setup Chainlink Node
 
-First run `docker network create dev-network` so the containers can recognize each other by name
+- Run `docker network create dev-network` so the containers can recognize each other by name
 
-- Starting the postgres database
-  docker run --network dev-network --name postgres-dev -p 5432:5432 -d -e POSTGRES_PASSWORD=secret123 postgres:14.0
+- Start postgres with
+  `docker run --network dev-network --name postgres-dev -p 5432:5432 -d -e POSTGRES_PASSWORD=secret123 postgres:14.0`
 
-- Starting the mumbai chainlink node
+- Make an alchemy account.
+
+- Create a .env file for each network that you would like to run. If you want to run a kovan node first run `mkdir ~/.chainlink-kovan`. Then put your .env file in ~/.chainlink-kovan. Here's an example .env file:
+
+```
+ROOT=/chainlink
+LOG_LEVEL=debug
+ETH_CHAIN_ID=<chain id>
+MIN_OUTGOING_CONFIRMATIONS=2
+LINK_CONTRACT_ADDRESS=<insert appropriate contract address>
+CHAINLINK_TLS_PORT=0 # This should be non-zero in a production deployment
+SECURE_COOKIES=false # Should be true in production
+GAS_UPDATER_ENABLED=true
+ALLOW_ORIGINS=*
+ETH_URL=wss://eth-kovan.alchemy.com/v2/<insert api key>
+
+DATABASE_URL=postgresql://<insert user>:<insert pass>@host:5432/postgres
+# 0.01 LINK
+MINIMUM_CONTRACT_PAYMENT_LINK_JUELS=10000000000000000
+```
+
+- Start the kovan chainlink node (note that if you have two nodes running on localhost, you can only access the GUI for one):
+
+```shell
+cd ~/.chainlink-kovan && \
+docker run -p 6688:6688 -v ~/.chainlink-kovan:/chainlink -it --env-file=.env \
+smartcontract/chainlink:0.10.14 local n
+```
+
+- Start the mumbai chainlink node:
+
+```shell
   cd ~/.chainlink-mumbai && \
   docker run \
   --network dev-network \
@@ -35,8 +66,30 @@ First run `docker network create dev-network` so the containers can recognize ea
   -it \
   --env-file=.env \
   smartcontract/chainlink:0.10.14 local n
+```
 
-# Running
+- Fund your node’s wallet (go to Keys > Account addresses in your node's GUI) to see your wallet address
+
+You can find the full documentation for running a node [here](https://docs.chain.link/docs/running-a-chainlink-node/).
+
+## Oracle contract setup
+
+- [Deploy oracle](https://docs.chain.link/docs/fulfilling-requests/#deploy-your-own-oracle-contract). You’ll need to pass the address of link on the network that you’re deploying on.
+- [Add node to oracle contract](https://docs.chain.link/docs/fulfilling-requests/#add-your-node-to-the-oracle-contract). This transaction must be called by the deployer of the oracle.
+
+## Adding a job to your Chainlink node
+
+- [Add bridge](https://docs.chain.link/docs/node-operators/). You'll need to put your real IP address in the bridge url.
+
+- Deploy client contract
+  - Use job id from job creation step above)
+  - set chainlink address and oracle address correctly
+
+## Requesting data
+
+- Call the request function (e.g. requestDepositTokenPrice).
+
+# Running External Adapter
 
 ## Run with Docker
 
