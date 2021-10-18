@@ -1,0 +1,32 @@
+{
+  "name": "GetDepositTokenPrices",
+  "initiators": [
+    {
+      "type": "runlog",
+      "params": {
+        "address": "0xae045ec792f54811efa4d53206cb36da8ce7d734"
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "type": "deposit-token-ea",
+      "params": {
+        "chain": "polygon",
+        "network": "mumbai"
+      }
+    },
+    {
+      "type": "copy",
+      "params": {
+        "copyPath": ["prices", "0x2271e3Fef9e15046d09E1d78a8FF038c691E9Cf9"]
+      }
+    },
+    {
+      "type": "ethuint256"
+    },
+    {
+      "type": "ethtx"
+    }
+  ]
+}
