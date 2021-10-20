@@ -1,0 +1,132 @@
+html,
+body {
+  background-color: #211f2b;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-align: center;
+}
+
+h1,
+h2 {
+  margin: 0;
+}
+
+h1 {
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  margin-top: 10px;
+}
+
+h2 {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+form {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.divider {
+  width: 100px;
+  height: 3px;
+  margin: 20px auto;
+  background-color: #617bff;
+}
+
+input,
+textarea {
+  position: relative;
+  text-align: center;
+  display: block;
+  margin: 0;
+  border-radius: 7px;
+  border: 2px white solid;
+  background-color: white;
+  padding: 10px 20px;
+  width: 100%;
+  color: #1e1c29;
+  margin-bottom: 20px;
+  box-sizing: border-box;
+  transition: all 0.2s;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  border: 2px #617bff solid;
+}
+
+.container {
+  background-color: rgba(255, 255, 255, 0.1);
+  width: 300px;
+  margin: 0 auto;
+  border-radius: 14px;
+  padding: 30px 30px 20px 30px;
+  margin-top: 50px;
+}
+
+input[name="amount"] {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.btn {
+  display: block;
+  text-decoration: none;
+  border-radius: 7px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: 600;
+  border: 2px #617bff solid;
+  color: white;
+  background-color: #617bff;
+  padding: 15px;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  border: 2px #8095ff solid;
+  background-color: #8095ff;
+  cursor: pointer;
+}
+
+.btn:active {
+  border: 2px #4863ec solid;
+  background-color: #4863ec;
+  cursor: pointer;
+}
+
+#user-balance {
+  font-size: 24px;
+  color: white;
+  font-weight: 600;
+  margin: 20px 0;
+}
+
+#user-address {
+  font-size: 18px;
+  color: white;
+  font-weight: 500;
+  margin: 0 auto;
+  word-break: break-word;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier,
+    monospace;
+  max-width: 230px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 10px 20px;
+  border-radius: 7px;
+}
