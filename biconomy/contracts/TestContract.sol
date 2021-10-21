@@ -3,8 +3,11 @@ pragma solidity ^0.6.2;
 // import "@opengsn/gsn/contracts/BaseRelayRecipient.sol";
 import "https://github.com/opengsn/forwarder/blob/master/contracts/BaseRelayRecipient.sol";
 
-contract MyContract is BaseRelayRecipient {
+contract AlpRelayRecipient is BaseRelayRecipient {
     uint256 public num;
+
+    mapping(address => uint256) public balancesUsdc;
+    mapping(address => uint256) public balancesAlpUsdc;
 
     /**
      * Set the trustedForwarder address either in constructor or
@@ -20,6 +23,33 @@ contract MyContract is BaseRelayRecipient {
 
     function decrement() public {
         num -= 1;
+    }
+
+    function balanceOf(address user)
+        public
+        view
+        returns (uint256 usdc, uint256 alpine)
+    {
+        return (balancesUsdc[user], balancesAlpUsdc[user]);
+    }
+
+    function getUsdc(uint256 amount) public {
+        balancesUsdc[_msgSender()] += amount;
+    }
+
+    function mint(uint256 amountUsdc) public {
+        require(balancesUsdc[_msgSender()] >= amountUsdc, "Not enough USDC");
+        balancesUsdc[_msgSender()] -= amountUsdc;
+        balancesAlpUsdc[_msgSender()] += amountUsdc;
+    }
+
+    function burn(uint256 amountAlpUsdc) public {
+        require(
+            balancesAlpUsdc[_msgSender()] >= amountAlpUsdc,
+            "Not enough alpusdc"
+        );
+        balancesAlpUsdc[_msgSender()] -= amountAlpUsdc;
+        balancesUsdc[_msgSender()] += amountAlpUsdc;
     }
 
     // TODO: make this onlyowner
