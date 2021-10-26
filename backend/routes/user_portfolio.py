@@ -22,4 +22,4 @@ def historical_balance(user_id: int):
 def user_public_address(user_id: int):
     if not utils.is_valid_user_id(user_id) or user_id != 1:
         return utils.user_id_error_response(user_id)
-    return "0xfakeaddr"
+    return {"userId": user_id, "publicAddress": "0xfakeaddr"}
