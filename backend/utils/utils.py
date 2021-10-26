@@ -1,8 +1,8 @@
 import pandas as pd
-from sqlalchemy import create_engine
+import sqlalchemy
 import os
 
-engine = create_engine(os.environ.get("POSTGRES_REMOTE_URL"))
+engine = sqlalchemy.create_engine(os.environ.get("POSTGRES_REMOTE_URL"))
 
 
 def get_all_asset_metadata():
@@ -14,18 +14,18 @@ def is_valid_ticker(asset_ticker: str, asset_metadata_df: pd.DataFrame):
 
 
 def is_valid_user_id(user_id: int):
-    return True
+    return user_id == 1
 
 
 def asset_error_response(asset_ticker: str):
-    return {"assetTicker": asset_ticker, "message": "Not a valid asset ticker!"}
+    return {"assetTicker": asset_ticker, "message": "Invalid asset ticker!"}
 
 
 def user_id_error_response(user_id: int):
-    return {"userId": user_id, "message": "Not a valid user id!"}
+    return {"userId": user_id, "message": "Invalid user id!"}
 
 
-def get_asset_price_from_sql(asset_ticker):
+def get_asset_price_from_sql(asset_ticker: str):
     asset_price_df = pd.read_sql_query(
         f"""
         SELECT * 
@@ -37,25 +37,25 @@ def get_asset_price_from_sql(asset_ticker):
     return asset_price_df
 
 
-def calculate_asset_historical_return(
-    asset_ticker, asset_price_df, period=None, full_data=False
-):
-    """
-    return at most ndatapoints evenly spaced data points from the period (in days)
-    """
-    if full_data:  # return all data points in this period
-        dates = asset_price_df["timestamp"]
-        asset_prices = asset_price_df["closing_price"]
-    else:  # return ndatapoints
-        ndatapoints = 50
-        interval = 1
-        if period is None:
-            period = len(asset_price_df)
-            interval = period // ndatapoints
-        elif period > ndatapoints and period <= 2 * ndatapoints:
-            period = ndatapoints
-        elif period > 2 * ndatapoints:
-            interval = period // ndatapoints
-        dates = asset_price_df["timestamp"][-period::interval]
-        asset_prices = asset_price_df["closing_price"][-period::interval]
-    return dict(zip(dates, asset_prices))
+def get_user_balance_from_sql(user_id: int):
+    user_balance_df = pd.read_sql_query(
+        f"""
+        SELECT * 
+          FROM user_balance 
+         WHERE user_id = {user_id};
+        """,
+        engine,
+    )
+    return user_balance_df
+
+
+def get_asset_daily_metrics_from_sql(asset_ticker: str):
+    asset_daily_metrics_df = pd.read_sql_query(
+        f"""
+        SELECT * 
+          FROM asset_daily_metrics 
+         WHERE asset_ticker = '{asset_ticker}';
+        """,
+        engine,
+    )
+    return asset_daily_metrics_df

@@ -5,8 +5,11 @@ from sqlalchemy import create_engine
 import logging
 import json
 import time
-import constant
 
+try:
+    from portfolio_creation_pipeline import constant
+except ImportError:
+    import constant
 
 try:
     import boto3
