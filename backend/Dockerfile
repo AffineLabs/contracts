@@ -40,4 +40,4 @@ ENV PATH="/venv/bin:${PATH}"
 EXPOSE 8000
 
 # Run the application
-ENTRYPOINT ["python", "-m" "scripts.main"]
+ENTRYPOINT ["python", "-m" "apis.alpine_web_api.main"]
