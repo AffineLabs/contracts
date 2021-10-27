@@ -169,52 +169,25 @@ def preprocess_lending_data(
     return lp_returns_df
 
 
-def read_asset_metadata(asset_types):
+def read_asset_metadata(asset_tickers):
     """
     read the asset_metadata
-    args:        main function args
-    asset_types: a dict from asset name to asset type
     """
     logging.info("reading asset metadata")
     asset_metadata_df = pd.read_csv(
-        f"s3://{S3_BUCKET}/asset_metadata/asset_metadata.csv",
+        f"s3://{S3_BUCKET}/asset_metadata/asset_metadata_2021.10.26.csv",
         index_col=0,
         storage_options={"key": AWS_ACCESS_KEY, "secret": AWS_SECRET_KEY},
     )
     # keep only the metadata about the assets for which we have price data
     asset_metadata_df = asset_metadata_df[
-        asset_metadata_df["Ticker"].isin(set(asset_types.keys()))
+        asset_metadata_df["asset_ticker"].isin(set(asset_tickers))
     ]
 
-    asset_metadata_df.rename(
-        columns={"Name": "asset_name", "Ticker": "asset_ticker"}, inplace=True
-    )
-    # create a unique id for each asset
-    asset_metadata_df["asset_id"] = range(len(asset_metadata_df))
-    asset_metadata_df["asset_type"] = [
-        asset_types[asset_ticker] for asset_ticker in asset_metadata_df["asset_ticker"]
-    ]
-    asset_metadata_df["asset_img_url"] = "placeholder"
-    asset_metadata_df["asset_url"] = "placeholder"
-    asset_metadata_df["asset_description"] = "placeholder"
-    asset_metadata_df["risk_score_defi_safety"] = None
-    asset_metadata_df["risk_score_mpl"] = None
-    asset_metadata_df["risk_assesment"] = [["placeholder", "placeholder"]] * len(
-        asset_metadata_df
-    )
-
-    # delete the columns that we don't use
-    asset_metadata_df.drop(
-        columns=[
-            "Last Price",
-            "Change",
-            "Pcnt Change",
-            "Volume in Currencies (24Hr)",
-            "Circulating Supply",
-            "Market Cap",
-        ],
-        inplace=True,
-    )
+    asset_metadata_df["asset_img_url"] = ""
+    asset_metadata_df["asset_url"] = ""
+    asset_metadata_df["asset_description"] = ""
+    asset_metadata_df["risk_assesment"] = [["", ""]] * len(asset_metadata_df)
     return asset_metadata_df
 
 
@@ -251,6 +224,10 @@ def read_asset_price_and_metadata(args):
         coin_price_df,
         args.training_end_date,
     )
+    # cream finance and compound tickers are different from the protocol names
+    lending_return_df.rename(
+        columns={"c.r.e.a.m.-finance": "cream", "compound": "comp"}, inplace=True
+    )
 
     asset_price_df = pd.merge(
         coin_price_df, lending_return_df, left_index=True, right_index=True, how="inner"
@@ -260,12 +237,5 @@ def read_asset_price_and_metadata(args):
         coin_market_cap_df, coin_trading_volume_df
     )
 
-    # create asset types for all assets
-    asset_types = {
-        asset_ticker: (
-            "coin" if asset_ticker in coin_price_df.columns else "lending_protocol"
-        )
-        for asset_ticker in asset_price_df.columns
-    }
-    asset_metadata_df = read_asset_metadata(asset_types)
+    asset_metadata_df = read_asset_metadata(asset_price_df.columns)
     return asset_price_df, asset_metadata_df, asset_daily_metrics_long_df

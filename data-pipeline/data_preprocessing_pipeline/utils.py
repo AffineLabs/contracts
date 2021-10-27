@@ -106,36 +106,3 @@ def convert_wide_to_long(df, variable_col, value_col, index_col="timestamp"):
         inplace=True,
     )
     return df
-
-
-def create_asset_id(asset_price_df, asset_metadata_df):
-    asset_ticker_to_id = dict(
-        zip(asset_metadata_df["asset_ticker"], asset_metadata_df["asset_id"])
-    )
-    assets_without_metadata = sorted(
-        [
-            ticker
-            for ticker in asset_price_df.columns
-            if ticker not in asset_metadata_df["asset_ticker"]
-        ]
-    )
-    # give new ids to assets which currently do not have metadata
-    asset_ticker_to_id.update(
-        {
-            ticker: i + len(asset_metadata_df)
-            for i, ticker in enumerate(assets_without_metadata)
-        }
-    )
-
-    asset_id_wide_df = pd.DataFrame(
-        {
-            asset_ticker: [i] * len(asset_price_df.index)
-            for asset_ticker, i in asset_ticker_to_id.items()
-        },
-        index=asset_price_df.index,
-    )
-    # convert asset_id to long format
-    asset_id_long_df = convert_wide_to_long(
-        asset_id_wide_df, "asset_ticker", "asset_id"
-    )
-    return asset_id_long_df
