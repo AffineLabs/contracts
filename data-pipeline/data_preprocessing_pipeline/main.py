@@ -13,6 +13,28 @@ logging.basicConfig(
 pd.set_option("display.max_columns", None)
 
 
+def get_asset_id_long(asset_metadata_df, asset_price_df):
+    """
+    asset ids exist in asset metadata dataframe. We need them
+    in the long format with timestamp to add to asset price.
+    This function converts wide asset_ids to long asset_ids.
+    """
+    asset_id_wide_df = pd.DataFrame(
+        {
+            asset_ticker: [i] * len(asset_price_df.index)
+            for asset_ticker, i in zip(
+                asset_metadata_df["asset_ticker"], asset_metadata_df["asset_id"]
+            )
+        },
+        index=asset_price_df.index,
+    )
+    # convert asset_id to long format
+    asset_id_long_df = utils.convert_wide_to_long(
+        asset_id_wide_df, "asset_ticker", "asset_id"
+    )
+    return asset_id_long_df
+
+
 def main(args):
     """
     table descriptions: https://docs.google.com/document/d/1nlBXKpbqQwxv4Zypj5nRnNW5GRXQ9gzklQ8v4GuIYUk/edit#
@@ -29,7 +51,7 @@ def main(args):
         asset_price_df, "asset_ticker", "closing_price"
     )
     asset_price_long_df["tick_size"] = "1d"
-    asset_id_long_df = utils.create_asset_id(asset_price_df, asset_metadata_df)
+    asset_id_long_df = get_asset_id_long(asset_metadata_df, asset_price_df)
 
     asset_price_long_df = pd.merge(
         asset_price_long_df,
