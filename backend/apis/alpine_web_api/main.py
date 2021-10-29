@@ -11,18 +11,12 @@ app = FastAPI(
     version=VERSION,
     description="Welcome to the Alpine Web API!",
 )
-USER_ID_QUERY = Query(
-    ...,
-    description="user id. For MV0, only one user with id 1 is supported.",
-    title="user id",
-)
-ASSET_TICKER_QUERY = Query(
-    ...,
-    description="case insensitive asset ticker. The following tickers are currently supported: "
+USER_ID_DESC = ("user id. For MV0, only one user with id 1 is supported.",)
+ASSET_TICKER_DESC = (
+    "case insensitive asset ticker. The following tickers are currently supported: "
     "`bnb`, `doge`, `btc`, `ltc`, `ada`, `miota`, `eth`, `trx`, `usdt`, `vet`, `theta`, `bch`, "
     "`etc`, `xlm`, `neo`, `eos`, `xrp`, `xmr`, `link`, `aave`, `comp`, "
-    "`cream`, `dydx` and `definer`.",
-    title="asset ticker",
+    "`cream`, `dydx` and `definer`."
 )
 
 
@@ -72,7 +66,9 @@ async def root():
         }
     },
 )
-async def handle_get_user_historical_balance(userId: int = USER_ID_QUERY):
+async def handle_get_user_historical_balance(
+    userId: int = Query(..., description=USER_ID_DESC, title="user id")
+):
     """
     get historical balance of the user. For now, if the
     user id is 1, returns a fake user balance history, otherwise
@@ -106,19 +102,49 @@ async def handle_get_user_historical_balance(userId: int = USER_ID_QUERY):
         }
     },
 )
-async def handle_get_user_public_address(userId: int = USER_ID_QUERY):
+@app.get(
+    "/listAllVaultMetadata",
+    summary="get metadata for all vaults",
+    description="get vault name, ticker, address, asset composition for all alpine vaults.",
+    response_description="For MV0, returns metadata for only one vault",
+    responses={
+        200: {
+            "content": {
+                "application/json": {
+                    "example": [
+                        {
+                            "vaultName": "Alpine Save",
+                            "vaultAddress": "0xfakeaddr",
+                            "vaultTicker": "alpSave",
+                            "assetComp": [
+                                {"assetTicker": "comp", "targetPercentage": 30},
+                                {"assetTicker": "aave", "targetPercentage": 40},
+                                {"assetTicker": "dydx", "targetPercentage": 30},
+                            ],
+                        }
+                    ]
+                }
+            }
+        },
+    },
+)
+async def handle_list_all_vault_metadata():
     """
-    get public address of the user. For now, if the
-    user id is 1, returns a fake address, otherwise
-    returns an error messge
-    Params:
-        (int) userId: user id
-    Returns: {
-        (int) userId: user id,
-        (str) publicAddress: public address
-    }
+    list all vault metadata, this function returns a fixed response
+    for vault asset allocations
     """
-    return user_info.get_user_public_address(userId)
+    return [
+        {
+            "vaultName": "Alpine Save",
+            "vaultAddress": "0xfakeaddr",
+            "vaultTicker": "alpSave",
+            "assetComp": [
+                {"assetTicker": "comp", "targetPercentage": 30},
+                {"assetTicker": "aave", "targetPercentage": 40},
+                {"assetTicker": "dydx", "targetPercentage": 30},
+            ],
+        }
+    ]
 
 
 # asset_info.py
@@ -150,7 +176,9 @@ async def handle_get_user_public_address(userId: int = USER_ID_QUERY):
         }
     },
 )
-async def handle_get_asset_metadata(assetTicker: str = ASSET_TICKER_QUERY):
+async def handle_get_asset_metadata(
+    assetTicker: str = Query(..., description=ASSET_TICKER_DESC, title="asset ticker")
+):
     """
     get metadata for an asset.
     Params:
@@ -194,7 +222,9 @@ async def handle_get_asset_metadata(assetTicker: str = ASSET_TICKER_QUERY):
         }
     },
 )
-async def handle_get_asset_historical_price(assetTicker: str = ASSET_TICKER_QUERY):
+async def handle_get_asset_historical_price(
+    assetTicker: str = Query(..., description=ASSET_TICKER_DESC, title="asset ticker")
+):
     """
     get historical price of an asset.
     Params:
