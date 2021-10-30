@@ -20,24 +20,27 @@ ENV PIP_DEFAULT_TIMEOUT=100 \
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential gcc
 RUN pip install "poetry==$POETRY_VERSION"
 
-# # Install python dependencies into a single folder /venv
-RUN python -m venv /venv
-COPY poetry.lock pyproject.toml ./
+#  Install python dependencies into a single folder /venv
 
-# TODO(larryob): Don't install dev dependencies
-RUN poetry install --no-root
+RUN python -m venv /venv
+# When virtualenvs.create is false, poetry uses current python (https://github.com/python-poetry/poetry/issues/1969)
+RUN poetry config virtualenvs.create false
+
+# Install packages in /venv 
+COPY poetry.lock pyproject.toml ./
+RUN . /venv/bin/activate && poetry install --no-root --no-dev
 
 FROM base AS runtime
 
-# Set working directory
-WORKDIR /app
-
 # Copy venv
 COPY --from=python-deps /venv /venv
-ENV PATH="/venv/bin:${PATH}"
+# Copy source files over
+COPY . /app
+WORKDIR /app
 
 # Expose port 8000
 EXPOSE 8000
 
 # Run the application
-ENTRYPOINT ["python", "-m" "apis.alpine_web_api.main"]
+ENTRYPOINT [ "/venv/bin/python", "-m"]
+CMD ["apis.alpine_web_api.main"]
