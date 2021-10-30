@@ -12,12 +12,7 @@ app = FastAPI(
     description="Welcome to the Alpine Web API!",
 )
 USER_ID_DESC = ("user id. For MV0, only one user with id 1 is supported.",)
-ASSET_TICKER_DESC = (
-    "case insensitive asset ticker. The following tickers are currently supported: "
-    "`bnb`, `doge`, `btc`, `ltc`, `ada`, `miota`, `eth`, `trx`, `usdt`, `vet`, `theta`, `bch`, "
-    "`etc`, `xlm`, `neo`, `eos`, `xrp`, `xmr`, `link`, `aave`, `comp`, "
-    "`cream`, `dydx` and `definer`."
-)
+ASSET_TICKER_DESC = "case insensitive asset ticker."
 
 
 @app.get(
@@ -105,7 +100,7 @@ async def handle_get_user_historical_balance(
 @app.get(
     "/listAllVaultMetadata",
     summary="get metadata for all vaults",
-    description="get vault name, ticker, address, asset composition for all alpine vaults.",
+    description="get vault name, ticker, address, asset composition, abi for all alpine vaults.",
     response_description="For MV0, returns metadata for only one vault",
     responses={
         200: {
@@ -129,12 +124,76 @@ async def handle_get_user_historical_balance(
         },
     },
 )
-async def handle_list_all_vault_metadata():
+@app.get(
+    "/listAllAssetTickers",
+    summary="get all supported asset tickers",
+    description="get all supported asset tickers.",
+    response_description="",
+    responses={
+        200: {
+            "content": {
+                "application/json": {
+                    "example": [
+                        "bnb",
+                        "doge",
+                        "btc",
+                        "ltc",
+                        "ada",
+                        "miota",
+                        "eth",
+                        "trx",
+                        "usdt",
+                        "vet",
+                        "theta",
+                        "bch",
+                        "etc",
+                        "xlm",
+                        "neo",
+                        "eos",
+                        "xrp",
+                        "xmr",
+                        "link",
+                        "aave",
+                        "comp",
+                        "cream",
+                        "dydx",
+                        "definer",
+                    ]
+                }
+            }
+        },
+    },
+)
+async def handle_list_all_asset_tickers():
     """
-    list all vault metadata, this function returns a fixed response
-    for vault asset allocations
+    list all supported asset tickers
     """
-    return vault_info.list_all_vault_metadata()
+    return [
+        "bnb",
+        "doge",
+        "btc",
+        "ltc",
+        "ada",
+        "miota",
+        "eth",
+        "trx",
+        "usdt",
+        "vet",
+        "theta",
+        "bch",
+        "etc",
+        "xlm",
+        "neo",
+        "eos",
+        "xrp",
+        "xmr",
+        "link",
+        "aave",
+        "comp",
+        "cream",
+        "dydx",
+        "definer",
+    ]
 
 
 # asset_info.py
@@ -143,7 +202,7 @@ async def handle_list_all_vault_metadata():
     summary="get asset metadata",
     description="get internal asset id, asset fullname, asset type, "
     "DeFi safety score (0-10; higher is better), Alpine risk score "
-    "(0-5 lower is better), market cap, 24 hours trading volume, 52 week high and low.",
+    "(0-5; lower is better), market cap, 24 hours trading volume, 52 week high and low.",
     response_description="*Note: `defiSafetyScore`, `marketCap` and `tradingVol24h` can be null.*",
     responses={
         200: {
