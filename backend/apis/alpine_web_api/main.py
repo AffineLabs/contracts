@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import FastAPI, Query
 import uvicorn
-from . import user_info, asset_info
+from . import user_info, asset_info, vault_info
 
 VERSION = "0.1.0"
 
@@ -114,13 +114,14 @@ async def handle_get_user_historical_balance(
                     "example": [
                         {
                             "vaultName": "Alpine Save",
-                            "vaultAddress": "0xfakeaddr",
+                            "vaultAddress": "0x6076f3011c987A19a04e2B6a37A96Aed1ee01492",
                             "vaultTicker": "alpSave",
                             "assetComp": [
                                 {"assetTicker": "comp", "targetPercentage": 30},
                                 {"assetTicker": "aave", "targetPercentage": 40},
                                 {"assetTicker": "dydx", "targetPercentage": 30},
                             ],
+                            "vaultAbi": {},
                         }
                     ]
                 }
@@ -133,18 +134,7 @@ async def handle_list_all_vault_metadata():
     list all vault metadata, this function returns a fixed response
     for vault asset allocations
     """
-    return [
-        {
-            "vaultName": "Alpine Save",
-            "vaultAddress": "0xfakeaddr",
-            "vaultTicker": "alpSave",
-            "assetComp": [
-                {"assetTicker": "comp", "targetPercentage": 30},
-                {"assetTicker": "aave", "targetPercentage": 40},
-                {"assetTicker": "dydx", "targetPercentage": 30},
-            ],
-        }
-    ]
+    return vault_info.list_all_vault_metadata()
 
 
 # asset_info.py
