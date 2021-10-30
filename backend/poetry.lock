@@ -148,7 +148,7 @@ test = ["appdirs (==1.4.4)", "pytest (>=6)", "pytest-cov (>=2.7)", "pytest-mock 
 name = "psycopg2-binary"
 version = "2.9.1"
 description = "psycopg2 - Python-PostgreSQL Database Adapter"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -280,7 +280,7 @@ standard = ["websockets (>=9.1)", "httptools (>=0.2.0,<0.3.0)", "watchgod (>=0.6
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "6ba174d63cec3c7f8a61a0018ff160ff70d268f149dec69a5891409935d1dc13"
+content-hash = "2a05bd3c62863cfb595ed438d6a0699f9c6a363b1c1239f967783600d639823e"
 
 [metadata.files]
 asgiref = [
