@@ -17,7 +17,7 @@ black = "^21.9b0"
 psycopg2-binary = "^2.9.1"
 
 [tool.poetry.scripts]
-server = "scripts.main:run"
+server = "apis.alpine_web_api.main:run"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
