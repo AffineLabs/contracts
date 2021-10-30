@@ -1,10 +1,10 @@
 asset_level_portfolios = {
     "lendingProtocols": {
         "aave": 0.3,
-        "compound": 0.1,
+        "comp": 0.1,
         "dydx": 0.2,
         "definer": 0.1,
-        "c.r.e.a.m.-finance": 0.3,
+        "cream": 0.3,
     },
     "btcEth": {"btc": 0.5, "eth": 0.5},
     "altCoins": {

@@ -3,8 +3,8 @@
 echo "running data collection pipeline"
 cd "./data_collection_pipeline/cron_jobs/"
 
-echo "scrapping asset prices"
-python3 "get_asset_prices.py"
+# echo "scrapping asset prices"
+# python3 "get_asset_prices.py"
 
 echo "getting coin prices"
 python3 "get_crypto_prices.py"
