@@ -14,6 +14,12 @@ spec:
       containers:
       - name: backend-api
         image:  backend-api
+        env:
+          - name: POSTGRES_REMOTE_URL
+            valueFrom:
+              secretKeyRef:
+                name: env-secrets
+                key: postgres-remote-url
         resources:
           limits:
             memory: "512Mi"
