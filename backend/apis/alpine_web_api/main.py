@@ -4,7 +4,7 @@ from fastapi import FastAPI, Query
 import uvicorn
 from . import user_info, asset_info, vault_info
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 
 app = FastAPI(
     title="Alpine Web API",
@@ -35,6 +35,36 @@ async def root():
 
 
 # using camel case for param names for consistency with return objects
+@app.get(
+    "/listAllVaultMetadata",
+    summary="get metadata for all vaults",
+    description="get vault name, ticker, address, asset composition, abi for all alpine vaults.",
+    response_description="For MV0, returns metadata for only one vault",
+    responses={
+        200: {
+            "content": {
+                "application/json": {
+                    "example": [
+                        {
+                            "vaultName": "Alpine Save",
+                            "vaultAddress": "0x6076f3011c987A19a04e2B6a37A96Aed1ee01492",
+                            "vaultTicker": "alpSave",
+                            "assetComp": [
+                                {"assetTicker": "comp", "targetPercentage": 30},
+                                {"assetTicker": "aave", "targetPercentage": 40},
+                                {"assetTicker": "dydx", "targetPercentage": 30},
+                            ],
+                            "vaultAbi": {},
+                        }
+                    ]
+                }
+            }
+        },
+    },
+)
+async def handle_list_all_vault_metadata():
+    return vault_info.list_all_vault_metadata()
+
 
 # user_info.py
 
@@ -97,35 +127,10 @@ async def handle_get_user_historical_balance(
         }
     },
 )
-@app.get(
-    "/listAllVaultMetadata",
-    summary="get metadata for all vaults",
-    description="get vault name, ticker, address, asset composition, abi for all alpine vaults.",
-    response_description="For MV0, returns metadata for only one vault",
-    responses={
-        200: {
-            "content": {
-                "application/json": {
-                    "example": [
-                        {
-                            "vaultName": "Alpine Save",
-                            "vaultAddress": "0x6076f3011c987A19a04e2B6a37A96Aed1ee01492",
-                            "vaultTicker": "alpSave",
-                            "assetComp": [
-                                {"assetTicker": "comp", "targetPercentage": 30},
-                                {"assetTicker": "aave", "targetPercentage": 40},
-                                {"assetTicker": "dydx", "targetPercentage": 30},
-                            ],
-                            "vaultAbi": {},
-                        }
-                    ]
-                }
-            }
-        },
-    },
-)
-async def handle_list_all_vault_metadata():
-    return vault_info.list_all_vault_metadata()
+async def handle_get_user_public_address(
+    userId: int = Query(..., description=USER_ID_DESC, title="user id")
+):
+    return user_info.get_user_public_address(userId)
 
 
 @app.get(
