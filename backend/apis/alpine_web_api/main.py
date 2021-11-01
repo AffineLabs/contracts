@@ -124,6 +124,10 @@ async def handle_get_user_historical_balance(
         },
     },
 )
+async def handle_list_all_vault_metadata():
+    return vault_info.list_all_vault_metadata()
+
+
 @app.get(
     "/listAllAssetTickers",
     summary="get all supported asset tickers",
