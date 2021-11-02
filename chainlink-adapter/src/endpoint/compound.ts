@@ -1,18 +1,11 @@
 import { AdapterError, Validator } from '@chainlink/ea-bootstrap'
 import { Config, ExecuteWithConfig, InputParameters } from '@chainlink/types'
-
+import { ethers } from 'ethers'
 import * as fs from 'fs'
 import path from 'path'
-import { ethers } from 'ethers'
 
 // This should be filled in with a lowercase name corresponding to the API endpoint
 export const supportedEndpoints = ['compound']
-
-// export interface ResponseSchema {
-//   data: {
-//     // Some data
-//   }
-// }
 
 export const inputParameters: InputParameters = {
   chain: true,
@@ -46,9 +39,7 @@ export const execute: ExecuteWithConfig<Config> = async (request, _, config) => 
   return {
     jobRunID,
     result,
-    data: {
-      result,
-    },
+    data: { result },
     statusCode: 200,
   }
 }
@@ -67,5 +58,7 @@ const getTokenInfo = async (
   const abi = fs.readFileSync(path.resolve(__dirname, '../../src/abi/cUSDC.json'), 'utf8')
   const cusdcContract = new ethers.Contract(cusdc, abi, provider)
 
-  return cusdcContract.exchangeRateStored()
+  // TODO: convert from big number
+  const bigNumPrice = await cusdcContract.exchangeRateStored()
+  return bigNumPrice.toString()
 }
