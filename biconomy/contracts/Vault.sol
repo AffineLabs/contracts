@@ -24,7 +24,7 @@ contract Vault {
         );
     }
 
-    // We don't need to check is user == msg.sender()
+    // We don't need to check if user == msg.sender()
     // So long as this conract can transfer usdc from the given user, everything is fine
     function deposit(address user, uint256 amountUsdc) public {
         // transfer usdc to this contract
