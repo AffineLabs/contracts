@@ -4,20 +4,32 @@ from fastapi import FastAPI, Query
 import uvicorn
 from . import user_info, asset_info, vault_info
 
-VERSION = "0.1.1"
+API_VERSION = "0.2.0"
+API_DESC = f"""
+Welcome to Alpine Web API v{API_VERSION}!
+
+## Changelog
+### v 0.2.0
+- Added an `apy` field for `getAssetMetadata` and for the `alpSave` vault. 
+- Added fields `vaultAddress` and `vaultAbi` for the usdc smart contract. This is needed to know idle
+  cash amount in a user's wallet.
+- added a real user public address
+"""
+
+
+USER_ID_DESC = ("user id. For MV0, only one user with id 1 is supported.",)
+ASSET_TICKER_DESC = "case insensitive asset ticker."
 
 app = FastAPI(
     title="Alpine Web API",
-    version=VERSION,
-    description="Welcome to the Alpine Web API!",
+    version=API_VERSION,
+    description=API_DESC,
 )
-USER_ID_DESC = ("user id. For MV0, only one user with id 1 is supported.",)
-ASSET_TICKER_DESC = "case insensitive asset ticker."
 
 
 @app.get(
     "/",
-    summary=f"Welcome to Alpine Web API v{VERSION}",
+    summary=f"Welcome to Alpine Web API v{API_VERSION}",
     responses={
         200: {
             "content": {
@@ -39,7 +51,11 @@ async def root():
     "/listAllVaultMetadata",
     summary="get metadata for all vaults",
     description="get vault name, ticker, address, asset composition, abi for all alpine vaults.",
-    response_description="For MV0, returns metadata for only one vault",
+    response_description=(
+        "For MV0, returns metadata for only one vault, `alpSave`. "
+        "The other vault, `usdc`, is needed to know the idle cash amount in a user's wallet. "
+        "The usdc vault does not have the fields `apy` and `assetComp`."
+    ),
     responses={
         200: {
             "content": {
@@ -54,6 +70,7 @@ async def root():
                                 {"assetTicker": "aave", "targetPercentage": 40},
                                 {"assetTicker": "dydx", "targetPercentage": 30},
                             ],
+                            "apy": 5.1,
                             "vaultAbi": {},
                         }
                     ]
@@ -112,7 +129,7 @@ async def handle_get_user_historical_balance(
     "/getUserPublicAddress",
     summary="get public address of the user",
     description="get public address of the user.",
-    response_description="If user id is 1, returns a fake public address, "
+    response_description="If user id is 1, returns a user public address, "
     "otherwise returns an error messge",
     responses={
         200: {
@@ -226,6 +243,7 @@ async def handle_list_all_asset_tickers():
                         "alpineRiskScore": 1,
                         "marketCap": 1321311343.23,
                         "tradingVol24h": 1212223.23,
+                        "apy": 4.2,
                         "52WeekHigh": 1.1412971156811462,
                         "52WeekLow": 1.0978781938067743,
                     }
@@ -304,7 +322,7 @@ async def handle_get_asset_historical_price(
 
 
 def run():
-    uvicorn.run("apis.alpine_web_api.main:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run("apis.alpine_web_api.main:app", host="0.0.0.0", port=8000, reload=True)
 
 
 if __name__ == "__main__":

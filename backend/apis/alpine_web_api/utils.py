@@ -59,3 +59,11 @@ def get_asset_daily_metrics_from_sql(asset_ticker: str):
         engine,
     )
     return asset_daily_metrics_df
+
+
+def apy_from_prices(asset_prices):
+    start_price, end_price = asset_prices[0], asset_prices[-1]
+    period_length = len(asset_prices)
+    # source: https://en.wikipedia.org/wiki/Annual_percentage_yield
+    apy = 100 * ((end_price / start_price) ** (365 / period_length) - 1)
+    return apy
