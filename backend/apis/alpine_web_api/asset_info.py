@@ -18,9 +18,8 @@ def get_asset_metadata(asset_ticker: str):
     asset_metadata.where(pd.notnull(asset_metadata), None, inplace=True)
 
     asset_metrics_df = utils.get_asset_daily_metrics_from_sql(asset_ticker)
-    asset_price_52wk = list(
-        utils.get_asset_price_from_sql(asset_ticker)["closing_price"][-364:]
-    )
+    asset_price_df = utils.get_asset_price_from_sql(asset_ticker)["closing_price"]
+    asset_apy = utils.apy_from_prices(list(asset_price_df))
     return {
         "assetTicker": asset_ticker,
         "assetId": int(asset_metadata["asset_id"]),
@@ -36,8 +35,9 @@ def get_asset_metadata(asset_ticker: str):
         "tradingVol24h": asset_metrics_df.iloc[-1]["trading_volume_24h"]
         if len(asset_metrics_df) > 0
         else None,
-        "52WeekHigh": max(asset_price_52wk),
-        "52WeekLow": min(asset_price_52wk),
+        "52WeekHigh": max(list(asset_price_df[-364:])),
+        "52WeekLow": min(list(asset_price_df[-364:])),
+        "apy": asset_apy,
     }
 
 
