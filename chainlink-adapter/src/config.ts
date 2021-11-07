@@ -6,8 +6,7 @@ export const NAME = 'ALCHEMY' // This should be filled in with a name correspond
 export const makeConfig = (prefix?: string): Config => {
   const config = Requester.getDefaultConfig(prefix)
 
-  config.apiKey = util.getRequiredEnv('INFURA_API_KEY')
-  console.log('api key...', config.apiKey)
-  config.defaultEndpoint = 'compound'
+  config.apiKey = util.getRequiredEnv('ALCHEMY_API_KEY')
+  config.defaultEndpoint = 'tvl'
   return config
 }

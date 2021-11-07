@@ -40,14 +40,13 @@ export const execute: ExecuteWithConfig<Config> = async (request, _, config) => 
       message: `Chain with id ${chainId} not supported`,
     })
 
-  const chainIdToName: chainIdMap = { 1: 'mainnet', 42: 'kovan' }
+  const chainIdToName: chainIdMap = {
+    1: 'eth-mainnet.alchemyapi.io',
+    42: 'eth-kovan.alchemyapi.io',
+  }
   const name = chainIdToName[chainId]
 
-  // TODO: Switch over to alchemy and support polygon
-  const provider = new ethers.providers.JsonRpcProvider(
-    `https://${name}.infura.io/v3/${config.apiKey}`,
-  )
-
+  const provider = new ethers.providers.JsonRpcProvider(`https://${name}/v2/${config.apiKey}`)
   const abi = fs.readFileSync(path.resolve(__dirname, '../../src/abi/vault.json'), 'utf8')
 
   const vault = new ethers.Contract(vaultAddress, abi, provider)

@@ -1,37 +1,33 @@
-# Chainlink External Adapter for Example
+# Chainlink External Adapter for Alpine
 
-A template to be used as an example for new [External Adapters](https://github.com/smartcontractkit/external-adapters-js)
-
-(please fill out with corresponding information)
-
-An example adapter description
+This adapter gets the tvl of Ethereum vaults as well as the block numbers of the last cross chain transfers.
 
 ### Environment Variables
 
-| Required? |  Name   |                                                        Description                                                         | Options | Defaults to |
-| :-------: | :-----: | :------------------------------------------------------------------------------------------------------------------------: | :-----: | :---------: |
-|           | API_KEY | An API key that can be obtained from the data provider's dashboard (add a ✅ in `Required?` if this parameter is required) |         |             |
+| Required? |      Name       |     Description     | Options | Defaults to |
+| :-------: | :-------------: | :-----------------: | :-----: | :---------: |
+|    ✅     | ALCHEMY_API_KEY | Key for alchemy.com |         |             |
 
 ---
 
 ### Input Parameters
 
-| Required? |   Name   |     Description     |           Options            | Defaults to |
-| :-------: | :------: | :-----------------: | :--------------------------: | :---------: |
-|           | endpoint | The endpoint to use | [example](#Example-Endpoint) |   example   |
+| Required? |   Name   |     Description     |                        Options                         | Defaults to |
+| :-------: | :------: | :-----------------: | :----------------------------------------------------: | :---------: |
+|    ✅     | endpoint | The endpoint to use | [tvl](#TVL-Endpoint), [lastBlock](#LastBlock-Endpoint) |     tvl     |
 
 ---
 
-## Example Endpoint
+## TVL Endpoint
 
-An example endpoint description
+This gets the tvl of a vault on Ethereum
 
 ### Input Params
 
-| Required? |            Name            |               Description                |       Options       | Defaults to |
-| :-------: | :------------------------: | :--------------------------------------: | :-----------------: | :---------: |
-|    ✅     | `base`, `from`, or `coin`  |   The symbol of the currency to query    | `BTC`, `ETH`, `USD` |             |
-|    ✅     | `quote`, `to`, or `market` | The symbol of the currency to convert to | `BTC`, `ETH`, `USD` |             |
+| Required? |      Name      |            Description            |     Options     | Defaults to |
+| :-------: | :------------: | :-------------------------------: | :-------------: | :---------: |
+|    ✅     |   `chainId`    |  The id of the network to query   | Any eth network |             |
+|    ✅     | `vaultAddress` | The address of the vault contract |                 |             |
 
 ### Sample Input
 
@@ -39,8 +35,9 @@ An example endpoint description
 {
   "id": "1",
   "data": {
-    "base": "ETH",
-    "quote": "USD"
+    "chainId": 42,
+    "vaultAddress": "0xA0F3BC193651c902C0cae9779c6E7F10761bF2Ac",
+    "endpoint": "tvl"
   }
 }
 ```
@@ -51,8 +48,43 @@ An example endpoint description
 {
   "jobRunID": "278c97ffadb54a5bbb93cfec5f7b5503",
   "data": {
-    "price": 77777.77,
-    "result": 77777.77
+    "result": "100000"
+  },
+  "statusCode": 200
+}
+```
+
+## LastBlock Endpoint
+
+This gets the lastblock of a cross chain transfer from the given chain
+
+### Input Params
+
+| Required? |       Name       |             Description             | Options | Defaults to |
+| :-------: | :--------------: | :---------------------------------: | :-----: | :---------: |
+|    ✅     |    `chainId`     |   The id of the network to query    |         |             |
+|    ✅     | `stagingAddress` | The address of the staging contract |         |             |
+
+### Sample Input
+
+```json
+{
+  "id": "1",
+  "data": {
+    "chainId": 80001,
+    "stagingAddress": "0xd5c81d46D8237b06fa6110aEB43363b6F63bC247",
+    "endpoint": "lastblock"
+  }
+}
+```
+
+### Sample Output
+
+```json
+{
+  "jobRunID": "278c97ffadb54a5bbb93cfec5f7b5503",
+  "data": {
+    "result": "21170874"
   },
   "statusCode": 200
 }
