@@ -1,36 +1,44 @@
-FROM python:3.7-slim as base
+FROM python:3.8-slim as base
 
 # Setup env
-ENV LANG C.UTF-8
-ENV LC_ALL C.UTF-8
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONFAULTHANDLER 1
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    PYTHONFAULTHANDLER=1 \
+    PYTHONHASHSEED=random \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
 
 
 FROM base AS python-deps
 
-# Install pipenv and compilation dependencies
-RUN pip install pipenv
-RUN apt-get update && apt-get install -y --no-install-recommends gcc
+# Install poetry and compilation depedencies
+ENV PIP_DEFAULT_TIMEOUT=100 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    POETRY_VERSION=1.1.10
 
-# Install python dependencies in /.venv
-COPY Pipfile .
-COPY Pipfile.lock .
-RUN PIPENV_VENV_IN_PROJECT=1 pipenv install --deploy
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential gcc
+RUN pip install "poetry==$POETRY_VERSION"
 
+#  Install python dependencies into a single folder /venv
+
+RUN python3 -m venv /venv
+RUN ln -s /venv/bin/python3
+# When virtualenvs.create is false, poetry uses current python (https://github.com/python-poetry/poetry/issues/1969)
+RUN poetry config virtualenvs.create false
+
+# Install packages in /venv 
+COPY poetry.lock pyproject.toml ./
+RUN . /venv/bin/activate && poetry install --no-root --no-dev
 
 FROM base AS runtime
 
-# Copy virtual env from python-deps stage
-COPY --from=python-deps /.venv /.venv
-ENV PATH="/.venv/bin:$PATH"
-
-# Set working directory
+# Copy venv
+COPY --from=python-deps /venv /venv
+# Copy source files over
+COPY . /app
 WORKDIR /app
-
-# Install application into container
-COPY . .
 
 # Make the application executable and run the application
 RUN chmod +x ./run.sh
-ENTRYPOINT ["./run.sh"]
+CMD ["./run.sh"]
