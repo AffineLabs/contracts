@@ -29,46 +29,37 @@ def test_all_vault_metadata():
         # Even stable vaults should have an allocation adding up to 100
         assert total_asset_alloc == 100
 
-
 def test_user_historical_balance():
     response = client.get("/getUserHistoricalBalance", params={"userId": 1})
     assert response.status_code == 200
-
 
 def test_user_nonexistent_historical_balance():
     response = client.get("/getUserHistoricalBalance", params={"userId": -1})
     assert response.status_code == 404
 
-
 def test_user_public_address():
     response = client.get("/getUserPublicAddress", params={"userId": 1})
     assert response.status_code == 200
-
 
 def test_user_nonexistent_public_address():
     response = client.get("/getUserPublicAddress", params={"userId": -1})
     assert response.status_code == 404
 
-
 def test_list_all_asset_tickers():
     response = client.get("/listAllAssetTickers")
     assert response.status_code == 200
-
 
 def test_list_asset_metadata():
     response = client.get("/getAssetMetadata", params={"assetTicker": "comp"})
     assert response.status_code == 200
 
-
 def test_list_nonexisting_asset():
     response = client.get("/getAssetMetadata", params={"assetTicker": "AJLKHSSDNMS"})
     assert response.status_code == 404
 
-
 def test_asset_historical_price():
     response = client.get("/getAssetHistoricalPrice", params={"assetTicker": "comp"})
     assert response.status_code == 200
-
 
 def test_nonexistent_asset_historical_price():
     response = client.get("/getAssetHistoricalPrice", params={"assetTicker": "AJLKHSSDNMS"})
