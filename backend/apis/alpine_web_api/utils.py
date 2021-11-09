@@ -2,11 +2,18 @@ import pandas as pd
 import sqlalchemy
 import os
 
-engine = sqlalchemy.create_engine(os.environ.get("POSTGRES_REMOTE_URL"))
 
+engine = None
+
+# Only create engine when necessary; for mock tests
+def get_engine():
+    global engine
+    if engine is None:
+        engine = sqlalchemy.create_engine(os.environ.get("POSTGRES_REMOTE_URL"))
+    return engine
 
 def get_all_asset_metadata():
-    return pd.read_sql_table("asset_metadata", engine)
+    return pd.read_sql_table("asset_metadata", get_engine())
 
 
 def is_valid_ticker(asset_ticker: str, asset_metadata_df: pd.DataFrame):
@@ -32,7 +39,7 @@ def get_asset_price_from_sql(asset_ticker: str):
           FROM asset_price 
          WHERE asset_ticker = '{asset_ticker}';
         """,
-        engine,
+        get_engine(),
     )
     return asset_price_df
 
@@ -44,7 +51,7 @@ def get_user_balance_from_sql(user_id: int):
           FROM user_balance 
          WHERE user_id = {user_id};
         """,
-        engine,
+        get_engine(),
     )
     return user_balance_df
 
@@ -56,7 +63,7 @@ def get_asset_daily_metrics_from_sql(asset_ticker: str):
           FROM asset_daily_metrics 
          WHERE asset_ticker = '{asset_ticker}';
         """,
-        engine,
+        get_engine(),
     )
     return asset_daily_metrics_df
 
