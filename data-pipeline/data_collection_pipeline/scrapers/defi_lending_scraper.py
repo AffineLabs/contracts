@@ -38,7 +38,6 @@ class DefiPulseScraper:
                     "Wrong API key provided for Defi-pulse, "
                     + "please check your $DEFIPULSE_API_KEY env variable."
                 )
-            print(req.text)
             read_json = req.json()
             serialized_data = json.dumps(read_json)
             with open(CACHED_HISTORY, "w") as f:

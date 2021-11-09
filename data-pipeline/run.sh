@@ -1,5 +1,7 @@
 #! /bin/sh
 
+. /venv/bin/activate
+
 echo "running data collection pipeline"
 cd "./data_collection_pipeline/cron_jobs/"
 
