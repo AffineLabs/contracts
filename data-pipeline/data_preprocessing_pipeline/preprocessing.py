@@ -44,7 +44,45 @@ S3_BUCKET = os.environ.get("S3_BUCKET_FOR_API_DATA", "apidata-dev")
 ASSET_FILEPATHS = get_asset_filepaths()
 
 
-def preprocess_coin_data(start_date, coin_data_dir, exclude_coins):
+def read_asset_files(data_dir, exclude_coins, exclude_protocols):
+    coin_paths = {
+        ticker: filepath
+        for ticker, filepath in ASSET_FILEPATHS.items()
+        if filepath.split("/")[0] == "coin_data"
+    }
+    # read coin data
+    logging.info("reading coin csv files from s3")
+    coin_dfs = {
+        ticker: pd.read_csv(
+            data_dir + coin_path,
+            index_col=3,
+            storage_options={"key": AWS_ACCESS_KEY, "secret": AWS_SECRET_KEY},
+        )
+        for ticker, coin_path in coin_paths.items()
+        if ticker not in exclude_coins
+    }
+
+    lp_paths = {
+        ticker: filepath
+        for ticker, filepath in ASSET_FILEPATHS.items()
+        if filepath.split("/")[0] == "lending_protocol_data"
+    }
+
+    # read lending protocol data
+    lend_protocol_dfs = {
+        ticker: pd.read_csv(
+            data_dir + lp_path,
+            index_col=0,
+            storage_options={"key": AWS_ACCESS_KEY, "secret": AWS_SECRET_KEY},
+        )
+        for ticker, lp_path in lp_paths.items()
+        if ticker not in exclude_protocols
+    }
+
+    return coin_dfs, lend_protocol_dfs
+
+
+def preprocess_coin_data(start_date, coin_dfs, take_rolling_mean=True):
     """
     return a timeseries df with all available coin prices starting
     from the start date. exclude the coins in the exclude_coins
@@ -53,27 +91,9 @@ def preprocess_coin_data(start_date, coin_data_dir, exclude_coins):
     logging.info("preprocessing coin data")
     start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
 
-    # keep only coins
-    datafiles = {
-        ticker: filepath
-        for ticker, filepath in ASSET_FILEPATHS.items()
-        if filepath.split("/")[0] == "coin_data"
-    }
-
-    # read coin data
-    logging.info("reading coin csv files from s3")
-    coin_dfs = {
-        ticker: pd.read_csv(
-            coin_data_dir + filepath,
-            index_col=3,
-            storage_options={"key": AWS_ACCESS_KEY, "secret": AWS_SECRET_KEY},
-        )
-        for ticker, filepath in datafiles.items()
-        if ticker not in exclude_coins
-    }
-
-    for k in list(coin_dfs.keys()):
-        df = coin_dfs[k]
+    valid_coin_dfs = {}
+    for coin_ticker in list(coin_dfs.keys()):
+        df = coin_dfs[coin_ticker].copy(deep=True)
         # convert dates to datetime
         try:
             x_values = [
@@ -84,16 +104,21 @@ def preprocess_coin_data(start_date, coin_data_dir, exclude_coins):
                 datetime.strptime(d, "%Y-%m-%d %H:%M:%S").date() for d in df.index
             ]
         df.index = x_values
-        # if the earliest data is after start_date, skip that coin
-        if min(x_values) > start_date:
-            del coin_dfs[k]
         df.drop(columns=["timestamp"], inplace=True)
 
+        # if the earliest data is after start_date, skip that coin
+        if min(x_values) <= start_date:
+            valid_coin_dfs[coin_ticker] = df
+
     # merge coin prices into one timeseries df
-    coin_price_df = merge_dfs(coin_dfs, "price", take_rolling_mean=True)
-    coin_market_cap_df = merge_dfs(coin_dfs, "market_cap", take_rolling_mean=False)
+    coin_price_df = merge_dfs(
+        valid_coin_dfs, "price", take_rolling_mean=take_rolling_mean
+    )
+    coin_market_cap_df = merge_dfs(
+        valid_coin_dfs, "market_cap", take_rolling_mean=False
+    )
     coin_trading_volume_df = merge_dfs(
-        coin_dfs, "trading_volume_24h", take_rolling_mean=False
+        valid_coin_dfs, "trading_volume_24h", take_rolling_mean=False
     )
 
     return coin_price_df, coin_market_cap_df, coin_trading_volume_df
@@ -101,8 +126,7 @@ def preprocess_coin_data(start_date, coin_data_dir, exclude_coins):
 
 def preprocess_lending_data(
     start_date,
-    lending_data_dir,
-    exclude_protocols,
+    lend_protocol_dfs,
     coin_price_df,
     training_end_date,
 ):
@@ -120,26 +144,6 @@ def preprocess_lending_data(
        a df of lending protocol lending returns from start_date to present
 
     """
-    logging.info("preprocessing lending protocol data")
-
-    datafiles = {
-        ticker: filepath
-        for ticker, filepath in ASSET_FILEPATHS.items()
-        if filepath.split("/")[0] == "lending_protocol_data"
-    }
-
-    # read lending protocol data
-    logging.info("reading csv files from s3")
-    lend_protocol_dfs = {
-        ticker: pd.read_csv(
-            lending_data_dir + filepath,
-            index_col=0,
-            storage_options={"key": AWS_ACCESS_KEY, "secret": AWS_SECRET_KEY},
-        )
-        for ticker, filepath in datafiles.items()
-        if ticker not in exclude_protocols
-    }
-
     logging.info("imputing missing data for lending protocols")
     for protocol, df in lend_protocol_dfs.items():
         df.index = [datetime.strptime(d, "%Y-%m-%d %H:%M:%S").date() for d in df.index]
@@ -211,16 +215,19 @@ def create_asset_daily_metrics_df(asset_market_cap_df, asset_trading_volume_df):
 
 def read_asset_price_and_metadata(args):
     # first read the data from the csv files
-    coin_price_df, coin_market_cap_df, coin_trading_volume_df = preprocess_coin_data(
-        args.start_date,
-        f"s3://{S3_BUCKET}/",
-        args.exclude_coins,
+    coin_dfs, lend_protocol_dfs = read_asset_files(
+        f"s3://{S3_BUCKET}/", args.exclude_coins, args.exclude_protocols
     )
 
+    # now preprocess the data
+    coin_price_df, coin_market_cap_df, coin_trading_volume_df = preprocess_coin_data(
+        args.start_date, coin_dfs
+    )
+
+    # for lending protocols, the interest rate is converted to returns
     lending_return_df = preprocess_lending_data(
         args.start_date,
-        f"s3://{S3_BUCKET}/",
-        args.exclude_protocols,
+        lend_protocol_dfs,
         coin_price_df,
         args.training_end_date,
     )
