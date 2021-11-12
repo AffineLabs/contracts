@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from apis.alpine_web_api.main import app
 from apis.alpine_web_api import utils
 
-from _pytest.monkeypatch import MonkeyPatch, monkeypatch
+from _pytest.monkeypatch import MonkeyPatch
 
 client = TestClient(app)
 
