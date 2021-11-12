@@ -1,12 +1,33 @@
+import pathlib
+
+from pandas import read_csv
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from apis.alpine_web_api.main import app
+from apis.alpine_web_api import utils
 
+from _pytest.monkeypatch import MonkeyPatch, monkeypatch
 
 client = TestClient(app)
 
 # Define the constant mock objects
+TEST_CSV_PATHS = (pathlib.Path(__file__).parent / "mock_files")
+PATCH_ASSET_METADATA_DF = lambda: read_csv(TEST_CSV_PATHS / "all_asset_metadata.csv", index_col=0)
+PATCH_ASSET_PRICE_DF = lambda x: read_csv(TEST_CSV_PATHS / "asset_price.csv", index_col=0, parse_dates=["timestamp"])
+PATCH_DAILY_METRICS_DF = lambda x: read_csv(TEST_CSV_PATHS / "daily_metrics.csv", index_col=0, parse_dates=["timestamp"])
+PATCH_USER_BALANCE_DF = lambda x: read_csv(TEST_CSV_PATHS / "user_balance.csv", index_col=0, parse_dates=["timestamp"])
+
+monkeypatch = MonkeyPatch()
+monkeypatch_attrs = {
+    "get_all_asset_metadata": PATCH_ASSET_METADATA_DF,
+    "get_asset_price_from_sql": PATCH_ASSET_PRICE_DF,
+    "get_asset_daily_metrics_from_sql": PATCH_DAILY_METRICS_DF,
+    "get_user_balance_from_sql": PATCH_USER_BALANCE_DF
+}
+for key, value in monkeypatch_attrs.items():
+    monkeypatch.setattr(utils, key, value)
+
 MOCK_ASSET_METADATA = {
     "assetTicker": "comp",
     "assetId": 22,
@@ -56,7 +77,6 @@ def test_all_vault_metadata():
     assert response.status_code == SUCCESS_RESPONSE_CODE
     vault_list = response.json()
     for vault_info in vault_list:
-        print(vault_info['vaultName'])
         for key in ['vaultName', 'vaultAddress', 'vaultAbi',
                     'vaultTicker', 'assetComp', 'vaultApy']:
             assert key in vault_info
