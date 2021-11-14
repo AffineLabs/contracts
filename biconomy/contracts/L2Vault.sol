@@ -33,7 +33,7 @@ contract L2Vault is ERC20 {
         uint256 totalGain;
         uint256 totalLoss;
     }
-    // Strategy contract address to its current info
+    // All strategy information
     mapping(address => StrategyInfo) strategies;
     event StrategyAdded(
         address indexed strategy,
@@ -60,6 +60,7 @@ contract L2Vault is ERC20 {
     // Total amount that the vault can get back from strategies (ignoring slippage)
     uint256 public totalDebt;
     uint256 constant MAX_BPS = 10000;
+    uint256 constant SECS_PER_YEAR = 31_556_952;
     uint256 lastReport;
 
     // TODO: do we still need this?
@@ -80,6 +81,7 @@ contract L2Vault is ERC20 {
     {
         governance = governance_;
         token = token_;
+        lastReport = block.timestamp;
     }
 
     // We don't need to check if user == msg.sender()
@@ -341,6 +343,7 @@ contract L2Vault is ERC20 {
             );
 
         // Update report times
+        _assessFees(block.timestamp);
         strategies[strategy].lastReport = block.timestamp;
         lastReport = block.timestamp;
 
@@ -359,7 +362,7 @@ contract L2Vault is ERC20 {
         // If the strategy has been removed, it owes the vault all of its assets
         if (strategies[strategy].debtRatio == 0)
             return IStrategy(strategy).estimatedTotalAssets();
-        else return debt;
+        return debt;
     }
 
     function _reportLoss(address strategy, uint256 loss) internal {}
@@ -376,6 +379,18 @@ contract L2Vault is ERC20 {
         returns (uint256)
     {}
 
+    // We assess a 2% management fee over the course of the year. The fee is taken by issuing shares to itself
+    // every time a strategy calls report().
+    function _assessFees(uint256 currentBlock) internal {
+        uint256 duration = currentBlock - lastReport;
+        require(duration > 0, "Cannot assess fees twice in block");
+
+        uint256 feeBps = (duration * 200) / SECS_PER_YEAR;
+        // E.g. if the fee is 2 USDC, the vault issues 2 USDC worth of shares to itself
+        uint256 fee = (feeBps * globalTVL()) / MAX_BPS;
+        _issueSharesForAmount(address(this), fee);
+    }
+
     // Compute rebalance amount
     function L1L2Rebalance() external onlyGovernance {
         uint256 numSlices = layerRatios.layer1 + layerRatios.layer2;
@@ -390,8 +405,7 @@ contract L2Vault is ERC20 {
             delta = L1TotalLockedValue - L1IdealAmount;
         }
 
-        uint256 decimals = decimals();
-        if (delta < 100_000 * decimals) return;
+        if (delta < 100_000 * decimals()) return;
 
         if (invest) {
             // transfer to L1
