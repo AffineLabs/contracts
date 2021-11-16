@@ -43,6 +43,6 @@ contract Vault {
 
         // transfer usdc out
         IERC20 usdc = IERC20(usdcAddress);
-        usdc.transferFrom(address(this), user, amountAlpUsdc);
+        usdc.transfer(user, amountAlpUsdc);
     }
 }
