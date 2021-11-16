@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IStrategy} from "./IStrategy.sol";
 
 contract BaseVault is ERC20 {
@@ -203,6 +204,7 @@ contract BaseVault is ERC20 {
             strategies[strategy].debtRatio = newDebtRatio;
         }
         require(debtRatio <= MAX_BPS, "debtRatio may not exceed MAX_BPS");
+        // TODO: emit event here
     }
 
     // This function will be called by a strategy in order to update totalDebt;
@@ -226,11 +228,11 @@ contract BaseVault is ERC20 {
         strategies[strategy].totalGain += gain;
 
         // Compute the line of credit the Vault is able to offer the Strategy (if any)
-        uint256 credit = _creditAvailable(strategy);
+        uint256 credit = creditAvailable(strategy);
 
         // # Amount that strategy has exceeded its debt limit
         // NOTE: debt <= StrategyInfo.totalDebt
-        uint256 debt = _debtOutstanding(strategy);
+        uint256 debt = debtOutstanding(strategy);
         debtPayment = debtPayment < debt ? debtPayment : debt;
 
         // Update the actual debt based on the full credit we are extending to the Strategy
@@ -286,19 +288,72 @@ contract BaseVault is ERC20 {
         return debt;
     }
 
-    function _reportLoss(address strategy, uint256 loss) internal {}
+    function _reportLoss(address strategy, uint256 loss) internal {
+        uint256 strategyDebt = strategies[strategy].totalDebt;
+        require(
+            strategyDebt >= loss,
+            "Strategy cannot lose more than it borrowed."
+        );
+        // Reduce our trust with the strategy by the amount of loss
+        // this calculation intentionally approximates via `totalDebt` to avoid manipulatable results
 
-    function _creditAvailable(address strategy)
-        internal
-        view
-        returns (uint256)
-    {}
+        // e.g. if loss/totalDebt is 10%, and debtRatio is 90% (9000), then reduce debtRatio by 10% * 90% = 9%
+        // # NOTE: This calculation isn't 100% precise, the adjustment is ~10%-20% more severe due to EVM math
+        uint256 amountloss = (loss * debtRatio) / totalDebt;
+        uint256 ratioChange = amountloss < strategyDebt
+            ? amountloss
+            : strategyDebt;
+        strategies[strategy].debtRatio -= ratioChange;
+        debtRatio -= ratioChange;
 
-    function _debtOutstanding(address strategy)
-        internal
-        view
-        returns (uint256)
-    {}
+        // Adjust our strategy's parameters by the loss
+        strategies[strategy].totalLoss += loss;
+        strategies[strategy].totalDebt = strategyDebt - loss;
+        totalDebt -= loss;
+    }
+
+    function creditAvailable(address strategy) public view returns (uint256) {
+        uint256 vaultTotalAssets = vaultTVL();
+        uint256 vaultDebtLimit = (debtRatio * vaultTotalAssets) / MAX_BPS;
+        uint256 strategyDebtLimit = (strategies[strategy].debtRatio *
+            vaultTotalAssets) / MAX_BPS;
+        uint256 strategyTotalDebt = strategies[strategy].totalDebt;
+
+        // Exhausted credit line
+        if (
+            strategyDebtLimit <= strategyTotalDebt ||
+            vaultDebtLimit <= totalDebt
+        ) return 0;
+
+        // Start with largest amount of debt that strategy can take
+        uint256 available = strategyDebtLimit - strategyTotalDebt;
+
+        // Adjust by the amount of credit that the vault can give
+        available = Math.min(available, vaultDebtLimit - totalDebt);
+        // Can only borrow up to what the contract has in reserve
+        // NOTE: Running near 100% is discouraged
+        available = Math.min(available, IERC20(token).balanceOf(address(this)));
+        // Adjust by min and max borrow limits (per harvest)
+        // NOTE: min increase can be used to ensure that if a strategy has a minimum
+        //       amount of capital needed to purchase a position, it's not given capital
+        //       it can't make use of yet.
+        // NOTE: max increase is used to make sure each harvest isn't bigger than what
+        //       is authorized. This combined with adjusting min and max periods in
+        //      `BaseStrategy` can be used to effect a "rate limit" on capital increase.
+        if (available < strategies[strategy].minDebtPerHarvest) return 0;
+        return Math.min(available, strategies[strategy].maxDebtPerHarvest);
+    }
+
+    function debtOutstanding(address strategy) public view returns (uint256) {
+        if (debtRatio == 0) return strategies[strategy].totalDebt;
+
+        uint256 strategyDebtLimit = (strategies[strategy].debtRatio *
+            vaultTVL()) / MAX_BPS;
+        uint256 strategyTotalDebt = strategies[strategy].totalDebt;
+
+        if (strategyTotalDebt <= strategyDebtLimit) return 0;
+        return strategyTotalDebt - strategyDebtLimit;
+    }
 
     function _assessFees(uint256 currentBlock) internal virtual {}
 
