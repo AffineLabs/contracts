@@ -25,12 +25,11 @@ contract L2Vault is BaseVault {
     // We don't need to check if user == msg.sender()
     // So long as this conract can transfer usdc from the given user, everything is fine
     function deposit(address user, uint256 amountToken) external {
-        // transfer usdc to this contract
-        IERC20 Token = IERC20(token);
-        Token.transferFrom(user, address(this), amountToken);
-
         // mint
         _issueSharesForAmount(user, amountToken);
+
+        // transfer usdc to this contract
+        IERC20(token).transferFrom(user, address(this), amountToken);
     }
 
     function _issueSharesForAmount(address user, uint256 amountToken) internal {
@@ -70,8 +69,7 @@ contract L2Vault is BaseVault {
         _burn(user, shares);
 
         // transfer usdc out
-        IERC20 Token = IERC20(token);
-        Token.transferFrom(address(this), user, valueOfShares);
+        IERC20(token).transfer(user, valueOfShares);
     }
 
     function _getShareValue(uint256 shares) internal view returns (uint256) {
