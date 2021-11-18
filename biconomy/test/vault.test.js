@@ -6,7 +6,7 @@ const { ethers } = require("hardhat");
 
 describe("I/O", async () => {
   it("Can deposit and withdraw", async () => {
-    const [governance, user, user2] = await ethers.getSigners();
+    const [governance, user] = await ethers.getSigners();
 
     const tokenFactory = await ethers.getContractFactory("TestToken", user);
     const token = await tokenFactory.deploy(ethers.utils.parseUnits("100", 6));
@@ -49,10 +49,6 @@ describe("I/O", async () => {
     await vault
       .connect(user)
       .deposit(user.address, ethers.utils.parseUnits("2", 6));
-    console.log(
-      "usdc bal: ",
-      (await token.balanceOf(vault.address)).toString()
-    );
     expect(await vault.balanceOf(user.address)).to.equal(
       ethers.utils.parseUnits("5", 6)
     );

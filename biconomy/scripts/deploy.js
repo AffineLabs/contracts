@@ -1,39 +1,43 @@
 async function main() {
-  const [deployer] = await ethers.getSigners();
+  const [governance, tokenOwner, strategist] = await ethers.getSigners();
 
-  console.log("Deploying contracts with the account:", deployer.address);
+  console.log("Deploying contracts with the account:", [
+    governance.address,
+    tokenOwner.address,
+    strategist.address,
+  ]);
 
-  console.log("Account balance:", (await deployer.getBalance()).toString());
+  // TestToken deployed by `tokenOwner`.
+  const tokenFactory = await ethers.getContractFactory("TestToken", tokenOwner);
+  const token = await tokenFactory.deploy(ethers.utils.parseUnits("100000", 6));
+  await token.deployTransaction.wait();
+  console.log("token: ", token.address);
 
-  const AlpUSDC = await ethers.getContractFactory("alpUSDC");
-  const alpUSDC = await AlpUSDC.deploy();
-  await alpUSDC.deployTransaction.wait();
-
-  const Vault = await ethers.getContractFactory("Vault");
-  const vault = await Vault.deploy(alpUSDC.address);
+  // Vault deployed by governance
+  const vaultFactory = await ethers.getContractFactory("L2Vault", governance);
+  const vault = await vaultFactory.deploy(governance.address, token.address);
   await vault.deployTransaction.wait();
+  console.log("vault: ", vault.address);
 
-  // Deployer must give vault burning and minting roles
-  const mintRole = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes("MINTER_ROLE")
+  // Deploy strategy
+  const stratFactory = await ethers.getContractFactory(
+    "TestStrategy",
+    strategist
   );
-  const burnRole = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes("BURNER_ROLE")
-  );
-  // TODO: Figure out a way to not have to wait for the first grantTx to be mined before sending the second
-  const grantTx1 = await alpUSDC.grantRole(mintRole, vault.address);
-  await grantTx1.wait();
-  const grantTx2 = await alpUSDC.grantRole(burnRole, vault.address);
-  await grantTx2.wait();
+  const strategy = await stratFactory.deploy(vault.address);
+  await strategy.deployTransaction.wait();
+  console.log("strategy: ", strategy.address);
 
-  const AlpRelayRecipient = await ethers.getContractFactory(
-    "AlpRelayRecipient"
-  );
-  const alpRelayRecipient = await AlpRelayRecipient.deploy(
-    "0xF82986F574803dfFd9609BE8b9c7B92f63a1410E",
-    vault.address
-  );
-  await alpRelayRecipient.deployTransaction.wait();
+  // Add strategy, with 9000 (90%) debtRatio, 0 minDebtPerHarvest, and maxDebtPerHarvst of totalSupply of token
+  const addTx = await vault
+    .connect(governance)
+    .addStrategy(
+      strategy.address,
+      9000,
+      0,
+      ethers.utils.parseUnits("100000", 6)
+    );
+  await addTx.wait();
 }
 
 main()

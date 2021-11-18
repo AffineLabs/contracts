@@ -62,7 +62,7 @@ contract L2Vault is BaseVault {
 
         uint256 valueOfShares = _getShareValue(shares);
 
-        // TODO: handle case where the user is trying to withdraw more value than actually exist in the vault
+        // TODO: handle case where the user is trying to withdraw more value than actually exists in the vault
         if (valueOfShares > IERC20(token).balanceOf(address(this))) {}
 
         // burn

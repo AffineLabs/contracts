@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IStrategy} from "./IStrategy.sol";
 
@@ -68,6 +69,10 @@ contract BaseVault is ERC20 {
         governance = governance_;
         token = token_;
         lastReport = block.timestamp;
+    }
+
+    function decimals() public view override returns (uint8) {
+        return IERC20Metadata(token).decimals();
     }
 
     function vaultTVL() public view returns (uint256) {
@@ -357,6 +362,6 @@ contract BaseVault is ERC20 {
 
     function _assessFees(uint256 currentBlock) internal virtual {}
 
-    // Rebalance strategies on this chain (L2). No need for now. We can simply update strategy debtRatios
+    // Rebalance strategies on this chain. No need for now. We can simply update strategy debtRatios
     function rebalance() external onlyGovernance {}
 }
