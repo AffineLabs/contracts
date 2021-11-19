@@ -4,7 +4,7 @@ namespace: staging
 images:
 - name: backend-api
   newName: 959984261658.dkr.ecr.us-east-2.amazonaws.com/backend-api
-  newTag: 81820e2681a13c532ec5a53e7002664e6a9ad0f9
+  newTag: be9c5cddc7ceed7309451e697dfff3e72186df5a
 - name: data-pipeline
   newName: 959984261658.dkr.ecr.us-east-2.amazonaws.com/data-pipeline
   newTag: 04bece915fa18e42fe736e399e464903c8d46d45
