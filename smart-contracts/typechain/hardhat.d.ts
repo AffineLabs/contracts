@@ -17,21 +17,121 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.AccessControl__factory>;
     getContractFactory(
+      name: "IAccessControl",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IAccessControl__factory>;
+    getContractFactory(
       name: "ERC20",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.ERC20__factory>;
+    getContractFactory(
+      name: "IERC20Metadata",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IERC20Metadata__factory>;
     getContractFactory(
       name: "IERC20",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IERC20__factory>;
     getContractFactory(
+      name: "ERC165",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.ERC165__factory>;
+    getContractFactory(
+      name: "IERC165",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IERC165__factory>;
+    getContractFactory(
+      name: "BaseVault",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.BaseVault__factory>;
+    getContractFactory(
+      name: "DummyL1OracleClient",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.DummyL1OracleClient__factory>;
+    getContractFactory(
       name: "FxStateRootTunnel",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.FxStateRootTunnel__factory>;
     getContractFactory(
+      name: "IL1ContractRegistry",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IL1ContractRegistry__factory>;
+    getContractFactory(
+      name: "IL1OracleClient",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IL1OracleClient__factory>;
+    getContractFactory(
+      name: "IL1Vault",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IL1Vault__factory>;
+    getContractFactory(
+      name: "L1ContractRegistry",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.L1ContractRegistry__factory>;
+    getContractFactory(
+      name: "IRootChainManager",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IRootChainManager__factory>;
+    getContractFactory(
+      name: "L1Vault",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.L1Vault__factory>;
+    getContractFactory(
+      name: "IStrategy",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IStrategy__factory>;
+    getContractFactory(
+      name: "DummyL2OracleClient",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.DummyL2OracleClient__factory>;
+    getContractFactory(
       name: "FxStateChildTunnel",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.FxStateChildTunnel__factory>;
+    getContractFactory(
+      name: "IL2ContractRegistry",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IL2ContractRegistry__factory>;
+    getContractFactory(
+      name: "IL2OracleClient",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IL2OracleClient__factory>;
+    getContractFactory(
+      name: "IL2Staging",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IL2Staging__factory>;
+    getContractFactory(
+      name: "IL2Vault",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IL2Vault__factory>;
+    getContractFactory(
+      name: "L2ContractRegistry",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.L2ContractRegistry__factory>;
+    getContractFactory(
+      name: "L2Staging",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.L2Staging__factory>;
+    getContractFactory(
+      name: "L2Vault",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.L2Vault__factory>;
+    getContractFactory(
+      name: "TestMintable",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.TestMintable__factory>;
+    getContractFactory(
+      name: "TestStrategy",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.TestStrategy__factory>;
+    getContractFactory(
+      name: "TokenAPI",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.TokenAPI__factory>;
+    getContractFactory(
+      name: "VaultAPI",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.VaultAPI__factory>;
     getContractFactory(
       name: "TestToken",
       signerOrOptions?: ethers.Signer | FactoryOptions

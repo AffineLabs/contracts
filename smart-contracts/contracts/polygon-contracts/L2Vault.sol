@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IStrategy} from "./IStrategy.sol";
-import {BaseVault} from "./BaseVault.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IStrategy } from "../IStrategy.sol";
+import { BaseVault } from "../BaseVault.sol";
 
 contract L2Vault is BaseVault {
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
@@ -18,9 +18,7 @@ contract L2Vault is BaseVault {
     }
     LayerBalanceRatios layerRatios;
 
-    constructor(address governance_, address token_)
-        BaseVault(governance_, token_)
-    {}
+    constructor(address governance_, address token_) BaseVault(governance_, token_) {}
 
     // We don't need to check if user == msg.sender()
     // So long as this conract can transfer usdc from the given user, everything is fine
@@ -55,10 +53,7 @@ contract L2Vault is BaseVault {
 
     // TODO: handle access control, re-entrancy
     function withdraw(address user, uint256 shares) external {
-        require(
-            shares <= balanceOf(user),
-            "Cannot burn more shares than owned"
-        );
+        require(shares <= balanceOf(user), "Cannot burn more shares than owned");
 
         uint256 valueOfShares = _getShareValue(shares);
 
