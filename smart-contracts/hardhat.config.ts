@@ -60,7 +60,7 @@ function createETHNetworkConfig(network: keyof typeof ethChainIds): NetworkUserC
 }
 
 function createPolygonNetworkConfig(network: keyof typeof polygonChainIds): NetworkUserConfig {
-  const url: string = "https://rpc-" + network + ".maticvigil.com"
+  const url: string = "https://rpc-" + network + ".maticvigil.com";
   return {
     accounts: {
       count: 10,
@@ -92,13 +92,16 @@ const config: HardhatUserConfig = {
     ethRinkeby: createETHNetworkConfig("rinkeby"),
     ethRopsten: createETHNetworkConfig("ropsten"),
     // Polygon networks
-    polygonMainnet:  createPolygonNetworkConfig("mainnet"),
-    polygonMumbai: createPolygonNetworkConfig("mumbai")
+    polygonMainnet: createPolygonNetworkConfig("mainnet"),
+    polygonMumbai: createPolygonNetworkConfig("mumbai"),
   },
   solidity: {
     compilers: [
       {
         version: "0.7.3",
+      },
+      {
+        version: "0.8.10",
       },
     ],
   },
@@ -116,7 +119,7 @@ const config: HardhatUserConfig = {
   },
   mocha: {
     timeout: 900000,
-  }
+  },
 };
 
 export default config;
