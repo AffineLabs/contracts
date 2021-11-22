@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@opengsn/contracts": "^2.2.4",
-    "@openzeppelin/contracts": "^4.3.2"
+    "@openzeppelin/contracts": "^4.3.2",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0"
   }
 }

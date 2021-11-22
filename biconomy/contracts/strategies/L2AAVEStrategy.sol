@@ -1,0 +1,275 @@
+// SPDX-License-Identifier:MIT
+pragma solidity ^0.8.9;
+
+import {BaseStrategy} from "../BaseStrategy.sol";
+
+import {SafeERC20, IERC20, Address} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
+
+import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
+
+import "../interfaces/aave/IProtocolDataProvider.sol";
+import "../interfaces/aave/IAaveIncentivesController.sol";
+import "../interfaces/aave/ILendingPool.sol";
+import "../interfaces/aave/IAToken.sol";
+
+contract L2AAVEStrategy is BaseStrategy {
+    using SafeERC20 for IERC20;
+    using Address for address;
+    using SafeMath for uint256;
+
+        
+    // AAVE protocol address
+    IProtocolDataProvider private constant protocolDataProvider = IProtocolDataProvider(0x7551b5D2763519d4e37e8B81929D336De671d46d);
+    IAaveIncentivesController private constant incentivesController = IAaveIncentivesController(0x357D51124f59836DeD84c8a1730D72B749d8BC23);
+    ILendingPool private constant lendingPool = ILendingPool(0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf);
+
+    // USDC pool reward token is WMATIC
+    address private constant rewardToken = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
+    address private constant wrappedNative = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
+
+    // Corresponding AAVE token (USDC -> aUSDC)
+    IAToken public aToken; 
+    
+    // SWAP router
+    // TODO: need to confirm Uniswap V2 factory address on polygon
+    IUniLikeSwapRouter private router = IUniLikeSwapRouter(0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff);
+
+    // The mininum amount of want token to trigger position adjustment
+    uint256 public minWant = 100;
+    uint256 public minRewardToSell = 1e15;
+
+    uint16 private referral = 0;
+    uint256 private constant MAX_BPS = 1e4;
+    uint256 private constant PESSIMISM_FACTOR = 1000;
+    
+    constructor(address _vault) BaseStrategy(_vault) public {
+        (address _aToken, , ) = protocolDataProvider.getReserveTokensAddresses(address(want)); 
+       aToken = IAToken(_aToken);
+    }
+
+    function name() external view override returns (string memory) {
+        return "L2AAVEStrategy";
+    }
+
+    function prepareReturn(uint256 _debtOutstanding) 
+        internal 
+        override 
+        returns (
+            uint256 _profit,
+            uint256 _loss,
+            uint256 _debtPayment
+        ) {
+            _claimAndSellRewards();
+
+            // account for profit / losses
+            uint256 totalDebt = vault.strategies(address(this)).totalDebt;
+            uint256 totalAssets = balanceOfWant().add(balanceOfAToken());
+
+            if (totalDebt > totalAssets) {
+                _loss = totalDebt.sub(totalAssets);
+            } else {
+                _profit = totalAssets.sub(totalDebt);
+            }
+
+            // free funds to repay debt + profit to the strategy
+            uint256 amountAvailable = balanceOfWant();
+            uint256 amountRequired = _debtOutstanding.add(_profit);
+
+            if (amountRequired > amountAvailable) {
+                // we need to free funds
+                // we dismiss losses here, they cannot be generated from withdrawal
+                // but it is possible for the strategy to unwind full position
+                (amountAvailable, ) = liquidatePosition(amountRequired);
+
+                if (amountAvailable >= amountRequired) {
+                    _debtPayment = _debtOutstanding;
+                    // profit remains unchanged unless there is not enough to pay it
+                    if (amountRequired.sub(_debtPayment) < _profit) {
+                        _profit = amountRequired.sub(_debtPayment);
+                    }
+                } else {
+                    // we were not able to free enough funds
+                    if (amountAvailable < _debtOutstanding) {
+                        // available funds are lower than the repayment that we need to do
+                        _profit = 0;
+                        _debtPayment = amountAvailable;
+                        // we dont report losses here as the strategy might not be able to return in this harvest
+                        // but it will still be there for the next harvest
+                    } else {
+                        // NOTE: amountRequired is always equal or greater than _debtOutstanding
+                        // important to use amountRequired just in case amountAvailable is > amountAvailable
+                        _debtPayment = _debtOutstanding;
+                        _profit = amountAvailable.sub(_debtPayment);
+                    }
+                }
+            } else {
+                _debtPayment = _debtOutstanding;
+                // profit remains unchanged unless there is not enough to pay it
+                if (amountRequired.sub(_debtPayment) < _profit) {
+                    _profit = amountRequired.sub(_debtPayment);
+                }
+            }
+        }
+
+    function adjustPosition(uint256 _debtOutstanding) internal override {
+        uint256 wantBalance = balanceOfWant();
+
+        if (wantBalance > _debtOutstanding && wantBalance.sub(_debtOutstanding) > minWant) {
+            _depositWant(wantBalance.sub(_debtOutstanding));
+            return;
+        }
+
+        if (_debtOutstanding > wantBalance) {
+            // we should free funds
+            uint256 amountRequired = _debtOutstanding.sub(wantBalance);
+
+            // NOTE: vault will take free funds during the next harvest
+            _freeFunds(amountRequired);          
+        }
+    }
+    
+    function liquidatePosition(uint256 _amountNeeded) internal override returns (uint256 _liquidatedAmount, uint256 _loss) {
+        // NOTE: Maintain invariant `want.balanceOf(this) >= _liquidatedAmount`
+        // NOTE: Maintain invariant `_liquidatedAmount + _loss <= _amountNeeded`
+        uint256 wantBalance = balanceOfWant();
+        if (wantBalance > _amountNeeded) {
+            // if there is enough free want, let's use it
+            return (_amountNeeded, 0);
+        }
+
+        // we need to free funds
+        uint256 amountRequired = _amountNeeded.sub(wantBalance);
+        uint256 freeAssets = _freeFunds(amountRequired);
+
+        if (_amountNeeded > freeAssets) {
+            _liquidatedAmount = freeAssets;
+            uint256 diff = _amountNeeded.sub(_liquidatedAmount);
+            if (diff <= minWant) {
+                _loss = diff;
+            }
+        } else {
+            _liquidatedAmount = _amountNeeded;
+        }
+    }
+
+    function liquidateAllPositions() internal override returns (uint256 _amountFreed) {
+        (_amountFreed, ) = liquidatePosition(type(uint256).max);
+    }
+
+    function setReferralCode(uint16 _referral) external onlyGovernance {
+        referral = _referral;
+    }
+
+    function estimatedTotalAssets() public view override returns (uint256) {
+        uint256 balanceExcludingRewards = balanceOfWant().add(balanceOfAToken());
+
+        // if we don't have a position, don't worry about rewards
+        if (balanceExcludingRewards < minWant) {
+            return balanceExcludingRewards;
+        }
+
+        uint256 rewards = estimatedRewardsInWant().mul(MAX_BPS.sub(PESSIMISM_FACTOR)).div(MAX_BPS);
+
+        return balanceExcludingRewards.add(rewards);
+    }
+
+    function estimatedRewardsInWant() public view returns (uint256) {
+        uint256 rewardTokenBalance = balanceOfRewardToken();
+
+        uint256 pendingRewards = incentivesController.getRewardsBalance(getAaveAssets(), address(this));
+
+        if (rewardToken == address(want)) {
+            return pendingRewards;
+        } else {
+            return tokenToWant(rewardToken, rewardTokenBalance.add(pendingRewards));
+        }
+    }
+
+    function protectedTokens() internal view override returns (address[] memory) {}
+    
+    // Internal views
+    function balanceOfWant() internal view returns (uint256) {
+        return want.balanceOf(address(this));
+    }
+    
+    function balanceOfRewardToken() internal view returns (uint256) {
+        return IERC20(rewardToken).balanceOf(address(this));
+    }
+
+    function balanceOfAToken() internal view returns (uint256) {
+        return aToken.balanceOf(address(this));
+    }
+
+    function tokenToWant(address token, uint256 amount) internal view returns (uint256) {
+        if (amount == 0 || address(want) == token) {
+            return amount;
+        }
+
+        uint256[] memory amounts = router.getAmountsOut(amount, getTokenOutPathV2(token, address(want)));
+
+        return amounts[amounts.length - 1];
+    }
+
+    function _depositWant(uint256 amount) internal returns (uint256) {
+        if (amount == 0) return 0;
+        lendingPool.deposit(address(want), amount, address(this), referral);
+        return amount;
+    }
+
+    function _withdrawWant(uint256 amount) internal returns (uint256) {
+        if (amount == 0) return 0;
+        lendingPool.withdraw(address(want), amount, address(this));
+        return amount;
+    }
+    
+    function _freeFunds(uint256 amountToFree) internal returns (uint256) {
+        if (amountToFree == 0) return 0;
+
+        uint256 aTokenAmount = balanceOfAToken();
+        uint256 withdrawAmount = Math.min(amountToFree, aTokenAmount);
+
+        _withdrawWant(withdrawAmount);
+        return balanceOfWant();
+    }
+
+    function _sellRewardTokenForWant(uint256 amountIn, uint256 minOut) internal {
+        if (amountIn == 0) {
+            return;
+        }
+
+        router.swapExactTokensForTokens(amountIn, minOut, getTokenOutPathV2(address(rewardToken), address(want)), address(this), now);
+    }
+
+    function _claimAndSellRewards() internal {
+        incentivesController.claimRewards(getAaveAssets(), type(uint256).max, address(this));
+
+        if (rewardToken != address(want)) {
+            uint256 rewardTokenBalance = balanceOfRewardToken();
+            if (rewardTokenBalance >= minRewardToSell) {
+                _sellRewardTokenForWant(rewardTokenBalance, 0);
+            }
+        }
+
+        return;
+    }
+
+    function getAaveAssets() internal view returns (address[] memory assets) {
+        assets = new address[](1);
+        assets[0] = address(aToken);
+    }
+
+    function getTokenOutPathV2(address _token_in, address _token_out) internal pure returns (address[] memory _path) {
+        bool is_wrapped_native = _token_in == address(wrappedNative) || _token_out == address(wrappedNative);
+
+        _path = new address[](is_wrapped_native ? 2 : 3);
+        _path[0] = _token_in;
+
+        if (is_wrapped_native) {
+            _path[1] = _token_out;
+        } else {
+            _path[1] = address(wrappedNative);
+            _path[2] = _token_out;
+        }
+    }
+}
