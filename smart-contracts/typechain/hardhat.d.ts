@@ -45,33 +45,9 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.BaseVault__factory>;
     getContractFactory(
-      name: "DummyL1OracleClient",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.DummyL1OracleClient__factory>;
-    getContractFactory(
       name: "FxStateRootTunnel",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.FxStateRootTunnel__factory>;
-    getContractFactory(
-      name: "IL1ContractRegistry",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.IL1ContractRegistry__factory>;
-    getContractFactory(
-      name: "IL1OracleClient",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.IL1OracleClient__factory>;
-    getContractFactory(
-      name: "IL1Vault",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.IL1Vault__factory>;
-    getContractFactory(
-      name: "L1ContractRegistry",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.L1ContractRegistry__factory>;
-    getContractFactory(
-      name: "IRootChainManager",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.IRootChainManager__factory>;
     getContractFactory(
       name: "L1Vault",
       signerOrOptions?: ethers.Signer | FactoryOptions
@@ -81,37 +57,9 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IStrategy__factory>;
     getContractFactory(
-      name: "DummyL2OracleClient",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.DummyL2OracleClient__factory>;
-    getContractFactory(
       name: "FxStateChildTunnel",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.FxStateChildTunnel__factory>;
-    getContractFactory(
-      name: "IL2ContractRegistry",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.IL2ContractRegistry__factory>;
-    getContractFactory(
-      name: "IL2OracleClient",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.IL2OracleClient__factory>;
-    getContractFactory(
-      name: "IL2Staging",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.IL2Staging__factory>;
-    getContractFactory(
-      name: "IL2Vault",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.IL2Vault__factory>;
-    getContractFactory(
-      name: "L2ContractRegistry",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.L2ContractRegistry__factory>;
-    getContractFactory(
-      name: "L2Staging",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.L2Staging__factory>;
     getContractFactory(
       name: "L2Vault",
       signerOrOptions?: ethers.Signer | FactoryOptions

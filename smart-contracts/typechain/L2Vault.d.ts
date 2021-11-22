@@ -30,12 +30,15 @@ interface L2VaultInterface extends ethers.utils.Interface {
     "balanceOf(address)": FunctionFragment;
     "creditAvailable(address)": FunctionFragment;
     "debtOutstanding(address)": FunctionFragment;
+    "debtRatio()": FunctionFragment;
     "decimals()": FunctionFragment;
     "decreaseAllowance(address,uint256)": FunctionFragment;
     "deposit(address,uint256)": FunctionFragment;
     "globalTVL()": FunctionFragment;
     "governance()": FunctionFragment;
     "increaseAllowance(address,uint256)": FunctionFragment;
+    "lastReport()": FunctionFragment;
+    "liquidate(uint256)": FunctionFragment;
     "name()": FunctionFragment;
     "rebalance()": FunctionFragment;
     "removeStrategy(address)": FunctionFragment;
@@ -87,6 +90,7 @@ interface L2VaultInterface extends ethers.utils.Interface {
     functionFragment: "debtOutstanding",
     values: [string]
   ): string;
+  encodeFunctionData(functionFragment: "debtRatio", values?: undefined): string;
   encodeFunctionData(functionFragment: "decimals", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "decreaseAllowance",
@@ -104,6 +108,14 @@ interface L2VaultInterface extends ethers.utils.Interface {
   encodeFunctionData(
     functionFragment: "increaseAllowance",
     values: [string, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "lastReport",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "liquidate",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(functionFragment: "name", values?: undefined): string;
   encodeFunctionData(functionFragment: "rebalance", values?: undefined): string;
@@ -179,6 +191,7 @@ interface L2VaultInterface extends ethers.utils.Interface {
     functionFragment: "debtOutstanding",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "debtRatio", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "decimals", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "decreaseAllowance",
@@ -191,6 +204,8 @@ interface L2VaultInterface extends ethers.utils.Interface {
     functionFragment: "increaseAllowance",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "lastReport", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "liquidate", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "name", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "rebalance", data: BytesLike): Result;
   decodeFunctionResult(
@@ -228,6 +243,7 @@ interface L2VaultInterface extends ethers.utils.Interface {
 
   events: {
     "Approval(address,address,uint256)": EventFragment;
+    "Liquidation(uint256,uint256)": EventFragment;
     "StrategyAdded(address,uint256,uint256,uint256)": EventFragment;
     "StrategyRemoved(address)": EventFragment;
     "StrategyReported(address,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)": EventFragment;
@@ -236,6 +252,7 @@ interface L2VaultInterface extends ethers.utils.Interface {
   };
 
   getEvent(nameOrSignatureOrTopic: "Approval"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "Liquidation"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "StrategyAdded"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "StrategyRemoved"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "StrategyReported"): EventFragment;
@@ -293,7 +310,7 @@ export class L2Vault extends BaseContract {
 
     L1TotalLockedValue(overrides?: CallOverrides): Promise<[BigNumber]>;
 
-    MAX_STRATEGIES(overrides?: CallOverrides): Promise<[BigNumber]>;
+    MAX_STRATEGIES(overrides?: CallOverrides): Promise<[number]>;
 
     addStrategy(
       strategy: string,
@@ -327,6 +344,8 @@ export class L2Vault extends BaseContract {
       overrides?: CallOverrides
     ): Promise<[BigNumber]>;
 
+    debtRatio(overrides?: CallOverrides): Promise<[BigNumber]>;
+
     decimals(overrides?: CallOverrides): Promise<[number]>;
 
     decreaseAllowance(
@@ -348,6 +367,13 @@ export class L2Vault extends BaseContract {
     increaseAllowance(
       spender: string,
       addedValue: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
+    lastReport(overrides?: CallOverrides): Promise<[BigNumber]>;
+
+    liquidate(
+      amount: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
@@ -427,7 +453,7 @@ export class L2Vault extends BaseContract {
 
   L1TotalLockedValue(overrides?: CallOverrides): Promise<BigNumber>;
 
-  MAX_STRATEGIES(overrides?: CallOverrides): Promise<BigNumber>;
+  MAX_STRATEGIES(overrides?: CallOverrides): Promise<number>;
 
   addStrategy(
     strategy: string,
@@ -461,6 +487,8 @@ export class L2Vault extends BaseContract {
     overrides?: CallOverrides
   ): Promise<BigNumber>;
 
+  debtRatio(overrides?: CallOverrides): Promise<BigNumber>;
+
   decimals(overrides?: CallOverrides): Promise<number>;
 
   decreaseAllowance(
@@ -482,6 +510,13 @@ export class L2Vault extends BaseContract {
   increaseAllowance(
     spender: string,
     addedValue: BigNumberish,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
+  lastReport(overrides?: CallOverrides): Promise<BigNumber>;
+
+  liquidate(
+    amount: BigNumberish,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
@@ -559,7 +594,7 @@ export class L2Vault extends BaseContract {
 
     L1TotalLockedValue(overrides?: CallOverrides): Promise<BigNumber>;
 
-    MAX_STRATEGIES(overrides?: CallOverrides): Promise<BigNumber>;
+    MAX_STRATEGIES(overrides?: CallOverrides): Promise<number>;
 
     addStrategy(
       strategy: string,
@@ -593,6 +628,8 @@ export class L2Vault extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
+    debtRatio(overrides?: CallOverrides): Promise<BigNumber>;
+
     decimals(overrides?: CallOverrides): Promise<number>;
 
     decreaseAllowance(
@@ -616,6 +653,10 @@ export class L2Vault extends BaseContract {
       addedValue: BigNumberish,
       overrides?: CallOverrides
     ): Promise<boolean>;
+
+    lastReport(overrides?: CallOverrides): Promise<BigNumber>;
+
+    liquidate(amount: BigNumberish, overrides?: CallOverrides): Promise<void>;
 
     name(overrides?: CallOverrides): Promise<string>;
 
@@ -687,6 +728,14 @@ export class L2Vault extends BaseContract {
     ): TypedEventFilter<
       [string, string, BigNumber],
       { owner: string; spender: string; value: BigNumber }
+    >;
+
+    Liquidation(
+      amountRequested?: null,
+      amountLiquidated?: null
+    ): TypedEventFilter<
+      [BigNumber, BigNumber],
+      { amountRequested: BigNumber; amountLiquidated: BigNumber }
     >;
 
     StrategyAdded(
@@ -802,6 +851,8 @@ export class L2Vault extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
+    debtRatio(overrides?: CallOverrides): Promise<BigNumber>;
+
     decimals(overrides?: CallOverrides): Promise<BigNumber>;
 
     decreaseAllowance(
@@ -823,6 +874,13 @@ export class L2Vault extends BaseContract {
     increaseAllowance(
       spender: string,
       addedValue: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
+    lastReport(overrides?: CallOverrides): Promise<BigNumber>;
+
+    liquidate(
+      amount: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
@@ -942,6 +1000,8 @@ export class L2Vault extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
+    debtRatio(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
     decimals(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     decreaseAllowance(
@@ -963,6 +1023,13 @@ export class L2Vault extends BaseContract {
     increaseAllowance(
       spender: string,
       addedValue: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    lastReport(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    liquidate(
+      amount: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 

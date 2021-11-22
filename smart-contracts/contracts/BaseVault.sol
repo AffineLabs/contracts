@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {IStrategy} from "./IStrategy.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { IStrategy } from "./IStrategy.sol";
 
 contract BaseVault is ERC20 {
     // The address of token we'll take as input to the vault, e.g. USDC
@@ -13,13 +13,10 @@ contract BaseVault is ERC20 {
 
     address public governance;
     modifier onlyGovernance() {
-        require(
-            msg.sender == governance,
-            "Only Governance can call this function"
-        );
+        require(msg.sender == governance, "Only Governance can call this.");
         _;
     }
-    uint256 public constant MAX_STRATEGIES = 10;
+    uint8 public constant MAX_STRATEGIES = 10;
     address[MAX_STRATEGIES] public withdrawalQueue;
     struct StrategyInfo {
         uint256 activation;
@@ -54,18 +51,17 @@ contract BaseVault is ERC20 {
     );
 
     // debtRatio is always less than MAX_BPS
-    uint256 debtRatio;
+    uint256 public debtRatio;
     // Total amount that the vault can get back from strategies (ignoring slippage)
     uint256 public totalDebt;
     uint256 constant MAX_BPS = 10000;
     uint256 constant SECS_PER_YEAR = 31_556_952;
-    uint256 lastReport;
+    uint256 public lastReport;
 
     // TODO: Add some events here. Actually log events as well
+    event Liquidation(uint256 amountRequested, uint256 amountLiquidated);
 
-    constructor(address governance_, address token_)
-        ERC20("Alpine Save", "AlpSave")
-    {
+    constructor(address governance_, address token_) ERC20("Alpine Save", "AlpSave") {
         governance = governance_;
         token = token_;
         lastReport = block.timestamp;
@@ -79,6 +75,40 @@ contract BaseVault is ERC20 {
         return IERC20(token).balanceOf(address(this)) + totalDebt;
     }
 
+    // Try to get `amount` out of the strategies. Called by a rebalancer.
+    function liquidate(uint256 amount) external onlyGovernance {
+        uint256 amountLiquidated;
+        for (uint8 i = 0; i < MAX_STRATEGIES; i++) {
+            address strategy = withdrawalQueue[i];
+            if (strategy == address(0)) break;
+
+            uint256 balance = IERC20(token).balanceOf(address(this));
+            if (balance >= amount) break;
+
+            // NOTE: Don't withdraw more than the debt so that Strategy can still
+            // continue to work based on the profits it has
+            uint256 amountNeeded = amount - balance;
+            amountNeeded = Math.min(amountNeeded, strategies[strategy].totalDebt);
+
+            // Force withdraw of token from strategy
+            uint256 loss = IStrategy(strategy).withdraw(amountNeeded);
+            uint256 withdrawn = IERC20(token).balanceOf(address(this)) - balance;
+
+            // TODO: consider loss protection
+            if (loss > 0) {
+                _reportLoss(strategy, loss);
+            }
+
+            // update debts, amountLiquidated
+            // Reduce the Strategy's debt by the amount withdrawn ("realized returns")
+            // NOTE: This doesn't add to totalGain as it's not earned by "normal means"
+            amountLiquidated += withdrawn;
+            strategies[strategy].totalDebt -= withdrawn;
+            totalDebt -= withdrawn;
+        }
+        emit Liquidation(amount, amountLiquidated);
+    }
+
     function addStrategy(
         address strategy,
         uint256 debtRatio_,
@@ -86,35 +116,17 @@ contract BaseVault is ERC20 {
         uint256 maxDebtPerHarvest
     ) external onlyGovernance {
         // Check if queue is full. If it's not, the last element will be unset
-        require(
-            withdrawalQueue[MAX_STRATEGIES - 1] == address(0),
-            "Vault has hit strategy limit"
-        );
+        require(withdrawalQueue[MAX_STRATEGIES - 1] == address(0), "Vault has hit strategy limit");
 
         // Check if this strategy can be activated
         require(strategy != address(0), "Strategy must be not be zero account");
-        require(
-            strategies[strategy].activation == 0,
-            "Strategy must not already be active"
-        );
-        require(
-            IStrategy(strategy).vault() == address(this),
-            "Strategy must use this vault"
-        );
-        require(
-            token == IStrategy(strategy).want(),
-            "Strategy must take profits in token"
-        );
+        require(strategies[strategy].activation == 0, "Strategy must not already be active");
+        require(IStrategy(strategy).vault() == address(this), "Strategy must use this vault");
+        require(token == IStrategy(strategy).want(), "Strategy must take profits in token");
 
         // Check if sanity properties violate invariants
-        require(
-            debtRatio + debtRatio_ <= MAX_BPS,
-            "Debt cannot exceed 10k bps"
-        );
-        require(
-            minDebtPerHarvest <= maxDebtPerHarvest,
-            "minDebtPerHarvest must not exceed max"
-        );
+        require(debtRatio + debtRatio_ <= MAX_BPS, "Debt cannot exceed 10k bps");
+        require(minDebtPerHarvest <= maxDebtPerHarvest, "minDebtPerHarvest must not exceed max");
 
         // Actually add strategy
         strategies[strategy] = StrategyInfo({
@@ -127,12 +139,7 @@ contract BaseVault is ERC20 {
             totalGain: 0,
             totalLoss: 0
         });
-        emit StrategyAdded(
-            strategy,
-            debtRatio,
-            minDebtPerHarvest,
-            maxDebtPerHarvest
-        );
+        emit StrategyAdded(strategy, debtRatio, minDebtPerHarvest, maxDebtPerHarvest);
 
         // The total amount of token that could be borrowed is now larger
         debtRatio += debtRatio_;
@@ -165,10 +172,7 @@ contract BaseVault is ERC20 {
 
     function removeStrategy(address strategy) external {
         // Let governance/strategy remove the strategy
-        require(
-            msg.sender == strategy || msg.sender == governance,
-            "Only goverance or the strategy can call"
-        );
+        require(msg.sender == strategy || msg.sender == governance, "Only goverance or the strategy can call");
         if (strategies[strategy].debtRatio == 0) return;
         _removeStrategy(strategy);
     }
@@ -179,10 +183,7 @@ contract BaseVault is ERC20 {
         emit StrategyRemoved(strategy);
     }
 
-    function updateStrategyDebtRatio(address strategy, uint256 debtRatio_)
-        external
-        onlyGovernance
-    {
+    function updateStrategyDebtRatio(address strategy, uint256 debtRatio_) external onlyGovernance {
         require(strategies[strategy].activation > 0, "Strategy must be active");
         debtRatio -= strategies[strategy].debtRatio;
         strategies[strategy].debtRatio = debtRatio_;
@@ -191,21 +192,15 @@ contract BaseVault is ERC20 {
         emit StrategyUpdateDebtRatio(strategy, debtRatio_);
     }
 
-    function updateManyStrategyDebtRatios(
-        address[] calldata strategies_,
-        uint256[] calldata debtRatios
-    ) external onlyGovernance {
+    function updateManyStrategyDebtRatios(address[] calldata strategies_, uint256[] calldata debtRatios)
+        external
+        onlyGovernance
+    {
         for (uint256 i = 0; i < strategies_.length; i++) {
             address strategy = strategies_[i];
             uint256 newDebtRatio = debtRatios[i];
-            require(
-                strategies[strategy].activation > 0,
-                "Strategy must be active"
-            );
-            debtRatio =
-                debtRatio -
-                strategies[strategy].debtRatio +
-                newDebtRatio;
+            require(strategies[strategy].activation > 0, "Strategy must be active");
+            debtRatio = debtRatio - strategies[strategy].debtRatio + newDebtRatio;
             strategies[strategy].debtRatio = newDebtRatio;
         }
         require(debtRatio <= MAX_BPS, "debtRatio may not exceed MAX_BPS");
@@ -218,10 +213,7 @@ contract BaseVault is ERC20 {
         uint256 loss,
         uint256 debtPayment
     ) external returns (uint256) {
-        require(
-            strategies[msg.sender].activation > 0,
-            "Strategy must be active"
-        );
+        require(strategies[msg.sender].activation > 0, "Strategy must be active");
         // TODO: consider health check
         address strategy = msg.sender;
 
@@ -260,15 +252,9 @@ contract BaseVault is ERC20 {
 
         uint256 totalAvail = gain + debtPayment;
         // Credit surplus, give to Strategy
-        if (totalAvail < credit)
-            IERC20(token).transfer(strategy, credit - totalAvail);
+        if (totalAvail < credit) IERC20(token).transfer(strategy, credit - totalAvail);
         // Credit deficit, take from Strategy
-        if (totalAvail > credit)
-            IERC20(token).transferFrom(
-                strategy,
-                address(this),
-                totalAvail - credit
-            );
+        if (totalAvail > credit) IERC20(token).transferFrom(strategy, address(this), totalAvail - credit);
 
         // Update report times
         _assessFees(block.timestamp);
@@ -288,26 +274,20 @@ contract BaseVault is ERC20 {
         );
 
         // If the strategy has been removed, it owes the vault all of its assets
-        if (strategies[strategy].debtRatio == 0)
-            return IStrategy(strategy).estimatedTotalAssets();
+        if (strategies[strategy].debtRatio == 0) return IStrategy(strategy).estimatedTotalAssets();
         return debt;
     }
 
     function _reportLoss(address strategy, uint256 loss) internal {
         uint256 strategyDebt = strategies[strategy].totalDebt;
-        require(
-            strategyDebt >= loss,
-            "Strategy cannot lose more than it borrowed."
-        );
+        require(strategyDebt >= loss, "Strategy cannot lose more than it borrowed.");
         // Reduce our trust with the strategy by the amount of loss
         // this calculation intentionally approximates via `totalDebt` to avoid manipulatable results
 
         // e.g. if loss/totalDebt is 10%, and debtRatio is 90% (9000), then reduce debtRatio by 10% * 90% = 9%
         // # NOTE: This calculation isn't 100% precise, the adjustment is ~10%-20% more severe due to EVM math
         uint256 amountloss = (loss * debtRatio) / totalDebt;
-        uint256 ratioChange = amountloss < strategyDebt
-            ? amountloss
-            : strategyDebt;
+        uint256 ratioChange = amountloss < strategyDebt ? amountloss : strategyDebt;
         strategies[strategy].debtRatio -= ratioChange;
         debtRatio -= ratioChange;
 
@@ -320,15 +300,11 @@ contract BaseVault is ERC20 {
     function creditAvailable(address strategy) public view returns (uint256) {
         uint256 vaultTotalAssets = vaultTVL();
         uint256 vaultDebtLimit = (debtRatio * vaultTotalAssets) / MAX_BPS;
-        uint256 strategyDebtLimit = (strategies[strategy].debtRatio *
-            vaultTotalAssets) / MAX_BPS;
+        uint256 strategyDebtLimit = (strategies[strategy].debtRatio * vaultTotalAssets) / MAX_BPS;
         uint256 strategyTotalDebt = strategies[strategy].totalDebt;
 
         // Exhausted credit line
-        if (
-            strategyDebtLimit <= strategyTotalDebt ||
-            vaultDebtLimit <= totalDebt
-        ) return 0;
+        if (strategyDebtLimit <= strategyTotalDebt || vaultDebtLimit <= totalDebt) return 0;
 
         // Start with largest amount of debt that strategy can take
         uint256 available = strategyDebtLimit - strategyTotalDebt;
@@ -352,8 +328,7 @@ contract BaseVault is ERC20 {
     function debtOutstanding(address strategy) public view returns (uint256) {
         if (debtRatio == 0) return strategies[strategy].totalDebt;
 
-        uint256 strategyDebtLimit = (strategies[strategy].debtRatio *
-            vaultTVL()) / MAX_BPS;
+        uint256 strategyDebtLimit = (strategies[strategy].debtRatio * vaultTVL()) / MAX_BPS;
         uint256 strategyTotalDebt = strategies[strategy].totalDebt;
 
         if (strategyTotalDebt <= strategyDebtLimit) return 0;

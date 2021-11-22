@@ -33,6 +33,7 @@ interface IStrategyInterface extends ethers.utils.Interface {
     "tendTrigger(uint256)": FunctionFragment;
     "vault()": FunctionFragment;
     "want()": FunctionFragment;
+    "withdraw(uint256)": FunctionFragment;
   };
 
   encodeFunctionData(
@@ -62,6 +63,10 @@ interface IStrategyInterface extends ethers.utils.Interface {
   ): string;
   encodeFunctionData(functionFragment: "vault", values?: undefined): string;
   encodeFunctionData(functionFragment: "want", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "withdraw",
+    values: [BigNumberish]
+  ): string;
 
   decodeFunctionResult(functionFragment: "apiVersion", data: BytesLike): Result;
   decodeFunctionResult(
@@ -87,6 +92,7 @@ interface IStrategyInterface extends ethers.utils.Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "vault", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "want", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "withdraw", data: BytesLike): Result;
 
   events: {};
 }
@@ -168,6 +174,11 @@ export class IStrategy extends BaseContract {
     vault(overrides?: CallOverrides): Promise<[string]>;
 
     want(overrides?: CallOverrides): Promise<[string]>;
+
+    withdraw(
+      amount: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
   };
 
   apiVersion(overrides?: CallOverrides): Promise<string>;
@@ -204,6 +215,11 @@ export class IStrategy extends BaseContract {
 
   want(overrides?: CallOverrides): Promise<string>;
 
+  withdraw(
+    amount: BigNumberish,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
   callStatic: {
     apiVersion(overrides?: CallOverrides): Promise<string>;
 
@@ -234,6 +250,11 @@ export class IStrategy extends BaseContract {
     vault(overrides?: CallOverrides): Promise<string>;
 
     want(overrides?: CallOverrides): Promise<string>;
+
+    withdraw(
+      amount: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
   };
 
   filters: {};
@@ -272,6 +293,11 @@ export class IStrategy extends BaseContract {
     vault(overrides?: CallOverrides): Promise<BigNumber>;
 
     want(overrides?: CallOverrides): Promise<BigNumber>;
+
+    withdraw(
+      amount: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
   };
 
   populateTransaction: {
@@ -310,5 +336,10 @@ export class IStrategy extends BaseContract {
     vault(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     want(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    withdraw(
+      amount: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
   };
 }
