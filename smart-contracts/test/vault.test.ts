@@ -13,7 +13,7 @@ describe("I/O", async () => {
     const token = await tokenFactory.deploy(ethers.utils.parseUnits("100", 6));
 
     const vaultFactory = await ethers.getContractFactory("L2Vault", governance);
-    const vault = await vaultFactory.deploy(governance.address, token.address);
+    const vault = await vaultFactory.deploy(governance.address, token.address, 1, 1);
 
     await token.connect(user).approve(vault.address, ethers.utils.parseUnits("100", 6));
     await vault.connect(user).deposit(user.address, ethers.utils.parseUnits("5", 6));

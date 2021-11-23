@@ -25,4 +25,6 @@ interface IStrategy {
     function harvestTrigger(uint256 callCost) external view returns (bool);
 
     function harvest() external;
+
+    function withdraw(uint256 amount) external returns (uint256);
 }
