@@ -75,8 +75,13 @@ contract BaseVault is ERC20 {
         return IERC20(token).balanceOf(address(this)) + totalDebt;
     }
 
-    // Try to get `amount` out of the strategies. Called by a rebalancer.
+    // See notes for _liquidate.
     function liquidate(uint256 amount) external onlyGovernance {
+        _liquidate(amount);
+    }
+
+    // Try to get `amount` out of the strategies.
+    function _liquidate(uint256 amount) internal {
         uint256 amountLiquidated;
         for (uint8 i = 0; i < MAX_STRATEGIES; i++) {
             address strategy = withdrawalQueue[i];

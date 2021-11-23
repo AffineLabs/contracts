@@ -103,7 +103,9 @@ contract L2Vault is BaseVault {
         if (delta < 100_000 * decimals()) return;
 
         if (invest) {
-            // transfer to L1
+            // Increase balance of `token` to `delta` by withdrawing from strategies.
+            // Then transfer `delta` of `token` to L1.
+            _liquidate(delta);
             transferToL1(delta);
         } else {
             // send message to L1 telling us how much should be transferred to this vault
