@@ -169,15 +169,18 @@ abstract contract BaseStrategy {
     // harvest trigger. See `setDebtThreshold()` for more details.
     uint256 public debtThreshold;
 
-    function _onlyGovernance() internal {
-        require(msg.sender == governance());
+    modifier onlyGovernance() {
+        require(msg.sender == governance(), "!authorized");
+        _;
     }
 
-    function _onlyKeepers() internal {
+    modifier onlyKeepers() {
         require(
             msg.sender == keeper ||
-                msg.sender == governance()
+                msg.sender == governance(), 
+            "!authorized"
         );
+        _;
     }
 
     constructor(address _vault) {
@@ -225,8 +228,7 @@ abstract contract BaseStrategy {
      *  This may only be called by governance or the strategist.
      * @param _keeper The new address to assign as `keeper`.
      */
-    function setKeeper(address _keeper) external {
-        _onlyGovernance();
+    function setKeeper(address _keeper) external onlyGovernance {
         require(_keeper != address(0));
         keeper = _keeper;
         emit UpdatedKeeper(_keeper);
@@ -244,8 +246,7 @@ abstract contract BaseStrategy {
      *  This may only be called by governance or the strategist.
      * @param _delay The minimum number of seconds to wait between harvests.
      */
-    function setMinReportDelay(uint256 _delay) external {
-        _onlyGovernance();
+    function setMinReportDelay(uint256 _delay) external onlyGovernance {
         minReportDelay = _delay;
         emit UpdatedMinReportDelay(_delay);
     }
@@ -262,8 +263,7 @@ abstract contract BaseStrategy {
      *  This may only be called by governance or the strategist.
      * @param _delay The maximum number of seconds to wait between harvests.
      */
-    function setMaxReportDelay(uint256 _delay) external {
-        _onlyGovernance();
+    function setMaxReportDelay(uint256 _delay) external onlyGovernance {
         maxReportDelay = _delay;
         emit UpdatedMaxReportDelay(_delay);
     }
@@ -278,8 +278,7 @@ abstract contract BaseStrategy {
      * @param _profitFactor A ratio to multiply anticipated
      * `harvest()` gas cost against.
      */
-    function setProfitFactor(uint256 _profitFactor) external {
-        _onlyGovernance();
+    function setProfitFactor(uint256 _profitFactor) external onlyGovernance {
         profitFactor = _profitFactor;
         emit UpdatedProfitFactor(_profitFactor);
     }
@@ -297,11 +296,26 @@ abstract contract BaseStrategy {
      * @param _debtThreshold How big of a loss this Strategy may carry without
      * being required to report to the Vault.
      */
-    function setDebtThreshold(uint256 _debtThreshold) external {
-        _onlyGovernance();
+    function setDebtThreshold(uint256 _debtThreshold) external onlyGovernance {
         debtThreshold = _debtThreshold;
         emit UpdatedDebtThreshold(_debtThreshold);
     }
+
+    /**
+     * @notice
+     *  Provide an accurate conversion from `_amtInWei` (denominated in wei)
+     *  to `want` (using the native decimal characteristics of `want`).
+     * @dev
+     *  Care must be taken when working with decimals to assure that the conversion
+     *  is compatible. As an example:
+     *
+     *      given 1e17 wei (0.1 MATIC) as input, and want is USDC (6 decimals),
+     *      with USDC/MATIC = 1800, this should give back 1800000000 (180 USDC)
+     *
+     * @param _amtInWei The amount (in wei/1e-18 MATIC) to convert to `want`
+     * @return The amount in `want` of `_amtInMATIC` converted to `want`
+     **/
+    function nativeToWant(uint256 _amtInWei) public view virtual returns (uint256);
 
     /**
      * @notice
@@ -311,7 +325,7 @@ abstract contract BaseStrategy {
      * @return `true` if `harvest()` should be called, `false` otherwise.
      */
     function harvestTrigger(uint256 callCostInWei) public view virtual returns (bool) {
-        uint256 callCost = ethToWant(callCostInWei);
+        uint256 callCost = nativeToWant(callCostInWei);
         StrategyParams memory params = vault.strategies(address(this));
 
         // Should not trigger if Strategy is not activated
@@ -350,8 +364,7 @@ abstract contract BaseStrategy {
      *  Harvests the Strategy, recognizing any profits or losses and adjusting
      *  the Strategy's position.
      */
-    function harvest() external {
-        _onlyKeepers();
+    function harvest() external onlyKeepers {
         uint256 profit = 0;
         uint256 loss = 0;
         uint256 debtOutstanding = vault.debtOutstanding();
@@ -391,8 +404,7 @@ abstract contract BaseStrategy {
      *  Adjust the Strategy's position. The purpose of tending isn't to
      *  realize gains, but to maximize yield by reinvesting any returns. 
      */
-    function tend() external {        
-        _onlyKeepers();
+    function tend() external onlyKeepers {        
         // Don't take profits with this call, but adjust for better gains
         adjustPosition(vault.debtOutstanding());
     }
@@ -546,8 +558,7 @@ abstract contract BaseStrategy {
      *  should be protected from sweeping in addition to `want`.
      * @param _token The token to transfer out of this vault.
      */
-    function sweep(address _token) external {
-        _onlyGovernance();
+    function sweep(address _token) external onlyGovernance {
         require(_token != address(want), "!want");
         require(_token != address(vault), "!shares");
 

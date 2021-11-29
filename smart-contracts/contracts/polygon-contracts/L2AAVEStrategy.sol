@@ -7,11 +7,12 @@ import {SafeERC20, IERC20, Address} from "@openzeppelin/contracts/token/ERC20/ut
 import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import "../interfaces/aave/IProtocolDataProvider.sol";
-import "../interfaces/aave/IAaveIncentivesController.sol";
-import "../interfaces/aave/ILendingPool.sol";
-import "../interfaces/aave/IAToken.sol";
+import {IProtocolDataProvider} from "../interfaces/aave/IProtocolDataProvider.sol";
+import {IAaveIncentivesController} from "../interfaces/aave/IAaveIncentivesController.sol";
+import {ILendingPool} from "../interfaces/aave/ILendingPool.sol";
+import {IAToken} from "../interfaces/aave/IAToken.sol";
 
 contract L2AAVEStrategy is BaseStrategy {
     using SafeERC20 for IERC20;
@@ -39,7 +40,6 @@ contract L2AAVEStrategy is BaseStrategy {
     uint256 public minWant = 100;
     uint256 public minRewardToSell = 1e15;
 
-    uint16 private referral = 0;
     uint256 private constant MAX_BPS = 1e4;
     uint256 private constant PESSIMISM_FACTOR = 1000;
     
@@ -157,8 +157,8 @@ contract L2AAVEStrategy is BaseStrategy {
         (_amountFreed, ) = liquidatePosition(type(uint256).max);
     }
 
-    function setReferralCode(uint16 _referral) external onlyGovernance {
-        referral = _referral;
+    function nativeToWant(uint256 _amtInWei) public view override returns (uint256) {
+        return tokenToWant(wrappedNative, _amtInWei);
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {
@@ -213,7 +213,7 @@ contract L2AAVEStrategy is BaseStrategy {
 
     function _depositWant(uint256 amount) internal returns (uint256) {
         if (amount == 0) return 0;
-        lendingPool.deposit(address(want), amount, address(this), referral);
+        lendingPool.deposit(address(want), amount, address(this), 0);
         return amount;
     }
 
@@ -238,7 +238,7 @@ contract L2AAVEStrategy is BaseStrategy {
             return;
         }
 
-        router.swapExactTokensForTokens(amountIn, minOut, getTokenOutPathV2(address(rewardToken), address(want)), address(this), now);
+        router.swapExactTokensForTokens(amountIn, minOut, getTokenOutPathV2(address(rewardToken), address(want)), address(this), block.timestamp);
     }
 
     function _claimAndSellRewards() internal {
