@@ -41,6 +41,26 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IERC165__factory>;
     getContractFactory(
+      name: "IUniswapV2Router01",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IUniswapV2Router01__factory>;
+    getContractFactory(
+      name: "IUniswapV2Router02",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IUniswapV2Router02__factory>;
+    getContractFactory(
+      name: "BaseStrategy",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.BaseStrategy__factory>;
+    getContractFactory(
+      name: "StrategyAPI",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.StrategyAPI__factory>;
+    getContractFactory(
+      name: "VaultAPI",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.VaultAPI__factory>;
+    getContractFactory(
       name: "BaseVault",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.BaseVault__factory>;
@@ -53,6 +73,38 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.L1Vault__factory>;
     getContractFactory(
+      name: "IAaveIncentivesController",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IAaveIncentivesController__factory>;
+    getContractFactory(
+      name: "IAToken",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IAToken__factory>;
+    getContractFactory(
+      name: "IInitializableAToken",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IInitializableAToken__factory>;
+    getContractFactory(
+      name: "ILendingPool",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.ILendingPool__factory>;
+    getContractFactory(
+      name: "ILendingPoolAddressesProvider",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.ILendingPoolAddressesProvider__factory>;
+    getContractFactory(
+      name: "IProtocolDataProvider",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IProtocolDataProvider__factory>;
+    getContractFactory(
+      name: "IScaledBalanceToken",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IScaledBalanceToken__factory>;
+    getContractFactory(
+      name: "IUniLikeSwapRouter",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IUniLikeSwapRouter__factory>;
+    getContractFactory(
       name: "IStrategy",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IStrategy__factory>;
@@ -60,6 +112,10 @@ declare module "hardhat/types/runtime" {
       name: "FxStateChildTunnel",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.FxStateChildTunnel__factory>;
+    getContractFactory(
+      name: "L2AAVEStrategy",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.L2AAVEStrategy__factory>;
     getContractFactory(
       name: "L2Vault",
       signerOrOptions?: ethers.Signer | FactoryOptions
