@@ -9,18 +9,26 @@ Uses
 - [Solhint](https://github.com/protofire/solhint): linter
 - [Prettier Plugin Solidity](https://github.com/prettier-solidity/prettier-plugin-solidity): code formatter
 
-This is a GitHub template, which means you can reuse it as many times as you want. You can do that by clicking the "Use this
-template" button at the top of the page.
+This hardhat project is based on [this template](https://github.com/amanusk/hardhat-template).
 
-## Usage
+## Pre Requisites
 
-### Pre Requisites
-
-Before running any command, make sure to install dependencies:
+- Install nvm with according to these [instructions](https://github.com/nvm-sh/nvm#install--update-script)
+- Install yarn with
 
 ```sh
-$ yarn install
+npm install -g yarn
 ```
+
+- Install the dependencies:
+
+```sh
+yarn install
+```
+
+- If using vscode, install the [prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) and [solidity](https://marketplace.visualstudio.com/items?itemName=JuanBlanco.solidity) extensions
+
+## Usage
 
 ### Compile
 
