@@ -33,7 +33,7 @@ const polygonChainIds = {
 
 const MNEMONIC = process.env.MNEMONIC || "";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
-const INFURA_API_KEY = process.env.INFURA_API_KEY || "";
+const ALCHEMY_API_KEY = process.env.ALCHEMY_APY_KEY || "";
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -46,7 +46,7 @@ task("accounts", "Prints the list of accounts", async (args, hre) => {
 });
 
 function createETHNetworkConfig(network: keyof typeof ethChainIds): NetworkUserConfig {
-  const url: string = "https://" + network + ".infura.io/v3/" + INFURA_API_KEY;
+  const url: string = `https://eth-${network}.alchemyapi.io/v2/${ALCHEMY_API_KEY}`;
   return {
     accounts: {
       count: 10,
@@ -60,7 +60,7 @@ function createETHNetworkConfig(network: keyof typeof ethChainIds): NetworkUserC
 }
 
 function createPolygonNetworkConfig(network: keyof typeof polygonChainIds): NetworkUserConfig {
-  const url: string = "https://rpc-" + network + ".maticvigil.com";
+  const url: string = `https://polygon-${network}.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
   return {
     accounts: {
       count: 10,
