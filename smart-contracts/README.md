@@ -1,4 +1,4 @@
-# Multiplyr Contracts 
+# Multiplyr Contracts
 
 Uses
 
@@ -38,6 +38,14 @@ Run the Mocha tests:
 $ yarn test
 ```
 
+### Deploy Vaults
+
+To deploy the Polygon contracts:
+`yarn hardhat run scripts/deployPolygon.ts --network <network>`
+
+To deploy the Ethereum contracts:
+`yarn hardhat run scripts/deployEth.ts --network <network>`
+
 ### Deploy contract to netowrk (requires Mnemonic and infura API key)
 
 ```
@@ -54,4 +62,3 @@ npx hardhat verify --network <network> <DEPLOYED_CONTRACT_ADDRESS> "Constructor 
 
 - Gas reporter [hardhat-gas-reporter](https://hardhat.org/plugins/hardhat-gas-reporter.html)
 - Etherscan [hardhat-etherscan](https://hardhat.org/plugins/nomiclabs-hardhat-etherscan.html)
-
