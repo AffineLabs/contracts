@@ -6,7 +6,8 @@
   "scripts": {
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",
-    "clean": "npx hardhat clean"
+    "clean": "npx hardhat clean",
+    "postinstall": "yarn compile"
   },
   "author": "Multiplyr",
   "license": "MIT",
@@ -39,6 +40,7 @@
   "dependencies": {
     "@maticnetwork/maticjs": "^2.0.45",
     "@openzeppelin/contracts": "^4.3.3",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "axios": "^0.21.4"
   }
 }
