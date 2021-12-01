@@ -1,13 +1,14 @@
 import { ethers } from "hardhat";
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 chai.use(solidity);
 const { expect } = chai;
 
 describe("I/O", async () => {
   it("Can deposit and withdraw", async () => {
-    const [governance, user] = await ethers.getSigners();
+    const [governance, user]: Array<SignerWithAddress> = await ethers.getSigners();
 
     const tokenFactory = await ethers.getContractFactory("TestMintable", user);
     const token = await tokenFactory.deploy(ethers.utils.parseUnits("100", 6));
