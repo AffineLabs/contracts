@@ -13,7 +13,33 @@ This hardhat project is based on [this template](https://github.com/amanusk/hard
 
 ## Pre Requisites
 
-- Install nvm with according to these [instructions](https://github.com/nvm-sh/nvm#install--update-script)
+### Dapp Tools
+
+- Install Dapptools with these [instructions](https://github.com/dapphub/dapptools#installation). **WARNING**: If you are on an M1 mac you may have a ton of trouble. Try to follow this [gist](https://gist.github.com/kendricktan/8463eb9561f30c521fcb10c4c2c95709). If you're still having trouble, try to join the Dapptools [chat](https://dapphub.chat/).
+
+### Foundry
+
+- Install [rust](https://doc.rust-lang.org/cargo/getting-started/installation.html) with
+
+```sh
+curl https://sh.rustup.rs -sSf | sh
+```
+
+- Install [foundry](https://github.com/gakonst/foundry) with
+
+```sh
+cargo install --git https://github.com/gakonst/foundry --bin forge --locked
+```
+
+- Install [cast](https://github.com/gakonst/foundry/tree/master/cast) with
+
+```sh
+cargo install --git https://github.com/gakonst/foundry --bin cast
+```
+
+### Hardhat
+
+- Install nvm with these [instructions](https://github.com/nvm-sh/nvm#install--update-script)
 - Install yarn with
 
 ```sh

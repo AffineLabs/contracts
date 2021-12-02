@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.7.3;
+pragma solidity ^0.8.10;
 
 import { FxBaseRootTunnel } from "../tunnel/FxBaseRootTunnel.sol";
-import { BytesLib } from "../library/BytesLib.sol";
+import { BytesLib } from "../../lib/BytesLib.sol";
 
 interface IContractRegistry {
-    function getAddress(string calldata contractName) external view returns(address);
+    function getAddress(string calldata contractName) external view returns (address);
 }
 
 interface IL1Vault {
@@ -20,15 +20,21 @@ contract FxStateRootTunnel is FxBaseRootTunnel {
     bytes public latestData;
     IContractRegistry private l1ContractRegistry;
 
-    constructor(address _checkpointManager, address _fxRoot, address _l1ContractRegistryAddress) 
-        FxBaseRootTunnel(_checkpointManager, _fxRoot) {
+    constructor(
+        address _checkpointManager,
+        address _fxRoot,
+        address _l1ContractRegistryAddress
+    ) FxBaseRootTunnel(_checkpointManager, _fxRoot) {
         l1ContractRegistry = IContractRegistry(_l1ContractRegistryAddress);
     }
 
     function _processMessageFromChild(bytes memory data) internal override {
-        require(msg.sender == l1ContractRegistry.getAddress("Defender"), "FxStateRootTunnel[_processMessageFromChild]: Only defender should be able to present proof for L2 Vault Message.");
+        require(
+            msg.sender == l1ContractRegistry.getAddress("Defender"),
+            "FxStateRootTunnel[_processMessageFromChild]: Only defender should be able to present proof for L2 Vault Message."
+        );
         latestData = data;
-        (uint256 amount) = abi.decode(data, (uint256));
+        uint256 amount = abi.decode(data, (uint256));
         IL1Vault(l1ContractRegistry.getAddress("L1Vault")).addDebtToL2(amount);
     }
 
