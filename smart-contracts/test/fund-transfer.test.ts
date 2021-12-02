@@ -156,7 +156,6 @@ describe("Eth-Matic Fund Transfer Integration Test", () => {
         await tx.wait();
         console.log(` > tx: ${getTxExplorerLink(ETH_NETWORK_NAME, tx)}`);
 
-        console.log('L2 debt to L1', await l1Vault.vaultTVL());
         expect(await l1Vault.vaultTVL()).to.eq(initialL1TVL.div(10).mul(9));
 
         await waitForNonZeroL2StagingBalance(l2Staging);
@@ -167,7 +166,7 @@ describe("Eth-Matic Fund Transfer Integration Test", () => {
         hre.changeNetwork(POLYGON_NETOWRK_NAME);
         [governance, defender] = await ethers.getSigners()
         console.log('Clearing fund in L2 staging contract');
-        tx = await l2Staging.connect(defender).clearFund(l1VaultLastTransferBlockNum, l1VaultLastTransferAmound, {gasPrice: ethers.utils.parseUnits('1', 'gwei'), gasLimit: 2500000})
+        tx = await l2Staging.connect(defender).l2ClearFund(l1VaultLastTransferBlockNum, l1VaultLastTransferAmound);
         await tx.wait();
         console.log(` > tx: ${getTxExplorerLink(POLYGON_NETOWRK_NAME, tx)}`);
 

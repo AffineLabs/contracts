@@ -43,8 +43,8 @@ async function deployAllGoerliMumbai(): Promise<AllContracts> {
 }
 
 deployAllGoerliMumbai()
-  .then((r) => {
-    console.log('All Contracts\n', JSON.stringify(r));
+  .then(() => {
+    console.log('All Contracts deployed and initialized!');
     process.exit(0)
   })
   .catch((error: Error) => {

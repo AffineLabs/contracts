@@ -121,7 +121,7 @@ contract L2Vault is BaseVault, L2BalancableVault {
     }
 
     function transferToL1(uint256 amount) internal {
-        _transferFundsToL2(amount);
+        _transferFundsToL1(amount);
     }
 
     function divestFromL1(uint256 amount) internal {
