@@ -5,8 +5,13 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IStrategy } from "../IStrategy.sol";
 import { BaseVault } from "../BaseVault.sol";
+import { L2BalancableVault } from "./L2BalancableVault.sol";
 
-contract L2Vault is BaseVault {
+interface IFxStateChildTunnel {
+    function sendMessageToRoot(bytes memory message) external;
+}
+
+contract L2Vault is BaseVault, L2BalancableVault {
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
     uint256 public L1TotalLockedValue;
 
@@ -22,8 +27,9 @@ contract L2Vault is BaseVault {
         address governance_,
         address token_,
         uint256 L1Ratio,
-        uint256 L2Ratio
-    ) BaseVault(governance_, token_) {
+        uint256 L2Ratio,
+        address _l2ContractRegistryAddress
+    ) BaseVault(governance_, token_) L2BalancableVault(_l2ContractRegistryAddress) {
         layerRatios = LayerBalanceRatios({ layer1: L1Ratio, layer2: L2Ratio });
     }
 
@@ -87,7 +93,8 @@ contract L2Vault is BaseVault {
     }
 
     // Compute rebalance amount
-    function L1L2Rebalance() external onlyGovernance {
+    function L1L2Rebalance() external {
+        require(msg.sender == l2ContractRegistry.getAddress("Defender"), "L2Vault[L1L2Rebalance]: Only defender should be able to initiate rebalance.");
         uint256 numSlices = layerRatios.layer1 + layerRatios.layer2;
         uint256 L1IdealAmount = (layerRatios.layer1 * globalTVL()) / numSlices;
 
@@ -100,7 +107,7 @@ contract L2Vault is BaseVault {
             delta = L1TotalLockedValue - L1IdealAmount;
         }
 
-        if (delta < 100_000 * decimals()) return;
+        // if (delta < 100_000 * decimals()) return;
 
         if (invest) {
             // Increase balance of `token` to `delta` by withdrawing from strategies.
@@ -113,9 +120,11 @@ contract L2Vault is BaseVault {
         }
     }
 
-    // TODO: integrate with existing cross chain transfer code
-    function transferToL1(uint256 amount) internal {}
+    function transferToL1(uint256 amount) internal {
+        _transferFundsToL2(amount);
+    }
 
-    // TODO: write custom bridge
-    function divestFromL1(uint256 amount) internal {}
+    function divestFromL1(uint256 amount) internal {
+        IFxStateChildTunnel(l2ContractRegistry.getAddress('L2FxTunnel')).sendMessageToRoot(abi.encodePacked(amount));
+    }
 }

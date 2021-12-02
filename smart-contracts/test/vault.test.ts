@@ -9,12 +9,15 @@ const { expect } = chai;
 describe("I/O", async () => {
   it("Can deposit and withdraw", async () => {
     const [governance, user]: Array<SignerWithAddress> = await ethers.getSigners();
+    
+    const contractRegistryFactory = await ethers.getContractFactory("ContractRegistry", user);
+    const contractRegistry = await contractRegistryFactory.deploy();
 
     const tokenFactory = await ethers.getContractFactory("TestMintable", user);
     const token = await tokenFactory.deploy(ethers.utils.parseUnits("100", 6));
 
     const vaultFactory = await ethers.getContractFactory("L2Vault", governance);
-    const vault = await vaultFactory.deploy(governance.address, token.address, 1, 1);
+    const vault = await vaultFactory.deploy(governance.address, token.address, 1, 1, contractRegistry.address);
 
     await token.connect(user).approve(vault.address, ethers.utils.parseUnits("100", 6));
     await vault.connect(user).deposit(user.address, ethers.utils.parseUnits("5", 6));
