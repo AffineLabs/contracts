@@ -14,7 +14,7 @@ export function logContractDeploymentInfo(networkName: string, contractName: str
     console.log(
         `${contractName} is deployed at address: ${contract.address}\n`, 
         `> Explorer URL for Contract: https://${NETWORK_TO_EXPLORER_URL.get(networkName)}/address/${contract.address}\n`,
-        `> Explorer URL for Deployment Tx: https://${NETWORK_TO_EXPLORER_URL.get(networkName)}/tx/${contract.deployTransaction.hash}\n`,
+        contract.deployTransaction ? `> Explorer URL for Deployment Tx: https://${NETWORK_TO_EXPLORER_URL.get(networkName)}/tx/${contract.deployTransaction.hash}\n` : '',
     )
 }
 

@@ -25,6 +25,7 @@ export async function deployAll(
     l2USDC: address,
     l2ERC20Predicate: address,
     l2FxTunnel: address,
+    create2deployer: address,
 ): Promise<AllContracts> {
   const contractRegistryContracts: ContractRegistryContracts = await deployContractRegistry(
     ethNetworkName, 
@@ -49,6 +50,7 @@ export async function deployAll(
     ethNetworkName,
     polygonNetworkName,
     contractRegistryContracts,
+    create2deployer,
   );
 
   // Initialize Eth contract registry.

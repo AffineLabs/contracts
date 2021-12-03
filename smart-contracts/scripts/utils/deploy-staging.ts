@@ -5,6 +5,7 @@ import hre from "hardhat";
 import { logContractDeploymentInfo } from "../../utils/bc-explorer-links";
 import { assert } from "chai";
 import { address } from "@maticnetwork/maticjs/dist/ts/types/Common";
+import create2deployerABI from "./assets/create2deployer.json";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 export interface StagingContracts {
@@ -16,60 +17,48 @@ export async function deployStagings(
   ethNetworkName: string,
   polygonNetworkName: string,
   contractRegistryContracts: ContractRegistryContracts,
+  create2deployer: address,
 ): Promise<StagingContracts> {
-  hre.changeNetwork(ethNetworkName);
-  const ethGovernance: SignerWithAddress = (await ethers.getSigners())[13]
-  console.log('Eth deployer address:', ethGovernance.address)
-  console.log('> Balance:', (await ethers.provider.getBalance(ethGovernance.address)).toString(), '(Expectation: Should have enough to deploy staging contract)')
-  console.log('> Nonce:', await ethGovernance.getTransactionCount(), '(Expectation: Should be same as the the polygon nonce)')
-  const ethChainId = hre.network.config.chainId
-  console.log('Ethereum chain ID:', ethChainId, '\n');
-
-  hre.changeNetwork(polygonNetworkName);
-  const polygonGovernance: SignerWithAddress = (await ethers.getSigners())[13]
-  console.log('Polygon deployer address:', polygonGovernance.address)
-  console.log('> Balance:', (await ethers.provider.getBalance(polygonGovernance.address)).toString(), '(Expectation: Should have enough to deploy staging contract)')
-  console.log('> Nonce:', await polygonGovernance.getTransactionCount(), '(Expectation: Should be same as the the ethereum nonce)')
-  const polygonChainId = hre.network.config.chainId
-  console.log('Polygon chain ID:', polygonChainId, '\n');
-
   const salt = ethers.utils.formatBytes32String((new Date()).toISOString())
+  const stagingFactory: ContractFactory = await ethers.getContractFactory("Staging");
 
   hre.changeNetwork(ethNetworkName);
-  const l1StagingDeployerFactory: ContractFactory = await ethers.getContractFactory("StagingDeployer", ethGovernance);
-  const l1StagingDeployer: Contract = await l1StagingDeployerFactory.deploy(
-    contractRegistryContracts.L1ContractRegistry.address,
-    contractRegistryContracts.L2ContractRegistry.address,
-    ethChainId,
-    polygonChainId,
-    salt,
-  );
-  await l1StagingDeployer.deployed();
-  logContractDeploymentInfo(ethNetworkName, "L1StagingDeployer", l1StagingDeployer);
-  const l1StagingFactory: ContractFactory = await ethers.getContractFactory("Staging");
-  const l1StagingAddress: address = await l1StagingDeployer.getDeployedAddress();
-  console.log('L1Staging address:', l1StagingAddress);
-
+  const ethChainId = hre.network.config.chainId
+  console.log('Ethereum chain ID:', ethChainId);
 
   hre.changeNetwork(polygonNetworkName);
-  const l2StagingDeployerFactory: ContractFactory = await ethers.getContractFactory("StagingDeployer", polygonGovernance);
-  const l2StagingDeployer: Contract = await l2StagingDeployerFactory.deploy(
+  const polygonChainId = hre.network.config.chainId
+  console.log('Polygon chain ID:', polygonChainId);
+
+  const bytecode = stagingFactory.interface.encodeDeploy([
     contractRegistryContracts.L1ContractRegistry.address,
     contractRegistryContracts.L2ContractRegistry.address,
     ethChainId,
     polygonChainId,
-    salt,
-  );
-  await l2StagingDeployer.deployed();
-  logContractDeploymentInfo(polygonNetworkName, "L2StagingDeployer", l2StagingDeployer);
-  const l2StagingFactory: ContractFactory = await ethers.getContractFactory("Staging");
-  const l2StagingAddress: address = await l2StagingDeployer.getDeployedAddress();
-  console.log('L2Staging address:', l2StagingAddress);
+  ])
+
+  hre.changeNetwork(ethNetworkName);
+  let governance: SignerWithAddress = (await ethers.getSigners())[0];
+  const l1Create2Deployer: Contract = new ethers.Contract(create2deployer, create2deployerABI, governance);
+  await l1Create2Deployer.deploy(0, salt, bytecode)
+  const l1StagingAddress: address = await l1Create2Deployer.computeAddress(salt, ethers.utils.keccak256(bytecode));
+
+  hre.changeNetwork(polygonNetworkName);
+  governance = (await ethers.getSigners())[0];
+  const l2Create2Deployer: Contract = new ethers.Contract(create2deployer, create2deployerABI, governance);
+  await l2Create2Deployer.deploy(0, salt, bytecode)
+  const l2StagingAddress: address = await l2Create2Deployer.computeAddress(salt, ethers.utils.keccak256(bytecode));
 
   assert(l1StagingAddress === l2StagingAddress, "L1 and L2 staging contract address must be same.")
 
+  const l1StagingFactory: Contract = (await ethers.getContractFactory("Staging")).attach(l1StagingAddress);
+  const l2StagingFactory: Contract = (await ethers.getContractFactory("Staging")).attach(l2StagingAddress);
+  
+  logContractDeploymentInfo(ethNetworkName, 'L1Staging', l1StagingFactory);
+  logContractDeploymentInfo(polygonNetworkName, 'L2Staging', l2StagingFactory);
+  
   return {
-    L1StagingContract: l1StagingFactory.attach(l1StagingAddress),
-    L2StagingContract: l2StagingFactory.attach(l2StagingAddress),
+    L1StagingContract: l1StagingFactory,
+    L2StagingContract: l2StagingFactory,
   }
 }
