@@ -7,7 +7,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IStrategy } from "./IStrategy.sol";
 
-contract BaseVault is ERC20 {
+abstract contract BaseVault is ERC20 {
     // The address of token we'll take as input to the vault, e.g. USDC
     address public token;
 
