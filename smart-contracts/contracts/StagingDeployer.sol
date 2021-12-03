@@ -7,23 +7,23 @@ import { Staging } from "./Staging.sol";
 contract StagingDeployer {
     address deployAddress;
 
-	constructor(
+    constructor(
         address _l1ContractRegistryAddress,
         address _l2ContractRegistryAddress,
         uint24 _rootChainId,
         uint24 _childChainId,
         bytes32 _salt
     ) {
-		bytes memory bytecode = abi.encodePacked(
-			type(Staging).creationCode,
-			abi.encode(
+        bytes memory bytecode = abi.encodePacked(
+            type(Staging).creationCode,
+            abi.encode(
                 _l1ContractRegistryAddress, 
                 _l2ContractRegistryAddress, 
                 _rootChainId, 
                 _childChainId
             )
-		);
-		deployAddress = Create2.deploy(0, _salt, bytecode);
+        );
+        deployAddress = Create2.deploy(0, _salt, bytecode);
     }
 
     function getDeployedAddress() external view returns (address) {
