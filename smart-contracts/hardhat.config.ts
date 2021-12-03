@@ -15,7 +15,6 @@ import "hardhat-gas-reporter";
 import "@nomiclabs/hardhat-etherscan";
 
 import "./tasks/accounts";
-import "./tasks/xdeploy";
 
 const ethChainIds = {
   ganache: 1337,
