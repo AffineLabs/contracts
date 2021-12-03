@@ -6,3 +6,4 @@ artifacts
 typechain
 
 .env
+out/
