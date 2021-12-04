@@ -1,10 +1,10 @@
 import { ethers } from "hardhat";
 import { Contract, ContractFactory } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { address } from "@maticnetwork/maticjs/dist/ts/types/Common";
 import { ContractRegistryContracts } from "./deploy-contract-registry";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../../utils/bc-explorer-links";
+import { address } from "../../utils/types";
 
 export interface VaultContracts {
   L1VaultContract: Contract,

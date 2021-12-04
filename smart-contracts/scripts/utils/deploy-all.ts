@@ -4,7 +4,7 @@ import { deployVaults, VaultContracts } from "./deploy-vaults";
 import hre from "hardhat";
 import { deployStagings, StagingContracts } from "./deploy-staging";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { address } from "@maticnetwork/maticjs/dist/ts/types/Common";
+import { address } from "../../utils/types";
 
 export interface AllContracts {
   contractRegistryContracts: ContractRegistryContracts,
@@ -66,7 +66,7 @@ export async function deployAll(
   await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress("Governance", governance.address);
 
   // Initialize polygon contract registry.
-  hre.changeNetwork('polygonMumbai');
+  hre.changeNetwork(polygonNetworkName);
   await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress("L2FxTunnel", fxTunnelContracts.L2FxTunnel.address);
   await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress("L2Vault", vaultContracts.L2VaultContract.address);
   await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress("L1Staging", stagingContract.L1StagingContract.address);

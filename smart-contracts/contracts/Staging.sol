@@ -44,6 +44,7 @@ contract Staging {
     }
 
     function l2Withdraw(uint256 amount) external onlyChildChain {
+        require(msg.sender == l2ContractRegistry.getAddress("L2Vault"), "Staging[l2Withdraw]: Only L2 vault should be able to withdraw funds.");
         IERC20(l2ContractRegistry.getAddress("L2USDC")).withdraw(amount);
     }
     

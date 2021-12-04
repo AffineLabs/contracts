@@ -3,7 +3,7 @@ import { Contract, ContractFactory, ContractTransaction } from 'ethers';
 import hre from "hardhat";
 import { logContractDeploymentInfo, getTxExplorerLink } from '../../utils/bc-explorer-links'
 import { ContractRegistryContracts } from './deploy-contract-registry';
-import { address } from '@maticnetwork/maticjs/dist/ts/types/Common';
+import { address } from "../../utils/types";
 
 export interface FxTunnelContracts {
   L1FxTunnel: Contract,
