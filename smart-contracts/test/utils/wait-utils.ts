@@ -13,7 +13,8 @@ async function sleep(ms: number) {
 
 export async function waitForL2MessageProof(
   maticAPIUrl: string, 
-  txHash: string
+  txHash: string,
+  eventSig: string,
 ): Promise<string> {
     const url = `${maticAPIUrl}/exit-payload/${txHash}?eventSignature=${MSG_EVENT_SIG}`
     console.log(`Waiting for message proof by polling URL: ${url}\n`)

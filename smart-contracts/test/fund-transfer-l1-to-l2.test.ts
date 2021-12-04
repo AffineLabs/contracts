@@ -72,7 +72,8 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
   const fxChildTxHash = tx.hash;
   const messageProof = await waitForL2MessageProof(
     'https://apis.matic.network/api/v1/mumbai',
-    fxChildTxHash
+    fxChildTxHash,
+    '0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036', // Send MSG event sig
   );
 
   hre.changeNetwork(ETH_NETWORK_NAME);
