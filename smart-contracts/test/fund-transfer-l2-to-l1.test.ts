@@ -115,5 +115,5 @@ it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
   await tx.wait();
   console.log(` > tx: ${getTxExplorerLink(ETH_NETWORK_NAME, tx)}`);
 
-  expect(await l1Vault.vaultTVL()).to.eq(initialL2TVL.div(90));
+  expect(await l1Vault.vaultTVL()).to.eq(initialL2TVL.mul(90).div(100));
 });
