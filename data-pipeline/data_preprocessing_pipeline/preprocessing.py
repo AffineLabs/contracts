@@ -2,6 +2,7 @@ from os import listdir
 from os.path import isfile, join
 
 import pandas as pd
+import numpy as np
 import s3fs
 from boto3 import client
 import logging
@@ -9,8 +10,8 @@ import os
 
 from datetime import datetime
 
+import utils
 from sqlalchemy.sql.expression import column
-from utils import merge_dfs, impute_data, convert_wide_to_long
 
 
 def get_asset_filepaths():
@@ -111,13 +112,13 @@ def preprocess_coin_data(start_date, coin_dfs, take_rolling_mean=True):
             valid_coin_dfs[coin_ticker] = df
 
     # merge coin prices into one timeseries df
-    coin_price_df = merge_dfs(
+    coin_price_df = utils.merge_dfs(
         valid_coin_dfs, "price", take_rolling_mean=take_rolling_mean
     )
-    coin_market_cap_df = merge_dfs(
+    coin_market_cap_df = utils.merge_dfs(
         valid_coin_dfs, "market_cap", take_rolling_mean=False
     )
-    coin_trading_volume_df = merge_dfs(
+    coin_trading_volume_df = utils.merge_dfs(
         valid_coin_dfs, "trading_volume_24h", take_rolling_mean=False
     )
 
@@ -144,6 +145,17 @@ def preprocess_lending_data(
        a df of lending protocol lending returns from start_date to present
 
     """
+    # add anchor protocol
+    # interest rate: 19% mean with std 1%
+    anchor_index = lend_protocol_dfs["dydx"].index
+    lend_protocol_dfs["anc"] = pd.DataFrame(
+        {
+            "index": anchor_index,
+            "lend_rate": np.random.normal(19, 1, len(anchor_index)),
+        },
+        index=anchor_index,
+    )
+
     logging.info("imputing missing data for lending protocols")
     for protocol, df in lend_protocol_dfs.items():
         df.index = [datetime.strptime(d, "%Y-%m-%d %H:%M:%S").date() for d in df.index]
@@ -153,14 +165,16 @@ def preprocess_lending_data(
         df = df.dropna()
         # impute interest rates before the launch date of the protocol
         # using coin prices
-        lend_protocol_dfs[protocol] = impute_data(
+        lend_protocol_dfs[protocol] = utils.impute_data(
             X=coin_price_df[["btc", "eth", "usdt", "usdc"]],
             y=df[["lend_rate"]],
             start_date=start_date,
             end_date=training_end_date,
         )
     # merge the dataframes
-    lend_rates_df = merge_dfs(lend_protocol_dfs, "lend_rate", take_rolling_mean=True)
+    lend_rates_df = utils.merge_dfs(
+        lend_protocol_dfs, "lend_rate", take_rolling_mean=True
+    )
 
     # start with $1, and apply daily yield each day to convert
     # lend rates to lending protocol (lp) returns
@@ -196,11 +210,11 @@ def read_asset_metadata(asset_tickers):
 
 
 def create_asset_daily_metrics_df(asset_market_cap_df, asset_trading_volume_df):
-    asset_market_cap_long_df = convert_wide_to_long(
+    asset_market_cap_long_df = utils.convert_wide_to_long(
         asset_market_cap_df, "asset_ticker", "market_cap"
     )
 
-    asset_trading_volume_long_df = convert_wide_to_long(
+    asset_trading_volume_long_df = utils.convert_wide_to_long(
         asset_trading_volume_df, "asset_ticker", "trading_volume_24h"
     )
 
@@ -243,6 +257,5 @@ def read_asset_price_and_metadata(args):
     asset_daily_metrics_long_df = create_asset_daily_metrics_df(
         coin_market_cap_df, coin_trading_volume_df
     )
-
     asset_metadata_df = read_asset_metadata(asset_price_df.columns)
     return asset_price_df, asset_metadata_df, asset_daily_metrics_long_df
