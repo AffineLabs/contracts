@@ -5,8 +5,6 @@ import { ethers } from "hardhat";
 import { BigNumber, Contract } from 'ethers';
 import { address } from "../../utils/types";
 
-const MSG_EVENT_SIG = '0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036'
-
 async function sleep(ms: number) {
   await new Promise(f => setTimeout(f, ms));
 }
@@ -16,7 +14,7 @@ export async function waitForL2MessageProof(
   txHash: string,
   eventSig: string,
 ): Promise<string> {
-    const url = `${maticAPIUrl}/exit-payload/${txHash}?eventSignature=${MSG_EVENT_SIG}`
+    const url = `${maticAPIUrl}/exit-payload/${txHash}?eventSignature=${eventSig}`
     console.log(`Waiting for message proof by polling URL: ${url}\n`)
     const startTime = new Date().getTime()
     while (true) {
