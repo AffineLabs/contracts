@@ -158,7 +158,12 @@ def preprocess_lending_data(
 
     logging.info("imputing missing data for lending protocols")
     for protocol, df in lend_protocol_dfs.items():
-        df.index = [datetime.strptime(d, "%Y-%m-%d %H:%M:%S").date() for d in df.index]
+        try:
+            df.index = [datetime.strptime(d, "%Y-%m-%d").date() for d in df.index]
+        except ValueError:
+            df.index = [
+                datetime.strptime(d, "%Y-%m-%d %H:%M:%S").date() for d in df.index
+            ]
         # reverse the dataframe so that most recent data is at the tail
         df = df.iloc[::-1]
         # drop na in the beginning and at the end
