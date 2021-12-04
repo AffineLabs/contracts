@@ -56,19 +56,19 @@ def generate_daily_value_and_roi(asset_weights, asset_prices_df, rebalance_perio
     return np.array(investment_daily_value), roi
 
 
-def apy_from_roi(roi, num_days):
+def annualize_roi(roi, num_days):
     """
     given the return on investment (roi) and length of a period in days,
-    computes the apy at the end of the period
+    computes the annualized roi
     params:
         roi: return on investpent (roi) as percentage
         num_days: the duration in days
-    returns: apy as percentage
+    returns: annualized roi
     """
     num_years = num_days / 365
     investment_total_growth = roi / 100 + 1
     annual_yield = investment_total_growth ** (1 / num_years) - 1
-    # return apy as percentage
+    # return roi as percentage
     return annual_yield * 100
 
 
@@ -80,14 +80,14 @@ def calculate_annualized_volatility(asset_price):
     return np.round(np.std(log_daily_pcnt_change) * 365 ** 0.5, 3)
 
 
-def calculate_asset_apy(daily_prices):
+def annual_roi_from_price(daily_prices):
     """
-    calculate apy from an asset's daily prices during a period
+    calculate annual roi from an asset's daily prices during a period
     param: daily_prices - a list or pd Series
     """
     asset_roi = (daily_prices[-1] / daily_prices[0] - 1) * 100
-    asset_apy = apy_from_roi(asset_roi, len(daily_prices))
-    return asset_apy
+    annual_roi = annualize_roi(asset_roi, len(daily_prices))
+    return annual_roi
 
 
 def asset_last_24h_change(daily_prices):
@@ -139,46 +139,44 @@ def upload_to_s3(file_json):
         s3.put_object(
             Body=json.dumps(file_json),
             Bucket="portfoliodata-dev",
-            Key="portfolio_latest.json",
+            Key="portfolio_v2_latest.json",
         )
         # change permission to public read
         resource = boto3.resource("s3")
-        object = resource.Bucket("portfoliodata-dev").Object("portfolio_latest.json")
+        object = resource.Bucket("portfoliodata-dev").Object("portfolio_v2_latest.json")
         object.Acl().put(ACL="public-read")
 
         timestamp = str(time.time())
         s3.put_object(
             Body=json.dumps(file_json),
             Bucket="portfoliodata-dev",
-            Key=f"portfolio_{timestamp}.json",
+            Key=f"portfolio_v2{timestamp}.json",
         )
         object = resource.Bucket("portfoliodata-dev").Object(
-            f"portfolio_{timestamp}.json"
+            f"portfolio_v2{timestamp}.json"
         )
         object.Acl().put(ACL="public-read")
     else:
         logging.error("failed to upload portfolio returns to S3.")
 
 
-def get_asset_info(
-    ticker,
-    asset_id,
-    asset_prices_df,
-    asset_type_weights,
-    asset_weights,
-    asset_type,
-):
-    asset_level_portfolio_weight = asset_type_weights[asset_type]
-    asset_weight = asset_weights[asset_type][ticker]
-
-    return {
-        "ticker": ticker,
-        "assetId": asset_id,
-        "apy": calculate_asset_apy(asset_prices_df[ticker]),
-        "lastPrice": asset_prices_df[ticker][-1],
-        "last24hPercentChange": asset_last_24h_change(asset_prices_df[ticker]),
-        "portfolioPercentage": asset_weight * asset_level_portfolio_weight * 100,
-    }
+def insert_asset_info(portfolio_json, asset_ticker_to_id, asset_prices_df):
+    for strategy in portfolio_json.values():
+        for asset_portfolio in strategy.values():
+            if not isinstance(asset_portfolio, dict):
+                continue
+            for asset in asset_portfolio["assets"]:
+                ticker = asset["ticker"]
+                asset.update(
+                    {
+                        "assetId": asset_ticker_to_id[ticker],
+                        "annualRoi": annual_roi_from_price(asset_prices_df[ticker]),
+                        "lastPrice": asset_prices_df[ticker][-1],
+                        "last24hPercentChange": asset_last_24h_change(
+                            asset_prices_df[ticker]
+                        ),
+                    }
+                )
 
 
 if __name__ == "__main__":
@@ -190,7 +188,7 @@ if __name__ == "__main__":
         index="timestamp", columns="asset_ticker", values="closing_price"
     )
 
-    asset_ticker_to_asset_id = dict(
+    asset_ticker_to_id = dict(
         zip(asset_price_long_df["asset_ticker"], asset_price_long_df["asset_id"])
     )
     logging.info(
@@ -201,93 +199,34 @@ if __name__ == "__main__":
     )
 
     logging.info("populating the json object with portfolio returns.")
-    output_json = {}
-    for i in range(1, 6):
-        # user_asset_weights is the weight of different asset level portfolios in user portfolio
-        # this changes as the underlying asset_prices_change
-        (user_investment_daily_value, user_roi,) = generate_daily_value_and_roi(
-            constant.user_asset_allocations[f"risk{i}"],
+    output_json = constant.portfolio_base
+
+    # update assets with info like last price, roi
+    insert_asset_info(output_json, asset_ticker_to_id, asset_prices_df)
+
+    # insert roi and volatility in portfolio
+    for strategy_name, strategy in output_json.items():
+        daily_value, roi = generate_daily_value_and_roi(
+            constant.user_asset_allocations[strategy_name],
             investment_daily_value_df,
             rebalance_period=90,
         )
-        annual_vol = calculate_annualized_volatility(user_investment_daily_value) * 100
-        # get apy pcnt from roi
-        apy = apy_from_roi(user_roi[-1], len(user_roi))
+        strategy["historicalRoi"] = (
+            dict(zip(asset_prices_df.index.strftime("%Y-%m-%d %H:%M:%S"), roi)),
+        )
+        annual_roi = annualize_roi(roi[-1], len(roi))
+        strategy["annualRoi"] = annual_roi
 
-        output_json[f"risk{i}"] = {
-            "lendingProtocols": {
-                "tickers": [
-                    get_asset_info(
-                        ticker,
-                        asset_ticker_to_asset_id[ticker],
-                        asset_prices_df,
-                        constant.user_asset_allocations[f"risk{i}"],
-                        constant.asset_level_portfolios,
-                        "lendingProtocols",
-                    )
-                    for ticker in constant.asset_level_portfolios[
-                        "lendingProtocols"
-                    ].keys()
-                ],
-                "percentage": constant.user_asset_allocations[f"risk{i}"][
-                    "lendingProtocols"
-                ]
-                * 100,
-            },
-            # "automatedMarketMaking": {
-            #     "tickers": [],
-            #     "percentage": 0.0,
-            # },
-            "btcEth": {
-                "tickers": [
-                    get_asset_info(
-                        ticker,
-                        asset_ticker_to_asset_id[ticker],
-                        asset_prices_df,
-                        constant.user_asset_allocations[f"risk{i}"],
-                        constant.asset_level_portfolios,
-                        "btcEth",
-                    )
-                    for ticker in constant.asset_level_portfolios["btcEth"].keys()
-                ],
-                "percentage": constant.user_asset_allocations[f"risk{i}"]["btcEth"]
-                * 100,
-            },
-            "altCoins": {
-                "tickers": [
-                    get_asset_info(
-                        ticker,
-                        asset_ticker_to_asset_id[ticker],
-                        asset_prices_df,
-                        constant.user_asset_allocations[f"risk{i}"],
-                        constant.asset_level_portfolios,
-                        "altCoins",
-                    )
-                    for ticker in constant.asset_level_portfolios["altCoins"].keys()
-                ],
-                "percentage": constant.user_asset_allocations[f"risk{i}"]["altCoins"]
-                * 100,
-            },
-            "historicalRoi": dict(
-                zip(asset_prices_df.index.strftime("%Y-%m-%d %H:%M:%S"), user_roi)
-            ),
-            "projectedApy": apy,
-            "projectedApyRange": [
-                apy - annual_vol,
-                apy + annual_vol,
-            ],
-        }
+        annual_vol = calculate_annualized_volatility(daily_value) * 100
+        strategy["annualRoiRange"] = [
+            annual_roi - 2 * annual_vol,
+            annual_roi + 2 * annual_vol,
+        ]
 
         # delete portfolios with weight 0
         for portfolio_name in ["btcEth", "altCoins"]:
-            if output_json[f"risk{i}"][portfolio_name]["percentage"] == 0:
-                del output_json[f"risk{i}"][portfolio_name]
-
-    output_json["risk1"]["fullname"] = "Multiplyr Cash"
-    output_json["risk2"]["fullname"] = "Multiplyr Balanced"
-    output_json["risk3"]["fullname"] = "Multiplyr Btc-Eth"
-    output_json["risk4"]["fullname"] = "Multiplyr Alt Coin"
-    output_json["risk5"]["fullname"] = "Multiplyr Alt Coin Aggresive"
+            if strategy[portfolio_name]["portfolioPercentage"] == 0:
+                del output_json[strategy_name][portfolio_name]
 
     # with open("out.json", "w") as out:
     #     json.dump(output_json, out)

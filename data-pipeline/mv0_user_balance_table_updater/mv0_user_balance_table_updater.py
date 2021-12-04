@@ -30,7 +30,7 @@ if __name__ == "__main__":
         user_investment_daily_value,
         user_roi,
     ) = generate_returns.generate_daily_value_and_roi(
-        constant.user_asset_allocations[f"risk1"],
+        constant.user_asset_allocations[f"alpBal"],
         investment_daily_value_df,
         rebalance_period=90,
     )
