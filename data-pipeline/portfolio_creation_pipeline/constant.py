@@ -48,10 +48,10 @@ portfolio_base = {
         "lendingProtocols": {
             "portfolioPercentage": 100.0,
             "assets": [
-                {"ticker": "aave", "fullname": "AAVE"},
-                {"ticker": "comp", "fullname": "Compound"},
+                {"ticker": "aave", "fullname": "AAVE USDC"},
+                {"ticker": "comp", "fullname": "Compound USDC"},
                 {"ticker": "dydx", "fullname": "dYdX"},
-                {"ticker": "definer", "fullname": "DeFiner"},
+                {"ticker": "definer", "fullname": "DeFiner USDC"},
                 {"ticker": "anc", "fullname": "Anchor"},
             ],
         },
@@ -84,10 +84,10 @@ portfolio_base = {
         "lendingProtocols": {
             "portfolioPercentage": 80.0,
             "assets": [
-                {"ticker": "aave", "fullname": "AAVE"},
-                {"ticker": "comp", "fullname": "Compound"},
+                {"ticker": "aave", "fullname": "AAVE USDC"},
+                {"ticker": "comp", "fullname": "Compound USDC"},
                 {"ticker": "dydx", "fullname": "dYdX"},
-                {"ticker": "definer", "fullname": "DeFiner"},
+                {"ticker": "definer", "fullname": "DeFiner USDC"},
                 {"ticker": "anc", "fullname": "Anchor"},
             ],
         },
@@ -121,10 +121,10 @@ portfolio_base = {
         "lendingProtocols": {
             "portfolioPercentage": 20.0,
             "assets": [
-                {"ticker": "aave", "fullname": "AAVE"},
-                {"ticker": "comp", "fullname": "Compound"},
+                {"ticker": "aave", "fullname": "AAVE USDC"},
+                {"ticker": "comp", "fullname": "Compound USDC"},
                 {"ticker": "dydx", "fullname": "dYdX"},
-                {"ticker": "definer", "fullname": "DeFiner"},
+                {"ticker": "definer", "fullname": "DeFiner USDC"},
                 {"ticker": "anc", "fullname": "Anchor"},
             ],
         },
