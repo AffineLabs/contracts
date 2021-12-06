@@ -83,7 +83,7 @@ it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
   [governance, defender] = await ethers.getSigners()
 
   console.log('Transfer some USDC from owner to L2 vault.')
-  tx = await polygonUSDCContract.transfer(l2Vault.address, initialL2TVL, {gasPrice: ethers.utils.parseUnits('1', 'gwei'), gasLimit: 250000});
+  tx = await polygonUSDCContract.transfer(l2Vault.address, initialL2TVL);
   await tx.wait();
   console.log(` > tx: ${getTxExplorerLink(ETH_NETWORK_NAME, tx)}`);
 
@@ -105,15 +105,19 @@ it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
 
   hre.changeNetwork(ETH_NETWORK_NAME);
   [governance, defender] = await ethers.getSigners()
-  console.log('L1 Staging contract balance:', (await ethers.provider.getBalance(l1Staging.address)).toString())
-
   const l2VaultLastTransferBlockNum = await l2Vault.lastTransferBlockNum();
   const l2VaultLastTransferAmount = await l2Vault.lastTransferAmount();
 
   console.log(`Calling exit fund in L1 staging contract with params: (${l2VaultLastTransferBlockNum}, ${l2VaultLastTransferAmount})`)
-  tx = await l1Staging.connect(defender).l1Exit(l2VaultLastTransferBlockNum, l2VaultLastTransferAmount, ethers.utils.arrayify(messageProof));
+  tx = await l1Staging.connect(defender).l1Exit(
+    l2VaultLastTransferBlockNum, 
+    l2VaultLastTransferAmount, 
+    ethers.utils.arrayify(messageProof),
+    {gasPrice: ethers.utils.parseUnits('1', 'gwei'), gasLimit: 500000} 
+  );
   await tx.wait();
   console.log(` > tx: ${getTxExplorerLink(ETH_NETWORK_NAME, tx)}`);
 
+  const ethUSDCContract: Contract = new ethers.Contract(config.l1USDC, usdcABI, governance);
   expect(await l1Vault.vaultTVL()).to.eq(initialL2TVL.mul(90).div(100));
 });
