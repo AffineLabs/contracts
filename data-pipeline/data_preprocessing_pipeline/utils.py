@@ -24,7 +24,7 @@ def merge_dfs(dfs, return_col, take_rolling_mean=False):
     return merged_df
 
 
-def impute_data(X, y, start_date, end_date):
+def impute_data(X, y, start_date, end_date, method="sampling"):
     """
     impute the data for asset y using X (btc, eth and stable coin prices)
     train on the period of available data, then predict on the data until
@@ -68,20 +68,24 @@ def impute_data(X, y, start_date, end_date):
         .reshape((-1,))
     )
     X_test = X[(X.index >= start_date) & (X.index < y.index[0])]
-    if len(X_train) < 100:
-        logging.error("Not enough data for lending protocol. Not imputing data.")
-        return y
 
-    model = LinearRegression()
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-
-    # make sure the predicted values are not too far off from mean interest rate
-    # replace values 2*std far from mean with mean
     mean, std = y_train.mean(), y_train.std()
-    y_pred = np.where(
-        (y_pred > mean + 2 * std) | (y_pred < mean - 2 * std), mean, y_pred
-    )
+    if method == "linear_regression":
+        if len(X_train) < 100:
+            logging.error("Not enough data for lending protocol. Not imputing data.")
+            return y
+
+        model = LinearRegression()
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+
+        # make sure the predicted values are not too far off from mean interest rate
+        # replace values 2*std far from mean with mean
+        y_pred = np.where(
+            (y_pred > mean + 2 * std) | (y_pred < mean - 2 * std), mean, y_pred
+        )
+    elif method == "sampling":
+        y_pred = np.random.normal(mean, std, len(X_test))
 
     # create a DataFrame of the imputed data with index
     df_y_pred = pd.DataFrame(
