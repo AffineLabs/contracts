@@ -33,10 +33,11 @@ const polygonChainIds = {
 
 const MNEMONIC = process.env.MNEMONIC || "";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
-const ALCHEMY_API_KEY = process.env.ALCHEMY_APY_KEY || "";
+const ALCHEMY_ETH_KEY = process.env.ALCHEMY_ETH_KEY || "";
+const ALCHEMY_POLYGON_KEY = process.env.ALCHEMY_POLYGON_KEY || "";
 
 function createETHNetworkConfig(network: keyof typeof ethChainIds): NetworkUserConfig {
-  const url: string = `https://eth-${network}.alchemyapi.io/v2/${ALCHEMY_API_KEY}`;
+  const url: string = `https://eth-${network}.alchemyapi.io/v2/${ALCHEMY_ETH_KEY}`;
   return {
     accounts: {
       count: 14,
@@ -50,7 +51,7 @@ function createETHNetworkConfig(network: keyof typeof ethChainIds): NetworkUserC
 }
 
 function createPolygonNetworkConfig(network: keyof typeof polygonChainIds): NetworkUserConfig {
-  const url: string = `https://polygon-${network}.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
+  const url: string = `https://polygon-${network}.g.alchemy.com/v2/${ALCHEMY_POLYGON_KEY}`;
   return {
     accounts: {
       count: 14,
