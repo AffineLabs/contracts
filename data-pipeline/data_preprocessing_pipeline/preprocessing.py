@@ -7,11 +7,11 @@ import s3fs
 from boto3 import client
 import logging
 import os
-
 from datetime import datetime
-
 import utils
 from sqlalchemy.sql.expression import column
+
+np.random.seed(0)
 
 
 def get_asset_filepaths():
