@@ -24,8 +24,8 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
 
   let [governance, defender] = await ethers.getSigners()
   const allContracts: AllContracts = await deployAll(
-    governance,
-    defender,
+    governance.address,
+    defender.address,
     ETH_NETWORK_NAME,
     POLYGON_NETOWRK_NAME,
     config.checkpointManager,

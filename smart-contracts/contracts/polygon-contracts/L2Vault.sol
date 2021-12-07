@@ -12,6 +12,9 @@ interface IFxStateChildTunnel {
 }
 
 contract L2Vault is BaseVault, L2BalancableVault {
+    event SendFundToL1(uint256 amount);
+    event ReceiveFundFromL1(uint256 amount);
+
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
     uint256 public L1TotalLockedValue;
 
@@ -121,10 +124,12 @@ contract L2Vault is BaseVault, L2BalancableVault {
     }
 
     function transferToL1(uint256 amount) internal {
+        emit SendFundToL1(amount);
         _transferFundsToL1(amount);
     }
 
     function divestFromL1(uint256 amount) internal {
+        emit ReceiveFundFromL1(amount);
         IFxStateChildTunnel(l2ContractRegistry.getAddress('L2FxTunnel')).sendMessageToRoot(abi.encodePacked(amount));
     }
 }
