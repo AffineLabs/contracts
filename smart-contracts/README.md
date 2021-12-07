@@ -83,15 +83,15 @@ $ dapp test
 ### Deploy Vaults
 
 To deploy the Polygon contracts:
-`yarn hardhat run scripts/deployPolygon.ts --network <network>`
+`yarn script scripts/deployPolygon.ts --network <network>`
 
 To deploy the Ethereum contracts:
-`yarn hardhat run scripts/deployEth.ts --network <network>`
+`yarn script scripts/deployEth.ts --network <network>`
 
 ### Deploy contract to netowrk (requires Mnemonic and infura API key)
 
 ```
-npx hardhat run --network rinkeby ./scripts/deploy.ts
+yarn script --network rinkeby ./scripts/deploy.ts
 ```
 
 ### Validate a contract with etherscan (requires API key)

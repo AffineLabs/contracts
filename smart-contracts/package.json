@@ -5,8 +5,9 @@
   "main": "index.js",
   "scripts": {
     "compile": "npx hardhat compile",
-    "test": "npx hardhat test",
-    "clean": "npx hardhat clean"
+    "test": "yarn hardhat test --no-compile",
+    "clean": "npx hardhat clean",
+    "script": "yarn hardhat run --no-compile"
   },
   "author": "Multiplyr",
   "license": "MIT",
