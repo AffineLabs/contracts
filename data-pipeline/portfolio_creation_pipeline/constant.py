@@ -50,8 +50,8 @@ portfolio_base = {
             "assets": [
                 {"ticker": "aave", "fullname": "AAVE USDC"},
                 {"ticker": "comp", "fullname": "Compound USDC"},
-                {"ticker": "dydx", "fullname": "dYdX"},
-                {"ticker": "definer", "fullname": "DeFiner USDC"},
+                # {"ticker": "dydx", "fullname": "dYdX"},
+                # {"ticker": "definer", "fullname": "DeFiner USDC"},
                 {"ticker": "anc", "fullname": "Anchor"},
             ],
         },
@@ -86,8 +86,8 @@ portfolio_base = {
             "assets": [
                 {"ticker": "aave", "fullname": "AAVE USDC"},
                 {"ticker": "comp", "fullname": "Compound USDC"},
-                {"ticker": "dydx", "fullname": "dYdX"},
-                {"ticker": "definer", "fullname": "DeFiner USDC"},
+                # {"ticker": "dydx", "fullname": "dYdX"},
+                # {"ticker": "definer", "fullname": "DeFiner USDC"},
                 {"ticker": "anc", "fullname": "Anchor"},
             ],
         },
@@ -123,8 +123,8 @@ portfolio_base = {
             "assets": [
                 {"ticker": "aave", "fullname": "AAVE USDC"},
                 {"ticker": "comp", "fullname": "Compound USDC"},
-                {"ticker": "dydx", "fullname": "dYdX"},
-                {"ticker": "definer", "fullname": "DeFiner USDC"},
+                # {"ticker": "dydx", "fullname": "dYdX"},
+                # {"ticker": "definer", "fullname": "DeFiner USDC"},
                 {"ticker": "anc", "fullname": "Anchor"},
             ],
         },
