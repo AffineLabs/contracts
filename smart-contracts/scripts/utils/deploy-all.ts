@@ -3,7 +3,6 @@ import { deployFxBridge, FxTunnelContracts } from "./deploy-fx-bridge";
 import { deployVaults, VaultContracts } from "./deploy-vaults";
 import hre from "hardhat";
 import { deployStagings, StagingContracts } from "./deploy-staging";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { address } from "../../utils/types";
 
 export interface AllContracts {
@@ -14,8 +13,8 @@ export interface AllContracts {
 }
 
 export async function deployAll(
-    governance: SignerWithAddress,
-    defender: SignerWithAddress,
+    governance: address,
+    defender: address,
     ethNetworkName: string,
     polygonNetworkName: string,
     l1CheckpointManager: address,
@@ -62,8 +61,8 @@ export async function deployAll(
   await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress("L2Staging", stagingContract.L2StagingContract.address);
   await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress("L2ERC20Predicate", l2ERC20Predicate);
   await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress("L1ChainManager", l1ChainManager);
-  await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress("Defender", defender.address);
-  await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress("Governance", governance.address);
+  await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress("Defender", defender);
+  await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress("Governance", governance);
 
   // Initialize polygon contract registry.
   hre.changeNetwork(polygonNetworkName);
@@ -72,8 +71,8 @@ export async function deployAll(
   await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress("L1Staging", stagingContract.L1StagingContract.address);
   await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress("L2Staging", stagingContract.L2StagingContract.address)
   await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress("L2USDC", l2USDC);
-  await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress("Defender", defender.address);
-  await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress("Governance", governance.address);
+  await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress("Defender", defender);
+  await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress("Governance", governance);
 
   console.log('Initialization done.\n')
 

@@ -9,8 +9,8 @@ const POLYGON_NETOWRK_NAME = 'polygonMumbai'
 async function deployAllGoerliMumbai(): Promise<AllContracts> {
   const [governance, defender] = await ethers.getSigners()
   return await deployAll(
-    governance,
-    defender,
+    governance.address,
+    config.defender,
     ETH_NETWORK_NAME,
     POLYGON_NETOWRK_NAME,
     config.checkpointManager,
