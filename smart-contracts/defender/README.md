@@ -6,11 +6,6 @@ The `tsconfig.json` sets the configuration for the typescript compiler to emit t
 
 ## Running Locally
 
-You can run the scripts locally, instead of in an Autotask, via a Defender Relayer. Create a Defender Relayer on mainnet, write down the API key and secret, and create a `.env` file in this folder with the following content:
-
-```
-API_KEY=yourapikey
-API_SECRET=yourapisecret
-```
+You can run the scripts locally, instead of in an Autotask, via a Defender Relayer. Create a Defender Relayer on mainnet, write down the API key and secret, and create a `.env` file in this folder with values indicated in `.env.example` file.
 
 Then run `yarn start`, which will run the typescript code using `ts-node`, and connecting to your Defender Relayer via the HTTP API.
