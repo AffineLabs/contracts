@@ -37,7 +37,7 @@ contract DummyVault is ERC20 {
         // burn
         _burn(user, numShares);
         // transfer usdc out
-        token.transferFrom(address(this), user, numShares);
+        token.transfer(user, numShares);
         emit Withdraw(user, numShares, numShares);
     }
 }
