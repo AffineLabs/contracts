@@ -2,7 +2,6 @@ import pandas as pd
 import sqlalchemy
 import os
 
-
 engine = None
 
 # Only create engine when necessary; for mock tests
@@ -11,6 +10,7 @@ def get_engine():
     if engine is None:
         engine = sqlalchemy.create_engine(os.environ.get("POSTGRES_REMOTE_URL"))
     return engine
+
 
 def get_all_asset_metadata():
     return pd.read_sql_table("asset_metadata", get_engine())
@@ -21,7 +21,7 @@ def is_valid_ticker(asset_ticker: str, asset_metadata_df: pd.DataFrame):
 
 
 def is_valid_user_id(user_id: int):
-    return user_id == 1
+    return user_id > 0
 
 
 def asset_error_response(asset_ticker: str):
@@ -74,3 +74,12 @@ def apy_from_prices(asset_prices):
     # source: https://en.wikipedia.org/wiki/Annual_percentage_yield
     apy = 100 * ((end_price / start_price) ** (365 / period_length) - 1)
     return apy
+
+
+def create_json_response(response):
+    """
+    json-format the sample api response to show in the docs
+    """
+    return {
+        "content": {"application/json": {"example": response}},
+    }

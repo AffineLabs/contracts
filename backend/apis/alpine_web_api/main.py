@@ -1,45 +1,24 @@
-from typing import List
-
-from fastapi import FastAPI, Query
+from fastapi import FastAPI
 import uvicorn
-from . import user_info, asset_info, vault_info
-
-API_VERSION = "0.2.0"
-API_DESC = f"""
-Welcome to Alpine Web API v{API_VERSION}!
-
-## Changelog
-### v 0.2.0
-- Added an `apy` field for `getAssetMetadata` and for the `alpSave` vault. 
-- Added fields `vaultAddress` and `vaultAbi` for the usdc smart contract. This is needed to know idle
-  cash amount in a user's wallet.
-- added a real user public address
-"""
-
-
-USER_ID_DESC = ("user id. For MV0, only one user with id 1 is supported.",)
-ASSET_TICKER_DESC = "case insensitive asset ticker."
+from . import user_info, asset_info, vault_info, constant, utils
 
 app = FastAPI(
     title="Alpine Web API",
-    version=API_VERSION,
-    description=API_DESC,
+    version=constant.API_VERSION,
+    description=constant.API_DESC,
 )
 
 
 @app.get(
     "/",
-    summary=f"Welcome to Alpine Web API v{API_VERSION}",
+    summary=f"Welcome to Alpine Web API v{constant.API_VERSION}",
     responses={
-        200: {
-            "content": {
-                "application/json": {
-                    "example": {
-                        "message": "Alpine Web API v0.1.0. Visit /docs for documentation"
-                    }
-                }
-            },
-        }
+        200: utils.create_json_response(
+            {
+                "message": f"Alpine Web API v{constant.API_VERSION}. "
+                "Visit /docs for documentation"
+            }
+        )
     },
 )
 async def root():
@@ -47,36 +26,39 @@ async def root():
 
 
 # using camel case for param names for consistency with return objects
+# vault_info.py
+
+
 @app.get(
     "/listAllVaultMetadata",
     summary="get metadata for all vaults",
-    description="get vault name, ticker, address, asset composition, abi for all alpine vaults.",
-    response_description=(
-        "For MV0, returns metadata for only one vault, `alpSave`. "
-        "The other vault, `usdc`, is needed to know the idle cash amount in a user's wallet. "
-        "The usdc vault does not have the fields `apy` and `assetComp`."
-    ),
+    description="get vault name, ticker, TVL, apy, and asset composition for all alpine vaults.",
+    response_description=("returns a list of metadata for all alpine vaults."),
     responses={
-        200: {
-            "content": {
-                "application/json": {
-                    "example": [
+        200: utils.create_json_response(
+            [
+                {
+                    "vaultName": "Alpine Save",
+                    "vaultTicker": "alpSave",
+                    "vaultApy": 10.0,
+                    "vaultTVL": 10000,
+                    "assetComp": [
                         {
-                            "vaultName": "Alpine Save",
-                            "vaultAddress": "0x6076f3011c987A19a04e2B6a37A96Aed1ee01492",
-                            "vaultTicker": "alpSave",
-                            "assetComp": [
-                                {"assetTicker": "comp", "targetPercentage": 30},
-                                {"assetTicker": "aave", "targetPercentage": 40},
-                                {"assetTicker": "dydx", "targetPercentage": 30},
-                            ],
-                            "apy": 5.1,
-                            "vaultAbi": {},
-                        }
-                    ]
+                            "assetTicker": "comp",
+                            "assetType": "lending_protocol",
+                            "targetPercentage": 30,
+                            "currentPercentage": 20,
+                        },
+                        {
+                            "assetTicker": "btc",
+                            "assetType": "coin",
+                            "targetPercentage": 70,
+                            "currentPercentage": 80,
+                        },
+                    ],
                 }
-            }
-        },
+            ]
+        )
     },
 )
 async def handle_list_all_vault_metadata():
@@ -84,6 +66,28 @@ async def handle_list_all_vault_metadata():
 
 
 # user_info.py
+@app.post(
+    "/updateUserProfile",
+    summary="update a user profile. "
+    " If the method is called with a new email address, a new user "
+    "profile is created in the backend. ",
+    description="create and update user profiles.",
+    response_description="returns current user profile from the backend.",
+    responses={
+        200: utils.create_json_response(
+            {
+                "email": "user@tryalpine.com",
+                "userId": 1,
+                "isOnboarded": True,
+                "publicAddress": "0xfakeaddr",
+            }
+        )
+    },
+)
+async def handle_update_user_profile(
+    profile: constant.UserProfile,
+):
+    return user_info.update_user_profile(profile)
 
 
 @app.get(
@@ -93,61 +97,19 @@ async def handle_list_all_vault_metadata():
     response_description="If user id is 1, returns a fake user balance history assuming the user "
     "invested 10k in Alpine Balanced strategy on 2018-11-26. Otherwise returns an error messge",
     responses={
-        200: {
-            "content": {
-                "application/json": {
-                    "example": {
-                        "userId": 1,
-                        "historicalBalance": {
-                            "2021-10-09 00:00:00": 1203.33,
-                            "2021-10-10 00:00:00": 1207.33,
-                        },
-                    }
-                }
-            },
-        }
+        200: utils.create_json_response(
+            {
+                "userId": 1,
+                "historicalBalance": {
+                    "2021-10-09 00:00:00": 1203.33,
+                    "2021-10-10 00:00:00": 1207.33,
+                },
+            }
+        )
     },
 )
-async def handle_get_user_historical_balance(
-    userId: int = Query(..., description=USER_ID_DESC, title="user id")
-):
-    """
-    get historical balance of the user. For now, if the
-    user id is 1, returns a fake user balance history, otherwise
-    returns an error messge
-    Params:
-        (int) userId: user id
-    Returns: {
-        (int)  userId           : user id,
-        (dict) historicalBalance: { timestamp : user balance at timestamp }
-    }
-    """
+async def handle_get_user_historical_balance(userId: int = constant.USER_ID_QUERY):
     return user_info.get_historical_balance(userId)
-
-
-@app.get(
-    "/getUserPublicAddress",
-    summary="get public address of the user",
-    description="get public address of the user.",
-    response_description="If user id is 1, returns a user public address, "
-    "otherwise returns an error messge",
-    responses={
-        200: {
-            "content": {
-                "application/json": {
-                    "example": {
-                        "userId": 1,
-                        "publicAddress": "0xfakeaddr",
-                    }
-                }
-            },
-        }
-    },
-)
-async def handle_get_user_public_address(
-    userId: int = Query(..., description=USER_ID_DESC, title="user id")
-):
-    return user_info.get_user_public_address(userId)
 
 
 @app.get(
@@ -156,38 +118,13 @@ async def handle_get_user_public_address(
     description="get all supported asset tickers.",
     response_description="",
     responses={
-        200: {
-            "content": {
-                "application/json": {
-                    "example": [
-                        "bnb",
-                        "doge",
-                        "btc",
-                        "ltc",
-                        "ada",
-                        "miota",
-                        "eth",
-                        "trx",
-                        "usdt",
-                        "vet",
-                        "theta",
-                        "bch",
-                        "etc",
-                        "xlm",
-                        "neo",
-                        "eos",
-                        "xrp",
-                        "xmr",
-                        "link",
-                        "aave",
-                        "comp",
-                        "cream",
-                        "dydx",
-                        "definer",
-                    ]
-                }
-            }
-        },
+        200: utils.create_json_response(
+            [
+                "btc",
+                "aave",
+                "comp",
+            ]
+        )
     },
 )
 async def handle_list_all_asset_tickers():
@@ -228,52 +165,29 @@ async def handle_list_all_asset_tickers():
     summary="get asset metadata",
     description="get internal asset id, asset fullname, asset type, "
     "DeFi safety score (0-10; higher is better), Alpine risk score "
-    "(0-5; lower is better), market cap, 24 hours trading volume, 52 week high and low.",
-    response_description="*Note: `defiSafetyScore`, `marketCap` and `tradingVol24h` can be null.*",
+    "(0-5; lower is better), market cap, 24 hours trading volume, 52 "
+    "week high and low.",
+    response_description="*Note: `defiSafetyScore`, `marketCap` and "
+    "`tradingVol24h` can be null.*",
     responses={
-        200: {
-            "content": {
-                "application/json": {
-                    "example": {
-                        "assetTicker": "comp",
-                        "assetId": 22,
-                        "assetFullname": "Compound",
-                        "assetType": "lending_protocol",
-                        "defiSafetyScore": 8,
-                        "alpineRiskScore": 1,
-                        "marketCap": 1321311343.23,
-                        "tradingVol24h": 1212223.23,
-                        "apy": 4.2,
-                        "52WeekHigh": 1.1412971156811462,
-                        "52WeekLow": 1.0978781938067743,
-                    }
-                }
-            },
-        }
+        200: utils.create_json_response(
+            {
+                "assetTicker": "comp",
+                "assetId": 22,
+                "assetFullname": "Compound",
+                "assetType": "lending_protocol",
+                "defiSafetyScore": 8,
+                "alpineRiskScore": 1,
+                "marketCap": 1321311343.23,
+                "tradingVol24h": 1212223.23,
+                "apy": 4.2,
+                "52WeekHigh": 1.1412971156811462,
+                "52WeekLow": 1.0978781938067743,
+            }
+        )
     },
 )
-async def handle_get_asset_metadata(
-    assetTicker: str = Query(..., description=ASSET_TICKER_DESC, title="asset ticker")
-):
-    """
-    get metadata for an asset.
-    Params:
-        (str) assetTicker: asset ticker. For lending protocols, the ticker is the same as their
-                           full name eg. aave, compound, c.r.e.a.m-finance, dydx and definer
-    Returns:
-        {
-            (str)   assetTicker    : asset ticker,
-            (int)   assetId        : an internal, unique asset id,
-            (str)   assetFullname  : full name of the asset,
-            (float) marketCap      : total market cap of the asset;
-                                     nullable,
-            (float) tradingVol24h  : trading volume of the asset in the last 24 hours;
-                                     nullable,
-            (float) 52WeekHigh     : highest asset price in last 52 weeks,
-            (float) 52WeekLow      : lowest asset price in last 52 weeks,
-        }
-    """
-
+async def handle_get_asset_metadata(assetTicker: str = constant.ASSET_TICKER_QUERY):
     return asset_info.get_asset_metadata(assetTicker)
 
 
@@ -283,42 +197,21 @@ async def handle_get_asset_metadata(
     description="get asset historical price",
     response_description="returns asset historical price",
     responses={
-        200: {
-            "content": {
-                "application/json": {
-                    "example": {
-                        "assetTicker": "btc",
-                        "historicalPrice": {
-                            "2021-10-09 00:00:00": 60003.33,
-                            "2021-10-10 00:00:00": 60010.43,
-                        },
-                    }
-                }
-            },
-        }
+        200: utils.create_json_response(
+            {
+                "assetTicker": "btc",
+                "historicalPrice": {
+                    "2021-10-09 00:00:00": 60003.33,
+                    "2021-10-10 00:00:00": 60010.43,
+                },
+            }
+        )
     },
 )
 async def handle_get_asset_historical_price(
-    assetTicker: str = Query(..., description=ASSET_TICKER_DESC, title="asset ticker")
+    assetTicker: str = constant.ASSET_TICKER_QUERY,
 ):
-    """
-    get historical price of an asset.
-    Params:
-        (str) assetTicker: asset ticker. For lending protocols, the ticker is the same as their
-                           full name eg. aave, compound, c.r.e.a.m-finance, dydx and definer
-    Returns:
-        {
-            (str)  assetTicker    : asset ticker,
-            (dict) historicalPrice: { timestamp : asset price at timestamp }
-        }
-    """
     return asset_info.get_historical_price(assetTicker)
-
-
-# # routes/transactions.py
-# @app.get("/transactions/{user_id}/")
-# async def get_transactions(user_id: int, asset_tickers: List[str] = Query(["all"])):
-#     return transactions.user_transactions(user_id, asset_tickers)
 
 
 def run():
