@@ -110,3 +110,13 @@ def convert_wide_to_long(df, variable_col, value_col, index_col="timestamp"):
         inplace=True,
     )
     return df
+
+
+def drop_duplicate_rows(df):
+    """drop duplicate index row from the dataframe"""
+    return (
+        df.reset_index()
+        .drop_duplicates(subset="index", keep="last")
+        .set_index("index")
+        .sort_index()
+    )

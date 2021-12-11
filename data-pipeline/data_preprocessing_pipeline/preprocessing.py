@@ -52,7 +52,7 @@ def read_asset_files(data_dir, exclude_coins, exclude_protocols):
         if filepath.split("/")[0] == "coin_data"
     }
     # read coin data
-    logging.info("reading coin csv files from s3")
+    logging.info("reading asset csv files from s3")
     coin_dfs = {
         ticker: pd.read_csv(
             data_dir + coin_path,
@@ -96,6 +96,8 @@ def preprocess_coin_data(start_date, coin_dfs, take_rolling_mean=True):
     for coin_ticker in list(coin_dfs.keys()):
         df = coin_dfs[coin_ticker].copy(deep=True)
         # convert dates to datetime
+        df["index"] = df.index
+        df = utils.drop_duplicate_rows(df)
         try:
             x_values = [
                 datetime.strptime(d, "%Y-%m-%d %H:%M:%S.%f").date() for d in df.index
@@ -147,7 +149,7 @@ def preprocess_lending_data(
     """
     # add anchor protocol
     # interest rate: 19% mean with std 1%
-    anchor_index = lend_protocol_dfs["dydx"].index
+    anchor_index = lend_protocol_dfs["aave"].index
     lend_protocol_dfs["anc"] = pd.DataFrame(
         {
             "index": anchor_index,
@@ -155,7 +157,6 @@ def preprocess_lending_data(
         },
         index=anchor_index,
     )
-
     logging.info("imputing missing data for lending protocols")
     for protocol, df in lend_protocol_dfs.items():
         try:
@@ -168,6 +169,7 @@ def preprocess_lending_data(
         df = df.iloc[::-1]
         # drop na in the beginning and at the end
         df = df.dropna()
+
         # impute interest rates before the launch date of the protocol
         # using coin prices
         lend_protocol_dfs[protocol] = utils.impute_data(
@@ -180,7 +182,6 @@ def preprocess_lending_data(
     lend_rates_df = utils.merge_dfs(
         lend_protocol_dfs, "lend_rate", take_rolling_mean=True
     )
-
     # start with $1, and apply daily yield each day to convert
     # lend rates to lending protocol (lp) returns
     lp_returns = {protocol: [1.0] for protocol in lend_rates_df.columns}
@@ -255,12 +256,17 @@ def read_asset_price_and_metadata(args):
         columns={"c.r.e.a.m.-finance": "cream", "compound": "comp"}, inplace=True
     )
 
+    logging.info("merging coin and asset prices")
     asset_price_df = pd.merge(
-        coin_price_df, lending_return_df, left_index=True, right_index=True, how="inner"
+        coin_price_df, lending_return_df, left_index=True, right_index=True
     )
+    asset_price_df = utils.drop_duplicate_rows(asset_price_df)
 
+    logging.info("creating asset metrics")
+    # dont need full history of tvl and market cap, 1 month is enough
     asset_daily_metrics_long_df = create_asset_daily_metrics_df(
         coin_market_cap_df, coin_trading_volume_df
     )
     asset_metadata_df = read_asset_metadata(asset_price_df.columns)
+
     return asset_price_df, asset_metadata_df, asset_daily_metrics_long_df

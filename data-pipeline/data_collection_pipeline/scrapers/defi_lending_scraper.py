@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import requests
 
@@ -38,10 +39,13 @@ class DefiPulseScraper:
                     "Wrong API key provided for Defi-pulse, "
                     + "please check your $DEFIPULSE_API_KEY env variable."
                 )
-            read_json = req.json()
-            serialized_data = json.dumps(read_json)
-            with open(CACHED_HISTORY, "w") as f:
-                f.write(serialized_data)
+            try:
+                read_json = req.json()
+                serialized_data = json.dumps(read_json)
+                with open(CACHED_HISTORY, "w") as f:
+                    f.write(serialized_data)
+            except json.decoder.JSONDecodeError:
+                logging.error(str(req))
 
         return pd.read_json(CACHED_HISTORY)
 
