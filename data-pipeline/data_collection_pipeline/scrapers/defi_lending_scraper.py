@@ -7,8 +7,6 @@ import pandas as pd
 
 from datetime import date
 
-from requests.api import request
-
 today = date.today()
 
 API_KEY = os.environ.get("DEFIPULSE_API_KEY")
@@ -47,7 +45,7 @@ class DefiPulseScraper:
                 with open(CACHED_HISTORY, "w") as f:
                     f.write(serialized_data)
             except json.decoder.JSONDecodeError:
-                logging.error(str(request))
+                logging.error(str(req))
 
         return pd.read_json(CACHED_HISTORY)
 
