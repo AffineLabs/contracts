@@ -7,7 +7,7 @@ images:
   newTag: 92f7c662d6533a353ad4b1352c8ff12e5d10cc50
 - name: data-pipeline
   newName: 959984261658.dkr.ecr.us-east-2.amazonaws.com/data-pipeline
-  newTag: 0c7a64a76f90c504f90e4ec5530f66a972c2f788
+  newTag: 3d3205f7f3a46a4c21c4f08533f02ef77f404d48
 - name: web-frontend
   newName: 959984261658.dkr.ecr.us-east-2.amazonaws.com/web-frontend
   newTag: 9bd0f639b757501b58a04ab8b13d481f1a3fc1bc
