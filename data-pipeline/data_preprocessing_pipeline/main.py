@@ -47,6 +47,7 @@ def main(args):
     ) = preprocessing.read_asset_price_and_metadata(args)
     # asset_price_df is the data from csv files, which are in wide format
     # convert wide data format to long format
+    logging.info("converting data from wide to long format")
     asset_price_long_df = utils.convert_wide_to_long(
         asset_price_df, "asset_ticker", "closing_price"
     )
