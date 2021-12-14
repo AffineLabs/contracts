@@ -2,13 +2,15 @@ import { ethers } from "hardhat";
 import { config as dotenvConfig } from "dotenv";
 import { resolve } from "path";
 
-import { DummyVault__factory } from "../typechain/factories/DummyVault__factory";
+import { getContractFactory } from "./utils/ethers";
 
 dotenvConfig({ path: resolve(__dirname, "./.env") });
 
 async function deployDummy(): Promise<any> {
   const [deployer] = await ethers.getSigners();
-  const DummyFactory = new DummyVault__factory(deployer);
+  const DummyFactory = await getContractFactory("DummyVault");
+
+  console.log("factory fectched: ");
   const vault = await DummyFactory.deploy();
   console.log("vault address: ", vault.address);
   await vault.deployed();

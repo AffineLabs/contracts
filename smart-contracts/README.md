@@ -17,7 +17,9 @@ This hardhat project is based on [this template](https://github.com/amanusk/hard
 
 - Install Dapptools with these [instructions](https://github.com/dapphub/dapptools#installation). **WARNING**: If you are on an M1 mac you may have a ton of trouble. Try to follow this [gist](https://gist.github.com/kendricktan/8463eb9561f30c521fcb10c4c2c95709). If you're still having trouble, try to join the Dapptools [chat](https://dapphub.chat/).
 
-### Foundry
+### Foundry (Optional)
+
+You don't actually need to install this, though it can be used as a replacement for dapptools if you're having trouble with nix.
 
 - Install [rust](https://doc.rust-lang.org/cargo/getting-started/installation.html) with
 
@@ -58,10 +60,10 @@ yarn install
 
 ### Compile
 
-Compile the smart contracts with Hardhat:
+Compile the smart contracts:
 
 ```sh
-$ yarn compile
+$ dapp build
 ```
 
 ### Test
@@ -70,6 +72,12 @@ Run the Mocha tests:
 
 ```sh
 $ yarn test
+```
+
+Run the solidity tests
+
+```sh
+$ dapp test
 ```
 
 ### Deploy Vaults

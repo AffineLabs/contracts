@@ -6,8 +6,7 @@
   "scripts": {
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",
-    "clean": "npx hardhat clean",
-    "postinstall": "yarn compile"
+    "clean": "npx hardhat clean"
   },
   "author": "Multiplyr",
   "license": "MIT",
@@ -18,12 +17,14 @@
     "@typechain/ethers-v5": "^8.0.5",
     "@typechain/hardhat": "^3.0.0",
     "@types/chai": "^4.2.18",
+    "@types/glob": "^7.2.0",
     "@types/mocha": "^8.2.2",
     "@types/node": "^15.12.2",
     "chai": "^4.3.4",
     "dotenv": "^10.0.0",
     "ethereum-waffle": "^3.3.0",
     "ethers": "^5.5.2",
+    "glob": "^7.2.0",
     "hardhat": "^2.7.0",
     "hardhat-change-network": "^0.0.7",
     "hardhat-gas-reporter": "^1.0.4",
