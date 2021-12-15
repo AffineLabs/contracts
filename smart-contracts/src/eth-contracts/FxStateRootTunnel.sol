@@ -2,7 +2,6 @@
 pragma solidity ^0.8.10;
 
 import { FxBaseRootTunnel } from "../tunnel/FxBaseRootTunnel.sol";
-import { BytesLib } from "../../lib/BytesLib.sol";
 
 interface IContractRegistry {
     function getAddress(string calldata contractName) external view returns (address);
@@ -16,7 +15,6 @@ interface IL1Vault {
  * @title FxStateRootTunnel
  */
 contract FxStateRootTunnel is FxBaseRootTunnel {
-    using BytesLib for bytes;
     bytes public latestData;
     IContractRegistry private l1ContractRegistry;
 

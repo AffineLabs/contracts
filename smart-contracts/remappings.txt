@@ -2,3 +2,4 @@
 solmate/=lib/solmate/src/
 ds-test/=lib/ds-test/src/
 uniswap/v2-periphery=lib/v2-periphery
+fx-portal/=lib/fx-portal/contracts/

@@ -10,3 +10,7 @@
 [submodule "smart-contracts/lib/v2-periphery"]
 	path = smart-contracts/lib/v2-periphery
 	url = https://github.com/Uniswap/v2-periphery
+
+[submodule "smart-contracts/lib/contracts"]
+	path = smart-contracts/lib/fx-portal
+	url = https://github.com/fx-portal/contracts
