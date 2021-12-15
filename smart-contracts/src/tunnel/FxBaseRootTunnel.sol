@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.7.3;
+pragma solidity ^0.8.10;
 
-
-import {RLPReader} from "../library/RLPReader.sol";
-import {MerklePatriciaProof} from "../library/MerklePatriciaProof.sol";
-import {Merkle} from "../library/Merkle.sol";
-
+import { RLPReader } from "fx-portal/lib/RLPReader.sol";
+import { MerklePatriciaProof } from "fx-portal/lib/MerklePatriciaProof.sol";
+import { Merkle } from "fx-portal/lib/Merkle.sol";
 
 interface IFxStateSender {
     function sendMessageToChild(address _receiver, bytes calldata _data) external;
@@ -39,7 +37,7 @@ abstract contract FxBaseRootTunnel {
     IFxStateSender public fxRoot;
     // root chain manager
     ICheckpointManager public checkpointManager;
-    // child tunnel contract which receives and sends messages 
+    // child tunnel contract which receives and sends messages
     address public fxChildTunnel;
 
     // storage to avoid duplicate exits
@@ -69,9 +67,7 @@ abstract contract FxBaseRootTunnel {
     }
 
     function _validateAndExtractMessage(bytes memory inputData) internal returns (bytes memory) {
-        RLPReader.RLPItem[] memory inputDataRLPList = inputData
-            .toRlpItem()
-            .toList();
+        RLPReader.RLPItem[] memory inputDataRLPList = inputData.toRlpItem().toList();
 
         // checking if exit has already been processed
         // unique exit is identified using hash of (blockNumber, branchMask, receiptLogIndex)
@@ -85,23 +81,16 @@ abstract contract FxBaseRootTunnel {
                 inputDataRLPList[9].toUint() // receiptLogIndex
             )
         );
-        require(
-            processedExits[exitHash] == false,
-            "FxRootTunnel: EXIT_ALREADY_PROCESSED"
-        );
+        require(processedExits[exitHash] == false, "FxRootTunnel: EXIT_ALREADY_PROCESSED");
         processedExits[exitHash] = true;
 
-        RLPReader.RLPItem[] memory receiptRLPList = inputDataRLPList[6]
-            .toBytes()
-            .toRlpItem()
-            .toList();
-        RLPReader.RLPItem memory logRLP = receiptRLPList[3]
-            .toList()[
-                inputDataRLPList[9].toUint() // receiptLogIndex
-            ];
+        RLPReader.RLPItem[] memory receiptRLPList = inputDataRLPList[6].toBytes().toRlpItem().toList();
+        RLPReader.RLPItem memory logRLP = receiptRLPList[3].toList()[
+            inputDataRLPList[9].toUint() // receiptLogIndex
+        ];
 
         RLPReader.RLPItem[] memory logRLPList = logRLP.toList();
-        
+
         // check child tunnel
         require(fxChildTunnel == RLPReader.toAddress(logRLPList[0]), "FxRootTunnel: INVALID_FX_CHILD_TUNNEL");
 
@@ -135,7 +124,7 @@ abstract contract FxBaseRootTunnel {
 
         // received message data
         bytes memory receivedData = logRLPList[2].toBytes();
-        (bytes memory message) = abi.decode(receivedData, (bytes)); // event decodes params again, so decoding bytes to get message
+        bytes memory message = abi.decode(receivedData, (bytes)); // event decodes params again, so decoding bytes to get message
         return message;
     }
 
@@ -147,20 +136,11 @@ abstract contract FxBaseRootTunnel {
         uint256 headerNumber,
         bytes memory blockProof
     ) private view returns (uint256) {
-        (
-            bytes32 headerRoot,
-            uint256 startBlock,
-            ,
-            uint256 createdAt,
-
-        ) = checkpointManager.headerBlocks(headerNumber);
+        (bytes32 headerRoot, uint256 startBlock, , uint256 createdAt, ) = checkpointManager.headerBlocks(headerNumber);
 
         require(
-            keccak256(
-                abi.encodePacked(blockNumber, blockTime, txRoot, receiptRoot)
-            )
-                .checkMembership(
-                blockNumber-startBlock,
+            keccak256(abi.encodePacked(blockNumber, blockTime, txRoot, receiptRoot)).checkMembership(
+                blockNumber - startBlock,
                 headerRoot,
                 blockProof
             ),
@@ -197,5 +177,5 @@ abstract contract FxBaseRootTunnel {
      * Since it is called via a system call, any event will not be emitted during its execution.
      * @param message bytes message that was sent from Child Tunnel
      */
-    function _processMessageFromChild(bytes memory message) virtual internal;
+    function _processMessageFromChild(bytes memory message) internal virtual;
 }

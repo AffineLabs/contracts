@@ -69,6 +69,7 @@ function createPolygonNetworkConfig(network: keyof typeof polygonChainIds): Netw
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
+  paths: { sources: "./src", artifacts: "./out" },
   networks: {
     hardhat: {
       accounts: {

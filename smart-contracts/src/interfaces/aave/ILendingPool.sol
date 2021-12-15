@@ -1,7 +1,7 @@
 pragma solidity ^0.8.9;
 
-import {ILendingPoolAddressesProvider} from "./ILendingPoolAddressesProvider.sol";
-import {DataTypes} from "../../libraries/aave/DataTypes.sol";
+import { ILendingPoolAddressesProvider } from "./ILendingPoolAddressesProvider.sol";
+import { DataTypes } from "../../../lib/DataTypes.sol";
 
 interface ILendingPool {
     /**
@@ -12,7 +12,13 @@ interface ILendingPool {
      * @param amount The amount deposited
      * @param referral The referral code used
      **/
-    event Deposit(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount, uint16 indexed referral);
+    event Deposit(
+        address indexed reserve,
+        address user,
+        address indexed onBehalfOf,
+        uint256 amount,
+        uint16 indexed referral
+    );
 
     /**
      * @dev Emitted on withdraw()

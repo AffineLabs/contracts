@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.7.3;
+pragma solidity ^0.8.10;
 
-import { FxBaseChildTunnel } from '../tunnel/FxBaseChildTunnel.sol';
+import { FxBaseChildTunnel } from "../tunnel/FxBaseChildTunnel.sol";
 
 interface IContractRegistry {
-    function getAddress(string calldata contractName) external view returns(address);
+    function getAddress(string calldata contractName) external view returns (address);
 }
 
-/** 
+/**
  * @title FxStateChildTunnel
  */
 contract FxStateChildTunnel is FxBaseChildTunnel {
@@ -21,11 +21,11 @@ contract FxStateChildTunnel is FxBaseChildTunnel {
         l2ContractRegistry = IContractRegistry(_l2ContractRegistryAddress);
     }
 
-    function _processMessageFromRoot(uint256 stateId, address sender, bytes memory data)
-        internal
-        override
-        validateSender(sender) {
-
+    function _processMessageFromRoot(
+        uint256 stateId,
+        address sender,
+        bytes memory data
+    ) internal override validateSender(sender) {
         latestStateId = stateId;
         latestRootMessageSender = sender;
         latestData = data;
