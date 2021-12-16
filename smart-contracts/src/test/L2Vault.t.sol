@@ -13,7 +13,7 @@ contract VaultTest is DSTest {
 
     function setUp() public {
         token = new MockERC20("Mock", "MT", 18);
-        vault = new L2Vault(address(0), address(token), 1, 1, address(0));
+        vault = new L2Vault(address(0), address(token), 1, 1, address(0), address(0));
         user = new ERC20User(token);
     }
 
