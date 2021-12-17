@@ -45,9 +45,8 @@ it("Can send and receive TVL info", async () => {
   const ethUSDCContract: Contract = new ethers.Contract(config.l1USDC, usdcABI, governance);
   let tx: ContractTransaction = await ethUSDCContract.transfer(l1Vault.address, initialL1TVL);
   await tx.wait();
-  console.log("transfer completed");
   // Send TVL
-  console.log("getting tvl of vault: ", (await l1Vault.vaultTVL()).toString());
+  console.log("tvl of L1 vault: ", (await l1Vault.vaultTVL()).toString());
   const sendTx: ContractTransaction = await l1Vault.connect(defender).sendTVL();
   console.log("Sending msg to wormhole");
   await sendTx.wait();
