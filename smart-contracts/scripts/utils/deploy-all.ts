@@ -6,45 +6,50 @@ import { deployStagings, StagingContracts } from "./deploy-staging";
 import { address } from "../../utils/types";
 
 export interface AllContracts {
-  contractRegistryContracts: ContractRegistryContracts,
-  fxTunnelContracts: FxTunnelContracts,
-  vaultContracts: VaultContracts,
-  stagingContract: StagingContracts,
+  contractRegistryContracts: ContractRegistryContracts;
+  fxTunnelContracts: FxTunnelContracts;
+  vaultContracts: VaultContracts;
+  stagingContract: StagingContracts;
 }
 
 export async function deployAll(
-    governance: address,
-    defender: address,
-    ethNetworkName: string,
-    polygonNetworkName: string,
-    l1CheckpointManager: address,
-    l1ChainManager: address,
-    l1USDC: address,
-    l1FxTunnel: address,
-    l2USDC: address,
-    l2ERC20Predicate: address,
-    l2FxTunnel: address,
-    create2deployer: address,
+  governance: address,
+  defender: address,
+  ethNetworkName: string,
+  polygonNetworkName: string,
+  l1CheckpointManager: address,
+  l1ChainManager: address,
+  l1USDC: address,
+  l1FxTunnel: address,
+  l2USDC: address,
+  l2ERC20Predicate: address,
+  l2FxTunnel: address,
+  create2deployer: address,
+  ethWormhole: address,
+  polygonWormhole: address,
 ): Promise<AllContracts> {
   const contractRegistryContracts: ContractRegistryContracts = await deployContractRegistry(
-    ethNetworkName, 
+    ethNetworkName,
     polygonNetworkName,
-  )
+  );
   const fxTunnelContracts: FxTunnelContracts = await deployFxBridge(
-    ethNetworkName, 
-    polygonNetworkName, 
-    l1CheckpointManager, 
-    l1FxTunnel, 
-    l2FxTunnel, 
-    contractRegistryContracts
-  )
+    ethNetworkName,
+    polygonNetworkName,
+    l1CheckpointManager,
+    l1FxTunnel,
+    l2FxTunnel,
+    contractRegistryContracts,
+  );
   const vaultContracts: VaultContracts = await deployVaults(
-    ethNetworkName, 
-    l1USDC, 
+    ethNetworkName,
+    l1USDC,
     polygonNetworkName,
     l2USDC,
     governance,
-    contractRegistryContracts)
+    contractRegistryContracts,
+    ethWormhole,
+    polygonWormhole,
+  );
   const stagingContract: StagingContracts = await deployStagings(
     ethNetworkName,
     polygonNetworkName,
@@ -54,11 +59,23 @@ export async function deployAll(
 
   // Initialize Eth contract registry.
   hre.changeNetwork(ethNetworkName);
-  await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress("L1FxTunnel", fxTunnelContracts.L1FxTunnel.address);
-  await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress("L1Vault", vaultContracts.L1VaultContract.address);
+  await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress(
+    "L1FxTunnel",
+    fxTunnelContracts.L1FxTunnel.address,
+  );
+  await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress(
+    "L1Vault",
+    vaultContracts.L1VaultContract.address,
+  );
   await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress("L1USDC", l1USDC);
-  await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress("L1Staging", stagingContract.L1StagingContract.address);
-  await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress("L2Staging", stagingContract.L2StagingContract.address);
+  await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress(
+    "L1Staging",
+    stagingContract.L1StagingContract.address,
+  );
+  await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress(
+    "L2Staging",
+    stagingContract.L2StagingContract.address,
+  );
   await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress("L2ERC20Predicate", l2ERC20Predicate);
   await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress("L1ChainManager", l1ChainManager);
   await contractRegistryContracts.L1ContractRegistry.addOrUpdateAddress("Defender", defender);
@@ -66,20 +83,32 @@ export async function deployAll(
 
   // Initialize polygon contract registry.
   hre.changeNetwork(polygonNetworkName);
-  await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress("L2FxTunnel", fxTunnelContracts.L2FxTunnel.address);
-  await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress("L2Vault", vaultContracts.L2VaultContract.address);
-  await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress("L1Staging", stagingContract.L1StagingContract.address);
-  await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress("L2Staging", stagingContract.L2StagingContract.address)
+  await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress(
+    "L2FxTunnel",
+    fxTunnelContracts.L2FxTunnel.address,
+  );
+  await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress(
+    "L2Vault",
+    vaultContracts.L2VaultContract.address,
+  );
+  await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress(
+    "L1Staging",
+    stagingContract.L1StagingContract.address,
+  );
+  await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress(
+    "L2Staging",
+    stagingContract.L2StagingContract.address,
+  );
   await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress("L2USDC", l2USDC);
   await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress("Defender", defender);
   await contractRegistryContracts.L2ContractRegistry.addOrUpdateAddress("Governance", governance);
 
-  console.log('Initialization done.\n')
+  console.log("Initialization done.\n");
 
   return {
     contractRegistryContracts,
     fxTunnelContracts,
     vaultContracts,
     stagingContract,
-  }
+  };
 }

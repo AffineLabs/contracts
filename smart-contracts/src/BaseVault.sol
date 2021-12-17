@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IStrategy } from "./IStrategy.sol";
+import { IWormhole } from "./interfaces/IWormhole.sol";
 
 abstract contract BaseVault is ERC20 {
     // The address of token we'll take as input to the vault, e.g. USDC
@@ -16,6 +17,9 @@ abstract contract BaseVault is ERC20 {
         require(msg.sender == governance, "Only Governance can call this.");
         _;
     }
+
+    // Wormhole contract for sending/receiving messages
+    IWormhole public wormhole;
     uint8 public constant MAX_STRATEGIES = 10;
     address[MAX_STRATEGIES] public withdrawalQueue;
     struct StrategyInfo {
@@ -61,9 +65,14 @@ abstract contract BaseVault is ERC20 {
     // TODO: Add some events here. Actually log events as well
     event Liquidation(uint256 amountRequested, uint256 amountLiquidated);
 
-    constructor(address governance_, address token_) ERC20("Alpine Save", "AlpSave") {
+    constructor(
+        address governance_,
+        address token_,
+        address wormhole_
+    ) ERC20("Alpine Save", "AlpSave") {
         governance = governance_;
         token = token_;
+        wormhole = IWormhole(wormhole_);
         lastReport = block.timestamp;
     }
 

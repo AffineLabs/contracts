@@ -37,24 +37,6 @@ interface IWormhole {
             bool valid,
             string memory reason
         );
-}
 
-contract DummyReceiver {
-    IWormhole public wormhole;
-    uint256 public tvl;
-
-    constructor(address wormhole_) {
-        wormhole = IWormhole(wormhole_);
-    }
-
-    // This is the VAA we received from a wormhole guardian
-    function receiveMessage(bytes calldata message) public {
-        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
-        require(valid, reason);
-
-        // TODO: check chain ID, emitter address
-
-        // get tvl from payload
-        tvl = abi.decode(vm.payload, (uint256));
-    }
+    function nextSequence(address emitter) external view returns (uint64);
 }

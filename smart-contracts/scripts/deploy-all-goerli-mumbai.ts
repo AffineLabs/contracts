@@ -2,12 +2,11 @@ import { ethers } from "hardhat";
 import { config } from "../utils/config";
 import { AllContracts, deployAll } from "./utils/deploy-all";
 
-
-const ETH_NETWORK_NAME = 'ethGoerli'
-const POLYGON_NETOWRK_NAME = 'polygonMumbai'
+const ETH_NETWORK_NAME = "ethGoerli";
+const POLYGON_NETOWRK_NAME = "polygonMumbai";
 
 async function deployAllGoerliMumbai(): Promise<AllContracts> {
-  const [governance, defender] = await ethers.getSigners()
+  const [governance, defender] = await ethers.getSigners();
   return await deployAll(
     governance.address,
     config.defender,
@@ -21,13 +20,15 @@ async function deployAllGoerliMumbai(): Promise<AllContracts> {
     config.l2ERC20Predicate,
     config.l2FxTunnel,
     config.create2Deployer,
-  )
+    config.l1worm,
+    config.l2worm,
+  );
 }
 
 deployAllGoerliMumbai()
   .then(() => {
-    console.log('All Contracts deployed and initialized!');
-    process.exit(0)
+    console.log("All Contracts deployed and initialized!");
+    process.exit(0);
   })
   .catch((error: Error) => {
     console.error(error);
