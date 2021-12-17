@@ -4,7 +4,7 @@ import { ContractRegistryContracts } from "./deploy-contract-registry";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../../utils/bc-explorer-links";
 import { address } from "../../utils/types";
-import scriptUtils from "../utils";
+import scriptUtils from "./index";
 
 export interface VaultContracts {
   L1VaultContract: Contract;
@@ -18,6 +18,8 @@ export async function deployVaults(
   polygonUSDCAddress: address,
   governance: address,
   contractRegistryContracts: ContractRegistryContracts,
+  ethWormhole: address,
+  polygonWormhole: address,
 ): Promise<VaultContracts> {
   // Deploy vault in eth.
   hre.changeNetwork(ethNetworkName);
@@ -25,6 +27,7 @@ export async function deployVaults(
   const l1Vault: Contract = await l1VaultFactory.deploy(
     governance,
     ethUSDCAddress,
+    ethWormhole,
     contractRegistryContracts.L1ContractRegistry.address,
   );
   await l1Vault.deployed();
@@ -38,6 +41,7 @@ export async function deployVaults(
     polygonUSDCAddress,
     9,
     1,
+    polygonWormhole,
     contractRegistryContracts.L2ContractRegistry.address,
   );
   await l2Vault.deployed();
