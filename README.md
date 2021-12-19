@@ -1,40 +1,106 @@
-# data-pipeline
-Data Collection and Research Pipeline for various data sources
+# Multiplyr Contracts
 
+Uses
 
+- [Hardhat](https://github.com/nomiclabs/hardhat): compile and run the smart contracts on a local development network
+- [TypeChain](https://github.com/ethereum-ts/TypeChain): generate TypeScript types for smart contracts
+- [Ethers](https://github.com/ethers-io/ethers.js/): renowned Ethereum library and wallet implementation
+- [Waffle](https://github.com/EthWorks/Waffle): tooling for writing comprehensive smart contract tests
+- [Solhint](https://github.com/protofire/solhint): linter
+- [Prettier Plugin Solidity](https://github.com/prettier-solidity/prettier-plugin-solidity): code formatter
 
-# Setup
-1. Run `make firstrun` (installs pipenv and all requirements). NOTE: requires python 3.8 setup
-2. Run `make` in the future which only installs pipenv requirements
-3. In the future only change `Pipfile` and discuss with the team about impending changes
-4. <Docker setup instructions here>
+This hardhat project is based on [this template](https://github.com/amanusk/hardhat-template).
 
-# Docker and Testing
-TODO: @Nadim
+## Pre Requisites
 
-# Local testing environment
+### Dapp Tools
 
-Please follow following steps to setup local testing environment.
-1. Install https://skaffold.dev/docs/install/
-2. Install minikube https://minikube.sigs.k8s.io/docs/start/
-3. Start minikube by running `minikube start`
-4. Start Skaffold by running `skaffold dev --port-forward --tail` in this directory.
+- Install Dapptools with these [instructions](https://github.com/dapphub/dapptools#installation). **WARNING**: If you are on an M1 mac you may have a ton of trouble. Try to follow this [gist](https://gist.github.com/kendricktan/8463eb9561f30c521fcb10c4c2c95709). If you're still having trouble, try to join the Dapptools [chat](https://dapphub.chat/).
 
-### Notes
-* After step `4` skaffolld will automatically push containers to local kubernetes cluster (minikube). 
-* Skaffold also watches files of this directory, upon any change  will trigger a docker build.
-* Skaffold won't rebuild all docker images. Change in `web-frontend` directory will only trigger rebuild of docker image corresponding microservice.
-* Skaffold will give a unified stream of log of all microservices in console.
+### Foundry (Optional)
 
-You may see logs like
-> Port forwarding service/backend-api-service in namespace default, remote port 5001 -> 127.0.0.1:5001
+You don't actually need to install this, though it can be used as a replacement for dapptools if you're having trouble with nix.
 
-> Port forwarding service/web-frontend-service in namespace default, remote port 5000 -> 127.0.0.1:5002
+- Install [rust](https://doc.rust-lang.org/cargo/getting-started/installation.html) with
 
-Use the tailing urls (`127.0.0.1:5001`, `127.0.0.1:5002`) to access these service in browser.
+```sh
+curl https://sh.rustup.rs -sSf | sh
+```
 
-# General Good Practices:
-1. NEVER work off of master (unless first commits), make a feature branch
-2. Once you are reasonably done with commits, push to github for a code review
-3. Once we review them, you are good to merge
-2. NEVER commit credentials and add them to the `.gitignore` file
+- Install [foundry](https://github.com/gakonst/foundry) with
+
+```sh
+cargo install --git https://github.com/gakonst/foundry --bin forge --locked
+```
+
+- Install [cast](https://github.com/gakonst/foundry/tree/master/cast) with
+
+```sh
+cargo install --git https://github.com/gakonst/foundry --bin cast
+```
+
+### Hardhat
+
+- Install nvm with these [instructions](https://github.com/nvm-sh/nvm#install--update-script)
+- Install yarn with
+
+```sh
+npm install -g yarn
+```
+
+- Install the dependencies:
+
+```sh
+yarn install
+```
+
+- If using vscode, install the [prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) and [solidity](https://marketplace.visualstudio.com/items?itemName=JuanBlanco.solidity) extensions
+
+## Usage
+
+### Compile
+
+Compile the smart contracts:
+
+```sh
+$ dapp build
+```
+
+### Test
+
+Run the Mocha tests:
+
+```sh
+$ yarn test
+```
+
+Run the solidity tests
+
+```sh
+$ dapp test
+```
+
+### Deploy Vaults
+
+To deploy the Polygon contracts:
+`yarn script scripts/deployPolygon.ts --network <network>`
+
+To deploy the Ethereum contracts:
+`yarn script scripts/deployEth.ts --network <network>`
+
+### Deploy contract to netowrk (requires Mnemonic and infura API key)
+
+```
+yarn script --network rinkeby ./scripts/deploy.ts
+```
+
+### Validate a contract with etherscan (requires API key)
+
+```
+npx hardhat verify --network <network> <DEPLOYED_CONTRACT_ADDRESS> "Constructor argument 1"
+```
+
+### Added plugins
+
+- Gas reporter [hardhat-gas-reporter](https://hardhat.org/plugins/hardhat-gas-reporter.html)
+- Etherscan [hardhat-etherscan](https://hardhat.org/plugins/nomiclabs-hardhat-etherscan.html)

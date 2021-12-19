@@ -1,9 +1,0 @@
-#page-holder {
-  /* background: #fdfff8; */
-  background: rgb(253, 255, 248);
-  background: radial-gradient(
-    circle,
-    rgba(253, 255, 248, 1) 47%,
-    rgba(250, 250, 252, 1) 100%
-  );
-}
