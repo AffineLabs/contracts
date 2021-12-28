@@ -30,8 +30,8 @@ jobs:
         nix_path: nixpkgs=channel:nixos-unstable
 
     - name: Install dapptools
-      run: nix-env -iA dapp -f $(curl -sS https://api.github.com/repos/dapphub/dapptools/releases/latest | jq -r .tarball_url)
-
+      run: curl https://dapp.tools/install | sh
+  
     - name: Include submodules in base repo
       run: git submodule update --init
 
