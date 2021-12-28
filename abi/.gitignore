@@ -1,0 +1,4 @@
+# Avoid committing abi files for now
+# Keep this directory in the repo so abi extractor works
+*
+!.gitignore
