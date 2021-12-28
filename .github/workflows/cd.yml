@@ -12,8 +12,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
-    name: Build SC ABIs and Deploy them to S3 Bucket.
+  workflow:
+    name: Install Dapptools and Hardhat env then upload generated ABIs to S3 bucket.
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
@@ -30,7 +30,7 @@ jobs:
         nix_path: nixpkgs=channel:nixos-unstable
 
     - name: Install dapptools
-      run: curl https://dapp.tools/install | sh
+      run: nix-env -iA dapp -f $(curl -sS https://api.github.com/repos/dapphub/dapptools/releases/latest | jq -r .tarball_url)
 
     - name: Include submodules in base repo
       run: git submodule update --init
@@ -46,6 +46,9 @@ jobs:
 
     - name: Remove .gitignore file in abi/ directory
       run: rm ./abi/.gitignore
+
+    - name: See ABI files
+      run: ls ./abi/
 
     - name: Uploading to S3 bucket
       uses: jakejarvis/s3-sync-action@master
