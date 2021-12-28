@@ -32,6 +32,9 @@ jobs:
     - name: Install dapptools
       run: curl https://dapp.tools/install | sh
 
+    - name: Include submodules in base repo
+      run: git submodule update --init
+
     - name: Build smart contracts with dapptools
       run: dapp build
 
