@@ -1,5 +1,4 @@
 import axios from "axios";
-import hre from "hardhat";
 
 import { ethers } from "hardhat";
 import { BigNumber, Contract } from "ethers";
@@ -40,13 +39,11 @@ export async function waitForL2MessageProof(maticAPIUrl: string, txHash: string,
 }
 
 export async function waitForNonZeroAddressTokenBalance(
-  networkName: string,
   tokenAddres: address,
   tokenABI: any,
   indentifier: string,
   userAddress: address,
 ) {
-  hre.changeNetwork(networkName);
   const polygonUSDCContract: Contract = new ethers.Contract(tokenAddres, tokenABI, ethers.provider);
   const startTime = new Date().getTime();
   while (true) {

@@ -1,215 +1,103 @@
-import { JsonRpcProvider, TransactionReceipt, TransactionResponse } from '@ethersproject/providers';
-import {Contract, ethers, Wallet } from 'ethers';
-import { KeyValueStoreClient } from 'defender-kvstore-client';
-import axios from 'axios';
-require('dotenv').config();
+import { TransactionResponse } from "@ethersproject/providers";
+import { Contract, ethers, Wallet } from "ethers";
+import utils from "../../test/utils";
+import { resolve } from "path";
+import { readFileSync } from "fs";
+require("dotenv").config();
 
-const l1VaultABI = [
-  "function lastTransferBlockNum() view returns(uint256)",
-  "function lastTransferAmount() view returns(uint256)",
-  "function lastClearedTransferBlockNum() view returns(uint256)",
-  "function debtToL2() view returns(uint256)",
-  "function lastClearedL2TransferBlockNum() view returns(uint256)",
-  "function vaultTVL() view returns (uint256)",
-  "function l2Rebalance()",
-]
-const l2VaultABI = [
-  "function lastTransferBlockNum() view returns(uint256)",
-  "function lastTransferAmount() view returns(uint256)",
-  "function lastClearedTransferBlockNum() view returns(uint256)",
-  "function lastClearedL1TransferBlockNum() view returns(uint256)",
-  "function setL1TVL(uint256)",
-  "function L1L2Rebalance()",
-]
-const contractRegistryABI = [
-  "function getAddress(string) view returns(address)",
-]
-const l1StagingABI = [
-  "function l1Exit(uint256, uint256, bytes)",
-]
-const l2StagingABI = [
-  "function l2Withdraw(uint256)",
-  "function l2ClearFund(uint256, uint256)",
-]
-const usdcABI = [
-  "function balanceOf(address) view returns(uint256)"
-]
+const abiDir = resolve(__dirname, "../../abi");
+const l1VaultABI = JSON.parse(readFileSync(`${abiDir}/L1Vault.abi`).toString());
+const l2VaultABI = JSON.parse(readFileSync(`${abiDir}/L2Vault.abi`).toString());
 
-const l1FxTunnelABI = [
-  "function receiveMessage(bytes)"
-]
-
-async function tryTx(name: string, ptx: Promise<TransactionResponse>): Promise<string> {
-  try {
-    let tx = await ptx;
-    await tx.wait();
-    console.log(`Tx ${name} succeeded with tx-hash:`, tx.hash);
-    return tx.hash;
-  } catch (e) {
-    console.log(`Tx ${name} failed with error:`, e);
-    return undefined;
-  }
-}
-
-export async function getProof(
-  maticAPIUrl: string, 
-  txHash: string,
-  eventSig: string,
-): Promise<string> {
-  const url = `${maticAPIUrl}/exit-payload/${txHash}?eventSignature=${eventSig}`
-  type MaticAPIResponse = {
-    error: boolean
-    message: string
-    result: string
-  }
-  try {
-    const resp = await axios.get<MaticAPIResponse>(url);
-    const proofObj = resp.data
-    if ('result' in proofObj && !('error' in proofObj)) {
-      return proofObj.result
-    }
-  } catch(err) {
-    return undefined
-  }
-}
+const stagingABI = JSON.parse(readFileSync(`${abiDir}/Staging.abi`).toString());
+const wormholeABI = JSON.parse(readFileSync(`${abiDir}/IWormhole.abi`).toString());
+const usdcABI = ["function balanceOf(address) view returns(uint256)"];
 
 // Entrypoint for the Autotask
 export async function handler(event: any) {
-  console.log(event.isLocal ? 'Running in local Environment.' : 'Running in Autotask Environment.')
-  const {
-    mnemonic, 
-    ethAlchemyURL, 
-    polygonAlchemyURL,
-    l1ContractRegistryAddress,
-    l2ContractRegistryAddress,
-  } = event.secrets;
-  const goerliProvider: JsonRpcProvider = new ethers.providers.JsonRpcProvider(ethAlchemyURL);
-  const mumbaiProvider: JsonRpcProvider = new ethers.providers.JsonRpcProvider(polygonAlchemyURL);
+  console.log(event.isLocal ? "Running in local Environment." : "Running in Autotask Environment.");
+  const { l1VaultAddr, l2VaultAddr, mnemonic, ethAlchemyURL, polygonAlchemyURL } = event.secrets;
+  const goerliProvider = new ethers.providers.JsonRpcProvider(ethAlchemyURL);
+  const mumbaiProvider = new ethers.providers.JsonRpcProvider(polygonAlchemyURL);
 
-  const goerliWallet: Wallet = Wallet.fromMnemonic(mnemonic).connect(goerliProvider);
-  const mumbaiWallet: Wallet = Wallet.fromMnemonic(mnemonic).connect(mumbaiProvider);
+  const goerliWallet = Wallet.fromMnemonic(mnemonic).connect(goerliProvider);
+  const mumbaiWallet = Wallet.fromMnemonic(mnemonic).connect(mumbaiProvider);
 
-  console.log('Defender address:', goerliWallet.address);
-  
-  const l1ContractRegistry: Contract = new Contract(l1ContractRegistryAddress, contractRegistryABI, goerliWallet);
-  const l2ContractRegistry: Contract = new Contract(l2ContractRegistryAddress, contractRegistryABI, mumbaiWallet);
-  
-  const l1Vault: Contract = new Contract(await l1ContractRegistry.getAddress('L1Vault'), l1VaultABI, goerliWallet);
-  const l2Vault: Contract = new Contract(await l2ContractRegistry.getAddress('L2Vault'), l2VaultABI, mumbaiWallet);
+  console.log("Defender address:", goerliWallet.address);
 
-  const l1USDC: Contract = new Contract(await l1ContractRegistry.getAddress('L1USDC'), usdcABI, goerliWallet);
-  const l2USDC: Contract = new Contract(await l2ContractRegistry.getAddress('L2USDC'), usdcABI, mumbaiWallet);
+  const l1Vault = new Contract(l1VaultAddr, l1VaultABI, goerliWallet);
+  const l2Vault = new Contract(l2VaultAddr, l2VaultABI, mumbaiWallet);
 
-  const l1Staging: Contract = new Contract(await l1ContractRegistry.getAddress('L1Staging'), l1StagingABI, goerliWallet);
-  const l2Staging: Contract = new Contract(await l2ContractRegistry.getAddress('L2Staging'), l2StagingABI, mumbaiWallet);
-  
-  let l1VaultTVL = await l1Vault.vaultTVL();
-  let l1LastClearedL2TransferBlockNum = await l1Vault.lastClearedL2TransferBlockNum();
-  let l2LastClearedL1TransferBlockNum = await l2Vault.lastClearedL1TransferBlockNum();
-  let l1LastClearedTransferBlockNum = await l1Vault.lastClearedTransferBlockNum();
-  let l2LastClearedTransferBlockNum = await l2Vault.lastClearedTransferBlockNum();
+  // Initiate possible rebalance
+  let tx: TransactionResponse = await l1Vault.sendTVL();
+  await tx.wait();
 
-  await tryTx("l2Vault.setL1TVL()", l2Vault.setL1TVL(l1VaultTVL));
-  if (!l1LastClearedTransferBlockNum.eq(l2LastClearedL1TransferBlockNum)) {
-    await tryTx(
-      "l1Vault.setlastClearedTransferBlockNum()", 
-      l1Vault.setlastClearedTransferBlockNum(l2LastClearedL1TransferBlockNum)
+  // Receive TVL
+  const l2wormhole = new Contract(await l1Vault.wormhole(), wormholeABI, goerliWallet);
+  const l1wormhole = new Contract(await l2Vault.wormhole(), wormholeABI, goerliWallet);
+
+  let l1VaultSeq = await l1wormhole.nextSequence(l1Vault.address);
+  const tvlVAA = await utils.getVAA(l1Vault.address, String(l1VaultSeq - 1), 2);
+  tx = await l2Vault.receiveTVL(tvlVAA);
+  await tx.wait();
+
+  const l1Staging: Contract = new Contract(await l1Vault.staging(), stagingABI, goerliWallet);
+  const l2Staging: Contract = new Contract(await l2Vault.staging(), stagingABI, mumbaiWallet);
+
+  // If L2->L1 bridge is locked, then wait for transfer to complete and clear funds on L1
+  // otherwise receive message on L1
+
+  const sendingMoneyToL1 = !(await l2Vault.canTransferToL1());
+  if (sendingMoneyToL1) {
+    const messageProof = await utils.waitForL2MessageProof(
+      "https://apis.matic.network/api/v1/mumbai",
+      tx.hash,
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", // ERC20 transfer event sig.
     );
-  }
-  if (!l2LastClearedTransferBlockNum.eq(l1LastClearedL2TransferBlockNum)) {
-    await tryTx(
-      "l2Vault.setlastClearedTransferBlockNum()", 
-      l2Vault.setlastClearedTransferBlockNum(l1LastClearedL2TransferBlockNum)
-    );
-  }
-  
-  l1LastClearedTransferBlockNum = await l1Vault.lastClearedTransferBlockNum();
-  l2LastClearedTransferBlockNum = await l2Vault.lastClearedTransferBlockNum();
+    // Get VAA
+    let l2VaultSeq = await l2wormhole.nextSequence(l2Vault.address);
+    const transferVAA = await utils.getVAA(l2Vault.address, String(l2VaultSeq - 1), 5);
 
-  let l1LastTransferBlockNum = await l1Vault.lastTransferBlockNum();
-  let l1VaultDebtToL2 = await l1Vault.debtToL2();
-  // If there is debt and bridge is unlocked.
-  if (!l1VaultDebtToL2.isZero() && l1LastTransferBlockNum.eq(l1LastClearedTransferBlockNum)) {
-    await tryTx("l2Vault.l2Rebalance()", l2Vault.l2Rebalance());
-  }
-  
-  // Clear fund in L2 stging contract if there is some USDC.
-  const l2StagingUSDCBalance = await l2USDC.balanceOf(l2Staging.address);
-  const l1LastTransferAmount = await l1Vault.lastTransferAmount();
-  l1LastTransferBlockNum = await l1Vault.lastTransferBlockNum();
-  if (l2StagingUSDCBalance.gte(l1LastTransferAmount) && !l1LastTransferAmount.isZero()) {
-    await tryTx("l2Staging.l2ClearFund()", l2Staging.l2ClearFund(l1LastTransferBlockNum, l1LastTransferAmount));
-  }
+    // Post VAA to clear funds
+    tx = await l1Staging.l1ClearFund(transferVAA, ethers.utils.arrayify(messageProof));
+    await tx.wait();
+  } else {
+    // L2 just sent an amount request to L1, receive this message here
+    let l2VaultSeq = await l2wormhole.nextSequence(l2Vault.address);
+    const requestVAA = await utils.getVAA(l2Vault.address, String(l2VaultSeq - 1), 5);
 
-  let store = new KeyValueStoreClient(event.isLocal ? { path: './store.json' } : event);
+    tx = await l1Vault.receiveMessage(requestVAA);
+    await tx.wait();
+    console.log("Received request from L2 on L1. Transfer from L1 to L2 initiated.");
 
-  // Clear fund in L1 staging if USDC burn tx is checkpointed.
-  const l2USDCBurnTxHash = await store.get(`${l1Vault.address}-usdc-burn-tx`);
-  if (l2USDCBurnTxHash) {
-    const proof = await getProof('https://apis.matic.network/api/v1/mumbai',
-      l2USDCBurnTxHash,
-      '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', // ERC20 transfer event sig.
-    );
-    if (proof) {
-      await tryTx(
-        'l1Staging.l1Exit()',
-        l1Staging.l1Exit(
-          await l2Vault.lastTransferBlockNum(), 
-          await l2Vault.lastTransferAmount(), 
-          ethers.utils.arrayify(proof)
-        )
-      )
-      store.del(`${l1Vault.address}-usdc-burn-tx`)
-    }
-  }
-  // Relay message proof if checkpointed.
-  const l2MessageBurnTxHash = await store.get(`${l1Vault.address}-message-burn-tx`);
-  if (l2MessageBurnTxHash) {
-    const proof = await getProof('https://apis.matic.network/api/v1/mumbai',
-    l2MessageBurnTxHash,
-      '0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036', // MSG event sig.
-    );
-    if (proof) {
-      const l1FxTunnel: Contract = new Contract(
-        await l1ContractRegistry.getAddress('L1FxTunnel'), 
-        l1FxTunnelABI,
-        goerliWallet,
-      )
-      await tryTx(
-        'l1FxTunnel.receiveMessage()',
-        l1FxTunnel.receiveMessage(ethers.utils.arrayify(proof))
-      )
-      store.del(`${l1Vault.address}-message-burn-tx`)
-    }
-  }
-  // Trigger rebalance L1 <> L2.
-  const txHash = await tryTx("l2Vault.L1L2Rebalance()", l2Vault.L1L2Rebalance());
-  if (txHash) {
-    const sendFundToL1Topic = ethers.utils.id("SendFundToL1(uint256)")
-    const receiveFundFromL1Topic = ethers.utils.id("ReceiveFundFromL1(uint256)")
-    const txr: TransactionReceipt = await mumbaiProvider.getTransactionReceipt(txHash);
-    if (txr.logs.length) {
-      if (sendFundToL1Topic in txr.logs[0].topics) {
-        store.put(`${l1Vault.address}-usdc-burn-tx`, txHash);
-      } else if (receiveFundFromL1Topic in txr.logs[0].topics) {
-        store.put(`${l1Vault.address}-message-burn-tx`, txHash);
-      }
-    }
+    // L1 just sent money along with a message to L2
+    // Wait for money to hit staging, then use message to clear funds from staging to l2 vault
+    await utils.waitForNonZeroAddressTokenBalance(await l2Vault.token(), usdcABI, "L2 Staging", l2Staging.address);
+    console.log("\n\nStaging contract has received funds. Getting transfer VAA from L1 Vault");
+    let l1VaultSeq = await l1wormhole.nextSequence(l1Vault.address);
+    const transferVAA = await utils.getVAA(l1Vault.address, String(l1VaultSeq - 1), 2);
+
+    console.log("Clearing funds from staging");
+    tx = await l2Staging.l2ClearFund(transferVAA);
+    await tx.wait();
   }
 }
 
 // To run locally (this code will not be executed in Autotasks)
 if (require.main === module) {
-  handler({ 
-    secrets: { 
+  handler({
+    secrets: {
       ethAlchemyURL: process.env.ETH_ALCHEMY_URL,
       polygonAlchemyURL: process.env.POLYGON_ALCHEMY_URL,
       mnemonic: process.env.MNEMONIC,
-      l1ContractRegistryAddress: process.env.L1_CONTRACT_REGISTRY,
-      l2ContractRegistryAddress: process.env.L2_CONTRACT_REGISTRY,
+      l1VaultAddr: process.env.L1_VAULT_ADDR,
+      l2VaultAddr: process.env.L2_VAULT_ADDR,
     },
     isLocal: true,
   })
-  .then(() => process.exit(0))
-  .catch((error: Error) => { console.error(error); process.exit(1); });
+    .then(() => process.exit(0))
+    .catch((error: Error) => {
+      console.error(error);
+      process.exit(1);
+    });
 }

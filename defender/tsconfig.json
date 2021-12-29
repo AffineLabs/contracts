@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "rootDir": "../",
     "outDir": "./dist/",
     "noImplicitAny": true,
     "target": "es2017",
