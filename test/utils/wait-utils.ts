@@ -1,6 +1,6 @@
 import axios from "axios";
 
-import { ethers } from "hardhat";
+import { ethers } from "ethers";
 import { BigNumber, Contract } from "ethers";
 import { address } from "../../utils/types";
 
@@ -43,8 +43,9 @@ export async function waitForNonZeroAddressTokenBalance(
   tokenABI: any,
   indentifier: string,
   userAddress: address,
+  provider: ethers.providers.Provider,
 ) {
-  const polygonUSDCContract: Contract = new ethers.Contract(tokenAddres, tokenABI, ethers.provider);
+  const polygonUSDCContract: Contract = new ethers.Contract(tokenAddres, tokenABI, provider);
   const startTime = new Date().getTime();
   while (true) {
     await sleep(60000);

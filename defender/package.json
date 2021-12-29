@@ -2,11 +2,9 @@
   "name": "alpine-defender",
   "version": "1.0.0",
   "description": "Alpine defender bot",
-  "source": "src/index.ts",
-  "main": "dist/index.js",
   "scripts": {
-    "build": "yarn rollup -c",
-    "start": "ts-node src/index.ts"
+    "build": "rm -rf dist && yarn rollup -c && cp -r ../abi dist/",
+    "start": "ts-node index.ts"
   },
   "keywords": [],
   "author": "",
@@ -16,8 +14,10 @@
     "@rollup/plugin-json": "^4.1.0",
     "@rollup/plugin-node-resolve": "^13.1.1",
     "@rollup/plugin-typescript": "^8.3.0",
+    "@rollup/plugin-wasm": "^5.1.2",
     "@types/node": "^14.14.10",
     "builtin-modules": "^3.2.0",
+    "defender-autotask-client": "^1.12.1",
     "rollup": "^2.62.0",
     "ts-node": "^9.0.0",
     "typescript": "^4.1.2"

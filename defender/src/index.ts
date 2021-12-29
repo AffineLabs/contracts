@@ -5,7 +5,7 @@ import { resolve } from "path";
 import { readFileSync } from "fs";
 require("dotenv").config();
 
-const abiDir = resolve(__dirname, "../../abi");
+const abiDir = resolve(__dirname, "./abi");
 const l1VaultABI = JSON.parse(readFileSync(`${abiDir}/L1Vault.abi`).toString());
 const l2VaultABI = JSON.parse(readFileSync(`${abiDir}/L2Vault.abi`).toString());
 
@@ -41,8 +41,8 @@ export async function handler(event: any) {
   tx = await l2Vault.receiveTVL(tvlVAA);
   await tx.wait();
 
-  const l1Staging: Contract = new Contract(await l1Vault.staging(), stagingABI, goerliWallet);
-  const l2Staging: Contract = new Contract(await l2Vault.staging(), stagingABI, mumbaiWallet);
+  const l1Staging = new Contract(await l1Vault.staging(), stagingABI, goerliWallet);
+  const l2Staging = new Contract(await l2Vault.staging(), stagingABI, mumbaiWallet);
 
   // If L2->L1 bridge is locked, then wait for transfer to complete and clear funds on L1
   // otherwise receive message on L1
@@ -72,7 +72,13 @@ export async function handler(event: any) {
 
     // L1 just sent money along with a message to L2
     // Wait for money to hit staging, then use message to clear funds from staging to l2 vault
-    await utils.waitForNonZeroAddressTokenBalance(await l2Vault.token(), usdcABI, "L2 Staging", l2Staging.address);
+    await utils.waitForNonZeroAddressTokenBalance(
+      await l2Vault.token(),
+      usdcABI,
+      "L2 Staging",
+      l2Staging.address,
+      goerliProvider,
+    );
     console.log("\n\nStaging contract has received funds. Getting transfer VAA from L1 Vault");
     let l1VaultSeq = await l1wormhole.nextSequence(l1Vault.address);
     const transferVAA = await utils.getVAA(l1Vault.address, String(l1VaultSeq - 1), 2);
