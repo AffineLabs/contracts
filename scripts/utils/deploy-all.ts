@@ -1,5 +1,4 @@
 import { deployVaults, VaultContracts } from "./deploy-vaults";
-import hre from "hardhat";
 import { address } from "../../utils/types";
 import { Config } from "../../utils/config";
 

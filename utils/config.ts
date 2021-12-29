@@ -42,3 +42,29 @@ export const config: Config = {
   l1worm: ETH_WORMHOLE,
   l2worm: POLYGON_WORMHOLE,
 };
+
+export interface RebalanceConfig {
+  ethAlchemyURL: string;
+  polygonAlchemyURL: string;
+  mnemonic: string;
+  l1VaultAddr: address;
+  l2VaultAddr: address;
+}
+
+const ethAlchemyURL = process.env.ETH_ALCHEMY_URL || "";
+const polygonAlchemyURL = process.env.POLYGON_ALCHEMY_URL || "";
+const mnemonic = process.env.MNEMONIC || "";
+const l1VaultAddr = process.env.L1_VAULT_ADDR || "";
+const l2VaultAddr = process.env.L2_VAULT_ADDR || "";
+
+export const REBALANCE_CONFIG: RebalanceConfig = {
+  ethAlchemyURL,
+  polygonAlchemyURL,
+  mnemonic,
+  l1VaultAddr,
+  l2VaultAddr,
+};
+
+Object.entries(REBALANCE_CONFIG).map(([key, val]) => {
+  if (val === "") throw Error(`${key} may not be empty. Check .env file`);
+});

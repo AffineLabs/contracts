@@ -90,11 +90,11 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
   console.log("L2 staging address: ", l2Staging.address);
 
   await utils.waitForNonZeroAddressTokenBalance(
-    POLYGON_NETWORK_NAME,
     config.l2USDC,
     usdcABI,
     "L2 Staging",
     l2Staging.address,
+    ethers.provider,
   );
   console.log("\n\nStaging contract has received funds. Getting transfer VAA from L1 Vault");
 
