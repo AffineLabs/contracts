@@ -2,25 +2,20 @@ import { ethers } from "hardhat";
 import { config as dotenvConfig } from "dotenv";
 import { resolve } from "path";
 import scriptUtils from "./utils";
+import { config } from "../utils/config";
 
 dotenvConfig({ path: resolve(__dirname, "./.env") });
 
 async function deployAAVE(): Promise<any> {
-  const [deployer] = await ethers.getSigners();
+  let [deployer] = await ethers.getSigners();
 
-  const l2VaultFactory = await scriptUtils.getContractFactory("L2Vault", deployer);
-  // Hardcoding kovan values, TODO: remove
-  const l2Vault = await l2VaultFactory.deploy(
-    deployer.address,
-    "0xe22da380ee6b445bb8273c81944adeb6e8450422",
-    9,
-    1,
-    deployer.address,
-  );
-  await l2Vault.deployed();
-  console.log("vault done");
+  // Using address of USDC compatible with AAVE on mumbai
+  const myConfig = { ...config };
+  myConfig.l2USDC = "0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e";
+  const vaultContracts = await scriptUtils.deployVaults(deployer.address, "ethGoerli", "polygonMumbai", myConfig);
 
-  // A fake incentives controller, no real one exists on kovan
+  // A fake incentives controller, no real one exists on mumbai
+  [deployer] = await ethers.getSigners();
   const dummyFactory = await scriptUtils.getContractFactory("DummyIncentivesController", deployer);
   const dummyIncentives = await dummyFactory.deploy();
   await dummyIncentives.deployed();
@@ -28,13 +23,14 @@ async function deployAAVE(): Promise<any> {
 
   const stratFactory = await scriptUtils.getContractFactory("L2AAVEStrategy", deployer);
 
+  // Hardcoding mumbai values
   const strategy = await stratFactory.deploy(
-    l2Vault.address,
-    "0x1E40B561EC587036f9789aF83236f057D1ed2A90", // aave adress provider registry
+    vaultContracts.l2Vault.address,
+    "0xE6ef11C967898F9525D550014FDEdCFAB63536B5", // aave adress provider registry
     dummyIncentives.address,
-    "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff", // quickswap -> these are polygon addresses that won't be used
-    "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", // wrapped matic -> as above
-    "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+    "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff", // quickswap -> these are polygon mainnet addresses that won't be used
+    "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", // reward token -> wrapped matic -> as above
+    "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", // wrapped matic address
   );
   console.log("strategy address: ", strategy.address);
   await strategy.deployed();

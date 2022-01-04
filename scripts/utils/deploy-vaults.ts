@@ -46,7 +46,6 @@ export async function deployVaults(
     deployer.address,
     config.l1ChainManager,
     config.l2ERC20Predicate,
-    { gasLimit: 10_000_000 },
   );
   await l1Vault.deployed();
   logContractDeploymentInfo(ethNetworkName, "L1Vault", l1Vault);
