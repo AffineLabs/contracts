@@ -23,6 +23,6 @@ export async function getContractFactory(contractName: string, signer?: ethers.S
     // NOTE: the cwd for this search is process.cwd() so this will only work when script is run from smart-contracts/
     const contractPath = glob.sync(`src/**/${contractName}.sol`, {})[0];
     artifact = raw.contracts[contractPath][contractName];
-    return new ethers.ContractFactory(artifact.abi, artifact.evm.bytecode, signer);
+    return new ethers.ContractFactory(artifact.abi, artifact.evm.bytecode.object, signer);
   }
 }
