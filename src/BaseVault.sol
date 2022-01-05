@@ -7,6 +7,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IStrategy } from "./IStrategy.sol";
 import { IWormhole } from "./interfaces/IWormhole.sol";
+import { IStaging } from "./interfaces/IStaging.sol";
 import { Staging } from "./Staging.sol";
 
 interface ICreate2Deployer {
@@ -17,14 +18,6 @@ interface ICreate2Deployer {
     ) external returns (address);
 
     function computeAddress(bytes32 salt, bytes32 codeHash) external view returns (address);
-}
-
-interface IStaging {
-    function initialize(
-        address vault,
-        address wormhole,
-        address token
-    ) external;
 }
 
 abstract contract BaseVault is ERC20 {
