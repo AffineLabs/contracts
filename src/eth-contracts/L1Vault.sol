@@ -1,22 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import { BaseVault } from "../BaseVault.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IWormhole } from "../interfaces/IWormhole.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-interface IRootChainManager {
-    function depositFor(
-        address user,
-        address rootToken,
-        bytes calldata depositData
-    ) external;
-}
-
-interface IStaging {
-    function initializeL1(address manager) external;
-}
+import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
+import { IWormhole } from "../interfaces/IWormhole.sol";
+import { IStaging } from "../interfaces/IStaging.sol";
+import { BaseVault } from "../BaseVault.sol";
 
 contract L1Vault is BaseVault {
     /////// Cross chain rebalancing
