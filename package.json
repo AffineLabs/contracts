@@ -1,5 +1,5 @@
 {
-  "name": "multiplyr-smart-contracts",
+  "name": "alpine-smart-contracts",
   "version": "0.0.1",
   "description": "Alpine Ethereum and Matic smart contracts",
   "main": "index.js",
@@ -13,7 +13,7 @@
     "types": "yarn typechain --target ethers-v5 --out-dir typechain/ ./abi/*.abi",
     "postinstall": "yarn build && yarn abi && yarn types"
   },
-  "author": "Multiplyr",
+  "author": "Alpine",
   "license": "MIT",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",

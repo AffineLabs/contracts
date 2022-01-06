@@ -4,7 +4,6 @@ pragma solidity ^0.8.9;
 import { BaseStrategy } from "../BaseStrategy.sol";
 
 import { SafeERC20, IERC20, Address } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -21,7 +20,6 @@ interface ILendingPoolAddressesProviderRegistry {
 contract L2AAVEStrategy is BaseStrategy {
     using SafeERC20 for IERC20;
     using Address for address;
-    using SafeMath for uint256;
 
     // AAVE protocol contracts
     IAaveIncentivesController public immutable incentivesController;
@@ -83,17 +81,17 @@ contract L2AAVEStrategy is BaseStrategy {
 
         // account for profit / losses
         uint256 totalDebt = vault.strategies(address(this)).totalDebt;
-        uint256 totalAssets = balanceOfWant().add(balanceOfAToken());
+        uint256 totalAssets = balanceOfWant() + balanceOfAToken();
 
         if (totalDebt > totalAssets) {
-            _loss = totalDebt.sub(totalAssets);
+            _loss = totalDebt - totalAssets;
         } else {
-            _profit = totalAssets.sub(totalDebt);
+            _profit = totalAssets - totalDebt;
         }
 
         // free funds to repay debt + profit to the strategy
         uint256 amountAvailable = balanceOfWant();
-        uint256 amountRequired = _debtOutstanding.add(_profit);
+        uint256 amountRequired = _debtOutstanding + _profit;
 
         if (amountRequired > amountAvailable) {
             // we need to free funds
@@ -104,8 +102,8 @@ contract L2AAVEStrategy is BaseStrategy {
             if (amountAvailable >= amountRequired) {
                 _debtPayment = _debtOutstanding;
                 // profit remains unchanged unless there is not enough to pay it
-                if (amountRequired.sub(_debtPayment) < _profit) {
-                    _profit = amountRequired.sub(_debtPayment);
+                if (amountRequired - _debtPayment < _profit) {
+                    _profit = amountRequired - _debtPayment;
                 }
             } else {
                 // we were not able to free enough funds
@@ -119,14 +117,14 @@ contract L2AAVEStrategy is BaseStrategy {
                     // NOTE: amountRequired is always equal or greater than _debtOutstanding
                     // important to use amountRequired just in case amountAvailable is > amountAvailable
                     _debtPayment = _debtOutstanding;
-                    _profit = amountAvailable.sub(_debtPayment);
+                    _profit = amountAvailable - _debtPayment;
                 }
             }
         } else {
             _debtPayment = _debtOutstanding;
             // profit remains unchanged unless there is not enough to pay it
-            if (amountRequired.sub(_debtPayment) < _profit) {
-                _profit = amountRequired.sub(_debtPayment);
+            if (amountRequired - _debtPayment < _profit) {
+                _profit = amountRequired - _debtPayment;
             }
         }
     }
@@ -134,14 +132,14 @@ contract L2AAVEStrategy is BaseStrategy {
     function adjustPosition(uint256 _debtOutstanding) internal override {
         uint256 wantBalance = balanceOfWant();
 
-        if (wantBalance > _debtOutstanding && wantBalance.sub(_debtOutstanding) > minWant) {
-            _depositWant(wantBalance.sub(_debtOutstanding));
+        if (wantBalance > _debtOutstanding && wantBalance - _debtOutstanding > minWant) {
+            _depositWant(wantBalance - _debtOutstanding);
             return;
         }
 
         if (_debtOutstanding > wantBalance) {
             // we should free funds
-            uint256 amountRequired = _debtOutstanding.sub(wantBalance);
+            uint256 amountRequired = _debtOutstanding - wantBalance;
 
             // NOTE: vault will take free funds during the next harvest
             _freeFunds(amountRequired);
@@ -162,12 +160,12 @@ contract L2AAVEStrategy is BaseStrategy {
         }
 
         // we need to free funds
-        uint256 amountRequired = _amountNeeded.sub(wantBalance);
+        uint256 amountRequired = _amountNeeded - wantBalance;
         uint256 freeAssets = _freeFunds(amountRequired);
 
         if (_amountNeeded > freeAssets) {
             _liquidatedAmount = freeAssets;
-            uint256 diff = _amountNeeded.sub(_liquidatedAmount);
+            uint256 diff = _amountNeeded - _liquidatedAmount;
             if (diff <= minWant) {
                 _loss = diff;
             }
@@ -185,16 +183,16 @@ contract L2AAVEStrategy is BaseStrategy {
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {
-        uint256 balanceExcludingRewards = balanceOfWant().add(balanceOfAToken());
+        uint256 balanceExcludingRewards = balanceOfWant() + balanceOfAToken();
 
         // if we don't have a position, don't worry about rewards
         if (balanceExcludingRewards < minWant) {
             return balanceExcludingRewards;
         }
 
-        uint256 rewards = estimatedRewardsInWant().mul(MAX_BPS.sub(PESSIMISM_FACTOR)).div(MAX_BPS);
+        uint256 rewards = (estimatedRewardsInWant() * (MAX_BPS - PESSIMISM_FACTOR)) / MAX_BPS;
 
-        return balanceExcludingRewards.add(rewards);
+        return balanceExcludingRewards + rewards;
     }
 
     function estimatedRewardsInWant() public view returns (uint256) {
@@ -205,7 +203,7 @@ contract L2AAVEStrategy is BaseStrategy {
         if (rewardToken == address(want)) {
             return pendingRewards;
         } else {
-            return tokenToWant(rewardToken, rewardTokenBalance.add(pendingRewards));
+            return tokenToWant(rewardToken, rewardTokenBalance + pendingRewards);
         }
     }
 
