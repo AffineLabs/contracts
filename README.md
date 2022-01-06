@@ -27,7 +27,7 @@ You don't actually need to install this, though it can be used as a replacement 
 curl https://sh.rustup.rs -sSf | sh
 ```
 
-- Install [foundry](https://github.com/gakonst/foundry) with
+- Install [forge](https://github.com/gakonst/foundry) with
 
 ```sh
 cargo install --git https://github.com/gakonst/foundry --bin forge --locked
@@ -63,7 +63,7 @@ yarn install
 Compile the smart contracts:
 
 ```sh
-$ dapp build
+$ yarn build
 ```
 
 ### Test
@@ -71,13 +71,13 @@ $ dapp build
 Run the Mocha tests:
 
 ```sh
-$ yarn test
+$ yarn test-hh path/to/test
 ```
 
 Run the solidity tests
 
 ```sh
-$ dapp test
+$ yarn test
 ```
 
 ### Deploy Vaults

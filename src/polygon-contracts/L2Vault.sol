@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IStrategy } from "../IStrategy.sol";
 import { BaseVault } from "../BaseVault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { Staging } from "../Staging.sol";
+import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 
 interface IChildERC20 {
     function withdraw(uint256 amount) external;
@@ -39,9 +39,9 @@ contract L2Vault is BaseVault {
 
     constructor(
         address _governance,
-        address _token,
-        address _wormhole,
-        address create2Deployer,
+        ERC20 _token,
+        IWormhole _wormhole,
+        ICreate2Deployer create2Deployer,
         uint256 L1Ratio,
         uint256 L2Ratio
     ) BaseVault(_governance, _token, _wormhole, create2Deployer) {
@@ -55,12 +55,12 @@ contract L2Vault is BaseVault {
         _issueSharesForAmount(user, amountToken);
 
         // transfer usdc to this contract
-        IERC20(token).transferFrom(user, address(this), amountToken);
+        token.transferFrom(user, address(this), amountToken);
     }
 
     function _issueSharesForAmount(address user, uint256 amountToken) internal {
         uint256 numShares;
-        uint256 totalTokens = totalSupply();
+        uint256 totalTokens = totalSupply;
         if (totalTokens == 0) {
             numShares = amountToken;
         } else {
@@ -76,25 +76,25 @@ contract L2Vault is BaseVault {
 
     // TODO: handle access control, re-entrancy
     function withdraw(address user, uint256 shares) external {
-        require(shares <= balanceOf(user), "Cannot burn more shares than owned");
+        require(shares <= balanceOf[user], "Cannot burn more shares than owned");
 
         uint256 valueOfShares = _getShareValue(shares);
 
         // TODO: handle case where the user is trying to withdraw more value than actually exists in the vault
-        if (valueOfShares > IERC20(token).balanceOf(address(this))) {}
+        if (valueOfShares > token.balanceOf(address(this))) {}
 
         // burn
         _burn(user, shares);
 
         // transfer usdc out
-        IERC20(token).transfer(user, valueOfShares);
+        token.transfer(user, valueOfShares);
     }
 
     function _getShareValue(uint256 shares) internal view returns (uint256) {
         // The price of the vault share (e.g. alpSave).
         // This is a ratio of share/token, i.e. the numbers of shares for single wei of the input token
 
-        uint256 totalShares = totalSupply();
+        uint256 totalShares = totalSupply;
         if (totalShares == 0) {
             return shares;
         } else {
@@ -150,7 +150,7 @@ contract L2Vault is BaseVault {
             // Increase balance of `token` to `delta` by withdrawing from strategies.
             // Then transfer `amount` of `token` to L1.
             _liquidate(amount);
-            uint256 amountToSend = Math.min(IERC20(token).balanceOf(address(this)), amount);
+            uint256 amountToSend = Math.min(token.balanceOf(address(this)), amount);
             _transferToL1(amountToSend);
         } else {
             // Send message to L1 telling us how much should be transferred to this vault
@@ -161,7 +161,7 @@ contract L2Vault is BaseVault {
     // TODO: liquidate properly
     function _transferToL1(uint256 amount) internal {
         // Send token
-        IChildERC20(token).transfer(staging, amount);
+        token.transfer(staging, amount);
         Staging(staging).l2Withdraw(amount);
         emit SendToL1(amount);
 

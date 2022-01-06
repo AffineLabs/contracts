@@ -1,28 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import { IStrategy } from "./IStrategy.sol";
 import { IWormhole } from "./interfaces/IWormhole.sol";
 import { IStaging } from "./interfaces/IStaging.sol";
 import { Staging } from "./Staging.sol";
-
-interface ICreate2Deployer {
-    function deploy(
-        uint256 value,
-        bytes32 salt,
-        bytes memory code
-    ) external returns (address);
-
-    function computeAddress(bytes32 salt, bytes32 codeHash) external view returns (address);
-}
+import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
 
 abstract contract BaseVault is ERC20 {
     // The address of token we'll take as input to the vault, e.g. USDC
-    address public immutable token;
+    ERC20 public immutable token;
 
     address public governance;
     modifier onlyGovernance() {
@@ -81,27 +71,23 @@ abstract contract BaseVault is ERC20 {
 
     constructor(
         address _governance,
-        address _token,
-        address _wormhole,
-        address create2Deployer
-    ) ERC20("Alpine Save", "AlpSave") {
+        ERC20 _token,
+        IWormhole _wormhole,
+        ICreate2Deployer create2Deployer
+    ) ERC20("Alpine Save", "AlpSave", _token.decimals()) {
         governance = _governance;
         token = _token;
-        wormhole = IWormhole(_wormhole);
+        wormhole = _wormhole;
         lastReport = block.timestamp;
 
-        ICreate2Deployer deployer = ICreate2Deployer(create2Deployer);
+        ICreate2Deployer deployer = create2Deployer;
         bytes memory bytecode = type(Staging).creationCode;
         staging = deployer.deploy(0, bytes32("staging1"), bytecode);
         IStaging(staging).initialize(address(this), _wormhole, _token);
     }
 
-    function decimals() public view override returns (uint8) {
-        return IERC20Metadata(token).decimals();
-    }
-
     function vaultTVL() public view returns (uint256) {
-        return IERC20(token).balanceOf(address(this)) + totalDebt;
+        return token.balanceOf(address(this)) + totalDebt;
     }
 
     // See notes for _liquidate.
@@ -116,7 +102,7 @@ abstract contract BaseVault is ERC20 {
             address strategy = withdrawalQueue[i];
             if (strategy == address(0)) break;
 
-            uint256 balance = IERC20(token).balanceOf(address(this));
+            uint256 balance = token.balanceOf(address(this));
             if (balance >= amount) break;
 
             // NOTE: Don't withdraw more than the debt so that Strategy can still
@@ -126,7 +112,7 @@ abstract contract BaseVault is ERC20 {
 
             // Force withdraw of token from strategy
             uint256 loss = IStrategy(strategy).withdraw(amountNeeded);
-            uint256 withdrawn = IERC20(token).balanceOf(address(this)) - balance;
+            uint256 withdrawn = token.balanceOf(address(this)) - balance;
 
             // TODO: consider loss protection
             if (loss > 0) {
@@ -253,7 +239,7 @@ abstract contract BaseVault is ERC20 {
         address strategy = msg.sender;
 
         // Strategy must be able to pay (gain + debtPayment) of token
-        require(IERC20(token).balanceOf(strategy) >= gain + debtPayment);
+        require(token.balanceOf(strategy) >= gain + debtPayment);
 
         if (loss > 0) _reportLoss(strategy, loss);
 
@@ -287,9 +273,9 @@ abstract contract BaseVault is ERC20 {
 
         uint256 totalAvail = gain + debtPayment;
         // Credit surplus, give to Strategy
-        if (totalAvail < credit) IERC20(token).transfer(strategy, credit - totalAvail);
+        if (totalAvail < credit) token.transfer(strategy, credit - totalAvail);
         // Credit deficit, take from Strategy
-        if (totalAvail > credit) IERC20(token).transferFrom(strategy, address(this), totalAvail - credit);
+        if (totalAvail > credit) token.transferFrom(strategy, address(this), totalAvail - credit);
 
         // Update report times
         _assessFees(block.timestamp);
@@ -348,7 +334,7 @@ abstract contract BaseVault is ERC20 {
         available = Math.min(available, vaultDebtLimit - totalDebt);
         // Can only borrow up to what the contract has in reserve
         // NOTE: Running near 100% is discouraged
-        available = Math.min(available, IERC20(token).balanceOf(address(this)));
+        available = Math.min(available, token.balanceOf(address(this)));
         // Adjust by min and max borrow limits (per harvest)
         // NOTE: min increase can be used to ensure that if a strategy has a minimum
         //       amount of capital needed to purchase a position, it's not given capital

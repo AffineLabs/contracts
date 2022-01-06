@@ -2,8 +2,11 @@
 pragma solidity ^0.8.10;
 
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
+import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 
-contract Create2Deployer {
+contract Create2Deployer is ICreate2Deployer {
+    constructor() {}
+
     function deploy(
         uint256 value,
         bytes32 salt,
