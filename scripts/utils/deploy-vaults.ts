@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import { Contract, ContractFactory } from "ethers";
+import { Contract } from "ethers";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../../utils/bc-explorer-links";
 import { address } from "../../utils/types";
