@@ -7,6 +7,7 @@ import { ERC20User } from "./ERC20User.sol";
 import { L2Vault } from "../polygon-contracts/L2Vault.sol";
 import { L1Vault } from "../eth-contracts/L1Vault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
+import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { Create2Deployer } from "./Create2Deployer.sol";
 
 contract MockWormhole is IWormhole {
@@ -58,15 +59,15 @@ contract WormholeTest is DSTest {
         create2Deployer = new Create2Deployer();
         l1vault = new L1Vault(
             address(0), // governance
-            address(token), // token
-            address(wormhole), // wormhole
-            address(create2Deployer), // create2deployer (must be real address)
-            address(0), // chain manager
+            token, // token
+            wormhole, // wormhole
+            create2Deployer, // create2deployer (must be real address)
+            IRootChainManager(address(0)), // chain manager
             address(0) // predicate
         );
         // The whole point of the create2deployer is so that the staging contracts get the same address
         // But since we're using one chain we actually can't use the same create2deployer a second time!
-        l2vault = new L2Vault(address(0), address(token), address(wormhole), address(new Create2Deployer()), 1, 1);
+        l2vault = new L2Vault(address(0), token, wormhole, new Create2Deployer(), 1, 1);
         user = new ERC20User(token);
     }
 

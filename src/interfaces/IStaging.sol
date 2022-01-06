@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { IWormhole } from "./IWormhole.sol";
+import { IRootChainManager } from "./IRootChainManager.sol";
+
 interface IStaging {
-    function initializeL1(address manager) external;
+    function initializeL1(IRootChainManager manager) external;
 
     function initialize(
         address vault,
-        address wormhole,
-        address token
+        IWormhole wormhole,
+        ERC20 token
     ) external;
 }

@@ -1,15 +1,15 @@
 {
   "name": "multiplyr-smart-contracts",
   "version": "0.0.1",
-  "description": "Multiplyr Ethereum and Matic smart-contracts",
+  "description": "Alpine Ethereum and Matic smart contracts",
   "main": "index.js",
   "scripts": {
-    "compile": "npx hardhat compile",
-    "test": "yarn hardhat test --no-compile",
-    "clean": "npx hardhat clean",
+    "test": "dapp test",
+    "test-hh": "yarn hardhat test --no-compile",
+    "clean": "dapp clean",
     "script": "yarn hardhat run --no-compile",
     "build": "dapp build --optimize",
-    "abi": "yarn script scripts/build-abi.ts",
+    "abi": "ts-node scripts/build-abi.ts",
     "types": "yarn typechain --target ethers-v5 --out-dir typechain/ ./abi/*.abi",
     "postinstall": "yarn build && yarn abi && yarn types"
   },

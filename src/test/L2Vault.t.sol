@@ -7,6 +7,8 @@ import { ERC20User } from "./ERC20User.sol";
 import { L2Vault } from "../polygon-contracts/L2Vault.sol";
 import { Create2Deployer } from "./Create2Deployer.sol";
 
+import { IWormhole } from "../interfaces/IWormhole.sol";
+
 contract VaultTest is DSTest {
     L2Vault vault;
     MockERC20 token;
@@ -18,9 +20,9 @@ contract VaultTest is DSTest {
         create2Deployer = new Create2Deployer();
         vault = new L2Vault(
             address(0), // governance
-            address(token), // token
-            address(0), // wormhole
-            address(create2Deployer), // create2deployer (needs to be a real contract)
+            token, // token
+            IWormhole(address(0)), // wormhole
+            create2Deployer, // create2deployer (needs to be a real contract)
             1, // l1 ratio
             1 // l2 ratio
         );

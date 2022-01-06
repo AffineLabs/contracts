@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+
 interface IStrategy {
     function name() external view returns (string memory);
 
     function vault() external view returns (address);
 
-    function want() external view returns (address);
+    function want() external view returns (ERC20);
 
     function apiVersion() external pure returns (string memory);
 

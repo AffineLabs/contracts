@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
+import { IWormhole } from "../interfaces/IWormhole.sol";
+import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { IStaging } from "../interfaces/IStaging.sol";
@@ -19,13 +21,13 @@ contract L1Vault is BaseVault {
 
     constructor(
         address _governance,
-        address _token,
-        address _wormhole,
-        address create2Deployer,
-        address _chainManager,
+        ERC20 _token,
+        IWormhole _wormhole,
+        ICreate2Deployer create2Deployer,
+        IRootChainManager _chainManager,
         address _predicate
     ) BaseVault(_governance, _token, _wormhole, create2Deployer) {
-        chainManager = IRootChainManager(_chainManager);
+        chainManager = _chainManager;
         IStaging(staging).initializeL1(_chainManager);
         predicate = _predicate;
     }
@@ -59,14 +61,14 @@ contract L1Vault is BaseVault {
         // get amount requested
         uint256 amountRequested = abi.decode(vm.payload, (uint256));
         _liquidate(amountRequested);
-        uint256 amountToSend = Math.min(IERC20(token).balanceOf(address(this)), amountRequested);
+        uint256 amountToSend = Math.min(token.balanceOf(address(this)), amountRequested);
         _transferFundsToL2(amountToSend);
     }
 
     // Send `token` to L2 staging via polygon bridge
     function _transferFundsToL2(uint256 amount) internal {
-        IERC20(token).approve(predicate, amount);
-        chainManager.depositFor(staging, token, abi.encodePacked(amount));
+        token.approve(predicate, amount);
+        chainManager.depositFor(staging, address(token), abi.encodePacked(amount));
 
         // Let L2 know how much money we sent
         uint64 sequence = wormhole.nextSequence(address(this));
