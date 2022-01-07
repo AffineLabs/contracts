@@ -1,8 +1,7 @@
 FROM nixos/nix as nix_env
 
 # Install dapptools.
-RUN curl https://dapp.tools/install -o install-dapptools.sh
-RUN bash install-dapptools.sh
+RUN nix-env -iA dapp -f $(curl -sS https://api.github.com/repos/dapphub/dapptools/releases/latest | jq -r .tarball_url)
 
 # Set a workdir.
 WORKDIR /app
