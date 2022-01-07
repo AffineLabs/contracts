@@ -1,7 +1,7 @@
 FROM nixos/nix as nix_env
 
-# Install dapptools.
-RUN nix-env -iA dapp -f $(curl -sS https://api.github.com/repos/dapphub/dapptools/releases/latest | jq -r .tarball_url)
+# Install dapptools
+RUN RUN nix-env -iA dapp ethsign -f https://api.github.com/repos/dapphub/dapptools/tarball/hevm/0.49.0
 
 # Set a workdir.
 WORKDIR /app
