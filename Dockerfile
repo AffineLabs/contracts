@@ -1,7 +1,8 @@
 FROM nixos/nix as nix_env
 
 # Install dapptools
-RUN nix-env -iA dapp ethsign -f https://api.github.com/repos/dapphub/dapptools/tarball/hevm/0.49.0
+RUN nix-env -iA dapp hevm seth solc ethsign -f https://api.github.com/repos/dapphub/dapptools/tarball/hevm/0.49.0
+RUN nix-env -f https://github.com/dapphub/dapptools/archive/master.tar.gz -iA solc-static-versions.solc_0_8_10
 
 # Set a workdir.
 WORKDIR /app
