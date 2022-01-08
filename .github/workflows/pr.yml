@@ -5,7 +5,7 @@ name: Smart Contracts PR Workflow
 # Controls when the workflow will run
 on:
   # Triggers the workflow on PR
-  push:
+  pull_request:
     types: [opened, synchronize, reopened]
     branches: [master]
 
