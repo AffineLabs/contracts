@@ -1,4 +1,16 @@
-FROM odyslam/ddapptools AS dapp_env
+FROM ubuntu:20.04 AS dapp_env
+
+# Install nix
+RUN curl -L https://nixos.org/nix/install | sh
+
+# Create non root user
+RUN /bin/sh -c useradd installer
+
+# Use non root user
+USER installer
+
+# Install dapptools
+RUN curl https://dapp.tools/install | sh
 
 # Set a workdir.
 WORKDIR /app
@@ -7,7 +19,7 @@ WORKDIR /app
 COPY . .
 
 # Build contracts with dapptools.
-RUN ddapp.sh dapp build
+RUN dapp build
 
 
 FROM node:16-alpine AS runtime
