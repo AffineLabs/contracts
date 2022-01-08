@@ -19,6 +19,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
+    - name: Include submodules in base repo
+      run: git submodule update --init
+
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
