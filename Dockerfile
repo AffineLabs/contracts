@@ -1,10 +1,13 @@
 FROM ubuntu:20.04 AS dapp_env
 
+# Install curl 
+RUN apt-get update && apt-get install -y curl
+
 # Install nix
 RUN curl -L https://nixos.org/nix/install | sh
 
 # Create non root user
-RUN /bin/sh -c useradd installer
+RUN sudo useradd installer
 
 # Use non root user
 USER installer
