@@ -1,0 +1,48 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: rebalancer
+spec:
+  # https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#cron-schedule-syntax
+  # Run every 12 hours
+  schedule: "0 */12 * * *"
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: rebalancer
+            image:  rebalancer
+            env:
+            - name: ETH_ALCHEMY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: rebalancer-secrets
+                  key: eth-alchemy-url
+            - name: POLYGON_ALCHEMY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: rebalancer-secrets
+                  key: polygon-alchemy-url
+            - name: MNEMONIC
+              valueFrom:
+                secretKeyRef:
+                  name: rebalancer-secrets
+                  key: mnemonic
+            - name: L1_VAULT_ADDR
+              valueFrom:
+                secretKeyRef:
+                  name: rebalancer-secrets
+                  key: l1-vault-addr
+            - name: L2_VAULT_ADDR
+              valueFrom:
+                secretKeyRef:
+                  name: rebalancer-secrets
+                  key: l2-vault-addr
+            resources:
+              limits:
+                memory: "512Mi"
+                cpu: "100m"
+          restartPolicy: Never
