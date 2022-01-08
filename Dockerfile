@@ -1,7 +1,7 @@
 FROM ubuntu:20.04 AS dapp_env
 
 # Install curl 
-RUN apt-get update && apt-get install -y curl
+RUN apt-get update && apt-get install -y curl xz-utils
 
 # Install nix
 RUN curl -L https://nixos.org/nix/install | sh
