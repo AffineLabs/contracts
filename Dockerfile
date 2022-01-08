@@ -1,8 +1,4 @@
-FROM nixos/nix as nix_env
-
-# Install dapptools
-RUN nix-env -iA dapp hevm seth solc ethsign -f https://api.github.com/repos/dapphub/dapptools/tarball/hevm/0.49.0
-RUN nix-env -f https://github.com/dapphub/dapptools/archive/master.tar.gz -iA solc-static-versions.solc_0_8_10
+FROM odyslam/ddapptools AS dapp_env
 
 # Set a workdir.
 WORKDIR /app
@@ -11,10 +7,10 @@ WORKDIR /app
 COPY . .
 
 # Build contracts with dapptools.
-RUN dapp build
+RUN ddapp.sh dapp build
 
 
-FROM node:16-alpine as runtime
+FROM node:16-alpine AS runtime
 
 # Install git.
 RUN apk add --no-cache git
