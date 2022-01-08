@@ -29,6 +29,9 @@ COPY . .
 # Build contracts with dapptools
 RUN dapp build
 
+# Run dapptools unit tests
+RUN dapp test
+
 
 FROM node:16-alpine AS runtime
 
