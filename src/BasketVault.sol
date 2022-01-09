@@ -96,5 +96,32 @@ contract BasketVault is ERC20 {
         return (btcDollars, ethDollars);
     }
 
-    function withdraw(uint256 dollarAmount) external {}
+    function withdraw(uint256 dollarAmount) external returns (uint256 dollarsOut) {
+        // try to get `dollarAmount` dollars out of vault
+        // get share/dollar ratio (`shares_per_dollar`)
+        // Calculate number of shares to burn with numShares = dollarAmount * shares_per_dollar
+
+        // try to burn numShares, will revert if user does not have enough
+        (uint256 btcDollars, uint256 ethDollars) = valueOfVault();
+        uint256 numShares = (dollarAmount * totalSupply) / (btcDollars + ethDollars);
+
+        _burn(msg.sender, numShares);
+
+        // Now try to to sell `dollarAmount` worth of btc
+        uint256 amountSwapBtc = dollarAmount / _getTokenPrice(address(token1));
+        address[] memory path;
+        path[0] = address(token1);
+        path[1] = address(inputToken);
+
+        // Same equations as above
+        uint256[] memory amounts = uniRouter.swapExactTokensForTokens(
+            amountSwapBtc,
+            0,
+            path,
+            address(this),
+            block.timestamp + 3 hours
+        );
+
+        dollarsOut = amounts[1];
+    }
 }
