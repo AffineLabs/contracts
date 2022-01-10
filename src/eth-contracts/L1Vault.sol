@@ -29,7 +29,7 @@ contract L1Vault is BaseVault {
         address _predicate
     ) BaseVault(_governance, _token, _wormhole, create2Deployer) {
         chainManager = _chainManager;
-        IStaging(staging).initializeL1(_chainManager);
+        IStaging(staging).initializeL1(chainManager);
         predicate = _predicate;
     }
 
