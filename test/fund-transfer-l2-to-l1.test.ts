@@ -28,7 +28,7 @@ it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
   let [governance, defender] = await ethers.getSigners();
   const allContracts = await deployAll(governance.address, ETH_NETWORK_NAME, POLYGON_NETWORK_NAME, config);
 
-  const { l1Vault, l2Vault } = allContracts.vaultContracts;
+  const { l1Vault, l2Vault } = allContracts.vaults;
 
   const initialL2TVL = ethers.utils.parseUnits("0.001", 6);
 

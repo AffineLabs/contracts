@@ -28,7 +28,7 @@ const { expect } = chai;
  */
 
 it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
-  let [governance, defender] = await ethers.getSigners();
+  let [governance] = await ethers.getSigners();
   const allContracts: AllContracts = await deployAll(
     governance.address,
     ETH_NETWORK_NAME,
@@ -36,7 +36,7 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
     config,
   );
 
-  const { l1Vault, l2Vault } = allContracts.vaultContracts;
+  const { l1Vault, l2Vault } = allContracts.vaults;
 
   const initialL1TVL = ethers.utils.parseUnits("0.001", 6);
 
@@ -44,10 +44,10 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
   [governance] = await ethers.getSigners();
 
   // Transfer some USDC from owner to L1 vault.
-  const ethUSDCContract = new ethers.Contract(config.l1USDC, usdcABI, governance);
-  let tx: ContractTransaction = await ethUSDCContract.transfer(l1Vault.address, initialL1TVL);
+  const ethUSDC = new ethers.Contract(config.l1USDC, usdcABI, governance);
+  let tx: ContractTransaction = await ethUSDC.transfer(l1Vault.address, initialL1TVL);
   await tx.wait();
-  expect(await ethUSDCContract.balanceOf(l1Vault.address)).to.eq(initialL1TVL);
+  expect(await ethUSDC.balanceOf(l1Vault.address)).to.eq(initialL1TVL);
 
   const currentL1TVL = await l1Vault.vaultTVL();
   expect(currentL1TVL).to.eq(initialL1TVL);
@@ -65,8 +65,8 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
 
   hre.changeNetwork(POLYGON_NETWORK_NAME);
   console.log("\n\nreceiving TVL on L2");
-  [, defender] = await ethers.getSigners();
-  tx = await l2Vault.connect(defender).receiveTVL(tvlVAA);
+  [governance] = await ethers.getSigners();
+  tx = await l2Vault.connect(governance).receiveTVL(tvlVAA);
   await tx.wait();
   console.log("TVL received");
 
@@ -76,8 +76,8 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
   l2Sequence += 1;
 
   hre.changeNetwork(ETH_NETWORK_NAME);
-  [, defender] = await ethers.getSigners();
-  tx = await l1Vault.connect(defender).receiveMessage(requestVAA, { gasLimit: 10_000_000 });
+  [governance] = await ethers.getSigners();
+  tx = await l1Vault.connect(governance).receiveMessage(requestVAA, { gasLimit: 10_000_000 });
   await tx.wait();
   console.log("Received request from L2 on L1. Transfer from L1 to L2 initiated.");
 
@@ -85,8 +85,8 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
   // Wait for money to hit staging, then use message to clear funds from staging to l2 vault
   // Get instance of staging contract
   hre.changeNetwork(POLYGON_NETWORK_NAME);
-  [, defender] = await ethers.getSigners();
-  const l2Staging = (await getContractFactory("Staging", defender)).attach(await l2Vault.staging());
+  [governance] = await ethers.getSigners();
+  const l2Staging = (await getContractFactory("Staging", governance)).attach(await l2Vault.staging());
   console.log("L2 staging address: ", l2Staging.address);
 
   await utils.waitForNonZeroAddressTokenBalance(
@@ -102,7 +102,7 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
   l1Sequence += 1;
 
   console.log("Clearing funds from staging");
-  tx = await l2Staging.connect(defender).l2ClearFund(transferVAA);
+  tx = await l2Staging.connect(governance).l2ClearFund(transferVAA);
   await tx.wait();
   console.log(` > tx: ${getTxExplorerLink(POLYGON_NETWORK_NAME, tx)}`);
 

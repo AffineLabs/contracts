@@ -1,37 +1,45 @@
 import { ethers } from "hardhat";
-import { Contract } from "ethers";
 import hre from "hardhat";
-import { logContractDeploymentInfo } from "../../utils/bc-explorer-links";
 import { address } from "../../utils/types";
 import scriptUtils from "./index";
 import { Config } from "../../utils/config";
+import { MintableStrategy } from "../../typechain";
+import { VaultContracts } from "./deploy-vaults";
 
 export interface StrategyContracts {
-  l1: { [strategyName: string]: Contract };
-  l2: { [strategyName: string]: Contract };
+  l1: { [strategyName: string]: MintableStrategy };
+  l2: { [strategyName: string]: MintableStrategy };
 }
 
 export async function deployStrategies(
   governance: address,
   ethNetworkName: string,
   polygonNetworkName: string,
+  vaults: VaultContracts,
   config: Config,
   test: boolean = true,
 ): Promise<StrategyContracts> {
-  // Deploy vault in eth.
-  hre.changeNetwork(polygonNetworkName);
-
-  const [signer] = await ethers.getSigners();
-
   if (!test) throw Error("Cannot deploy to mainnet");
 
-  // deploy MintableStrategy
-  const stratFactory = await scriptUtils.getContractFactory("MintableStrategy", signer);
-  const strategy = await stratFactory.deploy();
-  await strategy.wait();
-  console.log("strategy: ", strategy.address);
+  // Deploy Mintable strategy on Polygon
+  hre.changeNetwork(polygonNetworkName);
+  let [signer] = await ethers.getSigners();
+
+  let stratFactory = await scriptUtils.getContractFactory("MintableStrategy", signer);
+  const l2Strategy = (await stratFactory.deploy(vaults.l2Vault.address)) as MintableStrategy;
+  await l2Strategy.deployed();
+  console.log("strategy L2: ", l2Strategy.address);
+
+  // Deploy Mintable strategy on ethereum
+  hre.changeNetwork(ethNetworkName);
+  [signer] = await ethers.getSigners();
+  stratFactory = await scriptUtils.getContractFactory("MintableStrategy", signer);
+  const l1Strategy = (await stratFactory.deploy(vaults.l1Vault.address)) as MintableStrategy;
+  await l1Strategy.deployed();
+  console.log("strategy l1: ", l1Strategy.address);
+
   return {
-    l1: { Compound: strategy }, // TODO: add compound strategy
-    l2: { AAVE: strategy },
+    l1: { compound: l1Strategy }, // TODO: add real compound strategy
+    l2: { aave: l2Strategy },
   };
 }

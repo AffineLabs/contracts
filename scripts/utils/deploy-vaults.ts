@@ -1,14 +1,14 @@
 import { ethers } from "hardhat";
-import { Contract } from "ethers";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../../utils/bc-explorer-links";
 import { address } from "../../utils/types";
 import scriptUtils from "./index";
 import { Config } from "../../utils/config";
+import { L1Vault, L2Vault } from "../../typechain";
 
 export interface VaultContracts {
-  l1Vault: Contract;
-  l2Vault: Contract;
+  l1Vault: L1Vault;
+  l2Vault: L2Vault;
 }
 
 export async function deployVaults(
@@ -39,14 +39,14 @@ export async function deployVaults(
   const l1VaultFactory = await scriptUtils.getContractFactory("L1Vault");
   console.log("about to deploy l1 vault: ", config);
 
-  const l1Vault = await l1VaultFactory.deploy(
+  const l1Vault = (await l1VaultFactory.deploy(
     governance,
     config.l1USDC,
     config.l1worm,
     deployer.address,
     config.l1ChainManager,
     config.l2ERC20Predicate,
-  );
+  )) as L1Vault;
   await l1Vault.deployed();
   logContractDeploymentInfo(ethNetworkName, "L1Vault", l1Vault);
 
@@ -69,7 +69,14 @@ export async function deployVaults(
   await deployer.deployed();
 
   const l2VaultFactory = await scriptUtils.getContractFactory("L2Vault");
-  const l2Vault = await l2VaultFactory.deploy(governance, config.l2USDC, config.l2worm, deployer.address, 9, 1);
+  const l2Vault = (await l2VaultFactory.deploy(
+    governance,
+    config.l2USDC,
+    config.l2worm,
+    deployer.address,
+    9,
+    1,
+  )) as L2Vault;
   await l2Vault.deployed();
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
 

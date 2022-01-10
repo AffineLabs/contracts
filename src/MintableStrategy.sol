@@ -1,31 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-interface VaultAPI {
-    function report(
-        uint256 _gain,
-        uint256 _loss,
-        uint256 _debtPayment
-    ) external returns (uint256);
-
-    function token() external returns (address);
-}
-
-interface TokenAPI is IERC20 {
-    function mint(address user, uint256 amount) external;
-
-    function burn(address user, uint256 amount) external;
-}
+import { MintableToken } from "./MintableToken.sol";
+import { VaultAPI } from "./BaseStrategy.sol";
 
 contract MintableStrategy {
     VaultAPI public vault;
-    TokenAPI public want;
+    MintableToken public want;
 
     constructor(address _vault) {
         vault = VaultAPI(_vault);
-        want = TokenAPI(vault.token());
+        want = MintableToken(vault.token());
         // Give Vault unlimited access
         want.approve(_vault, type(uint256).max);
     }
@@ -36,7 +21,7 @@ contract MintableStrategy {
     }
 
     function harvestLoss(uint256 amount) public {
-        want.burn(address(this), amount);
+        want.burn(amount);
         vault.report(0, amount, balance());
     }
 

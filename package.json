@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "dapp test",
-    "test-hh": "yarn hardhat test --no-compile",
+    "test-hh": "yarn build && yarn hardhat test --no-compile",
     "clean": "dapp clean",
     "script": "yarn hardhat run --no-compile",
     "build": "dapp build --optimize",
