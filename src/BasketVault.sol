@@ -135,26 +135,32 @@ contract BasketVault is ERC20 {
     function withdraw(uint256 amountInput) external returns (uint256 dollarsLiquidated) {
         // Try to get `amountInput` of `inputToken` out of vault
 
+        (uint256 btcDollars, uint256 ethDollars) = valueOfVault();
+
         (uint256 r1, uint256 r2) = (ratios[0], ratios[1]);
         uint256 amountInputFromBtc = (r1 * amountInput) / (r1 + r2);
         uint256 amountInputFromEth = amountInput - amountInputFromBtc;
 
         // Get desired amount of inputToken from eth and btc reserves
-        address[] memory path;
-        path[0] = address(token1);
-        path[1] = address(inputToken);
+        address[] memory pathBtc;
+        pathBtc[0] = address(token1);
+        pathBtc[1] = address(inputToken);
+
+        address[] memory pathEth;
+        pathEth[0] = address(token2);
+        pathEth[1] = address(inputToken);
 
         uint256[] memory btcAmounts = uniRouter.swapTokensForExactTokens(
             amountInputFromBtc,
             type(uint256).max,
-            path,
+            pathBtc,
             address(this),
             block.timestamp + 3 hours
         );
         uint256[] memory ethAmounts = uniRouter.swapTokensForExactTokens(
             amountInputFromEth,
             type(uint256).max,
-            path,
+            pathEth,
             address(this),
             block.timestamp + 3 hours
         );
@@ -171,7 +177,6 @@ contract BasketVault is ERC20 {
         // Get share/dollar ratio (`shares_per_dollar`)
         // Calculate number of shares to burn with numShares = dollarAmount * shares_per_dollar
         // Try to burn numShares, will revert if user does not have enough
-        (uint256 btcDollars, uint256 ethDollars) = valueOfVault();
         uint256 numShares = (dollarsLiquidated * totalSupply) / (btcDollars + ethDollars);
 
         _burn(msg.sender, numShares);
