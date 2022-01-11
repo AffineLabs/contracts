@@ -9,8 +9,8 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 contract DummyVault is ERC20 {
     // this is AAVE's usdc address on kovan
     IERC20 token = IERC20(0xe22da380ee6B445bb8273C81944ADEB6E8450422);
-    event Deposit(address indexed user, uint256 numToken, uint256 numShares);
-    event Withdraw(address indexed user, uint256 numShares, uint256 numToken);
+    event Deposit(address indexed user, uint256 numToken, uint256 numShares, uint256 price);
+    event Withdraw(address indexed user, uint256 numShares, uint256 numToken, uint256 price);
 
     uint256 public price;
 
@@ -44,7 +44,7 @@ contract DummyVault is ERC20 {
         uint256 numShares = numToken / price;
         // mint
         _mint(user, numShares);
-        emit Deposit(user, numToken, numShares);
+        emit Deposit(user, numToken, numShares, price);
     }
 
     function withdraw(address user, uint256 numShares) public {
@@ -53,6 +53,6 @@ contract DummyVault is ERC20 {
         // transfer usdc out
         uint256 numToken = numShares * price;
         token.transfer(user, numToken);
-        emit Withdraw(user, numShares, numToken);
+        emit Withdraw(user, numToken, numShares, price);
     }
 }

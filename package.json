@@ -7,7 +7,7 @@
     "test": "dapp test",
     "test-hh": "yarn hardhat test --no-compile",
     "clean": "dapp clean",
-    "script": "yarn hardhat run --no-compile",
+    "script": "yarn build && yarn hardhat run --no-compile",
     "build": "dapp build --optimize",
     "abi": "ts-node scripts/build-abi.ts",
     "types": "yarn typechain --target ethers-v5 --out-dir typechain/ ./abi/*.abi",

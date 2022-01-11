@@ -9,7 +9,7 @@ dotenvConfig({ path: resolve(__dirname, "./.env") });
 async function deployDummy(): Promise<any> {
   const [deployer] = await ethers.getSigners();
 
-  const DummyFactory = await scriptUtils.getContractFactory("DummyVault");
+  const DummyFactory = await scriptUtils.getContractFactory("DummyVault", deployer);
   const prices = {
     1: ["Alpine Save", "alpSave"],
     2: ["Alpine Balanced", "alpBal"],
