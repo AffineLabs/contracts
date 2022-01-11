@@ -4,7 +4,6 @@ pragma solidity ^0.8.9;
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { IStrategy } from "../IStrategy.sol";
 import { BaseVault } from "../BaseVault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { Staging } from "../Staging.sol";

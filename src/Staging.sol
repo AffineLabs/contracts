@@ -3,8 +3,9 @@ pragma solidity ^0.8.9;
 
 import { IWormhole } from "./interfaces/IWormhole.sol";
 import { IRootChainManager } from "./interfaces/IRootChainManager.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IERC20 {
+interface IChildERC20 {
     function withdraw(uint256 amount) external payable;
 
     function transfer(address to, uint256 value) external returns (bool);
@@ -25,7 +26,7 @@ contract Staging {
     int32 public vaultNonce = -1;
     IWormhole public wormhole;
     address public vault;
-    IERC20 public token;
+    IChildERC20 public token;
     IRootChainManager public rootChainManager;
     bool initialized;
 
@@ -39,7 +40,7 @@ contract Staging {
         require(!initialized, "Can only init once");
         vault = _vault;
         wormhole = IWormhole(_wormhole);
-        token = IERC20(_token);
+        token = IChildERC20(_token);
         initialized = true;
     }
 
@@ -51,7 +52,7 @@ contract Staging {
     // Transfer to L1
     function l2Withdraw(uint256 amount) external {
         require(msg.sender == vault);
-        token.withdraw(amount);
+        IChildERC20(address(token)).withdraw(amount);
     }
 
     function l2ClearFund(bytes calldata message) external {
