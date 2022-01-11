@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 
 import { IUniLikeSwapRouter } from "./interfaces/IUniLikeSwapRouter.sol";
+import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
 
 contract BasketVault is ERC20 {
     address public governance;
@@ -19,13 +20,19 @@ contract BasketVault is ERC20 {
 
     IUniLikeSwapRouter public uniRouter;
 
+    // These must be USD price feeds for token1 and token2
+    AggregatorV3Interface public priceFeed1;
+    AggregatorV3Interface public priceFeed2;
+
     constructor(
         address _governance,
         ERC20 _input,
         ERC20 _token1,
         ERC20 _token2,
         uint256[2] memory _ratios,
-        IUniLikeSwapRouter _uniRouter
+        IUniLikeSwapRouter _uniRouter,
+        AggregatorV3Interface _priceFeed1,
+        AggregatorV3Interface _priceFeed2
     ) ERC20("Alpine Large Vault Token", "AlpLarge", 18) {
         governance = _governance;
         token1 = _token1;
@@ -33,6 +40,8 @@ contract BasketVault is ERC20 {
         inputToken = _input;
         ratios = _ratios;
         uniRouter = _uniRouter;
+        priceFeed1 = _priceFeed1;
+        priceFeed2 = _priceFeed2;
 
         // Allow uniRouter to spend all tokens that we may swap
         inputToken.approve(address(uniRouter), type(uint256).max);
@@ -49,7 +58,7 @@ contract BasketVault is ERC20 {
         // But since we're using ints we do r1 * amountInput / (r1 + r2)
 
         (uint256 r1, uint256 r2) = (ratios[0], ratios[1]);
-        uint256 amountInputToBtc = (r1 * amountInput) / r1 + r2;
+        uint256 amountInputToBtc = (r1 * amountInput) / (r1 + r2);
         uint256 amountInputToEth = amountInput - amountInputToBtc;
 
         // TODO: don't allow infinite slippage. Will need price oracle of inputToken and ETH
@@ -81,26 +90,45 @@ contract BasketVault is ERC20 {
         uint256 btcReceived = btcAmounts[1];
         uint256 ethReceived = ethAmounts[1];
 
-        uint256 dollarsReceived = btcReceived *
-            _getTokenPrice(address(token1)) +
-            ethReceived *
-            _getTokenPrice(address(token2));
+        uint256 dollarsReceived = _valueOfToken(token1, btcReceived) + _valueOfToken(token2, ethReceived);
 
         // Issue shares based on dollar amounts of user coins vs total holdings of the vault
         uint256 numShares = (dollarsReceived * totalSupply) / (btcDollars + ethDollars);
         _mint(msg.sender, numShares);
     }
 
-    function _getTokenPrice(address token) internal view returns (uint256) {
+    function _getTokenPrice(ERC20 token) internal view returns (uint256) {
+        // NOTE: Chainlink price feeds report prices of the "base unit" of your token. So
+        // we receive the price of 1 ether (1e18 wei). The price also comes with its own decimals. E.g. a price
+        // of $1 with 8 decimals is given as 1e8.
         // TODO: make sure the units match we would expect, go through every invocation of this
+        AggregatorV3Interface feed;
+        if (token == token1) {
+            feed = priceFeed1;
+        } else {
+            feed = priceFeed2;
+        }
+        (, int256 price, , , ) = feed.latestRoundData();
+        return uint256(price);
+    }
+
+    function _valueOfToken(ERC20 token, uint256 amount) internal view returns (uint256) {
+        // Convert tokens to dollars using as many decimal places as the price feed gives us
+        // e.g. Say ether is $1. If the price feed uses 8 decimals then a price of $1 is 1e8.
+        // If we have 2 ether then return 2 * 1e8 as the dollar value of our balance
+
+        // NOTE: All Chainlink USD price feeds use 8 decimals, so all invocations of this function
+        // should return a dollar amount with the number of decimals.
+
+        return (amount * _getTokenPrice(token)) / token.decimals();
     }
 
     function valueOfVault() public view returns (uint256, uint256) {
         uint256 btcBal = token1.balanceOf(address(this));
         uint256 ethBal = token2.balanceOf(address(this));
 
-        uint256 btcDollars = btcBal * _getTokenPrice(address(token1));
-        uint256 ethDollars = ethBal * _getTokenPrice(address(token2));
+        uint256 btcDollars = _valueOfToken(token1, btcBal);
+        uint256 ethDollars = _valueOfToken(token2, ethBal);
         return (btcDollars, ethDollars);
     }
 
@@ -108,7 +136,7 @@ contract BasketVault is ERC20 {
         // Try to get `amountInput` of `inputToken` out of vault
 
         (uint256 r1, uint256 r2) = (ratios[0], ratios[1]);
-        uint256 amountInputFromBtc = (r1 * amountInput) / r1 + r2;
+        uint256 amountInputFromBtc = (r1 * amountInput) / (r1 + r2);
         uint256 amountInputFromEth = amountInput - amountInputFromBtc;
 
         // Get desired amount of inputToken from eth and btc reserves
@@ -136,7 +164,8 @@ contract BasketVault is ERC20 {
 
         // NOTE: The user eats the slippage and trading fees. E.g. if you get $10 out but we spend $12 of collateral
         // to give that to the user, we still burn $12 of shares
-        dollarsLiquidated = btcSent * _getTokenPrice(address(token1)) + ethSent * _getTokenPrice(address(token2));
+
+        dollarsLiquidated = _valueOfToken(token1, btcSent) + _valueOfToken(token2, ethSent);
         // TODO: Remove assumption that inputToken is equal to one dollar
 
         // Get share/dollar ratio (`shares_per_dollar`)
