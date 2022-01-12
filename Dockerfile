@@ -62,4 +62,4 @@ RUN yarn abi
 RUN yarn types
 
 # Run the rebalance script
-ENTRYPOINT ["yarn", "script", "./scripts/rebalance.ts"]
+ENTRYPOINT ["yarn", "hardhat", "run", "--no-compile", "./scripts/rebalance.ts"]
