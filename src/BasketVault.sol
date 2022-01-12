@@ -51,7 +51,7 @@ contract BasketVault is ERC20 {
 
     function deposit(uint256 amountInput) external {
         // Get current amounts of btc/eth (in dollars)
-        (uint256 btcDollars, uint256 ethDollars) = valueOfVault();
+        uint256 vaultDollars = valueOfVault();
 
         // We do two swaps. The amount of dollars we swap to each coin is determined by the ratios given above
         // If the ratios were floats, we would do r_1 * amountInput to get the amount of `inputToken` to swap to btc
@@ -93,7 +93,7 @@ contract BasketVault is ERC20 {
         uint256 dollarsReceived = _valueOfToken(token1, btcReceived) + _valueOfToken(token2, ethReceived);
 
         // Issue shares based on dollar amounts of user coins vs total holdings of the vault
-        uint256 numShares = (dollarsReceived * totalSupply) / (btcDollars + ethDollars);
+        uint256 numShares = (dollarsReceived * totalSupply) / vaultDollars;
         _mint(msg.sender, numShares);
     }
 
@@ -112,18 +112,12 @@ contract BasketVault is ERC20 {
         return uint256(price);
     }
 
-    function _valueOfToken(ERC20 token, uint256 amount) internal view returns (uint256) {
-        // Convert tokens to dollars using as many decimal places as the price feed gives us
-        // e.g. Say ether is $1. If the price feed uses 8 decimals then a price of $1 is 1e8.
-        // If we have 2 ether then return 2 * 1e8 as the dollar value of our balance
-
-        // NOTE: All Chainlink USD price feeds use 8 decimals, so all invocations of this function
-        // should return a dollar amount with the number of decimals.
-
-        return (amount * _getTokenPrice(token)) / token.decimals();
+    function valueOfVault() public view returns (uint256) {
+        (uint256 btcDollars, uint256 ethDollars) = _valueOfVaultComponents();
+        return btcDollars + ethDollars;
     }
 
-    function valueOfVault() public view returns (uint256, uint256) {
+    function _valueOfVaultComponents() internal view returns (uint256, uint256) {
         uint256 btcBal = token1.balanceOf(address(this));
         uint256 ethBal = token2.balanceOf(address(this));
 
@@ -132,10 +126,27 @@ contract BasketVault is ERC20 {
         return (btcDollars, ethDollars);
     }
 
+    function _valueOfToken(ERC20 token, uint256 amount) internal view returns (uint256) {
+        // Convert tokens to dollars using as many decimal places as the price feed gives us
+        // e.g. Say ether is $1. If the price feed uses 8 decimals then a price of $1 is 1e8.
+        // If we have 2 ether then return 2 * 1e8 as the dollar value of our balance
+
+        // NOTE: All Chainlink USD price feeds use 8 decimals, so all invocations of this function
+        // should return a dollar amount with the same number of decimals.
+
+        return (amount * _getTokenPrice(token)) / (10**token.decimals());
+    }
+
+    function _tokensFromDollars(ERC20 token, uint256 amountDollars) internal view returns (uint256) {
+        // Convert dollars to tokens with token's amount of decimals
+        uint256 oneToken = 10**token.decimals();
+        return (amountDollars * oneToken) / _getTokenPrice(token);
+    }
+
     function withdraw(uint256 amountInput) external returns (uint256 dollarsLiquidated) {
         // Try to get `amountInput` of `inputToken` out of vault
 
-        (uint256 btcDollars, uint256 ethDollars) = valueOfVault();
+        uint256 vaultDollars = valueOfVault();
 
         (uint256 r1, uint256 r2) = (ratios[0], ratios[1]);
         uint256 amountInputFromBtc = (r1 * amountInput) / (r1 + r2);
@@ -177,8 +188,44 @@ contract BasketVault is ERC20 {
         // Get share/dollar ratio (`shares_per_dollar`)
         // Calculate number of shares to burn with numShares = dollarAmount * shares_per_dollar
         // Try to burn numShares, will revert if user does not have enough
-        uint256 numShares = (dollarsLiquidated * totalSupply) / (btcDollars + ethDollars);
+        uint256 numShares = (dollarsLiquidated * totalSupply) / vaultDollars;
 
         _burn(msg.sender, numShares);
+    }
+
+    function rebalance() external {
+        (uint256 btcDollars, uint256 ethDollars) = _valueOfVaultComponents();
+        uint256 vaultDollars = btcDollars + ethDollars;
+
+        // See how far we are from ideal amount of Eth
+        (uint256 r1, uint256 r2) = (ratios[0], ratios[1]);
+        uint256 idealDollarsOfEth = (r2 * vaultDollars) / (r1 + r2);
+
+        address[] memory pathToBtc;
+        pathToBtc[0] = address(token2);
+        pathToBtc[1] = address(token1);
+
+        address[] memory pathToEth;
+        pathToEth[0] = address(token1);
+        pathToEth[1] = address(token2);
+
+        // TODO: only rebalance if over a certain delta
+        if (ethDollars > idealDollarsOfEth) {
+            // sell difference
+            uint256 delta = ethDollars - idealDollarsOfEth;
+            uint256 deltaEth = (delta * token2.balanceOf(address(this))) / ethDollars;
+            uniRouter.swapExactTokensForTokens(deltaEth, 0, pathToBtc, address(this), block.timestamp + 3 hours);
+        } else {
+            // buy Eth
+            uint256 delta = idealDollarsOfEth - ethDollars;
+            uint256 deltaEth = (delta * token2.balanceOf(address(this))) / ethDollars;
+            uniRouter.swapTokensForExactTokens(
+                deltaEth,
+                type(uint256).max,
+                pathToEth,
+                address(this),
+                block.timestamp + 3 hours
+            );
+        }
     }
 }
