@@ -26,22 +26,18 @@ contract BasketVault is ERC20 {
 
     constructor(
         address _governance,
-        ERC20 _input,
-        ERC20 _token1,
-        ERC20 _token2,
-        uint256[2] memory _ratios,
         IUniLikeSwapRouter _uniRouter,
-        AggregatorV3Interface _priceFeed1,
-        AggregatorV3Interface _priceFeed2
+        ERC20 _input,
+        ERC20[2] memory _tokens,
+        uint256[2] memory _ratios,
+        AggregatorV3Interface[2] memory _priceFeeds
     ) ERC20("Alpine Large Vault Token", "AlpLarge", 18) {
         governance = _governance;
-        token1 = _token1;
-        token2 = _token2;
+        (token1, token2) = (_tokens[0], _tokens[1]);
         inputToken = _input;
         ratios = _ratios;
         uniRouter = _uniRouter;
-        priceFeed1 = _priceFeed1;
-        priceFeed2 = _priceFeed2;
+        (priceFeed1, priceFeed2) = (_priceFeeds[0], _priceFeeds[1]);
 
         // Allow uniRouter to spend all tokens that we may swap
         inputToken.approve(address(uniRouter), type(uint256).max);
