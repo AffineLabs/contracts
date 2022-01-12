@@ -93,7 +93,13 @@ contract BasketVault is ERC20 {
         uint256 dollarsReceived = _valueOfToken(token1, btcReceived) + _valueOfToken(token2, ethReceived);
 
         // Issue shares based on dollar amounts of user coins vs total holdings of the vault
-        uint256 numShares = (dollarsReceived * totalSupply) / vaultDollars;
+        uint256 numShares;
+        if (totalSupply == 0) {
+            numShares = dollarsReceived;
+        } else {
+            numShares = (dollarsReceived * totalSupply) / vaultDollars;
+        }
+
         _mint(msg.sender, numShares);
     }
 
