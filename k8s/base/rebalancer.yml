@@ -21,11 +21,11 @@ spec:
                 secretKeyRef:
                   name: rebalancer-secrets
                   key: ALCHEMY_ETH_KEY
-            - name: POLYGON_ALCHEMY_URL
+            - name: POLYGON_ALCHEMY_KEY
               valueFrom:
                 secretKeyRef:
                   name: rebalancer-secrets
-                  key: POLYGON_ALCHEMY_URL
+                  key: POLYGON_ALCHEMY_KEY
             - name: MNEMONIC
               valueFrom:
                 secretKeyRef:
