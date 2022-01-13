@@ -16,21 +16,21 @@ spec:
           - name: rebalancer
             image:  rebalancer
             env:
-            - name: ETH_ALCHEMY_URL
+            - name: ALCHEMY_ETH_KEY
               valueFrom:
                 secretKeyRef:
                   name: rebalancer-secrets
-                  key: eth-alchemy-url
+                  key: ALCHEMY_ETH_KEY
             - name: POLYGON_ALCHEMY_URL
               valueFrom:
                 secretKeyRef:
                   name: rebalancer-secrets
-                  key: polygon-alchemy-url
+                  key: ALCHEMY_ETH_KEY
             - name: MNEMONIC
               valueFrom:
                 secretKeyRef:
                   name: rebalancer-secrets
-                  key: mnemonic
+                  key: MNEMONIC
             resources:
               limits:
                 memory: "512Mi"
