@@ -31,16 +31,6 @@ spec:
                 secretKeyRef:
                   name: rebalancer-secrets
                   key: mnemonic
-            - name: L1_VAULT_ADDR
-              valueFrom:
-                secretKeyRef:
-                  name: rebalancer-secrets
-                  key: l1-vault-addr
-            - name: L2_VAULT_ADDR
-              valueFrom:
-                secretKeyRef:
-                  name: rebalancer-secrets
-                  key: l2-vault-addr
             resources:
               limits:
                 memory: "512Mi"
