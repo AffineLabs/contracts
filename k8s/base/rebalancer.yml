@@ -25,7 +25,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: rebalancer-secrets
-                  key: ALCHEMY_ETH_KEY
+                  key: POLYGON_ALCHEMY_URL
             - name: MNEMONIC
               valueFrom:
                 secretKeyRef:
