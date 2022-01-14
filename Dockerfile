@@ -32,6 +32,9 @@ RUN dapp build
 # Run dapptools unit tests
 RUN dapp test
 
+# Check gas snapshot
+RUN dapp check-snapshot
+
 
 FROM node:16-alpine AS runtime
 
@@ -60,6 +63,12 @@ RUN yarn abi
 
 # Generate Typechain types
 RUN yarn types
+
+# Check for lint errors
+RUN yarn lint
+
+# Check for formatting errors
+RUN yarn format
 
 # Run the rebalance script
 ENTRYPOINT ["yarn", "hardhat", "run", "--no-compile", "./scripts/rebalance.ts"]
