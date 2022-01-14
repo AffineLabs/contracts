@@ -5,12 +5,16 @@
   "main": "index.js",
   "scripts": {
     "test": "dapp test",
-    "test-hh": "yarn build && yarn hardhat test --no-compile",
+    "test-hh": "yarn build && hardhat test --no-compile",
     "clean": "dapp clean",
-    "script": "yarn build && yarn hardhat run --no-compile",
+    "script": "yarn build && hardhat run --no-compile",
     "build": "dapp build --optimize",
     "abi": "ts-node scripts/build-abi.ts",
     "types": "yarn typechain --target ethers-v5 --out-dir typechain/ ./abi/*.abi",
+    "lint": "solhint src/**/*.sol",
+    "lint:fix": "solhint --fix src/**/*.sol",
+    "format": "prettier --check \"**/*.{ts,js,sol}\"",
+    "format:fix": "prettier --write \"**/*.{ts,js,sol}\"",
     "postinstall": "yarn build && yarn abi && yarn types"
   },
   "author": "Alpine",

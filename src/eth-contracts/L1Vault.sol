@@ -16,6 +16,7 @@ contract L1Vault is BaseVault {
     bool public received;
     IRootChainManager public chainManager;
     // `predicate` will take tokens from vault when depositFor is called on the RootChainManager
+    // solhint-disable-next-line max-line-length
     // https://github.com/maticnetwork/pos-portal/blob/88dbf0a88fd68fa11f7a3b9d36629930f6b93a05/contracts/root/RootChainManager/RootChainManager.sol#L267
     address public predicate;
 

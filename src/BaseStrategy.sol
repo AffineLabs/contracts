@@ -1,9 +1,9 @@
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.8.9;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 struct StrategyParams {
     uint256 activation;
@@ -138,9 +138,9 @@ abstract contract BaseStrategy {
 
     VaultAPI public vault;
     address public keeper;
-    
+
     IERC20 public want;
- 
+
     event Harvested(uint256 profit, uint256 loss, uint256 debtPayment, uint256 debtOutstanding);
 
     event UpdatedKeeper(address newKeeper);
@@ -148,7 +148,7 @@ abstract contract BaseStrategy {
     event UpdatedMinReportDelay(uint256 delay);
 
     event UpdatedMaxReportDelay(uint256 delay);
-    
+
     event UpdatedProfitFactor(uint256 profitFactor);
 
     event UpdatedDebtThreshold(uint256 debtThreshold);
@@ -175,11 +175,7 @@ abstract contract BaseStrategy {
     }
 
     modifier onlyKeepers() {
-        require(
-            msg.sender == keeper ||
-                msg.sender == governance(), 
-            "!authorized"
-        );
+        require(msg.sender == keeper || msg.sender == governance(), "!authorized");
         _;
     }
 
@@ -197,10 +193,7 @@ abstract contract BaseStrategy {
      * @param _keeper The adddress of the _keeper. _keeper
      * can harvest and tend a strategy.
      */
-    function _initialize(
-        address _vault,
-        address _keeper
-    ) internal {
+    function _initialize(address _vault, address _keeper) internal {
         require(address(want) == address(0), "Strategy already initialized");
 
         vault = VaultAPI(_vault);
@@ -267,7 +260,7 @@ abstract contract BaseStrategy {
         maxReportDelay = _delay;
         emit UpdatedMaxReportDelay(_delay);
     }
- 
+
     /**
      * @notice
      *  Used to change `profitFactor`. `profitFactor` is used to determine
@@ -372,7 +365,6 @@ abstract contract BaseStrategy {
 
         // Free up returns for Vault to pull
         (profit, loss, debtPayment) = prepareReturn(debtOutstanding);
-        
 
         // Allow Vault to take up to the "harvested" balance of this contract,
         // which is the amount it has earned since the last time it reported to
@@ -382,7 +374,7 @@ abstract contract BaseStrategy {
         // Check if free returns are left, and re-invest them
         adjustPosition(debtOutstanding);
 
-        emit Harvested(profit, loss, debtPayment, debtOutstanding);       
+        emit Harvested(profit, loss, debtPayment, debtOutstanding);
     }
 
     /**
@@ -395,16 +387,16 @@ abstract contract BaseStrategy {
     function tendTrigger(uint256 callCostInWei) public view virtual returns (bool) {
         // We usually don't need tend, but if there are positions that need
         // active maintainence, overriding this function is how you would
-        // signal for that.        
+        // signal for that.
         return false;
     }
 
     /**
      * @notice
      *  Adjust the Strategy's position. The purpose of tending isn't to
-     *  realize gains, but to maximize yield by reinvesting any returns. 
+     *  realize gains, but to maximize yield by reinvesting any returns.
      */
-    function tend() external onlyKeepers {        
+    function tend() external onlyKeepers {
         // Don't take profits with this call, but adjust for better gains
         adjustPosition(vault.debtOutstanding());
     }
@@ -428,7 +420,7 @@ abstract contract BaseStrategy {
      * ```
      */
     function protectedTokens() internal view virtual returns (address[] memory);
-    
+
     /**
      * Perform any Strategy unwinding or other calls necessary to capture the
      * "free return" this Strategy has generated since the last time its core
@@ -483,7 +475,10 @@ abstract contract BaseStrategy {
      *
      * NOTE: The invariant `_liquidatedAmount + _loss <= _amountNeeded` should always be maintained
      */
-    function liquidatePosition(uint256 _amountNeeded) internal virtual returns (uint256 _liquidatedAmount, uint256 _loss);
+    function liquidatePosition(uint256 _amountNeeded)
+        internal
+        virtual
+        returns (uint256 _liquidatedAmount, uint256 _loss);
 
     /**
      * Liquidate everything and returns the amount that got freed.
@@ -492,7 +487,7 @@ abstract contract BaseStrategy {
      */
 
     function liquidateAllPositions() internal virtual returns (uint256 _amountFreed);
-    
+
     function governance() internal view returns (address) {
         return vault.governance();
     }
@@ -522,7 +517,7 @@ abstract contract BaseStrategy {
      * @return The estimated total assets in this Strategy.
      */
     function estimatedTotalAssets() public view virtual returns (uint256);
-   
+
     /**
      * @notice
      *  Withdraws `_amountNeeded` to `vault`.
@@ -540,7 +535,7 @@ abstract contract BaseStrategy {
         SafeERC20.safeTransfer(want, msg.sender, amountFreed);
         // NOTE: Reinvest anything leftover on next `tend`/`harvest`
     }
-    
+
     /**
      * @notice
      *  Removes tokens from this Strategy that are not the type of tokens

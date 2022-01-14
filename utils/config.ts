@@ -37,8 +37,12 @@ export interface RebalanceConfig {
   l2VaultAddr: address;
 }
 
-const ethAlchemyURL = process.env.ALCHEMY_ETH_KEY ? `https://eth-goerli.alchemyapi.io/v2/${process.env.ALCHEMY_ETH_KEY}` || "";
-const polygonAlchemyURL = process.env.ALCHEMY_POLYGON_KEY ? `https://polygon-mumbai.g.alchemy.com/v2/${process.env.ALCHEMY_POLYGON_KEY}` || "";
+const ethAlchemyURL = process.env.ALCHEMY_ETH_KEY
+  ? `https://eth-goerli.alchemyapi.io/v2/${process.env.ALCHEMY_ETH_KEY}`
+  : "";
+const polygonAlchemyURL = process.env.ALCHEMY_POLYGON_KEY
+  ? `https://polygon-mumbai.g.alchemy.com/v2/${process.env.ALCHEMY_POLYGON_KEY}`
+  : "";
 const mnemonic = process.env.MNEMONIC || "";
 const l1VaultAddr = "0xe05F99bd5B4f755Caf9bd5E46bDd1468F9D650Fa";
 const l2VaultAddr = "0xd914975c045f2d29770C11656bCe4236aF3Dfe19";
