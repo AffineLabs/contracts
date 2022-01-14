@@ -88,14 +88,9 @@ const config: HardhatUserConfig = {
     polygonMainnet: createPolygonNetworkConfig("mainnet"),
     polygonMumbai: createPolygonNetworkConfig("mumbai"),
 
-    goerliFork: {
-      ...createETHNetworkConfig("goerli"),
-      url: "http://localhost:8545",
-      chainId: ethChainIds.hardhat,
-    },
     mumbaiFork: {
       ...createPolygonNetworkConfig("mumbai"),
-      url: "http://localhost:8546",
+      url: "http://localhost:8545",
       chainId: ethChainIds.hardhat,
     },
   },
