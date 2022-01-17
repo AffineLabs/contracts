@@ -66,6 +66,8 @@ Compile the smart contracts:
 $ yarn build
 ```
 
+Note: `src/test/test.sol` is taken from [dapphub's ds-test repo](https://github.com/dapphub/ds-test/blob/0a5da56b0d65960e6a994d2ec8245e6edd38c248/src/test.sol). We can't install this repo as a package since hardhat expects a package.json file ([issue](https://github.com/nomiclabs/hardhat/issues/1361)). We could fork the repo and add a package.json but this is fine for now.
+
 ### Test
 
 Run the Mocha tests:
