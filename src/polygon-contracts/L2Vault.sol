@@ -9,12 +9,6 @@ import { IWormhole } from "../interfaces/IWormhole.sol";
 import { Staging } from "../Staging.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 
-interface IChildERC20 {
-    function withdraw(uint256 amount) external;
-
-    function transfer(address to, uint256 value) external returns (bool);
-}
-
 contract L2Vault is BaseVault {
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
     uint256 public L1TotalLockedValue;

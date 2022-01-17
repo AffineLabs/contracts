@@ -13,6 +13,7 @@ import "@nomiclabs/hardhat-waffle";
 import "hardhat-change-network";
 import "hardhat-gas-reporter";
 import "@nomiclabs/hardhat-etherscan";
+import "hardhat-abi-exporter";
 
 import "./tasks/accounts";
 
@@ -122,6 +123,12 @@ const config: HardhatUserConfig = {
   },
   mocha: {
     timeout: 3600000,
+  },
+  abiExporter: {
+    path: "./abi",
+    clear: true,
+    flat: true,
+    spacing: 2,
   },
 };
 
