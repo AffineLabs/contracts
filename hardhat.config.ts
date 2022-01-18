@@ -125,6 +125,7 @@ const config: HardhatUserConfig = {
     timeout: 3600000,
   },
   abiExporter: {
+    runOnCompile: true,
     path: "./abi",
     clear: true,
     flat: true,
