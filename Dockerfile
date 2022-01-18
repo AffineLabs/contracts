@@ -10,7 +10,8 @@ WORKDIR /app
 COPY . .
 
 # Install dependencies, build contracts, generate abis, generate typings
-RUN yarn --frozen-lockfile
+# Don't run lyfecycle scipts as that depends on Dapptools
+RUN yarn --frozen-lockfile --ignore-scripts
 
 # Run the rebalance script
 ENTRYPOINT ["yarn", "script", "./scripts/rebalance.ts"]
