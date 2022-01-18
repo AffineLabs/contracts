@@ -22,8 +22,8 @@ jobs:
         with:
           node-version: "16.x"
 
-      - name: Install yarn dependencies
-        run: yarn --frozen-lockfile
+      - name: Install yarn dependencies, Ignore lifecycle hooks
+        run: yarn --frozen-lockfile --ignore-scripts
 
       - name: Generate the ABIs
         run: yarn hardhat export-abi
