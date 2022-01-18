@@ -1,7 +1,6 @@
 # Upload artifacts to S3 bucket when a new release is started.
 name: Relese Workflow
 
-
 # Triggers the workflow on push of a release tag
 on:
   release:
@@ -15,48 +14,34 @@ jobs:
     name: Install Dapptools and Hardhat env then upload generated ABIs to S3 bucket.
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
 
-    - name: Use Node.js
-      uses: actions/setup-node@v1
-      with:
-        node-version: '16.x'
+      - name: Use Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: "16.x"
 
-    - name: Use Nix
-      uses: cachix/install-nix-action@v15
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
+      - name: Install yarn dependencies
+        run: yarn --frozen-lockfile
 
-    - name: Install dapptools
-      run: curl https://dapp.tools/install | sh
-  
-    - name: Include submodules in base repo
-      run: git submodule update --init
+      - name: Generate the ABIs
+        run: yarn hardhat export-abi
 
-    - name: Build smart contracts with dapptools
-      run: dapp build
+      - name: Remove .gitignore file in abi/ directory
+        run: rm ./abi/.gitignore
 
-    - name: Install hardhat dependencies
-      run: yarn --frozen-lockfile
+      - name: See ABI files
+        run: ls ./abi/
 
-    - name: Generate the ABIs
-      run: yarn script ./scripts/build-abi.ts
-
-    - name: Remove .gitignore file in abi/ directory
-      run: rm ./abi/.gitignore
-
-    - name: See ABI files
-      run: ls ./abi/
-
-    - name: Uploading to S3 bucket
-      uses: jakejarvis/s3-sync-action@master
-      with:
-        args: --follow-symlinks --delete
-      env:
-        AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        DEST_DIR: ${{ github.event.release.tag_name || 'test' }}
-        SOURCE_DIR: 'abi'
-        AWS_REGION: 'us-east-2'
+      - name: Uploading to S3 bucket
+        uses: jakejarvis/s3-sync-action@master
+        with:
+          args: --follow-symlinks --delete
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          DEST_DIR: ${{ github.event.release.tag_name || 'test' }}
+          SOURCE_DIR: "abi"
+          AWS_REGION: "us-east-2"

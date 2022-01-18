@@ -26,15 +26,11 @@ WORKDIR /app
 # Copy all files to workdir
 COPY . .
 
-# Build contracts with dapptools
-RUN dapp build
-
-# Run dapptools unit tests
+# Build and test with dapptools
 RUN dapp test
 
 # Check gas snapshot
 RUN dapp check-snapshot
-
 
 FROM node:16-alpine AS runtime
 
@@ -54,15 +50,8 @@ RUN yarn install --ignore-scripts --frozen-lockfile
 # Copy all files to workdir
 COPY . .
 
-# Copy dapptools build outputs
-RUN mkdir /app/out
-COPY --from=dapp_env /app/out /app/out
-
-# Generate ABIs
-RUN yarn abi
-
-# Generate Typechain types
-RUN yarn types
+# Generate ABIs (this will compile with hardhat and generate typechain types)
+RUN yarn hardhat export-abi
 
 # Check for lint errors
 RUN yarn lint
@@ -71,4 +60,4 @@ RUN yarn lint
 RUN yarn format
 
 # Run the rebalance script
-ENTRYPOINT ["yarn", "hardhat", "run", "--no-compile", "./scripts/rebalance.ts"]
+ENTRYPOINT ["yarn", "script", "./scripts/rebalance.ts"]
