@@ -1,11 +1,15 @@
 FROM ubuntu:20.04 AS dapp_env
 
+# Install essential tools
+RUN apt-get update && \
+    apt-get -y install curl build-essential automake autoconf git jq 
+    
 RUN curl https://deb.nodesource.com/setup_16.x | bash
 RUN curl https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
 RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
 
-RUN apt-get update && \
-    apt-get -y install curl build-essential automake autoconf git jq nodejs yarn
+# Install nodejs and yarn
+RUN apt-get update && apt-get -y install nodejs yarn
 
 # add user
 RUN useradd -d /home/app -m -G sudo app
