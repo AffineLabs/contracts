@@ -9,7 +9,7 @@ WORKDIR /app
 # Copy all files to workdir
 COPY . .
 
-# Install dependencies, build abis, generate typings
+# Install dependencies, build contracts, generate abis, generate typings
 RUN yarn --frozen-lockfile
 
 # Run the rebalance script
