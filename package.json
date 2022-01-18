@@ -18,7 +18,7 @@
     "format:fix": "prettier --write \"**/*.{ts,js,sol}\"",
     "snap": "dapp check-snapshot",
     "snap:fix": "dapp snapshot",
-    "postinstall": "yarn build && yarn abi && yarn types"
+    "postinstall": "yarn build && yarn build-hh"
   },
   "author": "Alpine",
   "license": "MIT",
