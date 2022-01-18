@@ -5,10 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "dapp test",
-    "test-hh": "yarn build && hardhat test --no-compile",
+    "test-hh": "hardhat test",
     "clean": "dapp clean",
-    "script": "yarn build && hardhat run --no-compile",
+    "script": "hardhat run",
     "build": "dapp build --optimize",
+    "build-hh": "hardhat compile",
     "abi": "ts-node scripts/build-abi.ts",
     "types": "yarn typechain --target ethers-v5 --out-dir typechain/ ./abi/*.abi",
     "lint": "solhint src/**/*.sol",
@@ -37,6 +38,7 @@
     "ethers": "^5.5.2",
     "glob": "^7.2.0",
     "hardhat": "^2.7.0",
+    "hardhat-abi-exporter": "^2.8.0",
     "hardhat-change-network": "^0.0.7",
     "hardhat-gas-reporter": "^1.0.4",
     "prettier": "^2.3.1",
@@ -52,8 +54,9 @@
   "dependencies": {
     "@certusone/wormhole-sdk": "^0.1.4",
     "@improbable-eng/grpc-web-node-http-transport": "^0.15.0",
-    "@openzeppelin/contracts": "^4.3.3",
+    "@openzeppelin/contracts": "^4.4.2",
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
-    "axios": "^0.21.4"
+    "axios": "^0.21.4",
+    "solmate": "npm:@rari-capital/solmate@6.2.0"
   }
 }

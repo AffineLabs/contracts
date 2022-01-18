@@ -1,19 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { BaseVault } from "../BaseVault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { Staging } from "../Staging.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
-
-interface IChildERC20 {
-    function withdraw(uint256 amount) external;
-
-    function transfer(address to, uint256 value) external returns (bool);
-}
 
 contract L2Vault is BaseVault {
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.

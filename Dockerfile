@@ -1,7 +1,15 @@
 FROM ubuntu:20.04 AS dapp_env
 
+# Install essential tools
 RUN apt-get update && \
-    apt-get -y install curl build-essential automake autoconf git jq
+    apt-get -y install curl build-essential automake autoconf git jq 
+    
+RUN curl https://deb.nodesource.com/setup_16.x | bash
+RUN curl https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
+
+# Install nodejs and yarn
+RUN apt-get update && apt-get -y install nodejs yarn
 
 # add user
 RUN useradd -d /home/app -m -G sudo app
@@ -26,15 +34,14 @@ WORKDIR /app
 # Copy all files to workdir
 COPY . .
 
-# Build contracts with dapptools
-RUN dapp build
+# Install dependencies
+RUN yarn install --ignore-scripts --frozen-lockfile
 
-# Run dapptools unit tests
+# Build and test with dapptools
 RUN dapp test
 
 # Check gas snapshot
 RUN dapp check-snapshot
-
 
 FROM node:16-alpine AS runtime
 
@@ -54,15 +61,8 @@ RUN yarn install --ignore-scripts --frozen-lockfile
 # Copy all files to workdir
 COPY . .
 
-# Copy dapptools build outputs
-RUN mkdir /app/out
-COPY --from=dapp_env /app/out /app/out
-
-# Generate ABIs
-RUN yarn abi
-
-# Generate Typechain types
-RUN yarn types
+# Generate ABIs (this will compile with hardhat and generate typechain types)
+RUN yarn hardhat export-abi
 
 # Check for lint errors
 RUN yarn lint
@@ -71,4 +71,4 @@ RUN yarn lint
 RUN yarn format
 
 # Run the rebalance script
-ENTRYPOINT ["yarn", "hardhat", "run", "--no-compile", "./scripts/rebalance.ts"]
+ENTRYPOINT ["yarn", "script", "./scripts/rebalance.ts"]
