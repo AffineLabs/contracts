@@ -13,8 +13,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
-    name: Build Docker Image
+  sanity-check:
+    name: PR Sanity Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
