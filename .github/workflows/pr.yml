@@ -20,7 +20,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Build docker image
-        run: |
-          docker build -t alpine-sc:temp .
-          echo "Looks good!"
+      - name: Use Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: "16.x"
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v13
+      
+      - name: Install DappTools
+        uses: cachix/cachix-action@v10
+        with:
+          name: dapp
+
+      - name: Build and test with dapptools
+        run: yarn test
+
+      - name: Check gas snapshot
+        run: yarn snap
+
+      - name: Check lint errors
+        run: yarn lint
+
+      - name: Check formatting errors
+        run: yarn format
+
+      - name: Check if docker image for rebalancer builds
+        run: docker build -t alpine-sc:temp .
