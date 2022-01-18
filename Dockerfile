@@ -1,7 +1,11 @@
 FROM ubuntu:20.04 AS dapp_env
 
+RUN curl https://deb.nodesource.com/setup_16.x | bash
+RUN curl https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
+
 RUN apt-get update && \
-    apt-get -y install curl build-essential automake autoconf git jq
+    apt-get -y install curl build-essential automake autoconf git jq nodejs yarn
 
 # add user
 RUN useradd -d /home/app -m -G sudo app
@@ -25,6 +29,9 @@ WORKDIR /app
 
 # Copy all files to workdir
 COPY . .
+
+# Install dependencies
+RUN yarn install --ignore-scripts --frozen-lockfile
 
 # Build and test with dapptools
 RUN dapp test
