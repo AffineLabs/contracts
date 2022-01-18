@@ -32,6 +32,9 @@ jobs:
       - name: Install DappTools
         run: curl https://dapp.tools/install | sh
 
+      - name: Install yarn dependencies
+        run: yarn --frozen-lockfile
+
       - name: Build and test with dapptools
         run: yarn test
 
