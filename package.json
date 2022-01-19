@@ -10,15 +10,13 @@
     "script": "hardhat run",
     "build": "dapp build --optimize",
     "build-hh": "hardhat compile",
-    "abi": "ts-node scripts/build-abi.ts",
-    "types": "yarn typechain --target ethers-v5 --out-dir typechain/ ./abi/*.abi",
     "lint": "solhint src/**/*.sol",
     "lint:fix": "solhint --fix src/**/*.sol",
     "format": "prettier --check \"**/*.{ts,js,sol}\"",
     "format:fix": "prettier --write \"**/*.{ts,js,sol}\"",
     "snap": "dapp check-snapshot",
     "snap:fix": "dapp snapshot",
-    "postinstall": "yarn build && yarn abi && yarn types"
+    "postinstall": "yarn build && yarn build-hh"
   },
   "author": "Alpine",
   "license": "MIT",
