@@ -7,3 +7,4 @@ node_modules/
 package.json
 typechain/
 lib/
+src/test/test.sol

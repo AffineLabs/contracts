@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "ds-test/test.sol";
+import "./test.sol";
 import { MockERC20 } from "./MockERC20.sol";
 import { ERC20User } from "./ERC20User.sol";
 import { L2Vault } from "../polygon-contracts/L2Vault.sol";
