@@ -50,12 +50,10 @@ contract BasketVault is ERC20 {
         uint256 vaultDollars = valueOfVault();
 
         // We do two swaps. The amount of dollars we swap to each coin is determined by the ratios given above
-        // If the ratios were floats, we would do r_1 * amountInput to get the amount of `inputToken` to swap to btc
-        // But since we're using ints we do r1 * amountInput / (r1 + r2)
+        // See the whitepaper for the derivation of these amounts
 
-        (uint256 r1, uint256 r2) = (ratios[0], ratios[1]);
-        uint256 amountInputToBtc = (r1 * amountInput) / (r1 + r2);
-        uint256 amountInputToEth = amountInput - amountInputToBtc;
+        // Get dollar amounts of btc and eth to buy
+        (uint256 amountInputToBtc, uint256 amountInputToEth) = _getBuyDollarsByToken(amountInput);
 
         // TODO: don't allow infinite slippage. Will need price oracle of inputToken and ETH
         inputToken.transferFrom(msg.sender, address(this), amountInput);
@@ -97,6 +95,46 @@ contract BasketVault is ERC20 {
         }
 
         _mint(msg.sender, numShares);
+    }
+
+    // When depositing, determing amount of input token that should be used to buy BTC and ETH
+    // respectively
+    function _getBuyDollarsByToken(uint256 amountInput) internal view returns (uint256, uint256) {
+        (uint256 btcDollars, uint256 ethDollars) = _valueOfVaultComponents();
+        (uint256 r1, uint256 r2) = (ratios[0], ratios[1]);
+
+        uint256 a = (r1 * (ethDollars + amountInput)) / (r1 + r2);
+        uint256 b = (r2 * btcDollars) / (r1 + r2);
+
+        // We want to buy a negative amount of btc. Just spend all of input token on eth.
+        if (b > a) return (0, amountInput);
+
+        // We want to buy btc with more of inputToken than we have. Cap the dollars going to btc
+        uint256 amountInputToBtc = a - b;
+        if (amountInputToBtc > amountInput) return (amountInput, 0);
+
+        // The regular case where we split the input. Some amount of money goes to btc, the rest goes to eth
+        uint256 amountInputToEth = amountInput - amountInputToBtc;
+        return (amountInputToBtc, amountInputToEth);
+    }
+
+    function _getSellDollarsByToken(uint256 amountInput) internal view returns (uint256, uint256) {
+        (uint256 btcDollars, uint256 ethDollars) = _valueOfVaultComponents();
+        (uint256 r1, uint256 r2) = (ratios[0], ratios[1]);
+
+        uint256 a = (r2 * btcDollars) / (r1 + r2);
+        uint256 b = (r1 * (ethDollars - amountInput)) / (r1 + r2);
+
+        // A negative amount of the liquidation should come from btc (we want to buy btc)
+        if (b > a) return (0, amountInput);
+
+        // Cap the amount that we attempt to liquidate from btc
+        uint256 amountInputFromBtc = a - b;
+        if (amountInputFromBtc > amountInput) return (amountInput, 0);
+
+        // The regular case where we split the input. Some amount of money comes from btc, the rest goes comes from eth
+        uint256 amountInputFromEth = amountInput - amountInputFromBtc;
+        return (amountInputFromBtc, amountInputFromEth);
     }
 
     function _getTokenPrice(ERC20 token) internal view returns (uint256) {
@@ -150,9 +188,8 @@ contract BasketVault is ERC20 {
 
         uint256 vaultDollars = valueOfVault();
 
-        (uint256 r1, uint256 r2) = (ratios[0], ratios[1]);
-        uint256 amountInputFromBtc = (r1 * amountInput) / (r1 + r2);
-        uint256 amountInputFromEth = amountInput - amountInputFromBtc;
+        // Get dollar amounts of btc and eth to sell
+        (uint256 amountInputFromBtc, uint256 amountInputFromEth) = _getSellDollarsByToken(amountInput);
 
         // Get desired amount of inputToken from eth and btc reserves
         address[] memory pathBtc;
