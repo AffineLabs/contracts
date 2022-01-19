@@ -9,3 +9,4 @@ typechain
 # Dapptools
 out
 .env
+addressbook.json

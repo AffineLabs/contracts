@@ -1558,6 +1558,13 @@
     "@types/minimatch" "*"
     "@types/node" "*"
 
+"@types/jsonfile@^6.0.1":
+  version "6.0.1"
+  resolved "https://registry.yarnpkg.com/@types/jsonfile/-/jsonfile-6.0.1.tgz#639eff0748d60dfbc9d5f743ca7178bd93f53c71"
+  integrity sha512-SSCc8i9yl6vjgXSyZb0uEodk3UjXuWd55t1D+Ie1zuTx7ml+2AEj0Xyomi3NBz1gCBsZVyWWnXOLXowS1ufhEw==
+  dependencies:
+    "@types/node" "*"
+
 "@types/levelup@^4.3.0":
   version "4.3.1"
   resolved "https://registry.npmjs.org/@types/levelup/-/levelup-4.3.1.tgz"
@@ -6547,7 +6554,7 @@ jsonfile@^4.0.0:
   optionalDependencies:
     graceful-fs "^4.1.6"
 
-jsonfile@^6.0.1:
+jsonfile@^6.0.1, jsonfile@^6.1.0:
   version "6.1.0"
   resolved "https://registry.npmjs.org/jsonfile/-/jsonfile-6.1.0.tgz"
   integrity sha512-5dgndWOriYSm5cnYaJNhalLNDKOqFwyDB/rr1E9ZsGciGvKPs8R2xYGCacuf3z6K1YKDz182fd+fY3cn3pMqXQ==
