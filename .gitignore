@@ -9,3 +9,7 @@ typechain
 # Dapptools
 out
 .env
+
+
+# Other
+.DS_Store
