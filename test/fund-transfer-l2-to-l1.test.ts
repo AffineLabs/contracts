@@ -7,7 +7,6 @@ import { solidity } from "ethereum-waffle";
 import { config } from "../utils/config";
 import { ContractTransaction } from "ethers";
 import { deployAll } from "../scripts/utils/deploy-all";
-import { getContractFactory } from "../scripts/utils/ethers";
 import utils from "./utils";
 import { address } from "../utils/types";
 
@@ -75,7 +74,7 @@ it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
   hre.changeNetwork(ETH_NETWORK_NAME);
   [, defender] = await ethers.getSigners();
 
-  const l1Staging = (await getContractFactory("Staging", defender)).attach(stagingAddr);
+  const l1Staging = (await ethers.getContractFactory("Staging", defender)).attach(stagingAddr);
   console.log("Clearing funds from staging");
   tx = await l1Staging.connect(defender).l1ClearFund(transferVAA, ethers.utils.arrayify(messageProof));
   await tx.wait();

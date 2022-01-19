@@ -1,7 +1,6 @@
 import { ethers } from "hardhat";
 import hre from "hardhat";
 import { address } from "../../utils/types";
-import scriptUtils from "./index";
 import { Config } from "../../utils/config";
 import { MintableStrategy } from "../../typechain";
 import { VaultContracts } from "./deploy-vaults";
@@ -25,7 +24,7 @@ export async function deployStrategies(
   hre.changeNetwork(polygonNetworkName);
   let [signer] = await ethers.getSigners();
 
-  let stratFactory = await scriptUtils.getContractFactory("MintableStrategy", signer);
+  let stratFactory = await ethers.getContractFactory("MintableStrategy", signer);
   const l2Strategy = (await stratFactory.deploy(vaults.l2Vault.address)) as MintableStrategy;
   await l2Strategy.deployed();
   console.log("strategy L2: ", l2Strategy.address);
@@ -33,7 +32,7 @@ export async function deployStrategies(
   // Deploy Mintable strategy on ethereum
   hre.changeNetwork(ethNetworkName);
   [signer] = await ethers.getSigners();
-  stratFactory = await scriptUtils.getContractFactory("MintableStrategy", signer);
+  stratFactory = await ethers.getContractFactory("MintableStrategy", signer);
   const l1Strategy = (await stratFactory.deploy(vaults.l1Vault.address)) as MintableStrategy;
   await l1Strategy.deployed();
   console.log("strategy l1: ", l1Strategy.address);

@@ -9,7 +9,6 @@ import { ContractTransaction } from "ethers";
 import { getTxExplorerLink } from "../utils/bc-explorer-links";
 import { AllContracts, deployAll } from "../scripts/utils/deploy-all";
 import utils from "./utils";
-import { getContractFactory } from "../scripts/utils/ethers";
 
 const ETH_NETWORK_NAME = "ethGoerli";
 const POLYGON_NETWORK_NAME = "polygonMumbai";
@@ -86,7 +85,7 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
   // Get instance of staging contract
   hre.changeNetwork(POLYGON_NETWORK_NAME);
   [governance] = await ethers.getSigners();
-  const l2Staging = (await getContractFactory("Staging", governance)).attach(await l2Vault.staging());
+  const l2Staging = (await ethers.getContractFactory("Staging", governance)).attach(await l2Vault.staging());
   console.log("L2 staging address: ", l2Staging.address);
 
   await utils.waitForNonZeroAddressTokenBalance(

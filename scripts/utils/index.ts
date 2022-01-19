@@ -1,3 +1,2 @@
-import { getContractFactory } from "./ethers";
 import { deployVaults } from "./deploy-vaults";
-export default { getContractFactory, deployVaults };
+export default { deployVaults };

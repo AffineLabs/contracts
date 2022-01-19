@@ -16,12 +16,12 @@ async function deployAAVE(): Promise<any> {
 
   // A fake incentives controller, no real one exists on mumbai
   [deployer] = await ethers.getSigners();
-  const dummyFactory = await scriptUtils.getContractFactory("DummyIncentivesController", deployer);
+  const dummyFactory = await ethers.getContractFactory("DummyIncentivesController", deployer);
   const dummyIncentives = await dummyFactory.deploy();
   await dummyIncentives.deployed();
   console.log("incentives done");
 
-  const stratFactory = await scriptUtils.getContractFactory("L2AAVEStrategy", deployer);
+  const stratFactory = await ethers.getContractFactory("L2AAVEStrategy", deployer);
 
   // Hardcoding mumbai values
   const strategy = await stratFactory.deploy(
