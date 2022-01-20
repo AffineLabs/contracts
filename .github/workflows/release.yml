@@ -46,7 +46,7 @@ jobs:
         run: ls ./abi/
       
       - name: Run deployment scripts
-        run:  yarn script .\scripts\deploy-dummy.ts --network ethKovan
+        run:  yarn script ./scripts/deploy-dummy.ts --network ethKovan
 
       - name: Uploading abis to S3 bucket
         uses: jakejarvis/s3-sync-action@master
