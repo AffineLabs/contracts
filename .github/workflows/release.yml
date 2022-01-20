@@ -13,6 +13,17 @@ jobs:
   workflow:
     name: Install Dapptools and Hardhat env then upload generated ABIs to S3 bucket.
     runs-on: ubuntu-latest
+    env:
+      # S3 sync env variables
+      AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: "us-east-2"
+      DEST_DIR: ${{ github.event.release.tag_name || 'test' }}
+      # Hardhat env variables
+      MNEMONIC: ${{ secrets.MNEMONIC }}
+      ALCHEMY_ETH_KEY: ${{ secrets.ALCHEMY_ETH_KEY }}
+      ALCHEMY_POLYGON_KEY: ${{ secrets.ALCHEMY_POLYGON_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -33,15 +44,20 @@ jobs:
 
       - name: See ABI files
         run: ls ./abi/
+      
+      - name: Run deployment scripts
+        run:  yarn script .\scripts\deploy-dummy.ts --network ethKovan
 
-      - name: Uploading to S3 bucket
+      - name: Uploading abis to S3 bucket
         uses: jakejarvis/s3-sync-action@master
         with:
           args: --follow-symlinks --delete
         env:
-          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          DEST_DIR: ${{ github.event.release.tag_name || 'test' }}
           SOURCE_DIR: "abi"
-          AWS_REGION: "us-east-2"
+
+      - name: Uploading addressbook to S3 bucket
+        uses: jakejarvis/s3-sync-action@master
+        with:
+          args: --follow-symlinks --delete
+        env:
+          SOURCE_DIR: "addressbook.json"
