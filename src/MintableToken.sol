@@ -9,7 +9,12 @@ import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 // The two tokens will be mapped (https://docs.polygon.technology/docs/develop/ethereum-polygon/submit-mapping-request)
 // Note that there are no access controls since these are just testnet contracts
 contract MintableToken is ERC20 {
-    constructor(uint256 initialSupply) ERC20("Mintable USDC", "USDC", 6) {
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        uint8 _decimals,
+        uint256 initialSupply
+    ) ERC20(_name, _symbol, _decimals) {
         _mint(msg.sender, initialSupply);
     }
 

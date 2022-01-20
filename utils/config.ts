@@ -11,6 +11,8 @@ const POLYGON_ERC20_PREDICATE = "0x37c3bfC05d5ebF9EBb3FF80ce0bd0133Bf221BC8";
 const ROOT_CHAIN_MANAGER = "0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74";
 const ETH_WORMHOLE = "0x706abc4E45D419950511e474C7B9Ed348A4a716c";
 const POLYGON_WORMHOLE = "0x0CBE91CF822c73C2315FB05100C2F714765d5c20";
+const wbtc = "0x1F577114D404686B47C4A739C46B8EBee7b5156F";
+const weth = "0x1F0EB2B499C51CDa602ba96013577A3887D7278D";
 
 export interface Config {
   l1ChainManager: address;
@@ -19,6 +21,8 @@ export interface Config {
   l2ERC20Predicate: address;
   l1worm: address;
   l2worm: address;
+  weth: address;
+  wbtc: address;
 }
 export const config: Config = {
   l1ChainManager: ROOT_CHAIN_MANAGER,
@@ -27,6 +31,8 @@ export const config: Config = {
   l2ERC20Predicate: POLYGON_ERC20_PREDICATE,
   l1worm: ETH_WORMHOLE,
   l2worm: POLYGON_WORMHOLE,
+  wbtc,
+  weth,
 };
 
 export interface RebalanceConfig {
