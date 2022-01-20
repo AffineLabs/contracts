@@ -38,26 +38,11 @@ jobs:
 
       - name: Generate the ABIs
         run: yarn hardhat export-abi
-
-      - name: Remove .gitignore file in abi/ directory
-        run: rm ./abi/.gitignore
-
-      - name: See ABI files
-        run: ls ./abi/
       
       - name: Run deployment scripts
         run:  yarn script ./scripts/deploy-dummy.ts --network ethKovan
 
-      - name: Uploading abis to S3 bucket
+      - name: Uploading addressbook and abis to S3 bucket
         uses: jakejarvis/s3-sync-action@master
         with:
-          args: --follow-symlinks --delete
-        env:
-          SOURCE_DIR: "abi"
-
-      - name: Uploading addressbook to S3 bucket
-        uses: jakejarvis/s3-sync-action@master
-        with:
-          args: --follow-symlinks --delete
-        env:
-          SOURCE_DIR: "addressbook.json"
+          args: --follow-symlinks --exclude * --include addressbook.json --include abi/*.json
