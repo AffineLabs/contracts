@@ -1,5 +1,6 @@
 node_modules
 dist
+yarn-error.log
 
 #Hardhat files
 cache
@@ -9,6 +10,8 @@ typechain
 # Dapptools
 out
 .env
+
+# Address Book
 addressbook.json
 
 # Other

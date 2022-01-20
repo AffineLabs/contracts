@@ -17,7 +17,7 @@ async function deployDummy(): Promise<any> {
   for (const [price, [name, symbol]] of Object.entries(prices)) {
     const vault = await DummyFactory.deploy(name, symbol, price);
     await vault.deployed();
-    await addToAddressBook(name, vault.address);
+    await addToAddressBook(name, vault);
     console.log(`vault at ${vault.address} deployed`);
   }
 }
