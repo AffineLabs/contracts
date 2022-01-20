@@ -45,4 +45,4 @@ jobs:
       - name: Uploading addressbook and abis to S3 bucket
         uses: jakejarvis/s3-sync-action@master
         with:
-          args: --follow-symlinks --exclude * --include addressbook.json --include abi/*.json
+          args: --follow-symlinks --exclude "*" --include "addressbook.json" --include "abi/*.json"
