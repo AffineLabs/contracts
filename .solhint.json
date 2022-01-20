@@ -1,3 +1,21 @@
 {
   "extends": "solhint:default"
 }
+
+{
+  "blockchain_id": 47,
+  "block_id": 3916102,
+  "event_name": "BarEvent"
+  "fields": [
+    {
+      "type": "number",
+      "name": "field_1",
+      "value": 82
+    },
+    {
+      "type": "string",
+      "name": "field_2",
+      "value": "demo"
+    }
+  ]
+}
