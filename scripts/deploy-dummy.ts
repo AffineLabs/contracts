@@ -2,21 +2,19 @@ import { ethers } from "hardhat";
 import { config as dotenvConfig } from "dotenv";
 import { resolve } from "path";
 
-import scriptUtils from "./utils";
-
 dotenvConfig({ path: resolve(__dirname, "./.env") });
 
 async function deployDummy(): Promise<any> {
   const [deployer] = await ethers.getSigners();
 
-  const DummyFactory = await scriptUtils.getContractFactory("DummyVault", deployer);
+  const DummyFactory = await ethers.getContractFactory("DummyVault", deployer);
   const prices = {
     1: ["Alpine Save", "alpSave"],
     2: ["Alpine Balanced", "alpBal"],
     3: ["Alpine Aggresive", "alpAggr"],
   };
   for (const [price, [name, symbol]] of Object.entries(prices)) {
-    const vault = await DummyFactory.deploy(`${name}`, `${symbol}`, price);
+    const vault = await DummyFactory.deploy(name, symbol, price);
     await vault.deployed();
     console.log(`vault at ${vault.address} deployed`);
   }

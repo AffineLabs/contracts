@@ -2,7 +2,6 @@ import { ethers } from "hardhat";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../../utils/bc-explorer-links";
 import { address } from "../../utils/types";
-import scriptUtils from "./index";
 import { Config } from "../../utils/config";
 import { L1Vault, L2Vault } from "../../typechain";
 
@@ -32,11 +31,11 @@ export async function deployVaults(
   await fundTx.wait();
 
   // deploy deployer from newly funded wallet
-  let deployerFactory = await scriptUtils.getContractFactory("Create2Deployer", wallet);
+  let deployerFactory = await ethers.getContractFactory("Create2Deployer", wallet);
   let deployer = await deployerFactory.deploy();
   await deployer.deployed();
 
-  const l1VaultFactory = await scriptUtils.getContractFactory("L1Vault");
+  const l1VaultFactory = await ethers.getContractFactory("L1Vault");
   console.log("about to deploy l1 vault: ", config);
 
   const l1Vault = (await l1VaultFactory.deploy(
@@ -64,11 +63,11 @@ export async function deployVaults(
   await fundTx.wait();
 
   // deploy deployer from newly funded wallet
-  deployerFactory = await scriptUtils.getContractFactory("Create2Deployer", wallet);
+  deployerFactory = await ethers.getContractFactory("Create2Deployer", wallet);
   deployer = await deployerFactory.deploy();
   await deployer.deployed();
 
-  const l2VaultFactory = await scriptUtils.getContractFactory("L2Vault");
+  const l2VaultFactory = await ethers.getContractFactory("L2Vault");
   const l2Vault = (await l2VaultFactory.deploy(
     governance,
     config.l2USDC,
