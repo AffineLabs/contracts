@@ -42,7 +42,7 @@ jobs:
       - name: Run deployment scripts
         run:  yarn script ./scripts/deploy-dummy.ts --network ethKovan
 
-      - name: Uploading addressbook and abis to S3 bucket
+      - name: Uploading addressbook to S3 bucket
         uses: jakejarvis/s3-sync-action@master
         with:
-          args: --follow-symlinks --exclude "*" --include "addressbook.json" --include "abi/*.json"
+          args: --follow-symlinks --include addressbook.json --include abi/*
