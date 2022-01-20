@@ -10,3 +10,6 @@ typechain
 out
 .env
 addressbook.json
+
+# Other
+.DS_Store
