@@ -1,6 +1,7 @@
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.8.9;
 
+import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
@@ -37,7 +38,7 @@ interface VaultAPI is IERC20 {
 
     function withdraw(uint256 maxShares, address recipient) external returns (uint256);
 
-    function token() external view returns (address);
+    function token() external view returns (IERC20);
 
     function strategies(address _strategy) external view returns (StrategyParams memory);
 
@@ -59,7 +60,7 @@ interface VaultAPI is IERC20 {
      * based on its present performance (since its last report). Can be used to
      * determine expectedReturn in your Strategy.
      */
-    function debtOutstanding() external view returns (uint256);
+    function debtOutstanding(address strategy) external view returns (uint256);
 
     /**
      * View how much the Vault expect this Strategy to return at the current
@@ -197,7 +198,7 @@ abstract contract BaseStrategy {
         require(address(want) == address(0), "Strategy already initialized");
 
         vault = VaultAPI(_vault);
-        want = IERC20(vault.token());
+        want = vault.token();
         SafeERC20.safeApprove(want, _vault, type(uint256).max); // Give Vault unlimited access (might save gas)
         keeper = _keeper;
 
@@ -335,7 +336,7 @@ abstract contract BaseStrategy {
         //       changes to the value from triggering a harvest directly through user
         //       behavior. This should ensure reasonable resistance to manipulation
         //       from user-initiated withdrawals as the outstanding debt fluctuates.
-        uint256 outstanding = vault.debtOutstanding();
+        uint256 outstanding = vault.debtOutstanding(address(this));
         if (outstanding > debtThreshold) return true;
 
         // Check for profits and losses
@@ -360,7 +361,7 @@ abstract contract BaseStrategy {
     function harvest() external onlyKeepers {
         uint256 profit = 0;
         uint256 loss = 0;
-        uint256 debtOutstanding = vault.debtOutstanding();
+        uint256 debtOutstanding = vault.debtOutstanding(address(this));
         uint256 debtPayment = 0;
 
         // Free up returns for Vault to pull
@@ -398,7 +399,7 @@ abstract contract BaseStrategy {
      */
     function tend() external onlyKeepers {
         // Don't take profits with this call, but adjust for better gains
-        adjustPosition(vault.debtOutstanding());
+        adjustPosition(vault.debtOutstanding(address(this)));
     }
 
     /**

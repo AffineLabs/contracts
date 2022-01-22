@@ -10,7 +10,7 @@ contract MintableStrategy {
 
     constructor(address _vault) {
         vault = VaultAPI(_vault);
-        want = MintableToken(vault.token());
+        want = MintableToken(address(vault.token()));
         // Give Vault unlimited access
         want.approve(_vault, type(uint256).max);
     }
