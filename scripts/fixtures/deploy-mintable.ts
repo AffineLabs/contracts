@@ -15,7 +15,7 @@ async function deployToken() {
   hre.changeNetwork(POLYGON_NETWORK_NAME);
   let [signer] = await ethers.getSigners();
   let tokenFactory = await ethers.getContractFactory("MintableToken", signer);
-  let token = await tokenFactory.deploy(ethers.utils.parseUnits("100000", 6));
+  let token = await tokenFactory.deploy("Mintable USDC", "USDC", 6, ethers.utils.parseUnits("100000", 6));
   await token.deployed();
   console.log("Polygon token: ", token.address);
 
@@ -24,7 +24,7 @@ async function deployToken() {
   [signer] = await ethers.getSigners();
   tokenFactory = await ethers.getContractFactory("MintableToken", signer);
 
-  token = await tokenFactory.deploy(ethers.utils.parseUnits("100000", 6));
+  token = await tokenFactory.deploy("Mintable USDC", "USDC", 6, ethers.utils.parseUnits("100000", 6));
   await token.deployed();
   console.log("ETH token: ", token.address);
 }
@@ -39,7 +39,7 @@ async function deployBtcEth() {
   const usdc = MintableToken__factory.connect(config.l2USDC, signer);
   await usdc.mint(signer.address, 200e6);
 
-  let tokenFactory = await scriptUtils.getContractFactory("MintableToken", signer);
+  let tokenFactory = await ethers.getContractFactory("MintableToken", signer);
   const btc = await tokenFactory.deploy("Mintable BTC", "BTC", 18, ethers.utils.parseUnits(String(10_000), 18));
   await btc.deployed();
   console.log("BTC ", btc.address);

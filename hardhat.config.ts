@@ -93,16 +93,20 @@ const config: HardhatUserConfig = {
       url: "http://localhost:8545",
       chainId: ethChainIds.hardhat,
     },
+    goerliFork: {
+      ...createETHNetworkConfig("goerli"),
+      url: "http://localhost:8546",
+      chainId: ethChainIds.hardhat,
+    },
   },
   solidity: {
-    compilers: [
-      {
-        version: "0.7.3",
+    version: "0.8.10",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
       },
-      {
-        version: "0.8.10",
-      },
-    ],
+    },
   },
   etherscan: {
     apiKey: ETHERSCAN_API_KEY,

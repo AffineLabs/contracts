@@ -62,6 +62,11 @@ contract L2AAVEStrategy is BaseStrategy {
         router = IUniLikeSwapRouter(_router);
         rewardToken = _rewardToken;
         wrappedNative = _wrappedNative;
+
+        // approve
+        IERC20(aToken).approve(pool, type(uint256).max);
+        want.approve(pool, type(uint256).max);
+        IERC20(rewardToken).approve(_router, type(uint256).max);
     }
 
     function name() external pure override returns (string memory) {
@@ -209,16 +214,16 @@ contract L2AAVEStrategy is BaseStrategy {
 
     function protectedTokens() internal view override returns (address[] memory) {}
 
-    // Internal views
-    function balanceOfWant() internal view returns (uint256) {
+    // Some views
+    function balanceOfWant() public view returns (uint256) {
         return want.balanceOf(address(this));
     }
 
-    function balanceOfRewardToken() internal view returns (uint256) {
+    function balanceOfRewardToken() public view returns (uint256) {
         return IERC20(rewardToken).balanceOf(address(this));
     }
 
-    function balanceOfAToken() internal view returns (uint256) {
+    function balanceOfAToken() public view returns (uint256) {
         return aToken.balanceOf(address(this));
     }
 

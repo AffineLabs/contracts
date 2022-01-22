@@ -4,6 +4,7 @@ import { logContractDeploymentInfo } from "../../utils/bc-explorer-links";
 import { address } from "../../utils/types";
 import { Config } from "../../utils/config";
 import { L1Vault, L2Vault } from "../../typechain";
+import { getContractAddress } from "../../utils/address-book";
 
 export interface VaultContracts {
   l1Vault: L1Vault;
@@ -38,14 +39,14 @@ export async function deployVaults(
   const l1VaultFactory = await ethers.getContractFactory("L1Vault");
   console.log("about to deploy l1 vault: ", config);
 
-  const l1Vault = (await l1VaultFactory.deploy(
+  const l1Vault = await l1VaultFactory.deploy(
     governance,
     config.l1USDC,
     config.l1worm,
     deployer.address,
     config.l1ChainManager,
     config.l2ERC20Predicate,
-  )) as L1Vault;
+  );
   await l1Vault.deployed();
   logContractDeploymentInfo(ethNetworkName, "L1Vault", l1Vault);
 
@@ -68,14 +69,14 @@ export async function deployVaults(
   await deployer.deployed();
 
   const l2VaultFactory = await ethers.getContractFactory("L2Vault");
-  const l2Vault = (await l2VaultFactory.deploy(
+  const l2Vault = await l2VaultFactory.deploy(
     governance,
     config.l2USDC,
     config.l2worm,
-    deployer.address,
+    await getContractAddress(deployer),
     9,
     1,
-  )) as L2Vault;
+  );
   await l2Vault.deployed();
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
 

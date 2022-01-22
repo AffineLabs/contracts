@@ -36,7 +36,7 @@ abstract contract BaseVault is ERC20 {
         uint256 totalLoss;
     }
     // All strategy information
-    mapping(address => StrategyInfo) strategies;
+    mapping(address => StrategyInfo) public strategies;
     event StrategyAdded(
         address indexed strategy,
         uint256 debtRatio,
@@ -153,7 +153,7 @@ abstract contract BaseVault is ERC20 {
             activation: block.timestamp,
             debtRatio: debtRatio_,
             minDebtPerHarvest: minDebtPerHarvest,
-            maxDebtPerHarvest: minDebtPerHarvest,
+            maxDebtPerHarvest: maxDebtPerHarvest,
             lastReport: block.timestamp,
             totalDebt: 0,
             totalGain: 0,
@@ -331,9 +331,11 @@ abstract contract BaseVault is ERC20 {
 
         // Adjust by the amount of credit that the vault can give
         available = Math.min(available, vaultDebtLimit - totalDebt);
+
         // Can only borrow up to what the contract has in reserve
         // NOTE: Running near 100% is discouraged
         available = Math.min(available, token.balanceOf(address(this)));
+
         // Adjust by min and max borrow limits (per harvest)
         // NOTE: min increase can be used to ensure that if a strategy has a minimum
         //       amount of capital needed to purchase a position, it's not given capital

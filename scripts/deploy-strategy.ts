@@ -1,10 +1,7 @@
 import { ethers } from "hardhat";
-import { config as dotenvConfig } from "dotenv";
-import { resolve } from "path";
 import scriptUtils from "./utils";
 import { config } from "../utils/config";
-
-dotenvConfig({ path: resolve(__dirname, "./.env") });
+import { getContractAddress } from "../utils/address-book";
 
 async function deployAAVE(): Promise<any> {
   let [deployer] = await ethers.getSigners();
@@ -14,26 +11,27 @@ async function deployAAVE(): Promise<any> {
   myConfig.l2USDC = "0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e";
   const vaultContracts = await scriptUtils.deployVaults(deployer.address, "ethGoerli", "polygonMumbai", myConfig);
 
-  // A fake incentives controller, no real one exists on mumbai
-  [deployer] = await ethers.getSigners();
-  const dummyFactory = await ethers.getContractFactory("DummyIncentivesController", deployer);
-  const dummyIncentives = await dummyFactory.deploy();
-  await dummyIncentives.deployed();
-  console.log("incentives done");
-
   const stratFactory = await ethers.getContractFactory("L2AAVEStrategy", deployer);
 
   // Hardcoding mumbai values
   const strategy = await stratFactory.deploy(
-    vaultContracts.l2Vault.address,
+    await getContractAddress(vaultContracts.l2Vault), // TODO: can remove once polygon bug is fixed
     "0xE6ef11C967898F9525D550014FDEdCFAB63536B5", // aave adress provider registry
-    dummyIncentives.address,
-    "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff", // quickswap -> these are polygon mainnet addresses that won't be used
-    "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", // reward token -> wrapped matic -> as above
-    "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", // wrapped matic address
+    "0x0a1AB7aea4314477D40907412554d10d30A0503F", // dummy incentives controller TODO: get value from config
+    "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff", // sushiswap router on mumbai
+    "0x5B67676a984807a212b1c59eBFc9B3568a474F0a", // reward token -> wrapped matic
+    "0x5B67676a984807a212b1c59eBFc9B3568a474F0a", // wrapped matic address
   );
-  console.log("strategy address: ", strategy.address);
+  console.log("strategy address: ", await getContractAddress(strategy));
   await strategy.deployed();
+
+  // add strategy to L2 vault
+  await vaultContracts.l2Vault.addStrategy(
+    await getContractAddress(strategy),
+    5000,
+    0,
+    ethers.utils.parseUnits("1000", 6),
+  );
 }
 
 deployAAVE()
