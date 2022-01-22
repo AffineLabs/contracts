@@ -45,13 +45,15 @@ contract L2Vault is BaseVault {
     // So long as this conract can transfer usdc from the given user, everything is fine
     function deposit(address user, uint256 amountToken) external {
         // mint
-        _issueSharesForAmount(user, amountToken);
+        uint256 numShares = sharesFromTokens(amountToken);
+        _mint(user, numShares);
 
         // transfer usdc to this contract
         token.transferFrom(user, address(this), amountToken);
     }
 
-    function _issueSharesForAmount(address user, uint256 amountToken) internal {
+    function sharesFromTokens(uint256 amountToken) public view returns (uint256) {
+        // AMount of shares you get for a given amount of tokens
         uint256 numShares;
         uint256 totalTokens = totalSupply;
         if (totalTokens == 0) {
@@ -59,7 +61,7 @@ contract L2Vault is BaseVault {
         } else {
             numShares = (amountToken * totalTokens) / globalTVL();
         }
-        _mint(user, numShares);
+        return numShares;
     }
 
     // TVL is denominated in `token`.
@@ -71,7 +73,7 @@ contract L2Vault is BaseVault {
     function withdraw(address user, uint256 shares) external {
         require(shares <= balanceOf[user], "Cannot burn more shares than owned");
 
-        uint256 valueOfShares = _getShareValue(shares);
+        uint256 valueOfShares = tokensFromShares(shares);
 
         // TODO: handle case where the user is trying to withdraw more value than actually exists in the vault
         if (valueOfShares > token.balanceOf(address(this))) {}
@@ -83,10 +85,8 @@ contract L2Vault is BaseVault {
         token.transfer(user, valueOfShares);
     }
 
-    function _getShareValue(uint256 shares) internal view returns (uint256) {
-        // The price of the vault share (e.g. alpSave).
-        // This is a ratio of share/token, i.e. the numbers of shares for single wei of the input token
-
+    function tokensFromShares(uint256 shares) public view returns (uint256) {
+        // Amount of tokens you get for the given amount of shares.
         uint256 totalShares = totalSupply;
         if (totalShares == 0) {
             return shares;
