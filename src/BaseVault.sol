@@ -61,8 +61,8 @@ abstract contract BaseVault is ERC20 {
     uint256 public debtRatio;
     // Total amount that the vault can get back from strategies (ignoring slippage)
     uint256 public totalDebt;
-    uint256 constant MAX_BPS = 10000;
-    uint256 constant SECS_PER_YEAR = 31_556_952;
+    uint256 public constant MAX_BPS = 10000;
+    uint256 public constant SECS_PER_YEAR = 31_556_952;
     uint256 public lastReport;
 
     // TODO: Add some events here. Actually log events as well
