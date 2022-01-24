@@ -1,7 +1,7 @@
 import { ethers } from "hardhat";
-import scriptUtils from "./utils";
-import { config } from "../utils/config";
-import { getContractAddress } from "../utils/address-book";
+import scriptUtils from "../utils";
+import { config } from "../../utils/config";
+import { getContractAddress } from "../../utils/address-book";
 
 async function deployAAVE(): Promise<any> {
   let [deployer] = await ethers.getSigners();

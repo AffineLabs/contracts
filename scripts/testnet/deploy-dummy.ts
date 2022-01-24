@@ -1,7 +1,7 @@
 import { ethers } from "hardhat";
 import { config as dotenvConfig } from "dotenv";
 import { resolve } from "path";
-import { addToAddressBook } from "../utils/address-book";
+import { addToAddressBook } from "../../utils/address-book";
 
 dotenvConfig({ path: resolve(__dirname, "./.env") });
 
