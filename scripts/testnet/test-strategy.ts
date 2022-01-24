@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import { ERC20__factory } from "../typechain";
+import { ERC20__factory } from "../../typechain";
 
 async function testStrategy(): Promise<any> {
   // This only runs on mumbai for now

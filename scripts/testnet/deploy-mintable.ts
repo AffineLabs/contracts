@@ -1,8 +1,8 @@
 import { TransactionResponse } from "@ethersproject/abstract-provider";
-import { IUniLikeSwapRouter__factory, MintableToken__factory } from "../typechain";
+import { IUniLikeSwapRouter__factory, MintableToken__factory } from "../../typechain";
 import hre from "hardhat";
 import { ethers } from "hardhat";
-import { config } from "../utils/config";
+import { config } from "../../utils/config";
 
 const ETH_NETWORK_NAME = "ethGoerli";
 const POLYGON_NETWORK_NAME = "polygonMumbai";
