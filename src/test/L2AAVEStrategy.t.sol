@@ -2,20 +2,13 @@
 pragma solidity ^0.8.10;
 
 import "./test.sol";
+import { IHevm } from "./IHevm.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
 import { L2Vault } from "../polygon-contracts/L2Vault.sol";
 import { Create2Deployer } from "./Create2Deployer.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { L2AAVEStrategy } from "../polygon-contracts/L2AAVEStrategy.sol";
-
-interface IHevm {
-    function store(
-        address c,
-        bytes32 loc,
-        bytes32 val
-    ) external;
-}
 
 contract AAVEStratTest is DSTest {
     L2Vault vault;
