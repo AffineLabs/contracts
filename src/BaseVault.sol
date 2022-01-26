@@ -194,10 +194,6 @@ abstract contract BaseVault is ERC20 {
         // Let governance/strategy remove the strategy
         require(msg.sender == strategy || msg.sender == governance, "Only goverance or the strategy can call");
         if (strategies[strategy].debtRatio == 0) return;
-        _removeStrategy(strategy);
-    }
-
-    function _removeStrategy(address strategy) internal {
         debtRatio -= strategies[strategy].debtRatio;
         strategies[strategy].debtRatio = 0;
         emit StrategyRemoved(strategy);
@@ -301,15 +297,6 @@ abstract contract BaseVault is ERC20 {
     function _reportLoss(address strategy, uint256 loss) internal {
         uint256 strategyDebt = strategies[strategy].totalDebt;
         require(strategyDebt >= loss, "Strategy cannot lose more than it borrowed.");
-        // Reduce our trust with the strategy by the amount of loss
-        // this calculation intentionally approximates via `totalDebt` to avoid manipulatable results
-
-        // e.g. if loss/totalDebt is 10%, and debtRatio is 90% (9000), then reduce debtRatio by 10% * 90% = 9%
-        // # NOTE: This calculation isn't 100% precise, the adjustment is ~10%-20% more severe due to EVM math
-        uint256 amountloss = (loss * debtRatio) / totalDebt;
-        uint256 ratioChange = amountloss < strategyDebt ? amountloss : strategyDebt;
-        strategies[strategy].debtRatio -= ratioChange;
-        debtRatio -= ratioChange;
 
         // Adjust our strategy's parameters by the loss
         strategies[strategy].totalLoss += loss;
