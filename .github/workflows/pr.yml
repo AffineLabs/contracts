@@ -25,21 +25,19 @@ jobs:
         with:
           node-version: "16.x"
 
-      - uses: cachix/install-nix-action@v16
+      - name: Install Foundry
+        uses: onbjerg/foundry-toolchain@v1
         with:
-          nix_path: nixpkgs=channel:nixos-unstable
-      
-      - name: Install DappTools
-        run: curl https://dapp.tools/install | sh
+          version: nightly
 
       - name: Install yarn dependencies
         run: yarn --frozen-lockfile
 
-      - name: Build and test with dapptools
-        run: yarn test
+      - name: Build and test with foundry (against forked mumbai)
+        run: forge test --rpc-url https://polygon-mumbai.g.alchemy.com/v2/${{ secrets.ALCHEMY_POLYGON_KEY }} --fork-block-number 24274280
 
       - name: Check gas snapshot
-        run: yarn snap
+        run: forge snapshot --check --rpc-url https://polygon-mumbai.g.alchemy.com/v2/${{ secrets.ALCHEMY_POLYGON_KEY }} --fork-block-number 24274280
 
       - name: Check lint errors
         run: yarn lint
