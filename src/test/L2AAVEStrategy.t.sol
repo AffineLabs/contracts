@@ -26,7 +26,8 @@ contract AAVEStratTestFork is DSTest {
             IWormhole(0x0CBE91CF822c73C2315FB05100C2F714765d5c20), // wormhole
             create2Deployer, // create2deployer (needs to be a real contract)
             1, // l1 ratio
-            1 // l2 ratio
+            1, // l2 ratio
+            address(0) // relayer for gasless transactions
         );
         strategy = new L2AAVEStrategy(
             address(vault),

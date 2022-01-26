@@ -1,4 +1,4 @@
 @openzeppelin/=node_modules/@openzeppelin/
 solmate/=node_modules/solmate/
-ds-test/=node_modules/ds-test/
 @uniswap/=node_modules/@uniswap/
+@opengsn/=node_modules/@opengsn/
