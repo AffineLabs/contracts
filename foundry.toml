@@ -4,9 +4,9 @@ test = 'test'
 out = 'out'
 libs = ['lib']
 remappings = [
+     '@opengsn/=node_modules/@opengsn/',
     '@openzeppelin/=node_modules/@openzeppelin/',
     '@uniswap/=node_modules/@uniswap/',
-    'ds-test/=node_modules/ds-test/',
     'solmate/=node_modules/solmate/',
 ]
 libraries = []

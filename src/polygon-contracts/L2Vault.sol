@@ -7,6 +7,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { BaseVault } from "../BaseVault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { Staging } from "../Staging.sol";
+import { Relayer } from "./Relayer.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 
 contract L2Vault is BaseVault {
@@ -30,30 +31,43 @@ contract L2Vault is BaseVault {
     event SendToL1(uint256 amount);
     event ReceiveFromL1(uint256 amount);
 
+    /////// Gasless transactions
+    Relayer public relayer;
+
     constructor(
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
         ICreate2Deployer create2Deployer,
         uint256 L1Ratio,
-        uint256 L2Ratio
+        uint256 L2Ratio,
+        address trustedForwarder
     ) BaseVault(_governance, _token, _wormhole, create2Deployer) {
         layerRatios = LayerBalanceRatios({ layer1: L1Ratio, layer2: L2Ratio });
+        relayer = new Relayer(trustedForwarder, address(this));
     }
 
-    // We don't need to check if user == msg.sender()
-    // So long as this conract can transfer usdc from the given user, everything is fine
-    function deposit(address user, uint256 amountToken) external {
+    function _deposit(address user, uint256 amountToken) internal {
         // mint
         uint256 numShares = sharesFromTokens(amountToken);
         _mint(user, numShares);
 
-        // transfer usdc to this contract
+        // Get usdc
         token.transferFrom(user, address(this), amountToken);
     }
 
+    function deposit(uint256 amountToken) external {
+        _deposit(msg.sender, amountToken);
+    }
+
+    // To be called only by the relayer.
+    function depositGasLess(address user, uint256 amountToken) external {
+        require(msg.sender == address(relayer), "Only relayer");
+        _deposit(user, amountToken);
+    }
+
     function sharesFromTokens(uint256 amountToken) public view returns (uint256) {
-        // AMount of shares you get for a given amount of tokens
+        // Amount of shares you get for a given amount of tokens
         uint256 numShares;
         uint256 totalTokens = totalSupply;
         if (totalTokens == 0) {
@@ -69,10 +83,7 @@ contract L2Vault is BaseVault {
         return vaultTVL() + L1TotalLockedValue;
     }
 
-    // TODO: handle access control, re-entrancy
-    function withdraw(address user, uint256 shares) external {
-        require(shares <= balanceOf[user], "Cannot burn more shares than owned");
-
+    function _withdraw(address user, uint256 shares) internal {
         uint256 valueOfShares = tokensFromShares(shares);
 
         // TODO: handle case where the user is trying to withdraw more value than actually exists in the vault
@@ -83,6 +94,15 @@ contract L2Vault is BaseVault {
 
         // transfer usdc out
         token.transfer(user, valueOfShares);
+    }
+
+    function withdraw(uint256 shares) external {
+        _withdraw(msg.sender, shares);
+    }
+
+    function withdrawGasLess(address user, uint256 shares) external {
+        require(msg.sender == address(relayer), "Only relayer");
+        _withdraw(user, shares);
     }
 
     function tokensFromShares(uint256 shares) public view returns (uint256) {

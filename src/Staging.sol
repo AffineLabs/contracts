@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import { IWormhole } from "./interfaces/IWormhole.sol";
 import { IRootChainManager } from "./interfaces/IRootChainManager.sol";
+import { IL1Vault, IL2Vault } from "./interfaces/IVault.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IChildERC20 {
@@ -11,14 +12,6 @@ interface IChildERC20 {
     function transfer(address to, uint256 value) external returns (bool);
 
     function balanceOf(address who) external view returns (uint256);
-}
-
-interface IL1Vault {
-    function afterReceive() external;
-}
-
-interface IL2Vault {
-    function afterReceive(uint256 amount) external;
 }
 
 contract Staging {
