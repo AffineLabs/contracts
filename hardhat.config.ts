@@ -70,7 +70,7 @@ function createPolygonNetworkConfig(network: keyof typeof polygonChainIds): Netw
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
-  paths: { sources: "./src" },
+  paths: { sources: "./src", cache: "./hh-cache" },
   networks: {
     hardhat: {
       accounts: {
