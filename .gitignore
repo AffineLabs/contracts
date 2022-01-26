@@ -1,15 +1,16 @@
 node_modules
 dist
 yarn-error.log
+.env
 
 #Hardhat files
-cache
 artifacts
 typechain
+hh-cache
 
-# Dapptools
+# Foundry
 out
-.env
+cache
 
 # Address Book
 addressbook.json
