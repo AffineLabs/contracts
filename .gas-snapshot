@@ -1,4 +1,4 @@
-testStrategyLosesMoney() (gas: 684112)
-testStrategyMakesMoney() (gas: 778802)
-testDepositWithdraw(uint256) (runs: 256, μ: 104238, ~: 104239)
-testMessagePass() (gas: 32522)
+AAVEStratTestFork:testStrategyLosesMoney() (gas: 684112)
+AAVEStratTestFork:testStrategyMakesMoney() (gas: 778802)
+VaultTest:testDepositWithdraw(uint256) (runs: 256, μ: 104238, ~: 104239)
+WormholeTest:testMessagePass() (gas: 32522)
