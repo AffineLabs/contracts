@@ -13,6 +13,7 @@ const ETH_WORMHOLE = "0x706abc4E45D419950511e474C7B9Ed348A4a716c";
 const POLYGON_WORMHOLE = "0x0CBE91CF822c73C2315FB05100C2F714765d5c20";
 const wbtc = "0x1F577114D404686B47C4A739C46B8EBee7b5156F";
 const weth = "0x1F0EB2B499C51CDa602ba96013577A3887D7278D";
+const BICONOMY_FORWARDER = "0x9399BB24DBB5C4b782C70c2969F58716Ebbd6a3b";
 
 export interface Config {
   l1ChainManager: address;
@@ -23,6 +24,7 @@ export interface Config {
   l2worm: address;
   weth: address;
   wbtc: address;
+  biconomyForwarder: address;
 }
 export const config: Config = {
   l1ChainManager: ROOT_CHAIN_MANAGER,
@@ -33,6 +35,7 @@ export const config: Config = {
   l2worm: POLYGON_WORMHOLE,
   wbtc,
   weth,
+  biconomyForwarder: BICONOMY_FORWARDER,
 };
 
 export interface RebalanceConfig {

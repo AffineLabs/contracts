@@ -76,6 +76,7 @@ export async function deployVaults(
     await getContractAddress(deployer),
     9,
     1,
+    config.biconomyForwarder,
   );
   await l2Vault.deployed();
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
