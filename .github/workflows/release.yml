@@ -38,9 +38,9 @@ jobs:
 
       - name: Generate the ABIs
         run: yarn hardhat export-abi
-      
+
       - name: Run deployment scripts
-        run:  yarn script ./scripts/deploy-dummy.ts --network ethKovan
+        run: yarn script scripts/deploy-all-goerli-mumbai.ts
 
       - name: Uploading addressbook to S3 bucket
         uses: jakejarvis/s3-sync-action@master
