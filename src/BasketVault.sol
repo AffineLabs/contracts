@@ -70,7 +70,7 @@ contract BasketVault is ERC20 {
             0,
             pathBtc,
             address(this),
-            block.timestamp + 3 hours
+            block.timestamp
         );
 
         uint256[] memory ethAmounts = uniRouter.swapExactTokensForTokens(
@@ -78,7 +78,7 @@ contract BasketVault is ERC20 {
             0,
             pathEth,
             address(this),
-            block.timestamp + 3 hours
+            block.timestamp
         );
 
         uint256 btcReceived = btcAmounts[1];
@@ -205,14 +205,14 @@ contract BasketVault is ERC20 {
             type(uint256).max,
             pathBtc,
             address(this),
-            block.timestamp + 3 hours
+            block.timestamp
         );
         uint256[] memory ethAmounts = uniRouter.swapTokensForExactTokens(
             amountInputFromEth,
             type(uint256).max,
             pathEth,
             address(this),
-            block.timestamp + 3 hours
+            block.timestamp
         );
 
         uint256 btcSent = btcAmounts[0];
@@ -253,18 +253,12 @@ contract BasketVault is ERC20 {
             // sell difference
             uint256 delta = ethDollars - idealDollarsOfEth;
             uint256 deltaEth = (delta * token2.balanceOf(address(this))) / ethDollars;
-            uniRouter.swapExactTokensForTokens(deltaEth, 0, pathToBtc, address(this), block.timestamp + 3 hours);
+            uniRouter.swapExactTokensForTokens(deltaEth, 0, pathToBtc, address(this), block.timestamp);
         } else {
             // buy Eth
             uint256 delta = idealDollarsOfEth - ethDollars;
             uint256 deltaEth = (delta * token2.balanceOf(address(this))) / ethDollars;
-            uniRouter.swapTokensForExactTokens(
-                deltaEth,
-                type(uint256).max,
-                pathToEth,
-                address(this),
-                block.timestamp + 3 hours
-            );
+            uniRouter.swapTokensForExactTokens(deltaEth, type(uint256).max, pathToEth, address(this), block.timestamp);
         }
     }
 }
