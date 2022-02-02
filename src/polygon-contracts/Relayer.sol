@@ -6,11 +6,6 @@ import { BaseRelayRecipient } from "@opengsn/contracts/src/BaseRelayRecipient.so
 contract Relayer is BaseRelayRecipient {
     L2Vault vault;
 
-    modifier onlyForwarder() {
-        require(msg.sender == trustedForwarder(), "Forwarder only");
-        _;
-    }
-
     constructor(address _forwarder, address _vault) {
         _setTrustedForwarder(_forwarder);
         vault = L2Vault(_vault);
@@ -18,11 +13,11 @@ contract Relayer is BaseRelayRecipient {
 
     // NOTE: Only using `this` because I can't mock _msgSender as an internal call (JUMP)
     // See https://github.com/gakonst/foundry/issues/432
-    function deposit(uint256 amountToken) external onlyForwarder {
+    function deposit(uint256 amountToken) external {
         vault.depositGasLess(this.msgSender(), amountToken);
     }
 
-    function withdraw(uint256 shares) external onlyForwarder {
+    function withdraw(uint256 shares) external {
         vault.withdrawGasLess(this.msgSender(), shares);
     }
 
