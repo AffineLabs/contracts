@@ -81,6 +81,7 @@ export async function deployVaults(
   );
   await l2Vault.deployed();
   await addToAddressBook(`${polygonNetworkName} Alpine Save`, l2Vault);
+  await addToAddressBook(`${polygonNetworkName} Relayer`, await l2Vault.relayer());
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
 
   return {
