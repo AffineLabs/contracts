@@ -14,15 +14,11 @@ contract Relayer is BaseRelayRecipient {
     // NOTE: Only using `this` because I can't mock _msgSender as an internal call (JUMP)
     // See https://github.com/gakonst/foundry/issues/432
     function deposit(uint256 amountToken) external {
-        vault.depositGasLess(this.msgSender(), amountToken);
+        vault.depositGasLess(_msgSender(), amountToken);
     }
 
     function withdraw(uint256 shares) external {
-        vault.withdrawGasLess(this.msgSender(), shares);
-    }
-
-    function msgSender() public view returns (address) {
-        return _msgSender();
+        vault.withdrawGasLess(_msgSender(), shares);
     }
 
     function versionRecipient() external pure override returns (string memory) {
