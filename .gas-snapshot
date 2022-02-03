@@ -1,5 +1,5 @@
-AAVEStratTestFork:testStrategyLosesMoney() (gas: 684310)
-AAVEStratTestFork:testStrategyMakesMoney() (gas: 779088)
+AAVEStratTestFork:testStrategyLosesMoney() (gas: 687412)
+AAVEStratTestFork:testStrategyMakesMoney() (gas: 782755)
 VaultTest:testDepositWithdraw(uint256) (runs: 256, μ: 103712, ~: 103713)
 VaultTest:testDepositWithdrawGasLess() (gas: 114817)
 VaultTest:testManagementFee() (gas: 223871)
