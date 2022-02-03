@@ -2,6 +2,7 @@
 pragma solidity ^0.8.9;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { BaseVault } from "../BaseVault.sol";
@@ -11,8 +12,12 @@ import { Relayer } from "./Relayer.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 
 contract L2Vault is BaseVault {
+    using SafeTransferLib for ERC20;
+
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
     uint256 public L1TotalLockedValue;
+
+    /////// Cross chain rebalancing
 
     // Represents the amount of tvl (in `token`) that should exist on L1 and L2
     // E.g. if layer1 == 1 and layer2 == 2 then 1/3 of the TVL should be on L1
@@ -21,8 +26,6 @@ contract L2Vault is BaseVault {
         uint256 layer2;
     }
     LayerBalanceRatios public layerRatios;
-
-    /////// Cross chain rebalancing
 
     // Whether we can send or receive money from L1
     bool public canTransferToL1 = true;
@@ -33,6 +36,10 @@ contract L2Vault is BaseVault {
 
     /////// Gasless transactions
     Relayer public relayer;
+
+    ///// Fees
+    // 2 percent management fee charged to vault per year
+    uint256 public constant managementFee = 200;
 
     constructor(
         address _governance,
@@ -53,7 +60,7 @@ contract L2Vault is BaseVault {
         _mint(user, numShares);
 
         // Get usdc
-        token.transferFrom(user, address(this), amountToken);
+        token.safeTransferFrom(user, address(this), amountToken);
     }
 
     function deposit(uint256 amountToken) external {
@@ -93,7 +100,7 @@ contract L2Vault is BaseVault {
         _burn(user, shares);
 
         // transfer usdc out
-        token.transfer(user, valueOfShares);
+        token.safeTransfer(user, valueOfShares);
     }
 
     function withdraw(uint256 shares) external {
@@ -113,6 +120,17 @@ contract L2Vault is BaseVault {
         } else {
             return shares * (globalTVL() / totalShares);
         }
+    }
+
+    function _assessFees() internal override {
+        // duration / SECS_PER_YEAR * feebps / MAX_BPS * totalSupply
+        uint256 duration = block.timestamp - lastReport;
+
+        uint256 feesBps = (duration * managementFee) / SECS_PER_YEAR;
+        uint256 numSharesToMint = (feesBps * totalSupply) / MAX_BPS;
+
+        if (numSharesToMint == 0) return;
+        _mint(governance, numSharesToMint);
     }
 
     function receiveTVL(bytes calldata message) external {
@@ -174,7 +192,7 @@ contract L2Vault is BaseVault {
     // TODO: liquidate properly
     function _transferToL1(uint256 amount) internal {
         // Send token
-        token.transfer(staging, amount);
+        token.safeTransfer(staging, amount);
         Staging(staging).l2Withdraw(amount);
         emit SendToL1(amount);
 

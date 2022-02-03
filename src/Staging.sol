@@ -1,27 +1,26 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { IWormhole } from "./interfaces/IWormhole.sol";
 import { IRootChainManager } from "./interfaces/IRootChainManager.sol";
 import { IL1Vault, IL2Vault } from "./interfaces/IVault.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IChildERC20 {
-    function withdraw(uint256 amount) external payable;
-
-    function transfer(address to, uint256 value) external returns (bool);
-
-    function balanceOf(address who) external view returns (uint256);
+    function withdraw(uint256 amount) external;
 }
 
 contract Staging {
+    using SafeTransferLib for ERC20;
+
     // Number of transactions sent by opposite vault to wormhole contract on opposite chain
     int32 public vaultNonce = -1;
     IWormhole public wormhole;
     address public vault;
-    IChildERC20 public token;
+    ERC20 public token;
     IRootChainManager public rootChainManager;
-    bool initialized;
+    bool public initialized;
 
     constructor() {}
 
@@ -33,7 +32,7 @@ contract Staging {
         require(!initialized, "Can only init once");
         vault = _vault;
         wormhole = IWormhole(_wormhole);
-        token = IChildERC20(_token);
+        token = ERC20(_token);
         initialized = true;
     }
 
@@ -44,7 +43,7 @@ contract Staging {
 
     // Transfer to L1
     function l2Withdraw(uint256 amount) external {
-        require(msg.sender == vault);
+        require(msg.sender == vault, "Only vault");
         IChildERC20(address(token)).withdraw(amount);
     }
 
@@ -63,7 +62,7 @@ contract Staging {
         require(balance >= amount, "Funds not received");
 
         IL2Vault l2Vault = IL2Vault(vault);
-        token.transfer(address(l2Vault), balance);
+        token.safeTransfer(address(l2Vault), balance);
 
         l2Vault.afterReceive(balance);
     }
@@ -86,7 +85,7 @@ contract Staging {
         require(balance >= amount, "Funds not received");
 
         IL1Vault l1Vault = IL1Vault(vault);
-        token.transfer(address(l1Vault), balance);
+        token.safeTransfer(address(l1Vault), balance);
 
         l1Vault.afterReceive();
     }
