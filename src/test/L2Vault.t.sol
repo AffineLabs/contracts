@@ -59,18 +59,20 @@ contract VaultTest is DSTest {
         token.approve(address(vault), type(uint256).max);
 
         // truster forwarder is zero address and is the one who calls deposit on the relayer
+        // The trusted forwarder adds the original user as the last twenty bytes of calldata
         hevm.startPrank(relayer.trustedForwarder());
-        // When the relayer calls msgSender(), it will return the address of the user now
-        hevm.mockCall(address(relayer), abi.encodeWithSelector(bytes4(0xd737d0c7)), abi.encode(user));
-
-        relayer.deposit(1e18);
+        bytes memory depositData = abi.encodeWithSelector(relayer.deposit.selector, 1e18);
+        address(relayer).call(abi.encodePacked(depositData, user));
         assertEq(vault.balanceOf(user), 1e18);
 
-        relayer.withdraw(1e18);
+        bytes memory withdrawData = abi.encodeWithSelector(relayer.withdraw.selector, 1e18);
+        address(relayer).call(abi.encodePacked(withdrawData, user));
         assertEq(vault.balanceOf(user), 0);
         assertEq(token.balanceOf(user), 1e18);
 
         hevm.stopPrank();
+
+        // TODO: check that a bad user B imitating forwarder will end with a call to deposit gasless with (B, amountToken)
 
         // only the relayer can call deposit gasless
         hevm.expectRevert(bytes("Only relayer"));
