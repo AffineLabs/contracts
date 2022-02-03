@@ -72,7 +72,8 @@ contract VaultTest is DSTest {
 
         hevm.stopPrank();
 
-        // TODO: check that a bad user B imitating forwarder will end with a call to deposit gasless with (B, amountToken)
+        // TODO: check that a bad user B imitating forwarder will
+        // end with a call to deposit gasless with (B, amountToken)
 
         // only the relayer can call deposit gasless
         hevm.expectRevert(bytes("Only relayer"));
