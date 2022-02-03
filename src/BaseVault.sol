@@ -2,6 +2,7 @@
 pragma solidity ^0.8.9;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IStrategy } from "./interfaces/IStrategy.sol";
 import { IWormhole } from "./interfaces/IWormhole.sol";
@@ -10,6 +11,8 @@ import { Staging } from "./Staging.sol";
 import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
 
 abstract contract BaseVault is ERC20 {
+    using SafeTransferLib for ERC20;
+
     // The address of token we'll take as input to the vault, e.g. USDC
     ERC20 public immutable token;
 
@@ -268,12 +271,12 @@ abstract contract BaseVault is ERC20 {
 
         uint256 totalAvail = gain + debtPayment;
         // Credit surplus, give to Strategy
-        if (totalAvail < credit) token.transfer(strategy, credit - totalAvail);
+        if (totalAvail < credit) token.safeTransfer(strategy, credit - totalAvail);
         // Credit deficit, take from Strategy
-        if (totalAvail > credit) token.transferFrom(strategy, address(this), totalAvail - credit);
+        if (totalAvail > credit) token.safeTransferFrom(strategy, address(this), totalAvail - credit);
 
-        // Update report times
-        _assessFees(block.timestamp);
+        // Update report times -> assessFees relies on the old lastReport value so must be called before it's updated
+        _assessFees();
         strategies[strategy].lastReport = block.timestamp;
         lastReport = block.timestamp;
 
@@ -344,7 +347,7 @@ abstract contract BaseVault is ERC20 {
         return strategyTotalDebt - strategyDebtLimit;
     }
 
-    function _assessFees(uint256 currentBlock) internal virtual {}
+    function _assessFees() internal virtual {}
 
     // Rebalance strategies on this chain. No need for now. We can simply update strategy debtRatios
     function rebalance() external onlyGovernance {}

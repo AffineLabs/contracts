@@ -4,11 +4,13 @@ pragma solidity ^0.8.10;
 import "./test.sol";
 import { IHevm } from "./IHevm.sol";
 import { MockERC20 } from "./MockERC20.sol";
+
 import { L2Vault } from "../polygon-contracts/L2Vault.sol";
 import { Relayer } from "../polygon-contracts/Relayer.sol";
 import { Create2Deployer } from "./Create2Deployer.sol";
 
 import { IWormhole } from "../interfaces/IWormhole.sol";
+import { IStrategy } from "../interfaces/IStrategy.sol";
 
 contract VaultTest is DSTest {
     L2Vault vault;
@@ -23,7 +25,7 @@ contract VaultTest is DSTest {
         create2Deployer = new Create2Deployer();
 
         vault = new L2Vault(
-            address(0), // governance
+            address(this), // governance
             token, // token
             IWormhole(address(0)), // wormhole
             create2Deployer, // create2deployer (needs to be a real contract)
@@ -85,6 +87,31 @@ contract VaultTest is DSTest {
     function invariantDebtLessThanMaxBPS() public {
         // probably want to give this contract some underlying first
         assertLe(vault.debtRatio(), vault.MAX_BPS());
+    }
+
+    function testManagementFee() public {
+        // Add total supply => occupies slot 3 (see solmate ERC20)
+        hevm.store(address(vault), bytes32(uint256(2)), bytes32(uint256(1e18)));
+
+        assertEq(vault.totalSupply(), 1e18);
+
+        // original timestamp is 0, so any strategy added would be inactive, TODO: consider not using creation time
+        // as indicator of activity
+        hevm.warp(block.timestamp + 1);
+
+        // Add this contract as a strategy, mock calls to strategy.want() and strategy.vault() to bypass checks
+        hevm.mockCall(address(this), abi.encodeWithSelector(IStrategy.vault.selector), abi.encode(address(vault)));
+        hevm.mockCall(address(this), abi.encodeWithSelector(IStrategy.want.selector), abi.encode(address(token)));
+        vault.addStrategy(address(this), 1000, 0, type(uint256).max);
+
+        hevm.warp(block.timestamp + vault.SECS_PER_YEAR() / 2);
+
+        // Call report with no profit, loss, or debt payment. No tokens exchanged with strategy
+        vault.report(0, 0, 0);
+
+        // Check that fees were assesed in the correct amounts => Management fees are sent to governance address
+        // 1/2 of 2% of the vault's supply should be minted to governance
+        assertEq(vault.balanceOf(address(this)), (100 * 1e18) / 10_000);
     }
 
     // TODO: Get the below test to pass
