@@ -87,7 +87,7 @@ contract L2Vault is BaseVault {
 
     // TVL is denominated in `token`.
     function globalTVL() public view returns (uint256) {
-        return vaultTVL() + L1TotalLockedValue;
+        return vaultTVL() - lockedProfit() + L1TotalLockedValue;
     }
 
     function _withdraw(address user, uint256 shares) internal {
