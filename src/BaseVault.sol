@@ -68,6 +68,12 @@ abstract contract BaseVault is ERC20 {
     uint256 public constant SECS_PER_YEAR = 31_556_952;
     uint256 public lastReport;
 
+    //// Profit
+    // maximum amount of profit locked after a report from a strategy
+    uint256 public maxLockedProfit;
+    // Amount of time in seconds that profit takes to fully unlock see lockedProfit().
+    uint256 public constant lockInterval = 60 * 60 * 3;
+
     // TODO: Add some events here. Actually log events as well
     event Liquidation(uint256 amountRequested, uint256 amountLiquidated);
 
@@ -90,6 +96,14 @@ abstract contract BaseVault is ERC20 {
 
     function vaultTVL() public view returns (uint256) {
         return token.balanceOf(address(this)) + totalDebt;
+    }
+
+    // Current locked profit amount. Profit unlocks uniformly over `lockInterval` seconds after a report
+    function lockedProfit() public view returns (uint256) {
+        if (block.timestamp - lastReport > lockInterval) return 0;
+
+        uint256 unlockedProfit = (maxLockedProfit * (block.timestamp - lastReport)) / lockInterval;
+        return maxLockedProfit - unlockedProfit;
     }
 
     // See notes for _liquidate.
@@ -242,12 +256,12 @@ abstract contract BaseVault is ERC20 {
         if (loss > 0) _reportLoss(strategy, loss);
 
         strategies[strategy].totalGain += gain;
+        maxLockedProfit = lockedProfit() + gain;
 
         // Compute the line of credit the Vault is able to offer the Strategy (if any)
         uint256 credit = creditAvailable(strategy);
 
         // # Amount that strategy has exceeded its debt limit
-        // NOTE: debt <= StrategyInfo.totalDebt
         uint256 debt = debtOutstanding(strategy);
         debtPayment = debtPayment < debt ? debtPayment : debt;
 

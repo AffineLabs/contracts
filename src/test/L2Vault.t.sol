@@ -114,6 +114,27 @@ contract VaultTest is DSTest {
         assertEq(vault.balanceOf(address(this)), (100 * 1e18) / 10_000);
     }
 
+    function testLockedProfit() public {
+        hevm.warp(block.timestamp + 1);
+        // Add this contract as a strategy, mock calls to strategy.want() and strategy.vault() to bypass checks
+        // TODO: consider making base strategy deployable (non-abstract) just for use in tests
+        hevm.mockCall(address(this), abi.encodeWithSelector(IStrategy.vault.selector), abi.encode(address(vault)));
+        hevm.mockCall(address(this), abi.encodeWithSelector(IStrategy.want.selector), abi.encode(address(token)));
+        vault.addStrategy(address(this), 10_000, 0, type(uint256).max);
+
+        token.mint(address(this), 1e18);
+        token.approve(address(vault), type(uint256).max);
+        vault.report(1e18, 0, 0);
+
+        assertEq(vault.lockedProfit(), 1e18);
+        assertEq(vault.globalTVL(), 0);
+
+        // Using up 50% of lockInterval unlocks 50% of profit
+        hevm.warp(block.timestamp + vault.lockInterval() / 2);
+        assertEq(vault.lockedProfit(), 1e18 / 2);
+        assertEq(vault.globalTVL(), 1e18 / 2);
+    }
+
     // TODO: Get the below test to pass
     // function testShareTokenConversion(
     //     uint256 amountToken,
