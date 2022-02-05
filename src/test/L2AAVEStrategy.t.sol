@@ -20,7 +20,8 @@ contract AAVEStratTestFork is DSTest {
 
     function setUp() public {
         create2Deployer = new Create2Deployer();
-        vault = new L2Vault(
+        vault = new L2Vault();
+        vault.initialize(
             address(this), // governance
             ERC20(0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e), // token -> Mumbai USDC that AAVE takes in
             IWormhole(0x0CBE91CF822c73C2315FB05100C2F714765d5c20), // wormhole

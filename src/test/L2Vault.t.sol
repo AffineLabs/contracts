@@ -24,7 +24,8 @@ contract VaultTest is DSTest {
         token = new MockERC20("Mock", "MT", 18);
         create2Deployer = new Create2Deployer();
 
-        vault = new L2Vault(
+        vault = new L2Vault();
+        vault.initialize(
             address(this), // governance
             token, // token
             IWormhole(address(0)), // wormhole
@@ -90,11 +91,12 @@ contract VaultTest is DSTest {
     }
 
     function testManagementFee() public {
-        // Add total supply => occupies slot 3 (see solmate ERC20)
-        hevm.store(address(vault), bytes32(uint256(2)), bytes32(uint256(1e18)));
+        // Add total supply => occupies ERC20Upgradeable which inherits from two contracts with storage,
+        // One contract has one slots and the other has 50 slots. totalSupply is at slot three in ERC20Up, so
+        // the slot would is number 50 + 1 + 3 = 54 (index 53)
+        hevm.store(address(vault), bytes32(uint256(53)), bytes32(uint256(1e18)));
 
         assertEq(vault.totalSupply(), 1e18);
-
         // original timestamp is 0, so any strategy added would be inactive, TODO: consider not using creation time
         // as indicator of activity
         hevm.warp(block.timestamp + 1);
