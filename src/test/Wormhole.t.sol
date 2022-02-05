@@ -57,7 +57,8 @@ contract WormholeTest is DSTest {
         token = new MockERC20("Mock", "MT", 18);
         wormhole = new MockWormhole();
         create2Deployer = new Create2Deployer();
-        l1vault = new L1Vault(
+        l1vault = new L1Vault();
+        l1vault.initialize(
             address(0), // governance
             token, // token
             wormhole, // wormhole
@@ -67,7 +68,8 @@ contract WormholeTest is DSTest {
         );
         // The whole point of the create2deployer is so that the staging contracts get the same address
         // But since we're using one chain we actually can't use the same create2deployer a second time!
-        l2vault = new L2Vault(address(0), token, wormhole, new Create2Deployer(), 1, 1, address(0));
+        l2vault = new L2Vault();
+        l2vault.initialize(address(0), token, wormhole, new Create2Deployer(), 1, 1, address(0));
         user = new ERC20User(token);
     }
 
