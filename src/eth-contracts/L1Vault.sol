@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IWormhole } from "../interfaces/IWormhole.sol";
@@ -12,7 +13,7 @@ import { IWormhole } from "../interfaces/IWormhole.sol";
 import { IStaging } from "../interfaces/IStaging.sol";
 import { BaseVault } from "../BaseVault.sol";
 
-contract L1Vault is BaseVault {
+contract L1Vault is UUPSUpgradeable, BaseVault {
     /////// Cross chain rebalancing
     bool public received;
     IRootChainManager public chainManager;
@@ -20,6 +21,8 @@ contract L1Vault is BaseVault {
     // solhint-disable-next-line max-line-length
     // https://github.com/maticnetwork/pos-portal/blob/88dbf0a88fd68fa11f7a3b9d36629930f6b93a05/contracts/root/RootChainManager/RootChainManager.sol#L267
     address public predicate;
+
+    constructor() {}
 
     function initialize(
         address _governance,
@@ -35,7 +38,7 @@ contract L1Vault is BaseVault {
         predicate = _predicate;
     }
 
-    constructor() {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
     function sendTVL() external {
         uint256 tvl = vaultTVL();

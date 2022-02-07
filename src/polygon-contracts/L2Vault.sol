@@ -43,6 +43,9 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
     // 2 percent management fee charged to vault per year
     uint256 public constant managementFee = 200;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {}
+
     function initialize(
         address _governance,
         ERC20 _token,
@@ -60,9 +63,6 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
-
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {}
 
     function decimals() public view override returns (uint8) {
         return token.decimals();
