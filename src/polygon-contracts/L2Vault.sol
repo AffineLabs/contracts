@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { BaseVault } from "../BaseVault.sol";
@@ -12,7 +13,7 @@ import { Staging } from "../Staging.sol";
 import { Relayer } from "./Relayer.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 
-contract L2Vault is ERC20Upgradeable, BaseVault {
+contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
     using SafeTransferLib for ERC20;
 
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
@@ -52,11 +53,15 @@ contract L2Vault is ERC20Upgradeable, BaseVault {
         address trustedForwarder
     ) public initializer {
         __ERC20_init("Alpine Save", "alpSave");
+        __UUPSUpgradeable_init();
         BaseVault.initialize(_governance, _token, _wormhole, create2Deployer);
         layerRatios = LayerBalanceRatios({ layer1: L1Ratio, layer2: L2Ratio });
         relayer = new Relayer(trustedForwarder, address(this));
     }
 
+    function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {}
 
     function decimals() public view override returns (uint8) {
