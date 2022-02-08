@@ -14,10 +14,10 @@ export async function getContractAddress(contract: Contract): Promise<string> {
 
 export async function addToAddressBook(
   blockchainInfo: BlockchainInfo,
-  contractName: string, 
+  contractName: string,
   contractType: string,
   contractOrAddress: Contract | address,
-  events_to_watch: Array<string> = []
+  events_to_watch: Array<string> = [],
 ) {
   const rootDir = resolve(__dirname, "..");
   const addressBookPath = join(rootDir, "addressbook.json");
@@ -37,7 +37,7 @@ export async function addToAddressBook(
     abi = await readJSON(contractABIPath);
   } catch (err) {
     abi = {};
-    console.warn(`Reading contract abi for contract type "${contractType}" failed.`)
+    console.warn(`Reading contract abi for contract type "${contractType}" failed.`);
   }
 
   let entry = {
@@ -49,9 +49,9 @@ export async function addToAddressBook(
     abi: {},
     events_to_watch,
     proof_format: blockchainInfo.proof_format,
-  }
+  };
 
   addressBook[contractName] = entry;
-  
+
   await outputJSON(addressBookPath, addressBook, { spaces: 2 });
 }
