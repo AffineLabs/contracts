@@ -5,6 +5,7 @@ import { address } from "../../utils/types";
 import { Config } from "../../utils/config";
 import { L1Vault, L2Vault } from "../../typechain";
 import { addToAddressBook, getContractAddress } from "../../utils/address-book";
+import { ETH_GOERLI, POLYGON_MUMBAI } from "../../utils/constants/blockchain";
 
 export interface VaultContracts {
   l1Vault: L1Vault;
@@ -48,7 +49,7 @@ export async function deployVaults(
     config.l2ERC20Predicate,
   );
   await l1Vault.deployed();
-  await addToAddressBook(`${ethNetworkName} Alpine Save`, l1Vault);
+  await addToAddressBook(ETH_GOERLI, `${ethNetworkName} Alpine Save`, "L1Vault", l1Vault);
   logContractDeploymentInfo(ethNetworkName, "L1Vault", l1Vault);
 
   // Deploy vault in polygon.
@@ -80,8 +81,8 @@ export async function deployVaults(
     config.biconomyForwarder,
   );
   await l2Vault.deployed();
-  await addToAddressBook(`${polygonNetworkName} Alpine Save`, l2Vault);
-  await addToAddressBook(`${polygonNetworkName} Relayer`, await l2Vault.relayer());
+  await addToAddressBook(POLYGON_MUMBAI, `${polygonNetworkName} Alpine Save`, "L2Vault", l2Vault);
+  await addToAddressBook(POLYGON_MUMBAI, `${polygonNetworkName} Relayer`, "Relayer", await l2Vault.relayer());
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
 
   return {
