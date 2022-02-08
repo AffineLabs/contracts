@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../../utils/bc-explorer-links";
 import { address } from "../../utils/types";
@@ -39,14 +39,11 @@ export async function deployVaults(
   const l1VaultFactory = await ethers.getContractFactory("L1Vault");
   console.log("about to deploy l1 vault: ", config);
 
-  const l1Vault = await l1VaultFactory.deploy(
-    governance,
-    config.l1USDC,
-    config.l1worm,
-    deployer.address,
-    config.l1ChainManager,
-    config.l2ERC20Predicate,
-  );
+  const l1Vault = (await upgrades.deployProxy(
+    l1VaultFactory,
+    [governance, config.l1USDC, config.l1worm, deployer.address, config.l1ChainManager, config.l2ERC20Predicate],
+    { kind: "uups" },
+  )) as L1Vault;
   await l1Vault.deployed();
   await addToAddressBook(`${ethNetworkName} Alpine Save`, l1Vault);
   logContractDeploymentInfo(ethNetworkName, "L1Vault", l1Vault);
@@ -70,15 +67,11 @@ export async function deployVaults(
   await deployer.deployed();
 
   const l2VaultFactory = await ethers.getContractFactory("L2Vault");
-  const l2Vault = await l2VaultFactory.deploy(
-    governance,
-    config.l2USDC,
-    config.l2worm,
-    await getContractAddress(deployer),
-    9,
-    1,
-    config.biconomyForwarder,
-  );
+  const l2Vault = (await upgrades.deployProxy(
+    l2VaultFactory,
+    [governance, config.l2USDC, config.l2worm, await getContractAddress(deployer), 9, 1, config.biconomyForwarder],
+    { kind: "uups" },
+  )) as L2Vault;
   await l2Vault.deployed();
   await addToAddressBook(`${polygonNetworkName} Alpine Save`, l2Vault);
   await addToAddressBook(`${polygonNetworkName} Relayer`, await l2Vault.relayer());

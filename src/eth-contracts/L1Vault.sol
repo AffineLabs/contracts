@@ -32,7 +32,7 @@ contract L1Vault is UUPSUpgradeable, BaseVault {
         IRootChainManager _chainManager,
         address _predicate
     ) public initializer {
-        BaseVault.initialize(_governance, _token, _wormhole, create2Deployer);
+        BaseVault.init(_governance, _token, _wormhole, create2Deployer);
         chainManager = _chainManager;
         IStaging(staging).initializeL1(chainManager);
         predicate = _predicate;
