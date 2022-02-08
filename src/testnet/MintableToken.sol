@@ -27,9 +27,9 @@ contract MintableToken is ERC20 {
         _burn(msg.sender, amount);
     }
 
-    // Function to make this a legitimate "child token" that can be burned and minted
-    // by the Polygon bridge contracts (https://docs.polygon.technology/docs/develop/ethereum-polygon/mintable-assets/#contract-to-be-deployed-on-polygon-chain)
-
+    // Function to make this a legitimate "child token" that can be burned and minted by the Polygon bridge contracts
+    // solhint-disable-next-line max-line-length
+    // (https://docs.polygon.technology/docs/develop/ethereum-polygon/mintable-assets/#contract-to-be-deployed-on-polygon-chain)
     function deposit(address user, bytes calldata depositData) external {
         uint256 amount = abi.decode(depositData, (uint256));
         _mint(user, amount);
