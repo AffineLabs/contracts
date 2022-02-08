@@ -2,7 +2,7 @@
 pragma solidity ^0.8.9;
 
 import { MintableToken } from "./MintableToken.sol";
-import { VaultAPI } from "./BaseStrategy.sol";
+import { VaultAPI } from "../BaseStrategy.sol";
 
 contract MintableStrategy {
     VaultAPI public vault;
