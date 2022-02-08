@@ -30,8 +30,8 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
     LayerBalanceRatios public layerRatios;
 
     // Whether we can send or receive money from L1
-    bool public canTransferToL1 = true;
-    bool public canRequestFromL1 = true;
+    bool public canTransferToL1;
+    bool public canRequestFromL1;
 
     event SendToL1(uint256 amount);
     event ReceiveFromL1(uint256 amount);
@@ -57,8 +57,10 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
     ) public initializer {
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
-        BaseVault.initialize(_governance, _token, _wormhole, create2Deployer);
+        BaseVault.init(_governance, _token, _wormhole, create2Deployer);
         layerRatios = LayerBalanceRatios({ layer1: L1Ratio, layer2: L2Ratio });
+        canTransferToL1 = true;
+        canRequestFromL1 = true;
         relayer = new Relayer(trustedForwarder, address(this));
     }
 

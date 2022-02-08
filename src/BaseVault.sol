@@ -79,7 +79,7 @@ abstract contract BaseVault is Initializable {
     // TODO: Add some events here. Actually log events as well
     event Liquidation(uint256 amountRequested, uint256 amountLiquidated);
 
-    function initialize(
+    function init(
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
