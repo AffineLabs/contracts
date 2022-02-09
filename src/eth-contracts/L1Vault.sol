@@ -2,6 +2,8 @@
 pragma solidity ^0.8.9;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IWormhole } from "../interfaces/IWormhole.sol";
@@ -11,7 +13,7 @@ import { IWormhole } from "../interfaces/IWormhole.sol";
 import { IStaging } from "../interfaces/IStaging.sol";
 import { BaseVault } from "../BaseVault.sol";
 
-contract L1Vault is BaseVault {
+contract L1Vault is UUPSUpgradeable, BaseVault {
     /////// Cross chain rebalancing
     bool public received;
     IRootChainManager public chainManager;
@@ -20,18 +22,23 @@ contract L1Vault is BaseVault {
     // https://github.com/maticnetwork/pos-portal/blob/88dbf0a88fd68fa11f7a3b9d36629930f6b93a05/contracts/root/RootChainManager/RootChainManager.sol#L267
     address public predicate;
 
-    constructor(
+    constructor() {}
+
+    function initialize(
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
         ICreate2Deployer create2Deployer,
         IRootChainManager _chainManager,
         address _predicate
-    ) BaseVault(_governance, _token, _wormhole, create2Deployer) {
+    ) public initializer {
+        BaseVault.init(_governance, _token, _wormhole, create2Deployer);
         chainManager = _chainManager;
         IStaging(staging).initializeL1(chainManager);
         predicate = _predicate;
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
     function sendTVL() external {
         uint256 tvl = vaultTVL();

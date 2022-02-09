@@ -14,6 +14,7 @@ import "hardhat-change-network";
 import "hardhat-gas-reporter";
 import "@nomiclabs/hardhat-etherscan";
 import "hardhat-abi-exporter";
+import "@openzeppelin/hardhat-upgrades";
 
 import "./tasks/accounts";
 

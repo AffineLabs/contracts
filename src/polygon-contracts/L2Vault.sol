@@ -3,6 +3,8 @@ pragma solidity ^0.8.9;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
+import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { BaseVault } from "../BaseVault.sol";
@@ -11,7 +13,7 @@ import { Staging } from "../Staging.sol";
 import { Relayer } from "./Relayer.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 
-contract L2Vault is BaseVault {
+contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
     using SafeTransferLib for ERC20;
 
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
@@ -28,8 +30,8 @@ contract L2Vault is BaseVault {
     LayerBalanceRatios public layerRatios;
 
     // Whether we can send or receive money from L1
-    bool public canTransferToL1 = true;
-    bool public canRequestFromL1 = true;
+    bool public canTransferToL1;
+    bool public canRequestFromL1;
 
     event SendToL1(uint256 amount);
     event ReceiveFromL1(uint256 amount);
@@ -41,7 +43,10 @@ contract L2Vault is BaseVault {
     // 2 percent management fee charged to vault per year
     uint256 public constant managementFee = 200;
 
-    constructor(
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {}
+
+    function initialize(
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
@@ -49,9 +54,20 @@ contract L2Vault is BaseVault {
         uint256 L1Ratio,
         uint256 L2Ratio,
         address trustedForwarder
-    ) BaseVault(_governance, _token, _wormhole, create2Deployer) {
+    ) public initializer {
+        __ERC20_init("Alpine Save", "alpSave");
+        __UUPSUpgradeable_init();
+        BaseVault.init(_governance, _token, _wormhole, create2Deployer);
         layerRatios = LayerBalanceRatios({ layer1: L1Ratio, layer2: L2Ratio });
+        canTransferToL1 = true;
+        canRequestFromL1 = true;
         relayer = new Relayer(trustedForwarder, address(this));
+    }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
+
+    function decimals() public view override returns (uint8) {
+        return token.decimals();
     }
 
     function _deposit(address user, uint256 amountToken) internal {
@@ -76,7 +92,7 @@ contract L2Vault is BaseVault {
     function sharesFromTokens(uint256 amountToken) public view returns (uint256) {
         // Amount of shares you get for a given amount of tokens
         uint256 numShares;
-        uint256 totalTokens = totalSupply;
+        uint256 totalTokens = totalSupply();
         if (totalTokens == 0) {
             numShares = amountToken;
         } else {
@@ -114,7 +130,7 @@ contract L2Vault is BaseVault {
 
     function tokensFromShares(uint256 shares) public view returns (uint256) {
         // Amount of tokens you get for the given amount of shares.
-        uint256 totalShares = totalSupply;
+        uint256 totalShares = totalSupply();
         if (totalShares == 0) {
             return shares;
         } else {
@@ -127,7 +143,7 @@ contract L2Vault is BaseVault {
         uint256 duration = block.timestamp - lastReport;
 
         uint256 feesBps = (duration * managementFee) / SECS_PER_YEAR;
-        uint256 numSharesToMint = (feesBps * totalSupply) / MAX_BPS;
+        uint256 numSharesToMint = (feesBps * totalSupply()) / MAX_BPS;
 
         if (numSharesToMint == 0) return;
         _mint(governance, numSharesToMint);

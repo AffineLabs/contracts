@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -10,15 +12,15 @@ import { IStaging } from "./interfaces/IStaging.sol";
 import { Staging } from "./Staging.sol";
 import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
 
-abstract contract BaseVault is ERC20 {
+abstract contract BaseVault is Initializable {
     using SafeTransferLib for ERC20;
 
     // The address of token we'll take as input to the vault, e.g. USDC
-    ERC20 public immutable token;
+    ERC20 public token;
 
     address public governance;
     modifier onlyGovernance() {
-        require(msg.sender == governance, "Only Governance can call this.");
+        require(msg.sender == governance, "Only Governance.");
         _;
     }
 
@@ -77,12 +79,12 @@ abstract contract BaseVault is ERC20 {
     // TODO: Add some events here. Actually log events as well
     event Liquidation(uint256 amountRequested, uint256 amountLiquidated);
 
-    constructor(
+    function init(
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
         ICreate2Deployer create2Deployer
-    ) ERC20("Alpine Save", "AlpSave", _token.decimals()) {
+    ) public onlyInitializing {
         governance = _governance;
         token = _token;
         wormhole = _wormhole;
