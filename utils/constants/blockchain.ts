@@ -3,7 +3,7 @@ import { BlockchainInfo } from "./types";
 export const ETH_GOERLI: BlockchainInfo = {
   name: "Ethereum",
   network: "Goerli",
-  proof_format: "POW",
+  proof_format: "POA",
 } as const;
 
 export const ETH_MAINNET: BlockchainInfo = {
