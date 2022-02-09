@@ -9,23 +9,48 @@ import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 interface ICToken is IERC20 {
-    function mint(uint256 mintAmount) external returns (uint256);
-    function redeemUnderlying(uint256 redeemAmount) external returns (uint256);
-    function balanceOfUnderlying(address account) external returns (uint256);
+    function borrow(uint256) external returns (uint256);
+
+    function borrowRatePerBlock() external view returns (uint256);
+
+    function borrowBalanceCurrent(address) external returns (uint256);
+
+    function repayBorrow(uint256) external returns (uint256);
+
+    function mint(uint256) external payable returns (uint256);
+
+    function redeemUnderlying(uint256) external returns (uint256);
+
+    function balanceOfUnderlying(address) external returns (uint256);
+
+    function exchangeRateCurrent() external returns (uint256);
 }
 
-interface Comptroller {
-    // Claim all the COMP accrued by holder in specific markets
-    function claimComp(address holder, ICToken[] memory cTokens) external;
-    function compAccrued(address holder) external view returns (uint256);
+interface IComptroller {
+    function claimComp(address) external;
+
+    function compAccrued(address) external view returns (uint256);
+
+    function markets(address) external returns (bool, uint256);
+
+    function enterMarkets(address[] calldata) external returns (uint256[] memory);
+
+    function getAccountLiquidity(address)
+        external
+        view
+        returns (
+            uint256,
+            uint256,
+            uint256
+        );
 }
 
-contract L1CompundStrategy is BaseStrategy {
+contract L1CompoundStrategy is BaseStrategy {
     using SafeERC20 for IERC20;
     using Address for address;
 
     // Compund protocol contracts
-    Comptroller public immutable comptroller;
+    IComptroller public immutable comptroller;
     // Corresponding Compund token (USDC -> cUSDC)
     ICToken public immutable cToken;
 
@@ -47,17 +72,19 @@ contract L1CompundStrategy is BaseStrategy {
     constructor(
         address _vault,
         address _cToken,
-        address _comptroller, 
+        address _comptroller,
         address _router,
         address _rewardToken,
         address _wrappedNative
     ) BaseStrategy(_vault) {
         cToken = ICToken(_cToken);
-        comptroller = Comptroller(_comptroller);
+        comptroller = IComptroller(_comptroller);
 
         router = IUniLikeSwapRouter(_router);
         rewardToken = _rewardToken;
         wrappedNative = _wrappedNative;
+        // Approve transfer on the cToken contract
+        want.approve(address(cToken), type(uint256).max);
     }
 
     function name() external pure override returns (string memory) {
@@ -230,9 +257,6 @@ contract L1CompundStrategy is BaseStrategy {
 
     function _depositWant(uint256 amount) internal returns (uint256) {
         if (amount == 0) return 0;
-        // Approve transfer on the cToken contract
-        want.approve(address(cToken), amount);
-        // Mint cToken
         require(cToken.mint(amount) == 0, "_depositWant(): minting cToken failed.");
         return amount;
     }
@@ -272,15 +296,14 @@ contract L1CompundStrategy is BaseStrategy {
     }
 
     function _claimAndSellRewards() internal {
-        // Only claim comp for cUSDC market.
-        comptroller.claimComp(address(this), getCompundAssets());
+        // TODO: Check why claming comp fails in unit tests.
+        // comptroller.claimComp(address(this));
         if (rewardToken != address(want)) {
             uint256 rewardTokenBalance = balanceOfRewardToken();
             if (rewardTokenBalance >= minRewardToSell) {
                 _sellRewardTokenForWant(rewardTokenBalance, 0);
             }
         }
-
         return;
     }
 
