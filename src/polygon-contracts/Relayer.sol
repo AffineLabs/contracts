@@ -17,8 +17,12 @@ contract Relayer is BaseRelayRecipient {
         vault.depositGasLess(_msgSender(), amountToken);
     }
 
-    function withdraw(uint256 shares) external {
-        vault.withdrawGasLess(_msgSender(), shares);
+    function redeem(uint256 shares) external {
+        vault.redeemGasLess(_msgSender(), shares);
+    }
+
+    function withdraw(uint256 amountToken) external {
+        vault.withdrawGasLess(_msgSender(), amountToken);
     }
 
     function versionRecipient() external pure override returns (string memory) {
