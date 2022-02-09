@@ -36,7 +36,8 @@ contract L1CompoundStratTestFork is DSTest {
 
     function setUp() public {
         create2Deployer = new Create2Deployer();
-        vault = new L1Vault(
+        vault = new L1Vault();
+        vault.initialize(
             address(this), // governance
             usdc, // token -> Goerli USDC that Compund takes in
             wormhole, // wormhole
