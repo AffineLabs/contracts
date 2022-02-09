@@ -46,7 +46,7 @@ export async function addToAddressBook(
     address: contractAddr,
     lastUpdated: new Date().toUTCString(),
     contractType,
-    abi: {},
+    abi,
     events_to_watch,
     proof_format: blockchainInfo.proof_format,
   };
