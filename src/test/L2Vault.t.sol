@@ -32,7 +32,8 @@ contract VaultTest is DSTest {
             create2Deployer, // create2deployer (needs to be a real contract)
             1, // l1 ratio
             1, // l2 ratio
-            address(0) // trusted fowarder
+            address(0), // trusted fowarder
+            0 // withdrawal fee
         );
         relayer = vault.relayer();
     }
@@ -135,6 +136,25 @@ contract VaultTest is DSTest {
         hevm.warp(block.timestamp + vault.lockInterval() / 2);
         assertEq(vault.lockedProfit(), 1e18 / 2);
         assertEq(vault.globalTVL(), 1e18 / 2);
+    }
+
+    function testWithdrawlFee() public {
+        uint256 amountToken = 1e18;
+        vault.setWithdrawalFee(50);
+
+        address user = 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045; // vitalik
+        hevm.startPrank(user);
+        token.mint(user, amountToken);
+        token.approve(address(vault), type(uint256).max);
+        vault.deposit(amountToken);
+
+        vault.withdraw(vault.balanceOf(user));
+        assertEq(vault.balanceOf(user), 0);
+
+        // User gets the original amount with 50bps deducted
+        assertEq(token.balanceOf(user), (amountToken * (10_000 - 50)) / 10_000);
+        // Governance gets the 50bps fee
+        assertEq(token.balanceOf(vault.governance()), (amountToken * 50) / 10_000);
     }
 
     // TODO: Get the below test to pass

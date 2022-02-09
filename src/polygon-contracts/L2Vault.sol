@@ -151,6 +151,10 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
         return tokenAmount - feeAmount;
     }
 
+    function setWithdrawalFee(uint256 newWithdrawalFee) external onlyGovernance {
+        withdrawalFee = newWithdrawalFee;
+    }
+
     function _assessFees() internal override {
         // duration / SECS_PER_YEAR * feebps / MAX_BPS * totalSupply
         uint256 duration = block.timestamp - lastReport;
