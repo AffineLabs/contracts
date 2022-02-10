@@ -8,7 +8,6 @@ import { BaseStrategy } from "../BaseStrategy.sol";
 import { IConversionPool } from "../interfaces/anchor/IConversionPool.sol";
 import { IExchangeRateFeeder } from "../interfaces/anchor/IExchangeRateFeeder.sol";
 
-
 contract L1AnchorStrategy is BaseStrategy {
     using SafeERC20 for IERC20;
     using Address for address;
