@@ -70,7 +70,16 @@ export async function deployVaults(
   const l2VaultFactory = await ethers.getContractFactory("L2Vault");
   const l2Vault = (await upgrades.deployProxy(
     l2VaultFactory,
-    [governance, config.l2USDC, config.l2worm, await getContractAddress(deployer), 9, 1, config.biconomyForwarder],
+    [
+      governance,
+      config.l2USDC,
+      config.l2worm,
+      await getContractAddress(deployer),
+      9,
+      1,
+      config.biconomyForwarder,
+      config.withdrawFee,
+    ],
     { kind: "uups" },
   )) as L2Vault;
   await l2Vault.deployed();
