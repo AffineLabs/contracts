@@ -127,15 +127,6 @@ contract DSTest {
             fail();
         }
     }
-    function assertInRange(uint a, uint b1, uint b2) internal {
-        if (a < b1 || a > b2) {
-            emit log("Error: a in range [b1, b2] not satisfied [uint]");
-            emit log_named_uint("Expected b1", b1);
-            emit log_named_uint("Expected b2", b2);
-            emit log_named_uint("     Actual", a);
-            fail();
-        }
-    }
     function assertEq(uint a, uint b, string memory err) internal {
         if (a != b) {
             emit log_named_string("Error", err);

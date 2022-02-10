@@ -36,21 +36,12 @@ jobs:
       - name: Install yarn dependencies
         run: yarn --frozen-lockfile
 
-      - name: Build and run tests that doesn't require forking testnets with gas snapshot checks.
+      - name: Build and run tests.
         run: |
-          forge test --no-match-contract ".*Fork"
-        # forge snapshot --diff --no-match-contract ".*Fork"
+          forge snapshot --no-match-contract ".*Fork"
+          forge snapshot --fork-url ${{ env.ETH_GOERLI_URL }} --match-contract "L1.*Fork" --fork-block-number 6267635
+          forge snapshot --fork-url ${{ env.POLYGON_MUMBAI_URL }} --match-contract "L2.*Fork" --fork-block-number 24274280
 
-      - name: Build and run tests that doesn't require forking against ethereum goerli with gas snapshot checks.
-        run: |
-          forge test --fork-url ${{ env.ETH_GOERLI_URL }} --match-contract "L1.*Fork" --fork-block-number 6267635
-        # forge snapshot --check --fork-url $ETH_GOERLI_URL --match-contract "L1.*Fork" --fork-block-number 6267635
-
-      - name: Build and run tests that doesn't require forking against polygon mumbai with gas snapshot checks.
-        run: |
-          forge test --fork-url ${{ env.POLYGON_MUMBAI_URL }} --match-contract "L2.*Fork" --fork-block-number 24274280
-        # forge snapshot --check --fork-url $POLYGON_MUMBAI_URL --match-contract "L2.*Fork" --fork-block-number 24274280
-      
       - name: Check lint errors
         run: yarn lint
 

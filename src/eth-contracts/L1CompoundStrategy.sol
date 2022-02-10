@@ -1,49 +1,13 @@
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.8.9;
 
-import { BaseStrategy } from "../BaseStrategy.sol";
-
 import { SafeERC20, IERC20, Address } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-interface ICToken is IERC20 {
-    function borrow(uint256) external returns (uint256);
-
-    function borrowRatePerBlock() external view returns (uint256);
-
-    function borrowBalanceCurrent(address) external returns (uint256);
-
-    function repayBorrow(uint256) external returns (uint256);
-
-    function mint(uint256) external payable returns (uint256);
-
-    function redeemUnderlying(uint256) external returns (uint256);
-
-    function balanceOfUnderlying(address) external returns (uint256);
-
-    function exchangeRateCurrent() external returns (uint256);
-}
-
-interface IComptroller {
-    function claimComp(address) external;
-
-    function compAccrued(address) external view returns (uint256);
-
-    function markets(address) external returns (bool, uint256);
-
-    function enterMarkets(address[] calldata) external returns (uint256[] memory);
-
-    function getAccountLiquidity(address)
-        external
-        view
-        returns (
-            uint256,
-            uint256,
-            uint256
-        );
-}
+import { BaseStrategy } from "../BaseStrategy.sol";
+import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
+import { ICToken } from "../interfaces/compound/ICToken.sol";
+import { IComptroller } from "../interfaces/compound/IComptroller.sol";
 
 contract L1CompoundStrategy is BaseStrategy {
     using SafeERC20 for IERC20;
@@ -71,16 +35,16 @@ contract L1CompoundStrategy is BaseStrategy {
 
     constructor(
         address _vault,
-        address _cToken,
-        address _comptroller,
-        address _router,
+        ICToken _cToken,
+        IComptroller _comptroller,
+        IUniLikeSwapRouter _router,
         address _rewardToken,
         address _wrappedNative
     ) BaseStrategy(_vault) {
-        cToken = ICToken(_cToken);
-        comptroller = IComptroller(_comptroller);
+        cToken = _cToken;
+        comptroller = _comptroller;
 
-        router = IUniLikeSwapRouter(_router);
+        router = _router;
         rewardToken = _rewardToken;
         wrappedNative = _wrappedNative;
         // Approve transfer on the cToken contract
