@@ -168,7 +168,8 @@ contract L1AnchorStrategy is BaseStrategy {
 
     function _withdrawWant(uint256 amount) internal returns (uint256) {
         if (amount == 0) return 0;
-        usdcConversionPool.redeem(amount);
+        uint256 aTokenAmount = amount / exchangeRateFeeder.exchangeRateOf(address(aToken), true);
+        usdcConversionPool.redeem(aTokenAmount);
         return amount;
     }
 
@@ -184,6 +185,6 @@ contract L1AnchorStrategy is BaseStrategy {
 
     function nativeToWant(uint256 _amtInWei) public pure override returns (uint256) {
         _amtInWei;
-        revert("Not Implmented");
+        revert("Not Implemented");
     }
 }
