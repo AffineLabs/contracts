@@ -38,10 +38,10 @@ jobs:
 
       - name: Build and run tests.
         run: |
-          forge snapshot --check --no-match-contract ".*Fork" --snap .gas-snapshot-no-fork
-          forge snapshot --check --match-contract "L1.*Fork" --fork-url ${{ env.ETH_GOERLI_URL }} \
+          forge snapshot --no-match-contract ".*Fork" --snap .gas-snapshot-no-fork
+          forge snapshot --match-contract "L1.*Fork" --fork-url ${{ env.ETH_GOERLI_URL }} \
            --fork-block-number 6267635  --snap .gas-snapshot-fork-eth
-          forge snapshot --check --match-contract "L2.*Fork" --fork-url ${{ env.POLYGON_MUMBAI_URL }} \
+          forge snapshot --match-contract "L2.*Fork" --fork-url ${{ env.POLYGON_MUMBAI_URL }} \
            --fork-block-number 24274280 --snap .gas-snapshot-fork-polygon
 
       - name: Check lint errors
