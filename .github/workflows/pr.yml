@@ -17,7 +17,7 @@ jobs:
     name: PR Sanity Check
     runs-on: ubuntu-latest
     env:
-      ETH_GOERLI_URL:  https://eth-goerli.alchemyapi.io/v2/${{ secrets.ALCHEMY_ETH_KEY }}
+      ETH_GOERLI_URL: https://eth-goerli.alchemyapi.io/v2/${{ secrets.ALCHEMY_ETH_KEY }}
       POLYGON_MUMBAI_URL: https://polygon-mumbai.g.alchemy.com/v2/${{ secrets.ALCHEMY_POLYGON_KEY }}
     steps:
       - name: Checkout
@@ -38,9 +38,11 @@ jobs:
 
       - name: Build and run tests.
         run: |
-          forge snapshot --no-match-contract ".*Fork"
-          forge snapshot --fork-url ${{ env.ETH_GOERLI_URL }} --match-contract "L1.*Fork" --fork-block-number 6267635
-          forge snapshot --fork-url ${{ env.POLYGON_MUMBAI_URL }} --match-contract "L2.*Fork" --fork-block-number 24274280
+          forge snapshot --check --no-match-contract ".*Fork" --snap .gas-snapshot-no-fork
+          forge snapshot --check --match-contract "L1.*Fork" --fork-url ${{ env.ETH_GOERLI_URL }} \
+           --fork-block-number 6267635  --snap .gas-snapshot-fork-eth
+          forge snapshot --check --match-contract "L2.*Fork" --fork-url ${{ env.POLYGON_MUMBAI_URL }} \
+           --fork-block-number 24274280 --snap .gas-snapshot-fork-polygon
 
       - name: Check lint errors
         run: yarn lint
