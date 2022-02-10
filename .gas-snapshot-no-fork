@@ -1,0 +1,5 @@
+VaultTest:testDepositWithdraw(uint256) (runs: 256, μ: 107367, ~: 107368)
+VaultTest:testDepositWithdrawGasLess() (gas: 118481)
+VaultTest:testLockedProfit() (gas: 345806)
+VaultTest:testManagementFee() (gas: 246806)
+WormholeTest:testMessagePass() (gas: 32600)

@@ -11,7 +11,7 @@ import { IWormhole } from "../interfaces/IWormhole.sol";
 import { L2AAVEStrategy } from "../polygon-contracts/L2AAVEStrategy.sol";
 
 // TODO: make it so that the first test always works => Truncation means the assert will fail at some blocks
-contract AAVEStratTestFork is DSTest {
+contract L2AAVEStratTestFork is DSTest {
     L2Vault vault;
     Create2Deployer create2Deployer;
     L2AAVEStrategy strategy;
