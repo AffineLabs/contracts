@@ -146,7 +146,7 @@ contract L1AnchorStrategy is BaseStrategy {
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {
-        return balanceOfWant() + balanceOfAToken() * exchangeRateFeeder.exchangeRateOf(address(aToken), true);
+        return balanceOfWant() + balanceOfAToken();
     }
 
     function protectedTokens() internal view override returns (address[] memory) {}
@@ -157,7 +157,7 @@ contract L1AnchorStrategy is BaseStrategy {
     }
 
     function balanceOfAToken() internal view returns (uint256) {
-        return aToken.balanceOf(address(this));
+        return aToken.balanceOf(address(this)) * exchangeRateFeeder.exchangeRateOf(address(aToken), true);
     }
 
     function _depositWant(uint256 amount) internal returns (uint256) {
@@ -180,5 +180,10 @@ contract L1AnchorStrategy is BaseStrategy {
 
         _withdrawWant(withdrawAmount);
         return balanceOfWant();
+    }
+
+    function nativeToWant(uint256 _amtInWei) public pure override returns (uint256) {
+        _amtInWei;
+        revert("Not Implmented");
     }
 }
