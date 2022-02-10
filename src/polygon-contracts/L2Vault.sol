@@ -43,6 +43,8 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
     // 2 percent management fee charged to vault per year
     uint256 public constant managementFee = 200;
 
+    uint256 public withdrawalFee;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {}
 
@@ -53,7 +55,8 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
         ICreate2Deployer create2Deployer,
         uint256 L1Ratio,
         uint256 L2Ratio,
-        address trustedForwarder
+        address trustedForwarder,
+        uint256 _withdrawalFee
     ) public initializer {
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
@@ -62,6 +65,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
         canTransferToL1 = true;
         canRequestFromL1 = true;
         relayer = new Relayer(trustedForwarder, address(this));
+        withdrawalFee = _withdrawalFee;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
@@ -115,8 +119,10 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
         // burn
         _burn(user, shares);
 
+        uint256 userTokens = _applyWithdrawalFee(valueOfShares);
+
         // transfer usdc out
-        token.safeTransfer(user, valueOfShares);
+        token.safeTransfer(user, userTokens);
     }
 
     function withdraw(uint256 shares) external {
@@ -136,6 +142,17 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
         } else {
             return shares * (globalTVL() / totalShares);
         }
+    }
+
+    // Return number of tokens to be given to user after applying withdrawal fee
+    function _applyWithdrawalFee(uint256 tokenAmount) internal returns (uint256) {
+        uint256 feeAmount = (tokenAmount * withdrawalFee) / MAX_BPS;
+        token.transfer(governance, feeAmount);
+        return tokenAmount - feeAmount;
+    }
+
+    function setWithdrawalFee(uint256 newWithdrawalFee) external onlyGovernance {
+        withdrawalFee = newWithdrawalFee;
     }
 
     function _assessFees() internal override {

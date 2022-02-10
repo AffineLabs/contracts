@@ -28,7 +28,8 @@ contract L2AAVEStratTestFork is DSTest {
             create2Deployer, // create2deployer (needs to be a real contract)
             1, // l1 ratio
             1, // l2 ratio
-            address(0) // relayer for gasless transactions
+            address(0), // relayer for gasless transactions
+            0
         );
         strategy = new L2AAVEStrategy(
             address(vault),
