@@ -4,7 +4,7 @@ import { address } from "./types";
 
 dotenvConfig({ path: resolve(__dirname, "./.env") });
 
-// Hardcoded Mumbai Addresses
+// Hardcoded Mumbai addresses and values
 const ETH_USDC = "0x077ffc33b12ac8CFfF5B9F71658bc6575E16a113";
 const POLYGON_USDC = "0x5fD6A096A23E95692E37Ec7583011863a63214AA";
 const POLYGON_ERC20_PREDICATE = "0x37c3bfC05d5ebF9EBb3FF80ce0bd0133Bf221BC8";
@@ -14,6 +14,7 @@ const POLYGON_WORMHOLE = "0x0CBE91CF822c73C2315FB05100C2F714765d5c20";
 const wbtc = "0x1F577114D404686B47C4A739C46B8EBee7b5156F";
 const weth = "0x1F0EB2B499C51CDa602ba96013577A3887D7278D";
 const BICONOMY_FORWARDER = "0x9399BB24DBB5C4b782C70c2969F58716Ebbd6a3b";
+const withdrawFee = 50; // user pays 50 bps
 
 export interface Config {
   l1ChainManager: address;
@@ -25,6 +26,7 @@ export interface Config {
   weth: address;
   wbtc: address;
   biconomyForwarder: address;
+  withdrawFee: number;
 }
 export const config: Config = {
   l1ChainManager: ROOT_CHAIN_MANAGER,
@@ -36,6 +38,7 @@ export const config: Config = {
   wbtc,
   weth,
   biconomyForwarder: BICONOMY_FORWARDER,
+  withdrawFee,
 };
 
 export interface RebalanceConfig {
