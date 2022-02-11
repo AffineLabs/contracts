@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ETH_GOERLI_URL: https://eth-goerli.alchemyapi.io/v2/${{ secrets.ALCHEMY_ETH_KEY }}
+      ETH_ROPSTEN_URL: https://eth-ropsten.alchemyapi.io/v2/${{ secrets.ALCHEMY_ROPSTEN_KEY }}
       POLYGON_MUMBAI_URL: https://polygon-mumbai.g.alchemy.com/v2/${{ secrets.ALCHEMY_POLYGON_KEY }}
     steps:
       - name: Checkout
@@ -43,6 +44,8 @@ jobs:
            --fork-block-number 6267635  --snap .gas-snapshot-fork-eth
           forge snapshot --match-contract "L2.*Fork" --fork-url ${{ env.POLYGON_MUMBAI_URL }} \
            --fork-block-number 24274280 --snap .gas-snapshot-fork-polygon
+          forge snapshot --match-contract ".*Anchor.*Fork" --fork-url ${{ env.POLYGON_MUMBAI_URL }} \
+           --fork-block-number 11949985 --snap .gas-snapshot-fork-ropsten
 
       - name: Check lint errors
         run: yarn lint

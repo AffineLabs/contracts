@@ -31,6 +31,8 @@ contract L1AnchorStrategy is BaseStrategy {
         aToken = _aToken;
         usdcConversionPool = _usdcConversionPool;
         exchangeRateFeeder = _exchangeRateFeeder;
+        // Approve transfer on the usdcConversionPool contract
+        want.approve(address(usdcConversionPool), type(uint256).max);
     }
 
     function name() external pure override returns (string memory) {
@@ -48,7 +50,7 @@ contract L1AnchorStrategy is BaseStrategy {
     {
         // account for profit / losses
         uint256 totalDebt = vault.strategies(address(this)).totalDebt;
-        uint256 totalAssets = balanceOfWant() + balanceOfAToken();
+        uint256 totalAssets = balanceOfWant() + balanceOfATokenInWant();
 
         if (totalDebt > totalAssets) {
             _loss = totalDebt - totalAssets;
@@ -146,7 +148,7 @@ contract L1AnchorStrategy is BaseStrategy {
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {
-        return balanceOfWant() + balanceOfAToken();
+        return balanceOfWant() + balanceOfATokenInWant();
     }
 
     function protectedTokens() internal view override returns (address[] memory) {}
@@ -156,8 +158,8 @@ contract L1AnchorStrategy is BaseStrategy {
         return want.balanceOf(address(this));
     }
 
-    function balanceOfAToken() internal view returns (uint256) {
-        return aToken.balanceOf(address(this)) * exchangeRateFeeder.exchangeRateOf(address(aToken), true);
+    function balanceOfATokenInWant() internal view returns (uint256) {
+        return aToken.balanceOf(address(this)) / exchangeRateFeeder.exchangeRateOf(address(want), false);
     }
 
     function _depositWant(uint256 amount) internal returns (uint256) {
@@ -168,7 +170,7 @@ contract L1AnchorStrategy is BaseStrategy {
 
     function _withdrawWant(uint256 amount) internal returns (uint256) {
         if (amount == 0) return 0;
-        uint256 aTokenAmount = amount / exchangeRateFeeder.exchangeRateOf(address(aToken), true);
+        uint256 aTokenAmount = amount * exchangeRateFeeder.exchangeRateOf(address(want), false);
         usdcConversionPool.redeem(aTokenAmount);
         return amount;
     }
@@ -176,7 +178,7 @@ contract L1AnchorStrategy is BaseStrategy {
     function _freeFunds(uint256 amountToFree) internal returns (uint256) {
         if (amountToFree == 0) return 0;
 
-        uint256 aTokenAmount = balanceOfAToken();
+        uint256 aTokenAmount = balanceOfATokenInWant();
         uint256 withdrawAmount = Math.min(amountToFree, aTokenAmount);
 
         _withdrawWant(withdrawAmount);
