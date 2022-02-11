@@ -47,7 +47,7 @@ contract EthAnchorStratTestFork is DSTestPlus {
     }
 
     function testStrategyHarvestSuccessfully() public {
-        // Give the Vault 1 usdc
+        // Give the Vault 100 usdc
         hevm.store(address(usdc), keccak256(abi.encode(address(vault), usdcBalancesStorageSlot)), bytes32(hundredUSDC));
         // This contract is the governance address so this will work
         vault.addStrategy(address(strategy), 5000, 0, type(uint256).max);
