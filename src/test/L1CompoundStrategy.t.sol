@@ -13,6 +13,7 @@ import { ICToken } from "../interfaces/compound/ICToken.sol";
 import { IComptroller } from "../interfaces/compound/IComptroller.sol";
 import { L1CompoundStrategy } from "../eth-contracts/L1CompoundStrategy.sol";
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
+import { BaseStrategy as Strategy } from "../BaseStrategy.sol";
 
 contract L1CompoundStratTestFork is DSTestPlus {
     ERC20 compToken = ERC20(0xe16C7165C8FeA64069802aE4c4c9C320783f2b6e);
@@ -65,7 +66,7 @@ contract L1CompoundStratTestFork is DSTestPlus {
         hevm.store(address(usdc), keccak256(abi.encode(address(vault), usdcBalancesStorageSlot)), bytes32(oneUSDC));
 
         // This contract is the governance address so this will work
-        vault.addStrategy(address(strategy), 5000, 0, type(uint256).max);
+        vault.addStrategy(Strategy(address(strategy)), 5000, 0, type(uint256).max);
 
         strategy.harvest();
 
@@ -76,7 +77,7 @@ contract L1CompoundStratTestFork is DSTestPlus {
         // Strategy deposits all of usdc into Compound
         assertInRange(strategy.cToken().balanceOfUnderlying(address(strategy)), halfUSDC - 1, halfUSDC);
 
-        (, , , , , uint256 totalDebt, , ) = vault.strategies(address(strategy));
+        (, , , , , uint256 totalDebt, , ) = vault.strategies(Strategy(address(strategy)));
         assertEq(totalDebt, halfUSDC);
     }
 

@@ -5,12 +5,11 @@ import "./test.sol";
 import { IHevm } from "./IHevm.sol";
 import { MockERC20 } from "./MockERC20.sol";
 
+import { IWormhole } from "../interfaces/IWormhole.sol";
 import { L2Vault } from "../polygon-contracts/L2Vault.sol";
 import { Relayer } from "../polygon-contracts/Relayer.sol";
 import { Create2Deployer } from "./Create2Deployer.sol";
-
-import { IWormhole } from "../interfaces/IWormhole.sol";
-import { IStrategy } from "../interfaces/IStrategy.sol";
+import { BaseStrategy as Strategy } from "../BaseStrategy.sol";
 
 contract VaultTest is DSTest {
     L2Vault vault;
@@ -103,9 +102,9 @@ contract VaultTest is DSTest {
         hevm.warp(block.timestamp + 1);
 
         // Add this contract as a strategy, mock calls to strategy.want() and strategy.vault() to bypass checks
-        hevm.mockCall(address(this), abi.encodeWithSelector(IStrategy.vault.selector), abi.encode(address(vault)));
-        hevm.mockCall(address(this), abi.encodeWithSelector(IStrategy.want.selector), abi.encode(address(token)));
-        vault.addStrategy(address(this), 1000, 0, type(uint256).max);
+        hevm.mockCall(address(this), abi.encodeWithSelector(bytes4(keccak256("vault()"))), abi.encode(address(vault)));
+        hevm.mockCall(address(this), abi.encodeWithSelector(bytes4(keccak256("want()"))), abi.encode(address(token)));
+        vault.addStrategy(Strategy(address(this)), 1000, 0, type(uint256).max);
 
         hevm.warp(block.timestamp + vault.SECS_PER_YEAR() / 2);
 
@@ -121,9 +120,9 @@ contract VaultTest is DSTest {
         hevm.warp(block.timestamp + 1);
         // Add this contract as a strategy, mock calls to strategy.want() and strategy.vault() to bypass checks
         // TODO: consider making base strategy deployable (non-abstract) just for use in tests
-        hevm.mockCall(address(this), abi.encodeWithSelector(IStrategy.vault.selector), abi.encode(address(vault)));
-        hevm.mockCall(address(this), abi.encodeWithSelector(IStrategy.want.selector), abi.encode(address(token)));
-        vault.addStrategy(address(this), 10_000, 0, type(uint256).max);
+        hevm.mockCall(address(this), abi.encodeWithSelector(bytes4(keccak256("vault()"))), abi.encode(address(vault)));
+        hevm.mockCall(address(this), abi.encodeWithSelector(bytes4(keccak256("want()"))), abi.encode(address(token)));
+        vault.addStrategy(Strategy(address(this)), 10_000, 0, type(uint256).max);
 
         token.mint(address(this), 1e18);
         token.approve(address(vault), type(uint256).max);

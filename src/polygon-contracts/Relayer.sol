@@ -11,8 +11,6 @@ contract Relayer is BaseRelayRecipient {
         vault = L2Vault(_vault);
     }
 
-    // NOTE: Only using `this` because I can't mock _msgSender as an internal call (JUMP)
-    // See https://github.com/gakonst/foundry/issues/432
     function deposit(uint256 amountToken) external {
         vault.depositGasLess(_msgSender(), amountToken);
     }
