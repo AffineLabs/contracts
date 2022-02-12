@@ -38,7 +38,7 @@ contract VaultTest is DSTest {
         relayer = vault.relayer();
     }
 
-    function testDepositWithdraw(uint256 amountToken) public {
+    function testDepositRedeem(uint256 amountToken) public {
         address user = address(this);
         token.mint(user, amountToken);
 
@@ -51,15 +51,14 @@ contract VaultTest is DSTest {
         assertEq(numShares, amountToken);
         assertEq(token.balanceOf(address(user)), 0);
 
-        vault.withdraw(numShares);
+        vault.redeem(numShares);
         assertEq(vault.balanceOf(user), 0);
         assertEq(token.balanceOf(user), amountToken);
     }
 
-    function testDepositWithdrawGasLess() public {
+    function testDepositRedeemGasLess() public {
         address user = address(this);
         token.mint(user, 1e18);
-
         token.approve(address(vault), type(uint256).max);
 
         // truster forwarder is zero address and is the one who calls deposit on the relayer
@@ -69,7 +68,7 @@ contract VaultTest is DSTest {
         address(relayer).call(abi.encodePacked(depositData, user));
         assertEq(vault.balanceOf(user), 1e18);
 
-        bytes memory withdrawData = abi.encodeWithSelector(relayer.withdraw.selector, 1e18);
+        bytes memory withdrawData = abi.encodeWithSelector(relayer.redeem.selector, 1e18);
         address(relayer).call(abi.encodePacked(withdrawData, user));
         assertEq(vault.balanceOf(user), 0);
         assertEq(token.balanceOf(user), 1e18);
@@ -83,12 +82,47 @@ contract VaultTest is DSTest {
         hevm.expectRevert(bytes("Only relayer"));
         vault.depositGasLess(user, 1e18);
         hevm.expectRevert(bytes("Only relayer"));
-        vault.withdrawGasLess(user, 1e18);
+        vault.redeemGasLess(user, 1e18);
     }
 
-    function invariantDebtLessThanMaxBPS() public {
-        // probably want to give this contract some underlying first
-        assertLe(vault.debtRatio(), vault.MAX_BPS());
+    function testDepositWithdraw(uint64 amountToken) public {
+        // Using a uint64 since we multiply totalSupply by amountToken in sharesFromTokens
+        // Using a uint64 makes sure the calculation will not overflow
+
+        address user = address(this);
+        token.mint(user, amountToken);
+        token.approve(address(vault), type(uint256).max);
+        vault.deposit(amountToken);
+
+        // If vault is empty, tokens are converted to shares at 1:1
+        assertEq(vault.balanceOf(user), amountToken);
+        assertEq(token.balanceOf(user), 0);
+
+        vault.withdraw(amountToken);
+        assertEq(vault.balanceOf(user), 0);
+        assertEq(token.balanceOf(user), amountToken);
+    }
+
+    function testDepositWithdrawGasLess() public {
+        address user = address(this);
+        token.mint(user, 1e18);
+        token.approve(address(vault), type(uint256).max);
+
+        hevm.startPrank(relayer.trustedForwarder());
+        bytes memory depositData = abi.encodeWithSelector(relayer.deposit.selector, 1e18);
+        address(relayer).call(abi.encodePacked(depositData, user));
+        assertEq(vault.balanceOf(user), 1e18);
+
+        bytes memory withdrawData = abi.encodeWithSelector(relayer.withdraw.selector, 1e18);
+        address(relayer).call(abi.encodePacked(withdrawData, user));
+        assertEq(vault.balanceOf(user), 0);
+        assertEq(token.balanceOf(user), 1e18);
+
+        hevm.stopPrank();
+
+        // only the relayer can withdraw
+        hevm.expectRevert(bytes("Only relayer"));
+        vault.withdrawGasLess(user, 1e18);
     }
 
     function testManagementFee() public {
@@ -148,7 +182,7 @@ contract VaultTest is DSTest {
         token.approve(address(vault), type(uint256).max);
         vault.deposit(amountToken);
 
-        vault.withdraw(vault.balanceOf(user));
+        vault.redeem(vault.balanceOf(user));
         assertEq(vault.balanceOf(user), 0);
 
         // User gets the original amount with 50bps deducted

@@ -74,15 +74,6 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
         return token.decimals();
     }
 
-    function _deposit(address user, uint256 amountToken) internal {
-        // mint
-        uint256 numShares = sharesFromTokens(amountToken);
-        _mint(user, numShares);
-
-        // Get usdc
-        token.safeTransferFrom(user, address(this), amountToken);
-    }
-
     function deposit(uint256 amountToken) external {
         _deposit(msg.sender, amountToken);
     }
@@ -93,14 +84,23 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
         _deposit(user, amountToken);
     }
 
+    function _deposit(address user, uint256 amountToken) internal {
+        // mint
+        uint256 numShares = sharesFromTokens(amountToken);
+        _mint(user, numShares);
+
+        // Get usdc
+        token.safeTransferFrom(user, address(this), amountToken);
+    }
+
     function sharesFromTokens(uint256 amountToken) public view returns (uint256) {
         // Amount of shares you get for a given amount of tokens
         uint256 numShares;
-        uint256 totalTokens = totalSupply();
-        if (totalTokens == 0) {
+        uint256 totalShares = totalSupply();
+        if (totalShares == 0) {
             numShares = amountToken;
         } else {
-            numShares = (amountToken * totalTokens) / globalTVL();
+            numShares = (amountToken * totalShares) / globalTVL();
         }
         return numShares;
     }
@@ -110,7 +110,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
         return vaultTVL() - lockedProfit() + L1TotalLockedValue;
     }
 
-    function _withdraw(address user, uint256 shares) internal {
+    function _redeem(address user, uint256 shares) internal {
         uint256 valueOfShares = tokensFromShares(shares);
 
         // TODO: handle case where the user is trying to withdraw more value than actually exists in the vault
@@ -125,20 +125,39 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
         token.safeTransfer(user, userTokens);
     }
 
-    function withdraw(uint256 shares) external {
-        _withdraw(msg.sender, shares);
+    function redeem(uint256 shares) external {
+        _redeem(msg.sender, shares);
     }
 
-    function withdrawGasLess(address user, uint256 shares) external {
+    function redeemGasLess(address user, uint256 shares) external {
         require(msg.sender == address(relayer), "Only relayer");
-        _withdraw(user, shares);
+        _redeem(user, shares);
+    }
+
+    function withdraw(uint256 amountToken) external {
+        _withdraw(msg.sender, amountToken);
+    }
+
+    function withdrawGasLess(address user, uint256 amountToken) external {
+        require(msg.sender == address(relayer), "Only relayer");
+        _withdraw(user, amountToken);
+    }
+
+    function _withdraw(address user, uint256 amountToken) internal {
+        // If user does not have the correct amount of shares, we revert
+        uint256 numShares = sharesFromTokens(amountToken);
+        _burn(user, numShares);
+
+        // Deduct withdrawal fee from amountToken
+        uint256 userTokens = _applyWithdrawalFee(amountToken);
+        token.transfer(user, userTokens);
     }
 
     function tokensFromShares(uint256 shares) public view returns (uint256) {
         // Amount of tokens you get for the given amount of shares.
         uint256 totalShares = totalSupply();
         if (totalShares == 0) {
-            return shares;
+            return 0;
         } else {
             return shares * (globalTVL() / totalShares);
         }
