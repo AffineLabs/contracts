@@ -13,6 +13,7 @@ import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { IExchangeRateFeeder } from "../interfaces/anchor/IExchangeRateFeeder.sol";
 import { IConversionPool } from "../interfaces/anchor/IConversionPool.sol";
 import { L1AnchorStrategy } from "../eth-contracts/L1AnchorStrategy.sol";
+import { BaseStrategy as Strategy } from "../BaseStrategy.sol";
 
 contract EthAnchorStratTestFork is DSTestPlus {
     IERC20 aToken = IERC20(0xFff8fb0C13314c90805a808F48c7DFF37e95Eb16);
@@ -50,7 +51,7 @@ contract EthAnchorStratTestFork is DSTestPlus {
         // Give the Vault 100 usdc
         hevm.store(address(usdc), keccak256(abi.encode(address(vault), usdcBalancesStorageSlot)), bytes32(hundredUSDC));
         // This contract is the governance address so this will work
-        vault.addStrategy(address(strategy), 5000, 0, type(uint256).max);
+        vault.addStrategy(strategy, 5000, 0, type(uint256).max);
 
         // Make sure strategy deposits fifty USDC to Eth Anchor during harvest.
         bytes4 funcSelector = bytes4(keccak256("deposit(uint256)"));
@@ -62,7 +63,7 @@ contract EthAnchorStratTestFork is DSTestPlus {
         // After calling harvest for the first time, we take 5000/10000 percentage of the vaults assets
         assertEq(usdc.balanceOf(address(vault)), fiftyUSDC);
         assertEq(vault.totalDebt(), fiftyUSDC);
-        (, , , , , uint256 totalDebt, , ) = vault.strategies(address(strategy));
+        (, , , , , uint256 totalDebt, , ) = vault.strategies(strategy);
         assertEq(totalDebt, fiftyUSDC);
     }
 
