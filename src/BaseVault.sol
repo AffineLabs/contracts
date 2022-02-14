@@ -33,7 +33,6 @@ abstract contract BaseVault is Initializable, AccessControl {
     /** Authentication
      **************************************************************************/
 
-    bytes32 public constant bankerRole = keccak256("BANKER");
     bytes32 public constant stackOperatorRole = keccak256("STACK_OPERATOR");
 
     /** Withdrawal Stack
@@ -122,7 +121,7 @@ abstract contract BaseVault is Initializable, AccessControl {
 
     /// @notice Moves the strategy at the tip of the stack to the specified index and pop the tip off the stack.
     /// @param index The index of the strategy in the withdrawal stack to replace with the tip.
-    /// @dev This isn't so necessary and can probably be removed. TODO: consider removing
+    /// @dev Useful for removing a strategy from the stack
     function replaceWithdrawalStackIndexWithTip(uint256 index) external onlyRole(stackOperatorRole) {
         // Get the (soon to be) previous tip and strategy we will replace at the index.
         Strategy previousTipStrategy = withdrawalStack[withdrawalStack.length - 1];
@@ -357,13 +356,11 @@ abstract contract BaseVault is Initializable, AccessControl {
         // The total amount of token that could be borrowed is now larger
         debtRatio += debtRatio_;
 
-        //  Add strategy to withdrawal queue and organize
+        //  Add strategy to withdrawal stack
         _pushToWithdrawalStack(strategy);
     }
 
-    function removeStrategy(Strategy strategy) external {
-        // Let governance/strategy remove the strategy
-        require(msg.sender == address(strategy) || msg.sender == governance, "Only goverance or the strategy can call");
+    function removeStrategy(Strategy strategy) external onlyGovernance {
         if (strategies[strategy].debtRatio == 0) return;
         debtRatio -= strategies[strategy].debtRatio;
         strategies[strategy].debtRatio = 0;
