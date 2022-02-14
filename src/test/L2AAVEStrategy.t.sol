@@ -53,7 +53,7 @@ contract L2AAVEStratTestFork is DSTest {
         hevm.store(0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e, keccak256(h_of_k_dot_p), bytes32(uint256(1e6)));
 
         // This contract is the governance address so this will work
-        vault.addStrategy(address(strategy), 5000, 0, type(uint256).max);
+        vault.addStrategy(strategy, 5000, 0, type(uint256).max);
 
         strategy.harvest();
 
@@ -64,7 +64,7 @@ contract L2AAVEStratTestFork is DSTest {
         // Strategy deposits all of usdc into AAVE
         assertEq(strategy.aToken().balanceOf(address(strategy)), 1e6 / 2);
 
-        (, , , , , uint256 totalDebt, , ) = vault.strategies(address(strategy));
+        (, , , , , uint256 totalDebt, , ) = vault.strategies(strategy);
         assertEq(totalDebt, 1e6 / 2);
 
         // Go 10 days into the future and make sure that the vault makes money
@@ -90,7 +90,7 @@ contract L2AAVEStratTestFork is DSTest {
         bytes memory h_of_k_dot_p = abi.encode(address(vault), 0);
         hevm.store(0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e, keccak256(h_of_k_dot_p), bytes32(uint256(1e6)));
 
-        vault.addStrategy(address(strategy), 5000, 0, type(uint256).max);
+        vault.addStrategy(strategy, 5000, 0, type(uint256).max);
         strategy.harvest();
 
         // Impersonate strategy
@@ -105,7 +105,7 @@ contract L2AAVEStratTestFork is DSTest {
         // Vault has 0.5 usdc, and strategy immediately takes out half of it.
         // TODO: Reconsider allowing a strategy that has lost money to take more money out
         assertEq(vault.totalDebt(), 1e6 / 4);
-        (, , , , , uint256 totalDebt, , uint256 totalLoss) = vault.strategies(address(strategy));
+        (, , , , , uint256 totalDebt, , uint256 totalLoss) = vault.strategies(strategy);
         assertEq(totalLoss, 1e6 / 2);
         assertEq(totalDebt, 1e6 / 4);
     }

@@ -3,8 +3,11 @@ pragma solidity ^0.8.9;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
+
 import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { Context } from "@openzeppelin/contracts/utils/Context.sol";
+import { ContextUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { BaseVault } from "../BaseVault.sol";
@@ -69,6 +72,15 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
+
+    // BaseVault is `Context` while ERC20Upgradeable is `ContextUpgradeable`. We don't need these functions
+    function _msgSender() internal view override(Context, ContextUpgradeable) returns (address) {
+        return Context._msgSender();
+    }
+
+    function _msgData() internal view override(Context, ContextUpgradeable) returns (bytes calldata) {
+        return Context._msgData();
+    }
 
     function decimals() public view override returns (uint8) {
         return token.decimals();

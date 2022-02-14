@@ -1,21 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-import { IStrategy } from "./interfaces/IStrategy.sol";
+
+import { BaseStrategy as Strategy } from "./BaseStrategy.sol";
 import { IWormhole } from "./interfaces/IWormhole.sol";
 import { IStaging } from "./interfaces/IStaging.sol";
 import { Staging } from "./Staging.sol";
 import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
 
-abstract contract BaseVault is Initializable {
+abstract contract BaseVault is Initializable, AccessControl {
     using SafeTransferLib for ERC20;
 
-    // The address of token we'll take as input to the vault, e.g. USDC
+    // The token that the vault takes in and gives to strategies, e.g. USDC
     ERC20 public token;
 
     address public governance;
@@ -28,8 +30,182 @@ abstract contract BaseVault is Initializable {
     IWormhole public wormhole;
     address public staging;
 
-    uint8 public constant MAX_STRATEGIES = 10;
-    address[MAX_STRATEGIES] public withdrawalQueue;
+    /** Authentication
+     **************************************************************************/
+
+    bytes32 public constant stackOperatorRole = keccak256("STACK_OPERATOR");
+
+    /** Withdrawal Stack
+     **************************************************************************/
+
+    uint8 public constant MAX_STRATEGIES = 20;
+
+    /// @notice An ordered array of strategies representing the withdrawal stack.
+    /// @dev The stack is processed in descending order, meaning the last index will be withdrawn from first.
+    /// @dev Strategies that are untrusted, duplicated, or have no balance are filtered out when encountered at
+    /// withdrawal time, not validated upfront, meaning the stack may not reflect the "true" set used for withdrawals.
+    Strategy[] public withdrawalStack;
+
+    /// @notice Gets the full withdrawal stack.
+    /// @return An ordered array of strategies representing the withdrawal stack.
+    /// @dev This is provided because Solidity converts public arrays into index getters,
+    /// but we need a way to allow external contracts and users to access the whole array.
+    function getWithdrawalStack() external view returns (Strategy[] memory) {
+        return withdrawalStack;
+    }
+
+    /// @notice Pushes a single strategy to front of the withdrawal stack.
+    /// @param strategy The strategy to be inserted at the front of the withdrawal stack.
+    /// @dev Strategies that are untrusted, duplicated, or have no balance are
+    /// filtered out when encountered at withdrawal time, not validated upfront.
+    function pushToWithdrawalStack(Strategy strategy) external onlyRole(stackOperatorRole) {
+        _pushToWithdrawalStack(strategy);
+    }
+
+    /// @dev This is to maintain the old logic where a strategy gets added to the withdrawal stack
+    /// right when it is added
+    function _pushToWithdrawalStack(Strategy strategy) internal {
+        // Ensure pushing the strategy will not cause the stack exceed its limit.
+        require(withdrawalStack.length < MAX_STRATEGIES, "STACK_FULL");
+
+        // Push the strategy to the front of the stack.
+        withdrawalStack.push(strategy);
+
+        emit WithdrawalStackPushed(msg.sender, strategy);
+    }
+
+    /// @notice Removes the strategy at the tip of the withdrawal stack.
+    /// @dev Be careful, another authorized user could push a different strategy
+    /// than expected to the stack while a popFromWithdrawalStack transaction is pending.
+    function popFromWithdrawalStack() external onlyRole(stackOperatorRole) {
+        // Get the (soon to be) popped strategy.
+        Strategy poppedStrategy = withdrawalStack[withdrawalStack.length - 1];
+
+        // Pop the first strategy in the stack.
+        withdrawalStack.pop();
+
+        emit WithdrawalStackPopped(msg.sender, poppedStrategy);
+    }
+
+    /// @notice Sets a new withdrawal stack.
+    /// @param newStack The new withdrawal stack.
+    /// @dev Strategies that are untrusted, duplicated, or have no balance are
+    /// filtered out when encountered at withdrawal time, not validated upfront.
+    function setWithdrawalStack(Strategy[] calldata newStack) external onlyRole(stackOperatorRole) {
+        // Ensure the new stack is not larger than the maximum stack size.
+        require(newStack.length <= MAX_STRATEGIES, "STACK_TOO_BIG");
+
+        // Replace the withdrawal stack.
+        withdrawalStack = newStack;
+
+        emit WithdrawalStackSet(msg.sender, newStack);
+    }
+
+    /// @notice Replaces an index in the withdrawal stack with another strategy.
+    /// @param index The index in the stack to replace.
+    /// @param replacementStrategy The strategy to override the index with.
+    /// @dev Strategies that are untrusted, duplicated, or have no balance are
+    /// filtered out when encountered at withdrawal time, not validated upfront.
+    function replaceWithdrawalStackIndex(uint256 index, Strategy replacementStrategy)
+        external
+        onlyRole(stackOperatorRole)
+    {
+        // Get the (soon to be) replaced strategy.
+        Strategy replacedStrategy = withdrawalStack[index];
+
+        // Update the index with the replacement strategy.
+        withdrawalStack[index] = replacementStrategy;
+
+        emit WithdrawalStackIndexReplaced(msg.sender, index, replacedStrategy, replacementStrategy);
+    }
+
+    /// @notice Moves the strategy at the tip of the stack to the specified index and pop the tip off the stack.
+    /// @param index The index of the strategy in the withdrawal stack to replace with the tip.
+    /// @dev Useful for removing a strategy from the stack
+    function replaceWithdrawalStackIndexWithTip(uint256 index) external onlyRole(stackOperatorRole) {
+        // Get the (soon to be) previous tip and strategy we will replace at the index.
+        Strategy previousTipStrategy = withdrawalStack[withdrawalStack.length - 1];
+        Strategy replacedStrategy = withdrawalStack[index];
+
+        // Replace the index specified with the tip of the stack.
+        withdrawalStack[index] = previousTipStrategy;
+
+        // Remove the now duplicated tip from the array.
+        withdrawalStack.pop();
+
+        emit WithdrawalStackIndexReplacedWithTip(msg.sender, index, replacedStrategy, previousTipStrategy);
+    }
+
+    /// @notice Swaps two indexes in the withdrawal stack.
+    /// @param index1 One index involved in the swap
+    /// @param index2 The other index involved in the swap.
+    function swapWithdrawalStackIndexes(uint256 index1, uint256 index2) external onlyRole(stackOperatorRole) {
+        // Get the (soon to be) new strategies at each index.
+        Strategy newStrategy2 = withdrawalStack[index1];
+        Strategy newStrategy1 = withdrawalStack[index2];
+
+        // Swap the strategies at both indexes.
+        withdrawalStack[index1] = newStrategy1;
+        withdrawalStack[index2] = newStrategy2;
+
+        emit WithdrawalStackIndexesSwapped(msg.sender, index1, index2, newStrategy1, newStrategy2);
+    }
+
+    /// @notice Emitted when a strategy is pushed to the withdrawal stack.
+    /// @param user The authorized user who triggered the push.
+    /// @param pushedStrategy The strategy pushed to the withdrawal stack.
+    event WithdrawalStackPushed(address indexed user, Strategy indexed pushedStrategy);
+
+    /// @notice Emitted when a strategy is popped from the withdrawal stack.
+    /// @param user The authorized user who triggered the pop.
+    /// @param poppedStrategy The strategy popped from the withdrawal stack.
+    event WithdrawalStackPopped(address indexed user, Strategy indexed poppedStrategy);
+
+    /// @notice Emitted when the withdrawal stack is updated.
+    /// @param user The authorized user who triggered the set.
+    /// @param replacedWithdrawalStack The new withdrawal stack.
+    event WithdrawalStackSet(address indexed user, Strategy[] replacedWithdrawalStack);
+
+    /// @notice Emitted when an index in the withdrawal stack is replaced.
+    /// @param user The authorized user who triggered the replacement.
+    /// @param index The index of the replaced strategy in the withdrawal stack.
+    /// @param replacedStrategy The strategy in the withdrawal stack that was replaced.
+    /// @param replacementStrategy The strategy that overrode the replaced strategy at the index.
+    event WithdrawalStackIndexReplaced(
+        address indexed user,
+        uint256 index,
+        Strategy indexed replacedStrategy,
+        Strategy indexed replacementStrategy
+    );
+
+    /// @notice Emitted when an index in the withdrawal stack is replaced with the tip.
+    /// @param user The authorized user who triggered the replacement.
+    /// @param index The index of the replaced strategy in the withdrawal stack.
+    /// @param replacedStrategy The strategy in the withdrawal stack replaced by the tip.
+    /// @param previousTipStrategy The previous tip of the stack that replaced the strategy.
+    event WithdrawalStackIndexReplacedWithTip(
+        address indexed user,
+        uint256 index,
+        Strategy indexed replacedStrategy,
+        Strategy indexed previousTipStrategy
+    );
+
+    /// @notice Emitted when the strategies at two indexes are swapped.
+    /// @param user The authorized user who triggered the swap.
+    /// @param index1 One index involved in the swap
+    /// @param index2 The other index involved in the swap.
+    /// @param newStrategy1 The strategy (previously at index2) that replaced index1.
+    /// @param newStrategy2 The strategy (previously at index1) that replaced index2.
+    event WithdrawalStackIndexesSwapped(
+        address indexed user,
+        uint256 index1,
+        uint256 index2,
+        Strategy indexed newStrategy1,
+        Strategy indexed newStrategy2
+    );
+
+    /** Strategies
+     **************************************************************************/
     struct StrategyInfo {
         uint256 activation;
         uint256 debtRatio;
@@ -41,17 +217,17 @@ abstract contract BaseVault is Initializable {
         uint256 totalLoss;
     }
     // All strategy information
-    mapping(address => StrategyInfo) public strategies;
+    mapping(Strategy => StrategyInfo) public strategies;
     event StrategyAdded(
-        address indexed strategy,
+        Strategy indexed strategy,
         uint256 debtRatio,
         uint256 minDebtPerHarvest,
         uint256 maxDebtPerHarvest
     );
-    event StrategyRemoved(address indexed strategy);
-    event StrategyUpdateDebtRatio(address indexed strategy, uint256 debtRatio);
+    event StrategyRemoved(Strategy indexed strategy);
+    event StrategyUpdateDebtRatio(Strategy indexed strategy, uint256 debtRatio);
     event StrategyReported(
-        address indexed strategy,
+        Strategy indexed strategy,
         uint256 gain,
         uint256 loss,
         uint256 debtPaid,
@@ -66,7 +242,7 @@ abstract contract BaseVault is Initializable {
     uint256 public debtRatio;
     // Total amount that the vault can get back from strategies (ignoring slippage)
     uint256 public totalDebt;
-    uint256 public constant MAX_BPS = 10000;
+    uint256 public constant MAX_BPS = 10_000;
     uint256 public constant SECS_PER_YEAR = 31_556_952;
     uint256 public lastReport;
 
@@ -117,8 +293,8 @@ abstract contract BaseVault is Initializable {
     function _liquidate(uint256 amount) internal returns (uint256) {
         uint256 amountLiquidated;
         for (uint8 i = 0; i < MAX_STRATEGIES; i++) {
-            address strategy = withdrawalQueue[i];
-            if (strategy == address(0)) break;
+            Strategy strategy = withdrawalStack[i];
+            if (strategy == Strategy(address(0))) break;
 
             uint256 balance = token.balanceOf(address(this));
             if (balance >= amount) break;
@@ -129,7 +305,7 @@ abstract contract BaseVault is Initializable {
             amountNeeded = Math.min(amountNeeded, strategies[strategy].totalDebt);
 
             // Force withdraw of token from strategy
-            uint256 loss = IStrategy(strategy).withdraw(amountNeeded);
+            uint256 loss = Strategy(strategy).withdraw(amountNeeded);
             uint256 withdrawn = token.balanceOf(address(this)) - balance;
 
             // TODO: consider loss protection
@@ -149,19 +325,16 @@ abstract contract BaseVault is Initializable {
     }
 
     function addStrategy(
-        address strategy,
+        Strategy strategy,
         uint256 debtRatio_,
         uint256 minDebtPerHarvest,
         uint256 maxDebtPerHarvest
     ) external onlyGovernance {
-        // Check if queue is full. If it's not, the last element will be unset
-        require(withdrawalQueue[MAX_STRATEGIES - 1] == address(0), "Vault has hit strategy limit");
-
         // Check if this strategy can be activated
-        require(strategy != address(0), "Strategy must be not be zero account");
+        require(strategy != Strategy(address(0)), "Strategy must be not be zero account");
         require(strategies[strategy].activation == 0, "Strategy must not already be active");
-        require(IStrategy(strategy).vault() == address(this), "Strategy must use this vault");
-        require(token == IStrategy(strategy).want(), "Strategy must take profits in token");
+        require(address(Strategy(strategy).vault()) == address(this), "Strategy must use this vault");
+        require(address(token) == address(Strategy(strategy).want()), "Strategy must take profits in token");
 
         // Check if sanity properties violate invariants
         require(debtRatio + debtRatio_ <= MAX_BPS, "Debt cannot exceed 10k bps");
@@ -183,42 +356,18 @@ abstract contract BaseVault is Initializable {
         // The total amount of token that could be borrowed is now larger
         debtRatio += debtRatio_;
 
-        //  Add strategy to withdrawal queue and organize
-        withdrawalQueue[MAX_STRATEGIES - 1] = strategy;
-        _organizeWithdrawalQueue();
+        //  Add strategy to withdrawal stack
+        _pushToWithdrawalStack(strategy);
     }
 
-    function _organizeWithdrawalQueue() internal {
-        // Reorganize `withdrawalQueue`.
-        // If there is an
-        // empty value between two actual values, then the empty value should be
-        // replaced by the later value.
-        //  NOTE: Relative ordering of non-zero values is maintained.
-
-        // number or empty values we've seen iterating from left to right
-        uint256 offset;
-
-        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
-            address strategy = withdrawalQueue[i];
-            if (strategy == address(0)) offset += 1;
-            else if (offset > 0) {
-                // idx of first empty value seen takes on value of `strategy`
-                withdrawalQueue[i - offset] = strategy;
-                withdrawalQueue[i] = address(0);
-            }
-        }
-    }
-
-    function removeStrategy(address strategy) external {
-        // Let governance/strategy remove the strategy
-        require(msg.sender == strategy || msg.sender == governance, "Only goverance or the strategy can call");
+    function removeStrategy(Strategy strategy) external onlyGovernance {
         if (strategies[strategy].debtRatio == 0) return;
         debtRatio -= strategies[strategy].debtRatio;
         strategies[strategy].debtRatio = 0;
         emit StrategyRemoved(strategy);
     }
 
-    function updateStrategyDebtRatio(address strategy, uint256 debtRatio_) external onlyGovernance {
+    function updateStrategyDebtRatio(Strategy strategy, uint256 debtRatio_) external onlyGovernance {
         require(strategies[strategy].activation > 0, "Strategy must be active");
         debtRatio -= strategies[strategy].debtRatio;
         strategies[strategy].debtRatio = debtRatio_;
@@ -227,12 +376,12 @@ abstract contract BaseVault is Initializable {
         emit StrategyUpdateDebtRatio(strategy, debtRatio_);
     }
 
-    function updateManyStrategyDebtRatios(address[] calldata strategies_, uint256[] calldata debtRatios)
+    function updateManyStrategyDebtRatios(Strategy[] calldata strategies_, uint256[] calldata debtRatios)
         external
         onlyGovernance
     {
         for (uint256 i = 0; i < strategies_.length; i++) {
-            address strategy = strategies_[i];
+            Strategy strategy = strategies_[i];
             uint256 newDebtRatio = debtRatios[i];
             require(strategies[strategy].activation > 0, "Strategy must be active");
             debtRatio = debtRatio - strategies[strategy].debtRatio + newDebtRatio;
@@ -248,12 +397,12 @@ abstract contract BaseVault is Initializable {
         uint256 loss,
         uint256 debtPayment
     ) external returns (uint256) {
-        require(strategies[msg.sender].activation > 0, "Strategy must be active");
+        require(strategies[Strategy(msg.sender)].activation > 0, "Strategy must be active");
         // TODO: consider health check
-        address strategy = msg.sender;
+        Strategy strategy = Strategy(msg.sender);
 
         // Strategy must be able to pay (gain + debtPayment) of token
-        require(token.balanceOf(strategy) >= gain + debtPayment);
+        require(token.balanceOf(address(strategy)) >= gain + debtPayment);
 
         if (loss > 0) _reportLoss(strategy, loss);
 
@@ -287,9 +436,9 @@ abstract contract BaseVault is Initializable {
 
         uint256 totalAvail = gain + debtPayment;
         // Credit surplus, give to Strategy
-        if (totalAvail < credit) token.safeTransfer(strategy, credit - totalAvail);
+        if (totalAvail < credit) token.safeTransfer(address(strategy), credit - totalAvail);
         // Credit deficit, take from Strategy
-        if (totalAvail > credit) token.safeTransferFrom(strategy, address(this), totalAvail - credit);
+        if (totalAvail > credit) token.safeTransferFrom(address(strategy), address(this), totalAvail - credit);
 
         // Update report times -> assessFees relies on the old lastReport value so must be called before it's updated
         _assessFees();
@@ -309,11 +458,11 @@ abstract contract BaseVault is Initializable {
         );
 
         // If the strategy has been removed, it owes the vault all of its assets
-        if (strategies[strategy].debtRatio == 0) return IStrategy(strategy).estimatedTotalAssets();
+        if (strategies[strategy].debtRatio == 0) return Strategy(strategy).estimatedTotalAssets();
         return debt;
     }
 
-    function _reportLoss(address strategy, uint256 loss) internal {
+    function _reportLoss(Strategy strategy, uint256 loss) internal {
         uint256 strategyDebt = strategies[strategy].totalDebt;
         require(strategyDebt >= loss, "Strategy cannot lose more than it borrowed.");
 
@@ -323,7 +472,7 @@ abstract contract BaseVault is Initializable {
         totalDebt -= loss;
     }
 
-    function creditAvailable(address strategy) public view returns (uint256) {
+    function creditAvailable(Strategy strategy) public view returns (uint256) {
         uint256 vaultTotalAssets = vaultTVL();
         uint256 vaultDebtLimit = (debtRatio * vaultTotalAssets) / MAX_BPS;
         uint256 strategyDebtLimit = (strategies[strategy].debtRatio * vaultTotalAssets) / MAX_BPS;
@@ -353,7 +502,7 @@ abstract contract BaseVault is Initializable {
         return Math.min(available, strategies[strategy].maxDebtPerHarvest);
     }
 
-    function debtOutstanding(address strategy) public view returns (uint256) {
+    function debtOutstanding(Strategy strategy) public view returns (uint256) {
         if (debtRatio == 0) return strategies[strategy].totalDebt;
 
         uint256 strategyDebtLimit = (strategies[strategy].debtRatio * vaultTVL()) / MAX_BPS;
