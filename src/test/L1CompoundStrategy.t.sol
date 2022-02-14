@@ -5,13 +5,13 @@ import { DSTestPlus } from "./TestPlus.sol";
 import { IHevm } from "./IHevm.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
-import { L1Vault } from "../eth-contracts/L1Vault.sol";
+import { L1Vault } from "../ethereum/L1Vault.sol";
 import { Create2Deployer } from "./Create2Deployer.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { ICToken } from "../interfaces/compound/ICToken.sol";
 import { IComptroller } from "../interfaces/compound/IComptroller.sol";
-import { L1CompoundStrategy } from "../eth-contracts/L1CompoundStrategy.sol";
+import { L1CompoundStrategy } from "../ethereum/L1CompoundStrategy.sol";
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 import { BaseStrategy as Strategy } from "../BaseStrategy.sol";
 

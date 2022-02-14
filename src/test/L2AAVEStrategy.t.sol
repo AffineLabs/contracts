@@ -5,10 +5,10 @@ import "./test.sol";
 import { IHevm } from "./IHevm.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
-import { L2Vault } from "../polygon-contracts/L2Vault.sol";
+import { L2Vault } from "../polygon/L2Vault.sol";
 import { Create2Deployer } from "./Create2Deployer.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
-import { L2AAVEStrategy } from "../polygon-contracts/L2AAVEStrategy.sol";
+import { L2AAVEStrategy } from "../polygon/L2AAVEStrategy.sol";
 
 // TODO: make it so that the first test always works => Truncation means the assert will fail at some blocks
 contract L2AAVEStratTestFork is DSTest {
