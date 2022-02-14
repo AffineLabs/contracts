@@ -6,8 +6,8 @@ import { IHevm } from "./IHevm.sol";
 import { MockERC20 } from "./MockERC20.sol";
 
 import { IWormhole } from "../interfaces/IWormhole.sol";
-import { L2Vault } from "../polygon-contracts/L2Vault.sol";
-import { Relayer } from "../polygon-contracts/Relayer.sol";
+import { L2Vault } from "../polygon/L2Vault.sol";
+import { Relayer } from "../polygon/Relayer.sol";
 import { Create2Deployer } from "./Create2Deployer.sol";
 import { BaseStrategy as Strategy } from "../BaseStrategy.sol";
 

@@ -6,13 +6,13 @@ import { IHevm } from "./IHevm.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
-import { L1Vault } from "../eth-contracts/L1Vault.sol";
+import { L1Vault } from "../ethereum/L1Vault.sol";
 import { Create2Deployer } from "./Create2Deployer.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { IExchangeRateFeeder } from "../interfaces/anchor/IExchangeRateFeeder.sol";
 import { IConversionPool } from "../interfaces/anchor/IConversionPool.sol";
-import { L1AnchorStrategy } from "../eth-contracts/L1AnchorStrategy.sol";
+import { L1AnchorStrategy } from "../ethereum/L1AnchorStrategy.sol";
 import { BaseStrategy as Strategy } from "../BaseStrategy.sol";
 
 contract EthAnchorStratTestFork is DSTestPlus {
