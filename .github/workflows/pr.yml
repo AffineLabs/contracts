@@ -55,6 +55,3 @@ jobs:
 
       - name: Typescript compiles correctly
         run: yarn tsc
-
-      - name: Check if docker image for rebalancer builds
-        run: docker build -t alpine-sc:temp .
