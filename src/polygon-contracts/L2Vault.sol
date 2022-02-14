@@ -42,11 +42,21 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
     /////// Gasless transactions
     Relayer public relayer;
 
-    ///// Fees
-    // 2 percent management fee charged to vault per year
-    uint256 public constant managementFee = 200;
+    /** Fees
+     **************************************************************************/
 
+    // Fee charged to vault over a year, number is in bps
+    uint256 public managementFee;
+    // fee charged on redemption of shares, number is in bps
     uint256 public withdrawalFee;
+
+    function setManagementFee(uint256 feeBps) external onlyGovernance {
+        managementFee = feeBps;
+    }
+
+    function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
+        withdrawalFee = feeBps;
+    }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {}
@@ -59,7 +69,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
         uint256 L1Ratio,
         uint256 L2Ratio,
         address trustedForwarder,
-        uint256 _withdrawalFee
+        uint256[2] memory fees
     ) public initializer {
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
@@ -68,7 +78,8 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
         canTransferToL1 = true;
         canRequestFromL1 = true;
         relayer = new Relayer(trustedForwarder, address(this));
-        withdrawalFee = _withdrawalFee;
+        withdrawalFee = fees[0];
+        managementFee = fees[1];
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
@@ -180,10 +191,6 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
         uint256 feeAmount = (tokenAmount * withdrawalFee) / MAX_BPS;
         token.transfer(governance, feeAmount);
         return tokenAmount - feeAmount;
-    }
-
-    function setWithdrawalFee(uint256 newWithdrawalFee) external onlyGovernance {
-        withdrawalFee = newWithdrawalFee;
     }
 
     function _assessFees() internal override {

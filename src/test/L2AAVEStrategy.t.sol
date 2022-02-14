@@ -29,7 +29,7 @@ contract L2AAVEStratTestFork is DSTest {
             1, // l1 ratio
             1, // l2 ratio
             address(0), // relayer for gasless transactions
-            0
+            [uint256(0), uint256(200)]
         );
         strategy = new L2AAVEStrategy(
             address(vault),

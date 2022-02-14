@@ -32,7 +32,7 @@ contract VaultTest is DSTest {
             1, // l1 ratio
             1, // l2 ratio
             address(0), // trusted fowarder
-            0 // withdrawal fee
+            [uint256(0), uint256(200)] // withdrawal and AUM fees
         );
         relayer = vault.relayer();
     }
@@ -190,6 +190,18 @@ contract VaultTest is DSTest {
         assertEq(token.balanceOf(vault.governance()), (amountToken * 50) / 10_000);
     }
 
+    function testSettingFees() public {
+        vault.setManagementFee(300);
+        assertEq(vault.managementFee(), 300);
+        vault.setWithdrawalFee(10);
+        assertEq(vault.withdrawalFee(), 10);
+
+        hevm.startPrank(0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045);
+        hevm.expectRevert(bytes("Only Governance."));
+        vault.setManagementFee(300);
+        hevm.expectRevert(bytes("Only Governance."));
+        vault.setWithdrawalFee(10);
+    }
     // TODO: Get the below test to pass
     // function testShareTokenConversion(
     //     uint256 amountToken,

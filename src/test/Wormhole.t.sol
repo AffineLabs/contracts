@@ -69,7 +69,16 @@ contract WormholeTest is DSTest {
         // The whole point of the create2deployer is so that the staging contracts get the same address
         // But since we're using one chain we actually can't use the same create2deployer a second time!
         l2vault = new L2Vault();
-        l2vault.initialize(address(0), token, wormhole, new Create2Deployer(), 1, 1, address(0), 0);
+        l2vault.initialize(
+            address(0),
+            token,
+            wormhole,
+            new Create2Deployer(),
+            1,
+            1,
+            address(0),
+            [uint256(0), uint256(200)]
+        );
         user = new ERC20User(token);
     }
 
