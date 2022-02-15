@@ -5,11 +5,12 @@ import { SafeERC20, IERC20, Address } from "@openzeppelin/contracts/token/ERC20/
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { BaseStrategy } from "../BaseStrategy.sol";
+import { Strategy } from "../Strategy.sol";
 import { IConversionPool } from "../interfaces/anchor/IConversionPool.sol";
 import { IExchangeRateFeeder } from "../interfaces/anchor/IExchangeRateFeeder.sol";
 
 // https://docs.anchorprotocol.com/ethanchor/ethanchor-contracts
-contract L1AnchorStrategy is BaseStrategy {
+contract L1AnchorStrategy is BaseStrategy, Strategy {
     using SafeERC20 for IERC20;
     using Address for address;
 

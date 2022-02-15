@@ -51,7 +51,7 @@ contract EthAnchorStratTestFork is DSTestPlus {
         // Give the Vault 100 usdc
         hevm.store(address(usdc), keccak256(abi.encode(address(vault), usdcBalancesStorageSlot)), bytes32(hundredUSDC));
         // This contract is the governance address so this will work
-        vault.addStrategy(strategy, 5000, 0, type(uint256).max);
+        vault.addStrategy(strategy);
 
         // Make sure strategy deposits fifty USDC to Eth Anchor during harvest.
         bytes4 funcSelector = bytes4(keccak256("deposit(uint256)"));
@@ -62,7 +62,7 @@ contract EthAnchorStratTestFork is DSTestPlus {
 
         // After calling harvest for the first time, we take 5000/10000 percentage of the vaults assets
         assertEq(usdc.balanceOf(address(vault)), fiftyUSDC);
-        assertEq(vault.totalDebt(), fiftyUSDC);
+        assertEq(vault.vaultTVL(), fiftyUSDC);
         (, , , , , uint256 totalDebt, , ) = vault.strategies(strategy);
         assertEq(totalDebt, fiftyUSDC);
     }

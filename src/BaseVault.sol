@@ -8,7 +8,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 
-import { BaseStrategy as Strategy } from "./BaseStrategy.sol";
+import { Strategy } from "./Strategy.sol";
 import { IWormhole } from "./interfaces/IWormhole.sol";
 import { IStaging } from "./interfaces/IStaging.sol";
 import { Staging } from "./Staging.sol";
@@ -17,22 +17,44 @@ import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
 abstract contract BaseVault is Initializable, AccessControl {
     using SafeTransferLib for ERC20;
 
+    /** UNDERLYING ASSET AND INITIALIZATION
+     **************************************************************************/
+
     // The token that the vault takes in and gives to strategies, e.g. USDC
     ERC20 public token;
+
+    function init(
+        address _governance,
+        ERC20 _token,
+        IWormhole _wormhole,
+        ICreate2Deployer create2Deployer
+    ) public onlyInitializing {
+        governance = _governance;
+        token = _token;
+        wormhole = _wormhole;
+
+        ICreate2Deployer deployer = create2Deployer;
+        bytes memory bytecode = type(Staging).creationCode;
+        staging = deployer.deploy(0, bytes32("staging1"), bytecode);
+        IStaging(staging).initialize(address(this), _wormhole, _token);
+    }
+
+    /** CROSS CHAIN MESSAGE PASSING AND REBALANCING
+     **************************************************************************/
+
+    // Wormhole contract for sending/receiving messages
+    IWormhole public wormhole;
+    address public staging;
+
+    /** AUTHENTICATION
+     **************************************************************************/
 
     address public governance;
     modifier onlyGovernance() {
         require(msg.sender == governance, "Only Governance.");
         _;
     }
-
-    // Wormhole contract for sending/receiving messages
-    IWormhole public wormhole;
-    address public staging;
-
-    /** Authentication
-     **************************************************************************/
-
+    bytes32 public constant bankerRole = keccak256("BANKER");
     bytes32 public constant stackOperatorRole = keccak256("STACK_OPERATOR");
 
     /** Withdrawal Stack
@@ -206,90 +228,192 @@ abstract contract BaseVault is Initializable, AccessControl {
 
     /** Strategies
      **************************************************************************/
+
+    /// @notice The total amount of underlying tokens held in strategies at the time of the last harvest.
+    /// @dev Includes maxLockedProfit, must be correctly subtracted to compute available/free holdings.
+    uint256 public totalStrategyHoldings;
+
     struct StrategyInfo {
-        uint256 activation;
-        uint256 debtRatio;
-        uint256 minDebtPerHarvest;
-        uint256 maxDebtPerHarvest;
-        uint256 lastReport;
-        uint256 totalDebt;
+        bool isActive;
+        uint256 balance;
         uint256 totalGain;
         uint256 totalLoss;
     }
-    // All strategy information
     mapping(Strategy => StrategyInfo) public strategies;
-    event StrategyAdded(
-        Strategy indexed strategy,
-        uint256 debtRatio,
-        uint256 minDebtPerHarvest,
-        uint256 maxDebtPerHarvest
-    );
+
+    event StrategyAdded(Strategy indexed strategy);
     event StrategyRemoved(Strategy indexed strategy);
-    event StrategyUpdateDebtRatio(Strategy indexed strategy, uint256 debtRatio);
-    event StrategyReported(
-        Strategy indexed strategy,
-        uint256 gain,
-        uint256 loss,
-        uint256 debtPaid,
-        uint256 totalGain,
-        uint256 totalLoss,
-        uint256 totalDebt,
-        uint256 debtAdded,
-        uint256 debtRatio
-    );
 
-    // debtRatio is always less than MAX_BPS
-    uint256 public debtRatio;
-    // Total amount that the vault can get back from strategies (ignoring slippage)
-    uint256 public totalDebt;
-    uint256 public constant MAX_BPS = 10_000;
-    uint256 public constant SECS_PER_YEAR = 31_556_952;
-    uint256 public lastReport;
+    function addStrategy(Strategy strategy) external onlyGovernance {
+        strategies[strategy].isActive = true;
 
-    //// Profit
-    // maximum amount of profit locked after a report from a strategy
+        //  Add strategy to withdrawal stack
+        emit StrategyAdded(strategy);
+        _pushToWithdrawalStack(strategy);
+    }
+
+    function removeStrategy(Strategy strategy) external onlyGovernance {
+        strategies[strategy].isActive = false;
+
+        //  Remove from withdrawal stack
+        emit StrategyRemoved(strategy);
+
+        // TODO: consider withdrawaing all possible money from a strategy before popping it from withdrawal stack
+        // We don't need to actually remove the bad strategy from the withdrawal stack here since we only withdraw from
+        // active strategies
+    }
+
+    /** STRATEGY DEPOSIT/WITHDRAWAL
+     **************************************************************************/
+
+    /// @notice Emitted after the Vault deposits into a strategy contract.
+    /// @param user The authorized user who triggered the deposit.
+    /// @param strategy The strategy that was deposited into.
+    /// @param tokenAmount The amount of underlying tokens that were deposited.
+    event StrategyDeposit(address indexed user, Strategy indexed strategy, uint256 tokenAmount);
+
+    /// @notice Emitted after the Vault withdraws funds from a strategy contract.
+    /// @param user The authorized user who triggered the withdrawal.
+    /// @param strategy The strategy that was withdrawn from.
+    /// @param tokenAmount The amount of underlying tokens that were withdrawn.
+    event StrategyWithdrawal(address indexed user, Strategy indexed strategy, uint256 tokenAmount);
+
+    /// @notice Deposit a specific amount of token into a trusted strategy.
+    /// @param strategy The trusted strategy to deposit into.
+    /// @param tokenAmount The amount of underlying tokens to deposit.
+    function depositIntoStrategy(Strategy strategy, uint256 tokenAmount) external onlyRole(bankerRole) {
+        // Increase totalStrategyHoldings to account for the deposit.
+        totalStrategyHoldings += tokenAmount;
+
+        unchecked {
+            // Without this the next harvest would count the deposit as profit.
+            // Cannot overflow as the balance of one strategy can't exceed the sum of all.
+            strategies[strategy].balance += tokenAmount;
+        }
+
+        emit StrategyDeposit(msg.sender, strategy, tokenAmount);
+
+        // Approve tokenAmount to the strategy so we can deposit.
+        token.safeApprove(address(strategy), tokenAmount);
+
+        // Deposit into the strategy, will revert upon failure
+        strategy.invest(tokenAmount);
+    }
+
+    /// @notice Withdraw a specific amount of underlying tokens from a strategy.
+    /// @param strategy The strategy to withdraw from.
+    /// @param tokenAmount  The amount of underlying tokens to withdraw.
+    /// @dev Withdrawing from a strategy will not remove it from the withdrawal stack.
+    function withdrawFromStrategy(Strategy strategy, uint256 tokenAmount) external onlyRole(bankerRole) {
+        // Without this the next harvest would count the withdrawal as a loss.
+        strategies[strategy].balance -= tokenAmount;
+
+        unchecked {
+            // Decrease totalStrategyHoldings to account for the withdrawal.
+            // Cannot underflow as the balance of one strategy will never exceed the sum of all.
+            totalStrategyHoldings -= tokenAmount;
+        }
+
+        emit StrategyWithdrawal(msg.sender, strategy, tokenAmount);
+
+        // Withdraw from the strategy, will revert upon failure
+        strategy.divest(tokenAmount);
+    }
+
+    /** HARVESTING
+     **************************************************************************/
+
+    /// @notice A timestamp representing when the most recent harvest occurred.
+    uint256 public lastHarvest;
+    // @notice The amount of profit *originally* locked after harvesting from a strategy
     uint256 public maxLockedProfit;
     // Amount of time in seconds that profit takes to fully unlock see lockedProfit().
-    uint256 public constant lockInterval = 60 * 60 * 3;
+    uint256 public constant lockInterval = 3 hours;
+    uint256 public constant SECS_PER_YEAR = 365 days;
 
-    // TODO: Add some events here. Actually log events as well
-    event Liquidation(uint256 amountRequested, uint256 amountLiquidated);
+    /// @notice Emitted after a successful harvest.
+    /// @param user The authorized user who triggered the harvest.
+    /// @param strategies The trusted strategies that were harvested.
+    event Harvest(address indexed user, Strategy[] strategies);
 
-    function init(
-        address _governance,
-        ERC20 _token,
-        IWormhole _wormhole,
-        ICreate2Deployer create2Deployer
-    ) public onlyInitializing {
-        governance = _governance;
-        token = _token;
-        wormhole = _wormhole;
-        lastReport = block.timestamp;
+    /// @notice Harvest a set of trusted strategies.
+    /// @param strategyList The trusted strategies to harvest.
+    /// @dev Will always revert if profit from last harvest has not finished unlocking.
+    function harvest(Strategy[] calldata strategyList) external onlyRole(bankerRole) {
+        // Profit must still be unlocking
+        require(block.timestamp >= lastHarvest + lockInterval, "PROFIT_UNLOCKING");
 
-        ICreate2Deployer deployer = create2Deployer;
-        bytes memory bytecode = type(Staging).creationCode;
-        staging = deployer.deploy(0, bytes32("staging1"), bytecode);
-        IStaging(staging).initialize(address(this), _wormhole, _token);
+        // Get the Vault's current total strategy holdings.
+        uint256 oldTotalStrategyHoldings = totalStrategyHoldings;
+
+        // Used to store the new total strategy holdings after harvesting.
+        uint256 newTotalStrategyHoldings = oldTotalStrategyHoldings;
+
+        // Used to store the total profit accrued by the strategies.
+        uint256 totalProfitAccrued;
+
+        // Will revert if any of the specified strategies are untrusted.
+        for (uint256 i = 0; i < strategyList.length; i++) {
+            // Get the strategy at the current index.
+            Strategy strategy = strategyList[i];
+
+            // Ignore inactive (removed) strategies
+            if (!strategies[strategy].isActive) {
+                continue;
+            }
+
+            // Get the strategy's previous and current balance.
+            uint256 balanceLastHarvest = strategies[strategy].balance;
+            uint256 balanceThisHarvest = strategy.balanceOfToken();
+
+            // Update the strategy's stored balance. Cast overflow is unrealistic.
+            strategies[strategy].balance = balanceThisHarvest;
+
+            // Increase/decrease newTotalStrategyHoldings based on the profit/loss registered.
+            // We cannot wrap the subtraction in parenthesis as it would underflow if the strategy had a loss.
+            newTotalStrategyHoldings = newTotalStrategyHoldings + balanceThisHarvest - balanceLastHarvest;
+
+            unchecked {
+                // Update the total profit accrued while counting losses as zero profit.
+                // Cannot overflow as we already increased total holdings without reverting.
+                totalProfitAccrued += balanceThisHarvest > balanceLastHarvest
+                    ? balanceThisHarvest - balanceLastHarvest // Profits since last harvest.
+                    : 0; // If the strategy registered a net loss we don't have any new profit.
+            }
+        }
+
+        // Update max unlocked profit based on any remaining locked profit plus new profit.
+        maxLockedProfit = lockedProfit() + totalProfitAccrued;
+
+        // Set strategy holdings to our new total.
+        totalStrategyHoldings = newTotalStrategyHoldings;
+
+        // Update the last harvest timestamp.
+        lastHarvest = block.timestamp;
+
+        emit Harvest(msg.sender, strategyList);
     }
 
-    function vaultTVL() public view returns (uint256) {
-        return token.balanceOf(address(this)) + totalDebt;
-    }
-
-    // Current locked profit amount. Profit unlocks uniformly over `lockInterval` seconds after a report
+    /// @notice Current locked profit amount.
+    /// @dev Profit unlocks uniformly over `lockInterval` seconds after the last harvest
     function lockedProfit() public view returns (uint256) {
-        if (block.timestamp - lastReport > lockInterval) return 0;
+        if (block.timestamp >= lastHarvest + lockInterval) return 0;
 
-        uint256 unlockedProfit = (maxLockedProfit * (block.timestamp - lastReport)) / lockInterval;
+        uint256 unlockedProfit = (maxLockedProfit * (block.timestamp - lastHarvest)) / lockInterval;
         return maxLockedProfit - unlockedProfit;
     }
 
-    // See notes for _liquidate.
+    function vaultTVL() public view returns (uint256) {
+        return token.balanceOf(address(this));
+    }
+
+    event Liquidation(uint256 amountRequested, uint256 amountLiquidated);
+
+    /// @notice Try to get `amount` out of the strategies.
     function liquidate(uint256 amount) external onlyGovernance {
         _liquidate(amount);
     }
 
-    // Try to get `amount` out of the strategies.
     function _liquidate(uint256 amount) internal returns (uint256) {
         uint256 amountLiquidated;
         for (uint8 i = 0; i < MAX_STRATEGIES; i++) {
@@ -302,215 +426,27 @@ abstract contract BaseVault is Initializable, AccessControl {
             // NOTE: Don't withdraw more than the debt so that Strategy can still
             // continue to work based on the profits it has
             uint256 amountNeeded = amount - balance;
-            amountNeeded = Math.min(amountNeeded, strategies[strategy].totalDebt);
+            amountNeeded = Math.min(amountNeeded, strategies[strategy].balance);
 
             // Force withdraw of token from strategy
-            uint256 loss = Strategy(strategy).withdraw(amountNeeded);
+            Strategy(strategy).divest(amountNeeded);
             uint256 withdrawn = token.balanceOf(address(this)) - balance;
-
-            // TODO: consider loss protection
-            if (loss > 0) {
-                _reportLoss(strategy, loss);
-            }
 
             // update debts, amountLiquidated
             // Reduce the Strategy's debt by the amount withdrawn ("realized returns")
             // NOTE: This doesn't add to totalGain as it's not earned by "normal means"
             amountLiquidated += withdrawn;
-            strategies[strategy].totalDebt -= withdrawn;
-            totalDebt -= withdrawn;
         }
         emit Liquidation(amount, amountLiquidated);
         return amountLiquidated;
     }
 
-    function addStrategy(
-        Strategy strategy,
-        uint256 debtRatio_,
-        uint256 minDebtPerHarvest,
-        uint256 maxDebtPerHarvest
-    ) external onlyGovernance {
-        // Check if this strategy can be activated
-        require(strategy != Strategy(address(0)), "Strategy must be not be zero account");
-        require(strategies[strategy].activation == 0, "Strategy must not already be active");
-        require(address(Strategy(strategy).vault()) == address(this), "Strategy must use this vault");
-        require(address(token) == address(Strategy(strategy).want()), "Strategy must take profits in token");
-
-        // Check if sanity properties violate invariants
-        require(debtRatio + debtRatio_ <= MAX_BPS, "Debt cannot exceed 10k bps");
-        require(minDebtPerHarvest <= maxDebtPerHarvest, "minDebtPerHarvest must not exceed max");
-
-        // Actually add strategy
-        strategies[strategy] = StrategyInfo({
-            activation: block.timestamp,
-            debtRatio: debtRatio_,
-            minDebtPerHarvest: minDebtPerHarvest,
-            maxDebtPerHarvest: maxDebtPerHarvest,
-            lastReport: block.timestamp,
-            totalDebt: 0,
-            totalGain: 0,
-            totalLoss: 0
-        });
-        emit StrategyAdded(strategy, debtRatio, minDebtPerHarvest, maxDebtPerHarvest);
-
-        // The total amount of token that could be borrowed is now larger
-        debtRatio += debtRatio_;
-
-        //  Add strategy to withdrawal stack
-        _pushToWithdrawalStack(strategy);
-    }
-
-    function removeStrategy(Strategy strategy) external onlyGovernance {
-        if (strategies[strategy].debtRatio == 0) return;
-        debtRatio -= strategies[strategy].debtRatio;
-        strategies[strategy].debtRatio = 0;
-        emit StrategyRemoved(strategy);
-    }
-
-    function updateStrategyDebtRatio(Strategy strategy, uint256 debtRatio_) external onlyGovernance {
-        require(strategies[strategy].activation > 0, "Strategy must be active");
-        debtRatio -= strategies[strategy].debtRatio;
-        strategies[strategy].debtRatio = debtRatio_;
-        debtRatio += debtRatio_;
-        require(debtRatio <= MAX_BPS, "debtRatio may not exceed MAX_BPS");
-        emit StrategyUpdateDebtRatio(strategy, debtRatio_);
-    }
-
-    function updateManyStrategyDebtRatios(Strategy[] calldata strategies_, uint256[] calldata debtRatios)
-        external
-        onlyGovernance
-    {
-        for (uint256 i = 0; i < strategies_.length; i++) {
-            Strategy strategy = strategies_[i];
-            uint256 newDebtRatio = debtRatios[i];
-            require(strategies[strategy].activation > 0, "Strategy must be active");
-            debtRatio = debtRatio - strategies[strategy].debtRatio + newDebtRatio;
-            strategies[strategy].debtRatio = newDebtRatio;
-        }
-        require(debtRatio <= MAX_BPS, "debtRatio may not exceed MAX_BPS");
-        // TODO: emit event here
-    }
-
-    // This function will be called by a strategy in order to update totalDebt;
-    function report(
-        uint256 gain,
-        uint256 loss,
-        uint256 debtPayment
-    ) external returns (uint256) {
-        require(strategies[Strategy(msg.sender)].activation > 0, "Strategy must be active");
-        // TODO: consider health check
-        Strategy strategy = Strategy(msg.sender);
-
-        // Strategy must be able to pay (gain + debtPayment) of token
-        require(token.balanceOf(address(strategy)) >= gain + debtPayment);
-
-        if (loss > 0) _reportLoss(strategy, loss);
-
-        strategies[strategy].totalGain += gain;
-        maxLockedProfit = lockedProfit() + gain;
-
-        // Compute the line of credit the Vault is able to offer the Strategy (if any)
-        uint256 credit = creditAvailable(strategy);
-
-        // # Amount that strategy has exceeded its debt limit
-        uint256 debt = debtOutstanding(strategy);
-        debtPayment = debtPayment < debt ? debtPayment : debt;
-
-        // Update the actual debt based on the full credit we are extending to the Strategy
-        // or the amount we are taking from the strategy
-        // NOTE: At least one of `credit` or `debt` is always 0 (both can be 0)
-        if (debtPayment > 0) {
-            strategies[strategy].totalDebt -= debtPayment;
-            totalDebt -= debtPayment;
-            debt -= debtPayment;
-        }
-        if (credit > 0) {
-            strategies[strategy].totalDebt += credit;
-            totalDebt += credit;
-        }
-
-        // Give/take balance to Strategy, based on the difference between the reported gains,
-        //  debt payment, debt,  and the credit increase we are offering
-        // NOTE: This is just used to adjust the balance of tokens between the Strategy and
-        // the Vault based on the Strategy's debt limit (as well as the Vault's).
-
-        uint256 totalAvail = gain + debtPayment;
-        // Credit surplus, give to Strategy
-        if (totalAvail < credit) token.safeTransfer(address(strategy), credit - totalAvail);
-        // Credit deficit, take from Strategy
-        if (totalAvail > credit) token.safeTransferFrom(address(strategy), address(this), totalAvail - credit);
-
-        // Update report times -> assessFees relies on the old lastReport value so must be called before it's updated
-        _assessFees();
-        strategies[strategy].lastReport = block.timestamp;
-        lastReport = block.timestamp;
-
-        emit StrategyReported(
-            strategy,
-            gain,
-            loss,
-            debtPayment,
-            strategies[strategy].totalGain,
-            strategies[strategy].totalLoss,
-            strategies[strategy].totalDebt,
-            credit,
-            strategies[strategy].debtRatio
-        );
-
-        // If the strategy has been removed, it owes the vault all of its assets
-        if (strategies[strategy].debtRatio == 0) return Strategy(strategy).estimatedTotalAssets();
-        return debt;
-    }
-
     function _reportLoss(Strategy strategy, uint256 loss) internal {
-        uint256 strategyDebt = strategies[strategy].totalDebt;
-        require(strategyDebt >= loss, "Strategy cannot lose more than it borrowed.");
-
         // Adjust our strategy's parameters by the loss
         strategies[strategy].totalLoss += loss;
-        strategies[strategy].totalDebt = strategyDebt - loss;
-        totalDebt -= loss;
     }
 
-    function creditAvailable(Strategy strategy) public view returns (uint256) {
-        uint256 vaultTotalAssets = vaultTVL();
-        uint256 vaultDebtLimit = (debtRatio * vaultTotalAssets) / MAX_BPS;
-        uint256 strategyDebtLimit = (strategies[strategy].debtRatio * vaultTotalAssets) / MAX_BPS;
-        uint256 strategyTotalDebt = strategies[strategy].totalDebt;
-
-        // Exhausted credit line
-        if (strategyDebtLimit <= strategyTotalDebt || vaultDebtLimit <= totalDebt) return 0;
-
-        // Start with largest amount of debt that strategy can take
-        uint256 available = strategyDebtLimit - strategyTotalDebt;
-
-        // Adjust by the amount of credit that the vault can give
-        available = Math.min(available, vaultDebtLimit - totalDebt);
-
-        // Can only borrow up to what the contract has in reserve
-        // NOTE: Running near 100% is discouraged
-        available = Math.min(available, token.balanceOf(address(this)));
-
-        // Adjust by min and max borrow limits (per harvest)
-        // NOTE: min increase can be used to ensure that if a strategy has a minimum
-        //       amount of capital needed to purchase a position, it's not given capital
-        //       it can't make use of yet.
-        // NOTE: max increase is used to make sure each harvest isn't bigger than what
-        //       is authorized. This combined with adjusting min and max periods in
-        //      `BaseStrategy` can be used to effect a "rate limit" on capital increase.
-        if (available < strategies[strategy].minDebtPerHarvest) return 0;
-        return Math.min(available, strategies[strategy].maxDebtPerHarvest);
-    }
-
-    function debtOutstanding(Strategy strategy) public view returns (uint256) {
-        if (debtRatio == 0) return strategies[strategy].totalDebt;
-
-        uint256 strategyDebtLimit = (strategies[strategy].debtRatio * vaultTVL()) / MAX_BPS;
-        uint256 strategyTotalDebt = strategies[strategy].totalDebt;
-
-        if (strategyTotalDebt <= strategyDebtLimit) return 0;
-        return strategyTotalDebt - strategyDebtLimit;
-    }
+    uint256 public constant MAX_BPS = 10_000;
 
     function _assessFees() internal virtual {}
 
