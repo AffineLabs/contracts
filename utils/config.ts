@@ -15,6 +15,11 @@ const wbtc = "0x1F577114D404686B47C4A739C46B8EBee7b5156F";
 const weth = "0x1F0EB2B499C51CDa602ba96013577A3887D7278D";
 const BICONOMY_FORWARDER = "0x9399BB24DBB5C4b782C70c2969F58716Ebbd6a3b";
 const withdrawFee = 50; // user pays 50 bps
+// https://defender.openzeppelin.com/#/admin/contracts/goerli-0xd0dfB59aCb9d0aC3083837f19b0aE1c8CF6B38B8
+const L1_GOVERNANCE = "0xd0dfB59aCb9d0aC3083837f19b0aE1c8CF6B38B8";
+// https://defender.openzeppelin.com/#/admin/contracts/mumbai-0xbB4052e4C32F3C30ef08117a9635494C5cD4823b
+const L2_GOVERNANCE = "0xbB4052e4C32F3C30ef08117a9635494C5cD4823b";
+
 
 export interface Config {
   l1ChainManager: address;
@@ -27,6 +32,8 @@ export interface Config {
   wbtc: address;
   biconomyForwarder: address;
   withdrawFee: number;
+  l1Governance: address;
+  l2Governance: address;
 }
 export const config: Config = {
   l1ChainManager: ROOT_CHAIN_MANAGER,
@@ -39,6 +46,8 @@ export const config: Config = {
   weth,
   biconomyForwarder: BICONOMY_FORWARDER,
   withdrawFee,
+  l1Governance: L1_GOVERNANCE,
+  l2Governance: L2_GOVERNANCE,
 };
 
 export interface RebalanceConfig {

@@ -4,7 +4,7 @@ import { address } from "../../utils/types";
 import { Config } from "../../utils/config";
 import { MintableStrategy } from "../../typechain";
 import { VaultContracts } from "./deploy-vaults";
-import { addToAddressBook } from "../../utils/address-book";
+import { addToAddressBookAndDefender } from "../../utils/export";
 import { ETH_GOERLI, POLYGON_MUMBAI } from "../../utils/constants/blockchain";
 
 export interface StrategyContracts {
@@ -29,7 +29,7 @@ export async function deployStrategies(
   let stratFactory = await ethers.getContractFactory("MintableStrategy", signer);
   const l2Strategy = (await stratFactory.deploy(vaults.l2Vault.address)) as MintableStrategy;
   await l2Strategy.deployed();
-  await addToAddressBook(POLYGON_MUMBAI, `${polygonNetworkName} Mintable Strategy`, "MintableStrategy", l2Strategy);
+  await addToAddressBookAndDefender(POLYGON_MUMBAI, `${polygonNetworkName} Mintable Strategy`, "MintableStrategy", l2Strategy);
   console.log("strategy L2: ", l2Strategy.address);
 
   // Deploy Mintable strategy on ethereum
@@ -38,7 +38,7 @@ export async function deployStrategies(
   stratFactory = await ethers.getContractFactory("MintableStrategy", signer);
   const l1Strategy = (await stratFactory.deploy(vaults.l1Vault.address)) as MintableStrategy;
   await l1Strategy.deployed();
-  await addToAddressBook(ETH_GOERLI, `${ethNetworkName} Mintable Strategy`, "MintableStrategy", l1Strategy);
+  await addToAddressBookAndDefender(ETH_GOERLI, `${ethNetworkName} Mintable Strategy`, "MintableStrategy", l1Strategy);
   console.log("strategy l1: ", l1Strategy.address);
 
   return {

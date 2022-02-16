@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import { getContractAddress } from "../../utils/address-book";
+import { getContractAddress } from "../../utils/export";
 
 async function deployFixtures() {
   // A fake incentives controller, no real one exists on mumbai

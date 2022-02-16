@@ -15,6 +15,7 @@ import "hardhat-gas-reporter";
 import "@nomiclabs/hardhat-etherscan";
 import "hardhat-abi-exporter";
 import "@openzeppelin/hardhat-upgrades";
+import "@openzeppelin/hardhat-defender";
 
 import "./tasks/accounts";
 
@@ -105,7 +106,7 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200,
+        runs: 1000,
       },
     },
   },
@@ -130,6 +131,10 @@ const config: HardhatUserConfig = {
     clear: true,
     flat: true,
     spacing: 2,
+  },
+  defender: {
+    apiKey: process.env.DEFENDER_API_KEY || "",
+    apiSecret: process.env.DEFENDER_API_SECRET || "",
   },
 };
 
