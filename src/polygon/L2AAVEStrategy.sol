@@ -52,7 +52,8 @@ contract L2AAVEStrategy is Strategy {
         address _rewardToken,
         address _wrappedNative
     ) {
-        token = _vault.token();
+        vault = _vault;
+        token = vault.token();
         address[] memory providers = ILendingPoolAddressesProviderRegistry(_registry).getAddressesProvidersList();
         address pool = ILendingPoolAddressesProvider(providers[providers.length - 1]).getLendingPool();
         lendingPool = ILendingPool(pool);
@@ -74,9 +75,9 @@ contract L2AAVEStrategy is Strategy {
 
     /** AUTHENTICATION
      **************************************************************************/
-    BaseVault vault;
+    BaseVault public vault;
     modifier onlyVault() {
-        require(msg.sender == address(vault));
+        require(msg.sender == address(vault), "ONLY_VAULT");
         _;
     }
 
@@ -98,6 +99,7 @@ contract L2AAVEStrategy is Strategy {
     /** INVESTMENT
      **************************************************************************/
     function invest(uint256 amount) external override {
+        token.transferFrom(msg.sender, address(this), amount);
         _depositWant(amount);
     }
 
@@ -110,11 +112,13 @@ contract L2AAVEStrategy is Strategy {
     /** DIVESTMENT
      **************************************************************************/
     function divest(uint256 amount) external override onlyVault {
+        // TODO: take current balance into consideration and only withdraw the amount that you need to
         _claimAndSellRewards();
         uint256 aTokenAmount = balanceOfAToken();
         uint256 withdrawAmount = Math.min(amount, aTokenAmount);
 
-        _withdrawWant(withdrawAmount);
+        uint256 withdrawnAmount = _withdrawWant(withdrawAmount);
+        token.transfer(address(vault), withdrawnAmount);
     }
 
     function _withdrawWant(uint256 amount) internal returns (uint256) {

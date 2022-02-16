@@ -20,7 +20,7 @@ abstract contract BaseVault is Initializable, AccessControl {
     /** UNDERLYING ASSET AND INITIALIZATION
      **************************************************************************/
 
-    // The token that the vault takes in and gives to strategies, e.g. USDC
+    /// @notice The token that the vault takes in and gives to strategies, e.g. USDC
     ERC20 public token;
 
     function init(
@@ -32,6 +32,9 @@ abstract contract BaseVault is Initializable, AccessControl {
         governance = _governance;
         token = _token;
         wormhole = _wormhole;
+
+        _grantRole(bankerRole, governance);
+        _grantRole(stackOperatorRole, governance);
 
         ICreate2Deployer deployer = create2Deployer;
         bytes memory bytecode = type(Staging).creationCode;
