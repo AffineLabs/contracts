@@ -57,7 +57,7 @@ abstract contract BaseVault is Initializable, AccessControl {
     bytes32 public constant bankerRole = keccak256("BANKER");
     bytes32 public constant stackOperatorRole = keccak256("STACK_OPERATOR");
 
-    /** Withdrawal Stack
+    /** WITHDRAWAL STACK
      **************************************************************************/
 
     uint8 public constant MAX_STRATEGIES = 20;
@@ -226,7 +226,7 @@ abstract contract BaseVault is Initializable, AccessControl {
         Strategy indexed newStrategy2
     );
 
-    /** Strategies
+    /** STRATEGIES
      **************************************************************************/
 
     /// @notice The total amount of underlying tokens held in strategies at the time of the last harvest.

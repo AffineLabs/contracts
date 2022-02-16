@@ -6,12 +6,11 @@ import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 /// @notice Base strategy contract
 abstract contract Strategy {
     /// @notice Returns the underlying ERC20 token the strategy accepts.
-    /// @return The underlying ERC20 token the strategy accepts.
-    function token() external virtual returns (ERC20);
+    ERC20 public token;
 
     /// @notice Strategy's balance of underlying token.
     /// @return Strategy's balance.
-    function balanceOfToken() external virtual returns (uint256);
+    function balanceOfToken() external view virtual returns (uint256);
 
     /// @notice Deposit vault's underlying token into strategy.
     /// @param amount The amount to invest.
