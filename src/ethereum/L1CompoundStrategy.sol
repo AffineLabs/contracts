@@ -140,6 +140,8 @@ contract L1CompoundStrategy is Strategy {
         );
     }
 
+    /** TVL ESTIMATION
+     **************************************************************************/
     function estimatedTotalAssets() public view returns (uint256) {
         uint256 balanceExcludingRewards = balanceOfToken() + balanceOfCToken();
 

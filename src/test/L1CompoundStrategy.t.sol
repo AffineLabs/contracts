@@ -13,7 +13,6 @@ import { ICToken } from "../interfaces/compound/ICToken.sol";
 import { IComptroller } from "../interfaces/compound/IComptroller.sol";
 import { L1CompoundStrategy } from "../ethereum/L1CompoundStrategy.sol";
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
-import { BaseStrategy as Strategy } from "../BaseStrategy.sol";
 
 contract L1CompoundStratTestFork is DSTestPlus {
     ERC20 usdc = ERC20(0xD87Ba7A50B2E7E660f678A895E4B72E7CB4CCd9C);

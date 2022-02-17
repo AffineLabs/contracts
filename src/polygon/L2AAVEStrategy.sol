@@ -12,8 +12,8 @@ import { IAaveIncentivesController } from "../interfaces/aave/IAaveIncentivesCon
 import { ILendingPool } from "../interfaces/aave/ILendingPool.sol";
 import { IAToken } from "../interfaces/aave/IAToken.sol";
 
-import { Strategy } from "../Strategy.sol";
 import { BaseVault } from "../BaseVault.sol";
+import { Strategy } from "../Strategy.sol";
 
 interface ILendingPoolAddressesProviderRegistry {
     function getAddressesProvidersList() external view returns (address[] memory);
