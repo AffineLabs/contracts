@@ -2,27 +2,28 @@
 pragma solidity ^0.8.9;
 
 import { MintableToken } from "./MintableToken.sol";
-import { VaultAPI } from "../BaseStrategy.sol";
+import { BaseVault } from "../BaseVault.sol";
 
+// TODO: update this mintable strategy
 contract MintableStrategy {
-    VaultAPI public vault;
+    BaseVault public vault;
     MintableToken public want;
 
-    constructor(address _vault) {
-        vault = VaultAPI(_vault);
+    constructor(BaseVault _vault) {
+        vault = _vault;
         want = MintableToken(address(vault.token()));
         // Give Vault unlimited access
-        want.approve(_vault, type(uint256).max);
+        want.approve(address(_vault), type(uint256).max);
     }
 
     function harvestGain(uint256 amount) public {
-        want.mint(address(this), amount);
-        vault.report(amount, 0, 0);
+        // want.mint(address(this), amount);
+        // vault.report(amount, 0, 0);
     }
 
     function harvestLoss(uint256 amount) public {
-        want.burn(amount);
-        vault.report(0, amount, balance());
+        // want.burn(amount);
+        // vault.report(0, amount, balance());
     }
 
     function balance() public view returns (uint256) {

@@ -32,7 +32,7 @@ contract L2AAVEStratTestFork is DSTest {
             [uint256(0), uint256(200)]
         );
         strategy = new L2AAVEStrategy(
-            address(vault),
+            vault,
             0xE6ef11C967898F9525D550014FDEdCFAB63536B5, // aave adress provider registry
             0x0a1AB7aea4314477D40907412554d10d30A0503F, // dummy incentives controller
             0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff, // sushiswap router on mumbai
@@ -53,60 +53,35 @@ contract L2AAVEStratTestFork is DSTest {
         hevm.store(0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e, keccak256(h_of_k_dot_p), bytes32(uint256(1e6)));
 
         // This contract is the governance address so this will work
-        vault.addStrategy(strategy, 5000, 0, type(uint256).max);
+        vault.addStrategy(strategy);
 
-        strategy.harvest();
-
-        // After calling harvest for the first time, we take 5000/10000 percentage of the vaults assets
-        assertEq(usdc.balanceOf(address(vault)), 1e6 / 2);
-        assertEq(vault.totalDebt(), 1e6 / 2);
-
-        // Strategy deposits all of usdc into AAVE
-        assertEq(strategy.aToken().balanceOf(address(strategy)), 1e6 / 2);
-
-        (, , , , , uint256 totalDebt, , ) = vault.strategies(strategy);
-        assertEq(totalDebt, 1e6 / 2);
+        // Deposit 0.5 usdc into aave with depositIntoStrategy
+        vault.depositIntoStrategy(strategy, 1e6 / 2);
 
         // Go 10 days into the future and make sure that the vault makes money
         hevm.warp(block.timestamp + 10 days);
 
         uint256 profit = strategy.aToken().balanceOf(address(strategy)) - 1e6 / 2;
         assertGe(profit, 100);
-
-        // The vault starts with `A` assets. After we send our profit,
-        // the vault has `A + profit` assests.
-        strategy.harvest();
-        assertEq(usdc.balanceOf(address(vault)), 1e6 / 2 + profit);
-
-        // In order for the strategy to take back the profit it just sent to vault, it must call harvest again
-        // The vault began with `A` in assets. After last harvest(), the vault has `A + profit` assets
-        // Strategy already has a debt of A/2, so will take out profit / 2 in credit to get half of the vault's assets
-        strategy.harvest();
-        uint256 aTokenBal2 = strategy.aToken().balanceOf(address(strategy));
-        assertEq(aTokenBal2, (1e6 + profit) / 2);
     }
 
     function testStrategyLosesMoney() public {
         bytes memory h_of_k_dot_p = abi.encode(address(vault), 0);
         hevm.store(0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e, keccak256(h_of_k_dot_p), bytes32(uint256(1e6)));
 
-        vault.addStrategy(strategy, 5000, 0, type(uint256).max);
-        strategy.harvest();
+        vault.addStrategy(strategy);
+
+        // Deposit 0.5 usdc into aave with depositIntoStrategy
+        vault.depositIntoStrategy(strategy, 1e6);
 
         // Impersonate strategy
         hevm.startPrank(address(strategy));
         // withdraw from lending pool
-        // transfer tokens to usdc contract
-        strategy.lendingPool().withdraw(address(strategy.want()), 1e6 / 2, address(usdc));
+        // Lose money by withdrawing lent USDC to the USDC contract
+        strategy.lendingPool().withdraw(address(strategy.token()), 1e6 / 2, address(usdc));
         hevm.stopPrank();
 
-        // assert that vault sets its loss stats correctly
-        strategy.harvest();
-        // Vault has 0.5 usdc, and strategy immediately takes out half of it.
-        // TODO: Reconsider allowing a strategy that has lost money to take more money out
-        assertEq(vault.totalDebt(), 1e6 / 4);
-        (, , , , , uint256 totalDebt, , uint256 totalLoss) = vault.strategies(strategy);
-        assertEq(totalLoss, 1e6 / 2);
-        assertEq(totalDebt, 1e6 / 4);
+        vault.withdrawFromStrategy(strategy, 1e6 / 2);
+        assertEq(usdc.balanceOf(address(vault)), 1e6 / 2);
     }
 }

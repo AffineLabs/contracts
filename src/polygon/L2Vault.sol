@@ -195,7 +195,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
 
     function _assessFees() internal override {
         // duration / SECS_PER_YEAR * feebps / MAX_BPS * totalSupply
-        uint256 duration = block.timestamp - lastReport;
+        uint256 duration = block.timestamp - lastHarvest;
 
         uint256 feesBps = (duration * managementFee) / SECS_PER_YEAR;
         uint256 numSharesToMint = (feesBps * totalSupply()) / MAX_BPS;
