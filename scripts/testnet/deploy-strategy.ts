@@ -26,12 +26,7 @@ async function deployAAVE(): Promise<any> {
   await strategy.deployed();
 
   // add strategy to L2 vault
-  await vaultContracts.l2Vault.addStrategy(
-    await getContractAddress(strategy),
-    5000,
-    0,
-    ethers.utils.parseUnits("1000", 6),
-  );
+  await vaultContracts.l2Vault.addStrategy(await getContractAddress(strategy));
 }
 
 deployAAVE()
