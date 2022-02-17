@@ -343,7 +343,7 @@ abstract contract BaseVault is Initializable, AccessControl {
     /// @param strategyList The trusted strategies to harvest.
     /// @dev Will always revert if profit from last harvest has not finished unlocking.
     function harvest(Strategy[] calldata strategyList) external onlyRole(bankerRole) {
-        // Profit must still be unlocking
+        // Profit must not be unlocking
         require(block.timestamp >= lastHarvest + lockInterval, "PROFIT_UNLOCKING");
 
         // Get the Vault's current total strategy holdings.
@@ -369,7 +369,7 @@ abstract contract BaseVault is Initializable, AccessControl {
             uint256 balanceLastHarvest = strategies[strategy].balance;
             uint256 balanceThisHarvest = strategy.balanceOfToken();
 
-            // Update the strategy's stored balance. Cast overflow is unrealistic.
+            // Update the strategy's stored balance.
             strategies[strategy].balance = balanceThisHarvest;
 
             // Increase/decrease newTotalStrategyHoldings based on the profit/loss registered.
@@ -391,7 +391,8 @@ abstract contract BaseVault is Initializable, AccessControl {
         // Set strategy holdings to our new total.
         totalStrategyHoldings = newTotalStrategyHoldings;
 
-        // Update the last harvest timestamp.
+        // Assess fees (using old lastHarvest) and update the last harvest timestamp.
+        _assessFees();
         lastHarvest = block.timestamp;
 
         emit Harvest(msg.sender, strategyList);
@@ -407,7 +408,7 @@ abstract contract BaseVault is Initializable, AccessControl {
     }
 
     function vaultTVL() public view returns (uint256) {
-        return token.balanceOf(address(this));
+        return token.balanceOf(address(this)) + totalStrategyHoldings;
     }
 
     event Liquidation(uint256 amountRequested, uint256 amountLiquidated);

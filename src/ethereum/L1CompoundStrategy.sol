@@ -4,7 +4,6 @@ pragma solidity ^0.8.9;
 import { SafeERC20, IERC20, Address } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { BaseStrategy } from "../BaseStrategy.sol";
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 import { ICToken } from "../interfaces/compound/ICToken.sol";
 import { IComptroller } from "../interfaces/compound/IComptroller.sol";

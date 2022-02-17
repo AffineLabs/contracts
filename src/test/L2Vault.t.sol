@@ -131,19 +131,27 @@ contract VaultTest is DSTest {
         hevm.store(address(vault), bytes32(uint256(53)), bytes32(uint256(1e18)));
 
         assertEq(vault.totalSupply(), 1e18);
-        // original timestamp is 0, so any strategy added would be inactive, TODO: consider not using creation time
-        // as indicator of activity
-        hevm.warp(block.timestamp + 1);
 
-        // Add this contract as a strategy, mock calls to strategy.want() and strategy.vault() to bypass checks
-        hevm.mockCall(address(this), abi.encodeWithSelector(bytes4(keccak256("vault()"))), abi.encode(address(vault)));
-        hevm.mockCall(address(this), abi.encodeWithSelector(bytes4(keccak256("want()"))), abi.encode(address(token)));
-        vault.addStrategy(Strategy(address(this)), 1000, 0, type(uint256).max);
+        // Add this contract as a strategy
+        Strategy myStrat = Strategy(address(this));
+        vault.addStrategy(myStrat);
+
+        // call to balanceOfToken in harvest() will return 1e18
+        hevm.mockCall(address(this), abi.encodeWithSelector(Strategy.balanceOfToken.selector), abi.encode(1e18));
+        // block.timestap must be >= lastHarvest + lockInterval when harvesting
+        hevm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+
+        // Call harvest to update lastHarvest, note that no shares are minted here because
+        // (block.timestamp - lastHarvest) = lockInterval + 1 =  3 hours + 1 second
+        // and feeBps gets truncated to zero
+        Strategy[] memory strategyList = new Strategy[](1);
+        strategyList[0] = Strategy(address(this));
+        vault.harvest(strategyList);
 
         hevm.warp(block.timestamp + vault.SECS_PER_YEAR() / 2);
 
-        // Call report with no profit, loss, or debt payment. No tokens exchanged with strategy
-        vault.report(0, 0, 0);
+        // Call harvest to trigger fee assessment
+        vault.harvest(strategyList);
 
         // Check that fees were assesed in the correct amounts => Management fees are sent to governance address
         // 1/2 of 2% of the vault's supply should be minted to governance
@@ -151,16 +159,21 @@ contract VaultTest is DSTest {
     }
 
     function testLockedProfit() public {
-        hevm.warp(block.timestamp + 1);
-        // Add this contract as a strategy, mock calls to strategy.want() and strategy.vault() to bypass checks
-        // TODO: consider making base strategy deployable (non-abstract) just for use in tests
-        hevm.mockCall(address(this), abi.encodeWithSelector(bytes4(keccak256("vault()"))), abi.encode(address(vault)));
-        hevm.mockCall(address(this), abi.encodeWithSelector(bytes4(keccak256("want()"))), abi.encode(address(token)));
-        vault.addStrategy(Strategy(address(this)), 10_000, 0, type(uint256).max);
+        // Add this contract as a strategy
+        Strategy myStrat = Strategy(address(this));
+        vault.addStrategy(myStrat);
 
-        token.mint(address(this), 1e18);
+        // call to balanceOfToken in harvest() will return 1e18
+        hevm.mockCall(address(this), abi.encodeWithSelector(Strategy.balanceOfToken.selector), abi.encode(1e18));
+        // block.timestap must be >= lastHarvest + lockInterval when harvesting
+        hevm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+
+        token.mint(address(myStrat), 1e18);
         token.approve(address(vault), type(uint256).max);
-        vault.report(1e18, 0, 0);
+
+        Strategy[] memory strategyList = new Strategy[](1);
+        strategyList[0] = Strategy(address(this));
+        vault.harvest(strategyList);
 
         assertEq(vault.lockedProfit(), 1e18);
         assertEq(vault.globalTVL(), 0);
