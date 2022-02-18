@@ -25,10 +25,10 @@ export async function deployAll(
   console.log("Adding strategies to vault...");
   // add L2 strategies
   const decimals = await vaults.l2Vault.decimals();
-  vaults.l2Vault.addStrategy(strategies.l2.aave.address, 10_000, 0, ethers.utils.parseUnits("10000", decimals));
+  vaults.l2Vault.addStrategy(strategies.l2.aave.address);
 
   // add L1 strategies
-  vaults.l1Vault.addStrategy(strategies.l1.compound.address, 10_000, 0, ethers.utils.parseUnits("10000", decimals));
+  vaults.l1Vault.addStrategy(strategies.l1.compound.address);
   console.log("Strategies added");
 
   return {
