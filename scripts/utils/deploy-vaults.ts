@@ -47,6 +47,7 @@ export async function deployVaults(
     { kind: "uups" },
   )) as L1Vault;
   await l1Vault.deployed();
+
   await addToAddressBookAndDefender(ETH_GOERLI, `${ethNetworkName} Alpine Save`, "L1Vault", l1Vault);
   logContractDeploymentInfo(ethNetworkName, "L1Vault", l1Vault);
 
@@ -85,7 +86,12 @@ export async function deployVaults(
   )) as L2Vault;
   await l2Vault.deployed();
   await addToAddressBookAndDefender(POLYGON_MUMBAI, `${polygonNetworkName} Alpine Save`, "L2Vault", l2Vault);
-  await addToAddressBookAndDefender(POLYGON_MUMBAI, `${polygonNetworkName} Relayer`, "Relayer", await l2Vault.relayer());
+  await addToAddressBookAndDefender(
+    POLYGON_MUMBAI,
+    `${polygonNetworkName} Relayer`,
+    "Relayer",
+    await l2Vault.relayer(),
+  );
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
 
   return {

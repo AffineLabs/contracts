@@ -48,8 +48,6 @@ export async function addToAddressBookAndDefender(
     addressBook = {};
   }
 
-  
-
   const contractABIPath = join(rootDir, "abi", `${contractType}.json`);
   let abi;
   try {

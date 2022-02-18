@@ -20,7 +20,6 @@ const L1_GOVERNANCE = "0xd0dfB59aCb9d0aC3083837f19b0aE1c8CF6B38B8";
 // https://defender.openzeppelin.com/#/admin/contracts/mumbai-0xbB4052e4C32F3C30ef08117a9635494C5cD4823b
 const L2_GOVERNANCE = "0xbB4052e4C32F3C30ef08117a9635494C5cD4823b";
 
-
 export interface Config {
   l1ChainManager: address;
   l1USDC: address;

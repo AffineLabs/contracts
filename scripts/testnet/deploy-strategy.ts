@@ -9,7 +9,13 @@ async function deployAAVE(): Promise<any> {
   // Using address of USDC compatible with AAVE on mumbai
   const myConfig = { ...config };
   myConfig.l2USDC = "0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e";
-  const vaultContracts = await scriptUtils.deployVaults(config.l1Governance, config.l2Governance, "ethGoerli", "polygonMumbai", myConfig);
+  const vaultContracts = await scriptUtils.deployVaults(
+    config.l1Governance,
+    config.l2Governance,
+    "ethGoerli",
+    "polygonMumbai",
+    myConfig,
+  );
 
   const stratFactory = await ethers.getContractFactory("L2AAVEStrategy", deployer);
 

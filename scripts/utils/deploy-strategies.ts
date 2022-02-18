@@ -1,6 +1,5 @@
 import { ethers } from "hardhat";
 import hre from "hardhat";
-import { address } from "../../utils/types";
 import { Config } from "../../utils/config";
 import { MintableStrategy } from "../../typechain";
 import { VaultContracts } from "./deploy-vaults";
@@ -13,11 +12,9 @@ export interface StrategyContracts {
 }
 
 export async function deployStrategies(
-  governance: address,
   ethNetworkName: string,
   polygonNetworkName: string,
   vaults: VaultContracts,
-  config: Config,
   test: boolean = true,
 ): Promise<StrategyContracts> {
   if (!test) throw Error("Cannot deploy to mainnet");
@@ -29,7 +26,12 @@ export async function deployStrategies(
   let stratFactory = await ethers.getContractFactory("MintableStrategy", signer);
   const l2Strategy = (await stratFactory.deploy(vaults.l2Vault.address)) as MintableStrategy;
   await l2Strategy.deployed();
-  await addToAddressBookAndDefender(POLYGON_MUMBAI, `${polygonNetworkName} Mintable Strategy`, "MintableStrategy", l2Strategy);
+  await addToAddressBookAndDefender(
+    POLYGON_MUMBAI,
+    `${polygonNetworkName} Mintable Strategy`,
+    "MintableStrategy",
+    l2Strategy,
+  );
   console.log("strategy L2: ", l2Strategy.address);
 
   // Deploy Mintable strategy on ethereum
