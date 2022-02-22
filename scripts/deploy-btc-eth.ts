@@ -9,7 +9,7 @@ dotenvConfig({ path: resolve(__dirname, "./.env") });
 async function deployBasket(): Promise<any> {
   const [deployer] = await ethers.getSigners();
 
-  const BasketFactory = await ethers.getContractFactory("BasketVault");
+  const BasketFactory = await ethers.getContractFactory("TwoAssetBasket");
   const basket = await BasketFactory.deploy(
     deployer.address,
     "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506", // sushiswap router

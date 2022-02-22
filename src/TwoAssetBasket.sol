@@ -7,7 +7,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IUniLikeSwapRouter } from "./interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
 
-contract BasketVault is ERC20 {
+contract TwoAssetBasket is ERC20 {
     address public governance;
 
     // The token which we take in to buy token1 and token2, e.g. USDC
@@ -37,6 +37,7 @@ contract BasketVault is ERC20 {
     ) ERC20("Alpine Large Vault Token", "AlpLarge", 18) {
         governance = _governance;
         rebalanceDelta = _rebalanceDelta;
+        blockSize = _blockSize;
         (token1, token2) = (_tokens[0], _tokens[1]);
         inputToken = _input;
         ratios = _ratios;
@@ -51,7 +52,6 @@ contract BasketVault is ERC20 {
 
     /** DEPOSIT / WITHDRAW
      **************************************************************************/
-
     function deposit(uint256 amountInput) external notRebalancing {
         // Get current amounts of btc/eth (in dollars)
         uint256 vaultDollars = valueOfVault();
@@ -151,6 +151,9 @@ contract BasketVault is ERC20 {
         uint256 numShares = (dollarsLiquidated * totalSupply) / vaultDollars;
 
         _burn(msg.sender, numShares);
+
+        // TODO: remove this decimal place assumption
+        inputToken.transfer(msg.sender, dollarsLiquidated / 1e2); // usdc uses six decimal places
     }
 
     /** EXCHANGE RATES
@@ -224,7 +227,7 @@ contract BasketVault is ERC20 {
         return (btcDollars, ethDollars);
     }
 
-    function _valueOfToken(ERC20 token, uint256 amount) internal view returns (uint256) {
+    function _valueOfToken(ERC20 token, uint256 amount) public view returns (uint256) {
         // Convert tokens to dollars using as many decimal places as the price feed gives us
         // e.g. Say ether is $1. If the price feed uses 8 decimals then a price of $1 is 1e8.
         // If we have 2 ether then return 2 * 1e8 as the dollar value of our balance
@@ -257,17 +260,28 @@ contract BasketVault is ERC20 {
     uint256 blockSize;
     /// @notice The number of blocks left to sell in the current rebalance
     uint256 numBlocksLeftToSell;
+    /// @notice Whether we are selling token0 or token1 (btc or eth)
+    ERC20 tokenToSell;
 
     /// @notice Initiate the auction. This can be done by anyone since it will only proceed if
     /// vault is significantly imbalanced
     function startRebalance() external notRebalancing {
-        (bool needRebalance, uint256 numBlocks) = _isImbalanced();
+        (bool needRebalance, uint256 numBlocks, ERC20 _tokenToSell) = _isImbalanced();
         if (!needRebalance) return;
         isRebalancing = true;
         numBlocksLeftToSell = numBlocks;
+        tokenToSell = _tokenToSell;
     }
 
-    function _isImbalanced() internal view returns (bool imbalanced, uint256 numBlocks) {
+    function _isImbalanced()
+        internal
+        view
+        returns (
+            bool imbalanced,
+            uint256 numBlocks,
+            ERC20 _tokenToSell
+        )
+    {
         (uint256 btcDollars, uint256 ethDollars) = _valueOfVaultComponents();
         uint256 vaultDollars = btcDollars + ethDollars;
 
@@ -279,11 +293,13 @@ contract BasketVault is ERC20 {
         if (ethDollars > idealDollarsOfEth + rebalanceDelta) {
             imbalanced = true;
             numBlocks = Math.ceilDiv(ethDollars - idealDollarsOfEth, blockSize);
+            _tokenToSell = token2;
         }
 
         if (btcDollars > idealDollarsOfBtc + rebalanceDelta) {
             imbalanced = true;
             numBlocks = Math.ceilDiv(btcDollars - idealDollarsOfBtc, blockSize);
+            _tokenToSell = token1;
         }
     }
 
@@ -291,7 +307,15 @@ contract BasketVault is ERC20 {
         require(isRebalancing, "NOT REBALANCING");
         numBlocksLeftToSell -= 1;
 
-        // TODO: sell block of item.
+        ERC20 sellToken = tokenToSell;
+        ERC20 buyToken = sellToken == token1 ? token1 : token2;
+
+        uint256 sellTokenAmount = _tokensFromDollars(sellToken, blockSize);
+        uint256 buyTokenAmount = _tokensFromDollars(buyToken, blockSize);
+
+        buyToken.transferFrom(msg.sender, address(this), buyTokenAmount);
+        sellToken.transfer(msg.sender, sellTokenAmount);
+
         _endAuction();
     }
 
@@ -300,7 +324,7 @@ contract BasketVault is ERC20 {
     }
 
     function _endAuction() internal {
-        (bool needRebalance, ) = _isImbalanced();
+        (bool needRebalance, , ) = _isImbalanced();
         if (!needRebalance) {
             isRebalancing = false;
             numBlocksLeftToSell = 0;
