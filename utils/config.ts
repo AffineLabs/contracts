@@ -15,10 +15,10 @@ const wbtc = "0x1F577114D404686B47C4A739C46B8EBee7b5156F";
 const weth = "0x1F0EB2B499C51CDa602ba96013577A3887D7278D";
 const BICONOMY_FORWARDER = "0x9399BB24DBB5C4b782C70c2969F58716Ebbd6a3b";
 const withdrawFee = 50; // user pays 50 bps
-// https://defender.openzeppelin.com/#/admin/contracts/goerli-0xd0dfB59aCb9d0aC3083837f19b0aE1c8CF6B38B8
-const L1_GOVERNANCE = "0xd0dfB59aCb9d0aC3083837f19b0aE1c8CF6B38B8";
-// https://defender.openzeppelin.com/#/admin/contracts/mumbai-0xbB4052e4C32F3C30ef08117a9635494C5cD4823b
-const L2_GOVERNANCE = "0xbB4052e4C32F3C30ef08117a9635494C5cD4823b";
+// https://defender.openzeppelin.com/#/admin/contracts/goerli-0xdbA49884464689800BF95C7BbD50eBA0DA0F67b9
+const L1_GOVERNANCE = "0xdbA49884464689800BF95C7BbD50eBA0DA0F67b9";
+// https://defender.openzeppelin.com/#/admin/contracts/mumbai-0xCBF0C1bA68D22666ef01069b1a42CcC1F0281A9C
+const L2_GOVERNANCE = "0xCBF0C1bA68D22666ef01069b1a42CcC1F0281A9C";
 
 export interface Config {
   l1ChainManager: address;
