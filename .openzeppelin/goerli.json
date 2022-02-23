@@ -1,0 +1,197 @@
+{
+  "manifestVersion": "3.2",
+  "proxies": [
+    {
+      "address": "0x025cA5B1143936952377d95cfA771790E6565c31",
+      "txHash": "0x8cadf77e4d21d2c9849502d206c33d2ec223b5e38e7c30d7ca2759d23835f0d5",
+      "kind": "uups"
+    }
+  ],
+  "impls": {
+    "4177d436f07a6da32d161570a99353a367790702115b64f7e292539c1a661550": {
+      "address": "0x7b006d06c52e25DAa274E204C0A5D7cea6422b2a",
+      "txHash": "0xf8f8733b081bf9eba664ba7f1674815083081dd4f29b00264b9097758423aaa6",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:44"
+          },
+          {
+            "contract": "ERC1967UpgradeUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\ERC1967\\ERC1967UpgradeUpgradeable.sol:215"
+          },
+          {
+            "contract": "UUPSUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\UUPSUpgradeable.sol:81"
+          },
+          {
+            "contract": "AccessControl",
+            "label": "_roles",
+            "type": "t_mapping(t_bytes32,t_struct(RoleData)1767_storage)",
+            "src": "@openzeppelin\\contracts\\access\\AccessControl.sol:55"
+          },
+          {
+            "contract": "BaseVault",
+            "label": "token",
+            "type": "t_contract(ERC20)4018",
+            "src": "src\\BaseVault.sol:24"
+          },
+          {
+            "contract": "BaseVault",
+            "label": "wormhole",
+            "type": "t_contract(IWormhole)7829",
+            "src": "src\\BaseVault.sol:49"
+          },
+          {
+            "contract": "BaseVault",
+            "label": "staging",
+            "type": "t_address",
+            "src": "src\\BaseVault.sol:50"
+          },
+          {
+            "contract": "BaseVault",
+            "label": "governance",
+            "type": "t_address",
+            "src": "src\\BaseVault.sol:55"
+          },
+          {
+            "contract": "BaseVault",
+            "label": "withdrawalStack",
+            "type": "t_array(t_contract(Strategy)6413)dyn_storage",
+            "src": "src\\BaseVault.sol:72"
+          },
+          {
+            "contract": "BaseVault",
+            "label": "totalStrategyHoldings",
+            "type": "t_uint256",
+            "src": "src\\BaseVault.sol:237"
+          },
+          {
+            "contract": "BaseVault",
+            "label": "strategies",
+            "type": "t_mapping(t_contract(Strategy)6413,t_struct(StrategyInfo)4585_storage)",
+            "src": "src\\BaseVault.sol:245"
+          },
+          {
+            "contract": "BaseVault",
+            "label": "lastHarvest",
+            "type": "t_uint256",
+            "src": "src\\BaseVault.sol:330"
+          },
+          {
+            "contract": "BaseVault",
+            "label": "maxLockedProfit",
+            "type": "t_uint256",
+            "src": "src\\BaseVault.sol:332"
+          },
+          {
+            "contract": "L1Vault",
+            "label": "received",
+            "type": "t_bool",
+            "src": "src\\ethereum\\L1Vault.sol:18"
+          },
+          {
+            "contract": "L1Vault",
+            "label": "chainManager",
+            "type": "t_contract(IRootChainManager)7645",
+            "src": "src\\ethereum\\L1Vault.sol:19"
+          },
+          {
+            "contract": "L1Vault",
+            "label": "predicate",
+            "type": "t_address",
+            "src": "src\\ethereum\\L1Vault.sol:23"
+          }
+        ],
+        "types": {
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_contract(IRootChainManager)7645": {
+            "label": "contract IRootChainManager"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_contract(ERC20)4018": {
+            "label": "contract ERC20"
+          },
+          "t_contract(IWormhole)7829": {
+            "label": "contract IWormhole"
+          },
+          "t_array(t_contract(Strategy)6413)dyn_storage": {
+            "label": "contract Strategy[]"
+          },
+          "t_contract(Strategy)6413": {
+            "label": "contract Strategy"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_mapping(t_contract(Strategy)6413,t_struct(StrategyInfo)4585_storage)": {
+            "label": "mapping(contract Strategy => struct BaseVault.StrategyInfo)"
+          },
+          "t_struct(StrategyInfo)4585_storage": {
+            "label": "struct BaseVault.StrategyInfo",
+            "members": [
+              {
+                "label": "isActive",
+                "type": "t_bool"
+              },
+              {
+                "label": "balance",
+                "type": "t_uint256"
+              },
+              {
+                "label": "totalGain",
+                "type": "t_uint256"
+              },
+              {
+                "label": "totalLoss",
+                "type": "t_uint256"
+              }
+            ]
+          },
+          "t_mapping(t_bytes32,t_struct(RoleData)1767_storage)": {
+            "label": "mapping(bytes32 => struct AccessControl.RoleData)"
+          },
+          "t_bytes32": {
+            "label": "bytes32"
+          },
+          "t_struct(RoleData)1767_storage": {
+            "label": "struct AccessControl.RoleData",
+            "members": [
+              {
+                "label": "members",
+                "type": "t_mapping(t_address,t_bool)"
+              },
+              {
+                "label": "adminRole",
+                "type": "t_bytes32"
+              }
+            ]
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    }
+  }
+}
