@@ -6,6 +6,7 @@ import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 
 import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import { Context } from "@openzeppelin/contracts/utils/Context.sol";
 import { ContextUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -16,7 +17,7 @@ import { Staging } from "../Staging.sol";
 import { Relayer } from "./Relayer.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 
-contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
+contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, BaseVault {
     using SafeTransferLib for ERC20;
 
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
@@ -73,6 +74,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, BaseVault {
     ) public initializer {
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
+        __Pausable_init();
         BaseVault.init(_governance, _token, _wormhole, create2Deployer);
         layerRatios = LayerBalanceRatios({ layer1: L1Ratio, layer2: L2Ratio });
         canTransferToL1 = true;

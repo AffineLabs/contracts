@@ -4,7 +4,10 @@ pragma solidity ^0.8.9;
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { Context } from "@openzeppelin/contracts/utils/Context.sol";
+import { ContextUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
@@ -13,7 +16,7 @@ import { IWormhole } from "../interfaces/IWormhole.sol";
 import { IStaging } from "../interfaces/IStaging.sol";
 import { BaseVault } from "../BaseVault.sol";
 
-contract L1Vault is UUPSUpgradeable, BaseVault {
+contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     /////// Cross chain rebalancing
     bool public received;
     IRootChainManager public chainManager;
@@ -32,10 +35,20 @@ contract L1Vault is UUPSUpgradeable, BaseVault {
         IRootChainManager _chainManager,
         address _predicate
     ) public initializer {
+        __UUPSUpgradeable_init();
+        __Pausable_init();
         BaseVault.init(_governance, _token, _wormhole, create2Deployer);
         chainManager = _chainManager;
         IStaging(staging).initializeL1(chainManager);
         predicate = _predicate;
+    }
+
+    function _msgSender() internal view override(Context, ContextUpgradeable) returns (address) {
+        return Context._msgSender();
+    }
+
+    function _msgData() internal view override(Context, ContextUpgradeable) returns (bytes calldata) {
+        return Context._msgData();
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
