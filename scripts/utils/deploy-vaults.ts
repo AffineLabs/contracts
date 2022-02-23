@@ -5,6 +5,7 @@ import { Config } from "../../utils/config";
 import { L1Vault, L2Vault } from "../../typechain";
 import { addToAddressBookAndDefender, getContractAddress } from "../../utils/export";
 import { ETH_GOERLI, POLYGON_MUMBAI } from "../../utils/constants/blockchain";
+import { address } from "../../utils/types";
 
 export interface VaultContracts {
   l1Vault: L1Vault;
@@ -12,6 +13,8 @@ export interface VaultContracts {
 }
 
 export async function deployVaults(
+  l1Governance: address,
+  l2Governance: address,
   ethNetworkName: string,
   polygonNetworkName: string,
   config: Config,
@@ -40,14 +43,7 @@ export async function deployVaults(
 
   const l1Vault = (await upgrades.deployProxy(
     l1VaultFactory,
-    [
-      config.l1Governance,
-      config.l1USDC,
-      config.l1worm,
-      deployer.address,
-      config.l1ChainManager,
-      config.l2ERC20Predicate,
-    ],
+    [l1Governance, config.l1USDC, config.l1worm, deployer.address, config.l1ChainManager, config.l2ERC20Predicate],
     { kind: "uups" },
   )) as L1Vault;
   await l1Vault.deployed();
@@ -76,7 +72,7 @@ export async function deployVaults(
   const l2Vault = (await upgrades.deployProxy(
     l2VaultFactory,
     [
-      config.l2Governance,
+      l2Governance,
       config.l2USDC,
       config.l2worm,
       await getContractAddress(deployer),
