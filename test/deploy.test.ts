@@ -12,8 +12,13 @@ const ETH_NETWORK_NAME = "ethGoerli";
 const POLYGON_NETWORK_NAME = "polygonMumbai";
 
 it("Deploy Vaults", async () => {
-  let [governance] = await ethers.getSigners();
-  const { l1Vault, l2Vault } = await deployVaults(governance.address, ETH_NETWORK_NAME, POLYGON_NETWORK_NAME, config);
+  const { l1Vault, l2Vault } = await deployVaults(
+    config.l1Governance,
+    config.l2Governance,
+    ETH_NETWORK_NAME,
+    POLYGON_NETWORK_NAME,
+    config,
+  );
 
   // If tokens are set correctly, most likely everything else is. TODO: add a couple more asserts
   expect(await l2Vault.token()).to.equal(config.l2USDC);
