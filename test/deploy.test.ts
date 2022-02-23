@@ -12,10 +12,7 @@ const ETH_NETWORK_NAME = "ethGoerli";
 const POLYGON_NETWORK_NAME = "polygonMumbai";
 
 it("Deploy Vaults", async () => {
-  let [governance] = await ethers.getSigners();
   const { l1Vault, l2Vault } = await deployVaults(
-    governance.address,
-    governance.address,
     ETH_NETWORK_NAME,
     POLYGON_NETWORK_NAME,
     config,

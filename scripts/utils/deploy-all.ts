@@ -14,8 +14,6 @@ export async function deployAll(
   config: Config,
 ): Promise<AllContracts> {
   const vaults = await deployVaults(
-    config.l1Governance,
-    config.l2Governance,
     ethNetworkName,
     polygonNetworkName,
     config,

@@ -21,8 +21,10 @@ async function addContractToDefender(
   contractAddr: address,
   abi: string,
 ) {
+  const version: string = process.env.VERSION || "";
+  if (version === "") return;
   let defenderContract: DefenderContract = {
-    name: contractName,
+    name: `${contractName} - ${version}.\n Deployed at: ${new Date().toUTCString()}`,
     network: blockchainInfo.network.toLowerCase() as DefenderNetwork,
     abi: JSON.stringify(abi),
     address: contractAddr,

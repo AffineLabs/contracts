@@ -1,7 +1,6 @@
 import { ethers, upgrades } from "hardhat";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../../utils/bc-explorer-links";
-import { address } from "../../utils/types";
 import { Config } from "../../utils/config";
 import { L1Vault, L2Vault } from "../../typechain";
 import { addToAddressBookAndDefender, getContractAddress } from "../../utils/export";
@@ -13,8 +12,6 @@ export interface VaultContracts {
 }
 
 export async function deployVaults(
-  l1Governance: address,
-  l2Governance: address,
   ethNetworkName: string,
   polygonNetworkName: string,
   config: Config,
@@ -43,11 +40,10 @@ export async function deployVaults(
 
   const l1Vault = (await upgrades.deployProxy(
     l1VaultFactory,
-    [l1Governance, config.l1USDC, config.l1worm, deployer.address, config.l1ChainManager, config.l2ERC20Predicate],
+    [config.l1Governance, config.l1USDC, config.l1worm, deployer.address, config.l1ChainManager, config.l2ERC20Predicate],
     { kind: "uups" },
   )) as L1Vault;
   await l1Vault.deployed();
-
   await addToAddressBookAndDefender(ETH_GOERLI, `${ethNetworkName} Alpine Save`, "L1Vault", l1Vault);
   logContractDeploymentInfo(ethNetworkName, "L1Vault", l1Vault);
 
@@ -73,7 +69,7 @@ export async function deployVaults(
   const l2Vault = (await upgrades.deployProxy(
     l2VaultFactory,
     [
-      l2Governance,
+      config.l2Governance,
       config.l2USDC,
       config.l2worm,
       await getContractAddress(deployer),
