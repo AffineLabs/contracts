@@ -4,6 +4,9 @@ import { Contract } from "ethers";
 import { ethers } from "hardhat";
 import { address } from "./types";
 import { BlockchainInfo } from "./constants/types";
+import defenderClient from "./defender-client";
+import { Contract as DefenderContract } from "defender-admin-client";
+import { Network as DefenderNetwork } from "defender-base-client";
 
 // Wayaround for https://github.com/nomiclabs/hardhat/issues/2162
 export async function getContractAddress(contract: Contract): Promise<string> {
@@ -12,13 +15,32 @@ export async function getContractAddress(contract: Contract): Promise<string> {
   return txReceipt.contractAddress;
 }
 
-export async function addToAddressBook(
+async function addContractToDefender(
+  blockchainInfo: BlockchainInfo,
+  contractName: string,
+  contractAddr: address,
+  abi: string,
+) {
+  const version: string = process.env.VERSION || "";
+  if (version === "") return;
+  let defenderContract: DefenderContract = {
+    name: `${contractName} - ${version}.\n Deployed at: ${new Date().toUTCString()}`,
+    network: blockchainInfo.network.toLowerCase() as DefenderNetwork,
+    abi: JSON.stringify(abi),
+    address: contractAddr,
+  };
+  await defenderClient.addContract(defenderContract);
+}
+
+export async function addToAddressBookAndDefender(
   blockchainInfo: BlockchainInfo,
   contractName: string,
   contractType: string,
   contractOrAddress: Contract | address,
   events_to_watch: Array<string> = [],
 ) {
+  const contractAddr =
+    typeof contractOrAddress === "string" ? contractOrAddress : await getContractAddress(contractOrAddress);
   const rootDir = resolve(__dirname, "..");
   const addressBookPath = join(rootDir, "addressbook.json");
   let addressBook;
@@ -27,9 +49,6 @@ export async function addToAddressBook(
   } catch (err) {
     addressBook = {};
   }
-
-  const contractAddr =
-    typeof contractOrAddress === "string" ? contractOrAddress : await getContractAddress(contractOrAddress);
 
   const contractABIPath = join(rootDir, "abi", `${contractType}.json`);
   let abi;
@@ -54,4 +73,5 @@ export async function addToAddressBook(
   addressBook[contractName] = entry;
 
   await outputJSON(addressBookPath, addressBook, { spaces: 2 });
+  await addContractToDefender(blockchainInfo, contractName, contractAddr, abi);
 }

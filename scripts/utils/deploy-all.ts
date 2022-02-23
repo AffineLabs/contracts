@@ -1,8 +1,7 @@
 import { deployVaults, VaultContracts } from "./deploy-vaults";
-import { address } from "../../utils/types";
 import { Config } from "../../utils/config";
 import { deployStrategies, StrategyContracts } from "./deploy-strategies";
-import { ethers } from "ethers";
+import { address } from "../../utils/types";
 
 export interface AllContracts {
   vaults: VaultContracts;
@@ -10,13 +9,14 @@ export interface AllContracts {
 }
 
 export async function deployAll(
-  governance: address,
+  l1Governance: address,
+  l2Governance: address,
   ethNetworkName: string,
   polygonNetworkName: string,
   config: Config,
 ): Promise<AllContracts> {
-  const vaults = await deployVaults(governance, ethNetworkName, polygonNetworkName, config);
-  const strategies = await deployStrategies(governance, ethNetworkName, polygonNetworkName, vaults, config);
+  const vaults = await deployVaults(l1Governance, l2Governance, ethNetworkName, polygonNetworkName, config);
+  const strategies = await deployStrategies(ethNetworkName, polygonNetworkName, vaults);
 
   console.log("Adding strategies to vault...");
   // add L2 strategies
