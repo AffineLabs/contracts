@@ -13,11 +13,7 @@ export async function deployAll(
   polygonNetworkName: string,
   config: Config,
 ): Promise<AllContracts> {
-  const vaults = await deployVaults(
-    ethNetworkName,
-    polygonNetworkName,
-    config,
-  );
+  const vaults = await deployVaults(ethNetworkName, polygonNetworkName, config);
   const strategies = await deployStrategies(ethNetworkName, polygonNetworkName, vaults);
 
   console.log("Adding strategies to vault...");
