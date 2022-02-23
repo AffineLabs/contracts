@@ -22,4 +22,4 @@ addressbook.json
 # Openzappelin
 # Note: Not needed in testing phase, but in prod, probably
 # worth keeping openzap files in VCS.
-.openzappelin
+.openzeppelin

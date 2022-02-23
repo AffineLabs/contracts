@@ -46,7 +46,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     function _msgSender() internal view override(Context, ContextUpgradeable) returns (address) {
         return Context._msgSender();
     }
-    
+
     function _msgData() internal view override(Context, ContextUpgradeable) returns (bytes calldata) {
         return Context._msgData();
     }
