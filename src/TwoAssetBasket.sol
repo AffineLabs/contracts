@@ -35,6 +35,7 @@ contract TwoAssetBasket is ERC20 {
         uint256[2] memory _ratios,
         AggregatorV3Interface[2] memory _priceFeeds
     ) ERC20("Alpine Large Vault Token", "AlpLarge", 18) {
+        require(_rebalanceDelta >= _blockSize, "DELTA_TOO_SMALL");
         governance = _governance;
         rebalanceDelta = _rebalanceDelta;
         blockSize = _blockSize;
@@ -257,6 +258,7 @@ contract TwoAssetBasket is ERC20 {
         _;
     }
     /// @notice The size of each rebalancing trade
+    /// @dev This should be smaller than the rebalance delta
     uint256 blockSize;
     /// @notice The number of blocks left to sell in the current rebalance
     uint256 numBlocksLeftToSell;
