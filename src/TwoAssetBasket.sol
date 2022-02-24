@@ -260,7 +260,7 @@ contract TwoAssetBasket is ERC20 {
     uint256 blockSize;
     /// @notice The number of blocks left to sell in the current rebalance
     uint256 numBlocksLeftToSell;
-    /// @notice Whether we are selling token0 or token1 (btc or eth)
+    /// @notice Whether we are selling token1 or token2 (btc or eth)
     ERC20 tokenToSell;
 
     /// @notice Initiate the auction. This can be done by anyone since it will only proceed if
@@ -292,13 +292,13 @@ contract TwoAssetBasket is ERC20 {
 
         if (ethDollars > idealDollarsOfEth + rebalanceDelta) {
             imbalanced = true;
-            numBlocks = Math.ceilDiv(ethDollars - idealDollarsOfEth, blockSize);
+            numBlocks = (ethDollars - idealDollarsOfEth) / blockSize;
             _tokenToSell = token2;
         }
 
         if (btcDollars > idealDollarsOfBtc + rebalanceDelta) {
             imbalanced = true;
-            numBlocks = Math.ceilDiv(btcDollars - idealDollarsOfBtc, blockSize);
+            numBlocks = (btcDollars - idealDollarsOfBtc) / blockSize;
             _tokenToSell = token1;
         }
     }
@@ -308,7 +308,7 @@ contract TwoAssetBasket is ERC20 {
         numBlocksLeftToSell -= 1;
 
         ERC20 sellToken = tokenToSell;
-        ERC20 buyToken = sellToken == token1 ? token1 : token2;
+        ERC20 buyToken = sellToken == token1 ? token2 : token1;
 
         uint256 sellTokenAmount = _tokensFromDollars(sellToken, blockSize);
         uint256 buyTokenAmount = _tokensFromDollars(buyToken, blockSize);
