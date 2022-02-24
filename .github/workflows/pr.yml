@@ -28,12 +28,14 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: "16.x"
-          cache: "yarn"
 
       - name: Install Foundry
         uses: onbjerg/foundry-toolchain@v1
         with:
           version: nightly
+
+      - name: Check yarn cache
+        uses: c-hive/gha-yarn-cache@v2
 
       - name: Install yarn dependencies
         run: yarn --frozen-lockfile
