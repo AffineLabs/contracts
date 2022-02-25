@@ -2,11 +2,12 @@
 pragma solidity ^0.8.10;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IUniLikeSwapRouter } from "./interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
 
-contract BasketVault is ERC20 {
+contract TwoAssetBasket is ERC20 {
     address public governance;
 
     // The token which we take in to buy token1 and token2, e.g. USDC
@@ -26,13 +27,18 @@ contract BasketVault is ERC20 {
 
     constructor(
         address _governance,
+        uint256 _rebalanceDelta,
+        uint256 _blockSize,
         IUniLikeSwapRouter _uniRouter,
         ERC20 _input,
         ERC20[2] memory _tokens,
         uint256[2] memory _ratios,
         AggregatorV3Interface[2] memory _priceFeeds
     ) ERC20("Alpine Large Vault Token", "AlpLarge", 18) {
+        require(_rebalanceDelta >= _blockSize, "DELTA_TOO_SMALL");
         governance = _governance;
+        rebalanceDelta = _rebalanceDelta;
+        blockSize = _blockSize;
         (token1, token2) = (_tokens[0], _tokens[1]);
         inputToken = _input;
         ratios = _ratios;
@@ -45,6 +51,8 @@ contract BasketVault is ERC20 {
         token2.approve(address(uniRouter), type(uint256).max);
     }
 
+    /** DEPOSIT / WITHDRAW
+     **************************************************************************/
     function deposit(uint256 amountInput) external {
         // Get current amounts of btc/eth (in dollars)
         uint256 vaultDollars = valueOfVault();
@@ -57,11 +65,11 @@ contract BasketVault is ERC20 {
 
         // TODO: don't allow infinite slippage. Will need price oracle of inputToken and ETH
         inputToken.transferFrom(msg.sender, address(this), amountInput);
-        address[] memory pathBtc;
+        address[] memory pathBtc = new address[](2);
         pathBtc[0] = address(inputToken);
         pathBtc[1] = address(token1);
 
-        address[] memory pathEth;
+        address[] memory pathEth = new address[](2);
         pathEth[0] = address(inputToken);
         pathEth[1] = address(token2);
 
@@ -97,6 +105,60 @@ contract BasketVault is ERC20 {
         _mint(msg.sender, numShares);
     }
 
+    function withdraw(uint256 amountInput) external returns (uint256 dollarsLiquidated) {
+        // Try to get `amountInput` of `inputToken` out of vault
+
+        uint256 vaultDollars = valueOfVault();
+
+        // Get dollar amounts of btc and eth to sell
+        (uint256 amountInputFromBtc, uint256 amountInputFromEth) = _getSellDollarsByToken(amountInput);
+
+        // Get desired amount of inputToken from eth and btc reserves
+        address[] memory pathBtc = new address[](2);
+        pathBtc[0] = address(token1);
+        pathBtc[1] = address(inputToken);
+
+        address[] memory pathEth = new address[](2);
+        pathEth[0] = address(token2);
+        pathEth[1] = address(inputToken);
+
+        uint256[] memory btcAmounts = uniRouter.swapTokensForExactTokens(
+            amountInputFromBtc,
+            type(uint256).max,
+            pathBtc,
+            address(this),
+            block.timestamp
+        );
+        uint256[] memory ethAmounts = uniRouter.swapTokensForExactTokens(
+            amountInputFromEth,
+            type(uint256).max,
+            pathEth,
+            address(this),
+            block.timestamp
+        );
+
+        uint256 btcSent = btcAmounts[0];
+        uint256 ethSent = ethAmounts[0];
+
+        // NOTE: The user eats the slippage and trading fees. E.g. if you get $10 out but we spend $12 of collateral
+        // to give that to the user, we still burn $12 of shares
+
+        dollarsLiquidated = _valueOfToken(token1, btcSent) + _valueOfToken(token2, ethSent);
+        // TODO: Remove assumption that inputToken is equal to one dollar
+
+        // Get share/dollar ratio (`shares_per_dollar`)
+        // Calculate number of shares to burn with numShares = dollarAmount * shares_per_dollar
+        // Try to burn numShares, will revert if user does not have enough
+        uint256 numShares = (dollarsLiquidated * totalSupply) / vaultDollars;
+
+        _burn(msg.sender, numShares);
+
+        // TODO: remove this decimal place assumption
+        inputToken.transfer(msg.sender, dollarsLiquidated / 1e2); // usdc uses six decimal places
+    }
+
+    /** EXCHANGE RATES
+     **************************************************************************/
     // When depositing, determing amount of input token that should be used to buy BTC and ETH
     // respectively
     function _getBuyDollarsByToken(uint256 amountInput) internal view returns (uint256, uint256) {
@@ -166,7 +228,7 @@ contract BasketVault is ERC20 {
         return (btcDollars, ethDollars);
     }
 
-    function _valueOfToken(ERC20 token, uint256 amount) internal view returns (uint256) {
+    function _valueOfToken(ERC20 token, uint256 amount) public view returns (uint256) {
         // Convert tokens to dollars using as many decimal places as the price feed gives us
         // e.g. Say ether is $1. If the price feed uses 8 decimals then a price of $1 is 1e8.
         // If we have 2 ether then return 2 * 1e8 as the dollar value of our balance
@@ -183,82 +245,88 @@ contract BasketVault is ERC20 {
         return (amountDollars * oneToken) / _getTokenPrice(token);
     }
 
-    function withdraw(uint256 amountInput) external returns (uint256 dollarsLiquidated) {
-        // Try to get `amountInput` of `inputToken` out of vault
+    /** AUCTIONS
+     **************************************************************************/
 
-        uint256 vaultDollars = valueOfVault();
+    /// @notice The amount (in dollars that one token must be above its ideal amount before we begin to auction it off)
+    uint256 rebalanceDelta;
 
-        // Get dollar amounts of btc and eth to sell
-        (uint256 amountInputFromBtc, uint256 amountInputFromEth) = _getSellDollarsByToken(amountInput);
+    /// @notice Is the auction active
+    bool isRebalancing;
 
-        // Get desired amount of inputToken from eth and btc reserves
-        address[] memory pathBtc;
-        pathBtc[0] = address(token1);
-        pathBtc[1] = address(inputToken);
+    /// @notice The size of each rebalancing trade
+    /// @dev This should be smaller than the rebalance delta
+    uint256 blockSize;
+    /// @notice The number of blocks left to sell in the current rebalance
+    uint256 numBlocksLeftToSell;
+    /// @notice Whether we are selling token1 or token2 (btc or eth)
+    ERC20 tokenToSell;
 
-        address[] memory pathEth;
-        pathEth[0] = address(token2);
-        pathEth[1] = address(inputToken);
-
-        uint256[] memory btcAmounts = uniRouter.swapTokensForExactTokens(
-            amountInputFromBtc,
-            type(uint256).max,
-            pathBtc,
-            address(this),
-            block.timestamp
-        );
-        uint256[] memory ethAmounts = uniRouter.swapTokensForExactTokens(
-            amountInputFromEth,
-            type(uint256).max,
-            pathEth,
-            address(this),
-            block.timestamp
-        );
-
-        uint256 btcSent = btcAmounts[0];
-        uint256 ethSent = ethAmounts[0];
-
-        // NOTE: The user eats the slippage and trading fees. E.g. if you get $10 out but we spend $12 of collateral
-        // to give that to the user, we still burn $12 of shares
-
-        dollarsLiquidated = _valueOfToken(token1, btcSent) + _valueOfToken(token2, ethSent);
-        // TODO: Remove assumption that inputToken is equal to one dollar
-
-        // Get share/dollar ratio (`shares_per_dollar`)
-        // Calculate number of shares to burn with numShares = dollarAmount * shares_per_dollar
-        // Try to burn numShares, will revert if user does not have enough
-        uint256 numShares = (dollarsLiquidated * totalSupply) / vaultDollars;
-
-        _burn(msg.sender, numShares);
+    /// @notice Initiate the auction. This can be done by anyone since it will only proceed if
+    /// vault is significantly imbalanced
+    function startRebalance() external {
+        (bool needRebalance, uint256 numBlocks, ERC20 _tokenToSell) = _isImbalanced();
+        if (!needRebalance) return;
+        isRebalancing = true;
+        numBlocksLeftToSell = numBlocks;
+        tokenToSell = _tokenToSell;
     }
 
-    function rebalance() external {
+    function _isImbalanced()
+        internal
+        view
+        returns (
+            bool imbalanced,
+            uint256 numBlocks,
+            ERC20 _tokenToSell
+        )
+    {
         (uint256 btcDollars, uint256 ethDollars) = _valueOfVaultComponents();
         uint256 vaultDollars = btcDollars + ethDollars;
 
-        // See how far we are from ideal amount of Eth
+        // See how far we are from ideal amount of Eth/Btc
         (uint256 r1, uint256 r2) = (ratios[0], ratios[1]);
         uint256 idealDollarsOfEth = (r2 * vaultDollars) / (r1 + r2);
+        uint256 idealDollarsOfBtc = vaultDollars - idealDollarsOfEth;
 
-        address[] memory pathToBtc;
-        pathToBtc[0] = address(token2);
-        pathToBtc[1] = address(token1);
+        if (ethDollars > idealDollarsOfEth + rebalanceDelta) {
+            imbalanced = true;
+            numBlocks = (ethDollars - idealDollarsOfEth) / blockSize;
+            _tokenToSell = token2;
+        }
 
-        address[] memory pathToEth;
-        pathToEth[0] = address(token1);
-        pathToEth[1] = address(token2);
+        if (btcDollars > idealDollarsOfBtc + rebalanceDelta) {
+            imbalanced = true;
+            numBlocks = (btcDollars - idealDollarsOfBtc) / blockSize;
+            _tokenToSell = token1;
+        }
+    }
 
-        // TODO: only rebalance if over a certain delta
-        if (ethDollars > idealDollarsOfEth) {
-            // sell difference
-            uint256 delta = ethDollars - idealDollarsOfEth;
-            uint256 deltaEth = (delta * token2.balanceOf(address(this))) / ethDollars;
-            uniRouter.swapExactTokensForTokens(deltaEth, 0, pathToBtc, address(this), block.timestamp);
-        } else {
-            // buy Eth
-            uint256 delta = idealDollarsOfEth - ethDollars;
-            uint256 deltaEth = (delta * token2.balanceOf(address(this))) / ethDollars;
-            uniRouter.swapTokensForExactTokens(deltaEth, type(uint256).max, pathToEth, address(this), block.timestamp);
+    function rebalanceBuy() external {
+        require(isRebalancing, "NOT REBALANCING");
+        numBlocksLeftToSell -= 1;
+
+        ERC20 sellToken = tokenToSell;
+        ERC20 buyToken = sellToken == token1 ? token2 : token1;
+
+        uint256 sellTokenAmount = _tokensFromDollars(sellToken, blockSize);
+        uint256 buyTokenAmount = _tokensFromDollars(buyToken, blockSize);
+
+        buyToken.transferFrom(msg.sender, address(this), buyTokenAmount);
+        sellToken.transfer(msg.sender, sellTokenAmount);
+
+        _endAuction();
+    }
+
+    function endAuction() external {
+        _endAuction();
+    }
+
+    function _endAuction() internal {
+        (bool needRebalance, , ) = _isImbalanced();
+        if (!needRebalance) {
+            isRebalancing = false;
+            numBlocksLeftToSell = 0;
         }
     }
 }
