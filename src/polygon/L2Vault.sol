@@ -69,17 +69,20 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         ICreate2Deployer create2Deployer,
         uint256 L1Ratio,
         uint256 L2Ratio,
-        address trustedForwarder,
+        Relayer _relayer,
         uint256[2] memory fees
     ) public initializer {
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
         __Pausable_init();
         BaseVault.init(_governance, _token, _wormhole, create2Deployer);
+
         layerRatios = LayerBalanceRatios({ layer1: L1Ratio, layer2: L2Ratio });
         canTransferToL1 = true;
         canRequestFromL1 = true;
-        relayer = new Relayer(trustedForwarder, address(this));
+
+        relayer = _relayer;
+
         withdrawalFee = fees[0];
         managementFee = fees[1];
     }

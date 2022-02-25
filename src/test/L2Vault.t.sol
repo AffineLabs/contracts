@@ -5,36 +5,22 @@ import "./test.sol";
 import { IHevm } from "./IHevm.sol";
 import { MockERC20 } from "./MockERC20.sol";
 
-import { IWormhole } from "../interfaces/IWormhole.sol";
 import { L2Vault } from "../polygon/L2Vault.sol";
 import { Relayer } from "../polygon/Relayer.sol";
-import { Create2Deployer } from "./Create2Deployer.sol";
 import { Strategy } from "../Strategy.sol";
+import { Deploy } from "./Deploy.sol";
 
 contract VaultTest is DSTest {
     L2Vault vault;
     MockERC20 token;
-    Create2Deployer create2Deployer;
     Relayer relayer;
 
     IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
     function setUp() public {
-        token = new MockERC20("Mock", "MT", 18);
-        create2Deployer = new Create2Deployer();
-
-        vault = new L2Vault();
-        vault.initialize(
-            address(this), // governance
-            token, // token
-            IWormhole(address(0)), // wormhole
-            create2Deployer, // create2deployer (needs to be a real contract)
-            1, // l1 ratio
-            1, // l2 ratio
-            address(0), // trusted fowarder
-            [uint256(0), uint256(200)] // withdrawal and AUM fees
-        );
-        relayer = vault.relayer();
+        vault = Deploy.deployL2Vault();
+        token = MockERC20(address(vault.token()));
+        relayer = Relayer(address(vault.relayer()));
     }
 
     function testDepositRedeem(uint256 amountToken) public {

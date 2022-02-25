@@ -8,6 +8,7 @@ remappings = [
     '@openzeppelin/=node_modules/@openzeppelin/',
     '@uniswap/=node_modules/@uniswap/',
     'solmate/=node_modules/solmate/',
+    'forge-std/=node_modules/forge-std/'
 ]
 libraries = []
 cache = true

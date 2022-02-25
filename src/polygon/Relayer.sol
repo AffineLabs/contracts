@@ -1,14 +1,24 @@
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.8.10;
-import { L2Vault } from "./L2Vault.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { BaseRelayRecipient } from "@opengsn/contracts/src/BaseRelayRecipient.sol";
+import { L2Vault } from "./L2Vault.sol";
 
 contract Relayer is BaseRelayRecipient {
     L2Vault vault;
+    address owner;
+    bool initialized;
 
-    constructor(address _forwarder, address _vault) {
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function initialize(address _forwarder, L2Vault _vault) external {
+        require(!initialized, "INIT_CALLED_BEFORE");
+        require(msg.sender == owner, "ONLY_OWNER");
         _setTrustedForwarder(_forwarder);
-        vault = L2Vault(_vault);
+        vault = _vault;
+        initialized = true;
     }
 
     function deposit(uint256 amountToken) external {

@@ -2,16 +2,17 @@
 pragma solidity ^0.8.10;
 
 import "./test.sol";
-import { MockERC20 } from "./MockERC20.sol";
-import { ERC20User } from "./ERC20User.sol";
+import "./IHevm.sol";
+import "forge-std/src/stdlib.sol";
+import { Deploy } from "./Deploy.sol";
 import { L2Vault } from "../polygon/L2Vault.sol";
 import { L1Vault } from "../ethereum/L1Vault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
-import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
-import { Create2Deployer } from "./Create2Deployer.sol";
 
 contract MockWormhole is IWormhole {
     uint64 public emitterSequence;
+
+    constructor() {}
 
     function publishMessage(
         uint32 nonce,
@@ -48,43 +49,31 @@ contract MockWormhole is IWormhole {
 contract WormholeTest is DSTest {
     L1Vault l1vault;
     L2Vault l2vault;
-    MockERC20 token;
-    ERC20User user;
-    MockWormhole wormhole;
-    Create2Deployer create2Deployer;
+    IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
+
+    StdStorage stdstore;
+    using stdStorage for StdStorage;
 
     function setUp() public {
-        token = new MockERC20("Mock", "MT", 18);
-        wormhole = new MockWormhole();
-        create2Deployer = new Create2Deployer();
-        l1vault = new L1Vault();
-        l1vault.initialize(
-            address(0), // governance
-            token, // token
-            wormhole, // wormhole
-            create2Deployer, // create2deployer (must be real address)
-            IRootChainManager(address(0)), // chain manager
-            address(0) // predicate
-        );
-        // The whole point of the create2deployer is so that the staging contracts get the same address
-        // But since we're using one chain we actually can't use the same create2deployer a second time!
-        l2vault = new L2Vault();
-        l2vault.initialize(
-            address(0),
-            token,
-            wormhole,
-            new Create2Deployer(),
-            1,
-            1,
-            address(0),
-            [uint256(0), uint256(200)]
-        );
-        user = new ERC20User(token);
+        l1vault = Deploy.deployL1Vault();
+
+        MockWormhole wormhole = new MockWormhole();
+        uint256 slot = stdstore.target(address(l1vault)).sig("wormhole()").find();
+        bytes32 wormholeAddr = bytes32(uint256(uint160(address(wormhole))));
+        hevm.store(address(l1vault), bytes32(slot), wormholeAddr);
+
+        l2vault = Deploy.deployL2Vault();
     }
 
     function testMessagePass() public {
+        bytes memory publishMessageData = abi.encodeWithSelector(
+            IWormhole.publishMessage.selector,
+            uint32(0),
+            abi.encode(0, false),
+            4
+        );
+        hevm.expectCall(address(l1vault.wormhole()), publishMessageData);
         l1vault.sendTVL();
-        assertEq(wormhole.emitterSequence(), 1);
         // TODO: assert that publish message was called wih certain arguments
 
         // TODO: call receive message with a given encodedTVL

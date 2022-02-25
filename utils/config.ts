@@ -15,6 +15,7 @@ const wbtc = "0x1F577114D404686B47C4A739C46B8EBee7b5156F";
 const weth = "0x1F0EB2B499C51CDa602ba96013577A3887D7278D";
 const BICONOMY_FORWARDER = "0x9399BB24DBB5C4b782C70c2969F58716Ebbd6a3b";
 const withdrawFee = 50; // user pays 50 bps
+const managementFee = 200; // 200 bps to be charged to vault over the course of the year
 // https://defender.openzeppelin.com/#/admin/contracts/goerli-0xdbA49884464689800BF95C7BbD50eBA0DA0F67b9
 const L1_GOVERNANCE = "0xdbA49884464689800BF95C7BbD50eBA0DA0F67b9";
 // https://defender.openzeppelin.com/#/admin/contracts/mumbai-0xCBF0C1bA68D22666ef01069b1a42CcC1F0281A9C
@@ -31,6 +32,7 @@ export interface Config {
   wbtc: address;
   biconomyForwarder: address;
   withdrawFee: number;
+  managementFee: number;
   l1Governance: address;
   l2Governance: address;
 }
@@ -45,6 +47,7 @@ export const config: Config = {
   weth,
   biconomyForwarder: BICONOMY_FORWARDER,
   withdrawFee,
+  managementFee,
   l1Governance: L1_GOVERNANCE,
   l2Governance: L2_GOVERNANCE,
 };

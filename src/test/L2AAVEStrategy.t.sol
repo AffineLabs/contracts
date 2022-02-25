@@ -3,34 +3,30 @@ pragma solidity ^0.8.10;
 
 import "./test.sol";
 import { IHevm } from "./IHevm.sol";
+import "forge-std/src/stdlib.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
-import { Create2Deployer } from "./Create2Deployer.sol";
-import { IWormhole } from "../interfaces/IWormhole.sol";
 import { L2AAVEStrategy } from "../polygon/L2AAVEStrategy.sol";
+import { Deploy } from "./Deploy.sol";
 
 // TODO: make it so that the first test always works => Truncation means the assert will fail at some blocks
 contract L2AAVEStratTestFork is DSTest {
     L2Vault vault;
-    Create2Deployer create2Deployer;
     L2AAVEStrategy strategy;
+    // Mumbai USDC that AAVE takes in
     ERC20 usdc = ERC20(0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e);
     IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
+    StdStorage stdstore;
+    using stdStorage for StdStorage;
+
     function setUp() public {
-        create2Deployer = new Create2Deployer();
-        vault = new L2Vault();
-        vault.initialize(
-            address(this), // governance
-            ERC20(0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e), // token -> Mumbai USDC that AAVE takes in
-            IWormhole(0x0CBE91CF822c73C2315FB05100C2F714765d5c20), // wormhole
-            create2Deployer, // create2deployer (needs to be a real contract)
-            1, // l1 ratio
-            1, // l2 ratio
-            address(0), // relayer for gasless transactions
-            [uint256(0), uint256(200)]
-        );
+        vault = Deploy.deployL2Vault();
+        uint256 slot = stdstore.target(address(vault)).sig("token()").find();
+        bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
+        hevm.store(address(vault), bytes32(slot), tokenAddr);
+
         strategy = new L2AAVEStrategy(
             vault,
             0xE6ef11C967898F9525D550014FDEdCFAB63536B5, // aave adress provider registry
