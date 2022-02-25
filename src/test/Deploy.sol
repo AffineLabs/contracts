@@ -38,7 +38,7 @@ library Deploy {
 
         vault = new L1Vault();
         vault.initialize(
-            address(0), // governance
+            address(this), // governance
             token, // token
             IWormhole(address(0)), // wormhole, // wormhole
             create2Deployer, // create2deployer (must be real address)

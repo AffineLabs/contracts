@@ -5,6 +5,7 @@ import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
 import { DSTestPlus } from "./TestPlus.sol";
 import { IHevm } from "./IHevm.sol";
+import "forge-std/src/stdlib.sol";
 import { Deploy } from "./Deploy.sol";
 
 import { L1Vault } from "../ethereum/L1Vault.sol";
@@ -28,8 +29,17 @@ contract L1CompoundStratTestFork is DSTestPlus {
     // See https://github.com/dapphub/dapptools/pull/71
     IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
+    StdStorage stdstore;
+    using stdStorage for StdStorage;
+
     function setUp() public {
         vault = Deploy.deployL1Vault();
+
+        // make vault token equal to the L1 (Goerli) usdc address
+        uint256 slot = stdstore.target(address(vault)).sig("token()").find();
+        bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
+        hevm.store(address(vault), bytes32(slot), tokenAddr);
+
         strategy = new L1CompoundStrategy(
             vault,
             ICToken(0xCEC4a43eBB02f9B80916F1c718338169d6d5C1F0), // cToken
