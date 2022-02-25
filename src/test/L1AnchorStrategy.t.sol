@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import { DSTestPlus } from "./TestPlus.sol";
-import { IHevm } from "./IHevm.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+
+import { DSTestPlus } from "./TestPlus.sol";
+import { IHevm } from "./IHevm.sol";
+import { Deploy } from "./Deploy.sol";
 
 import { L1Vault } from "../ethereum/L1Vault.sol";
 import { Create2Deployer } from "./Create2Deployer.sol";
@@ -29,16 +31,7 @@ contract EthAnchorStratTestFork is DSTestPlus {
     IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
     function setUp() public {
-        create2Deployer = new Create2Deployer();
-        vault = new L1Vault();
-        vault.initialize(
-            address(this), // governance
-            usdc, // token -> Ropsten USDC that Anchor takes in
-            IWormhole(address(0)), // wormhole
-            create2Deployer, // create2deployer (needs to be a real contract)
-            IRootChainManager(address(0)), // Polygon root chain manager
-            address(0) // Polygon ERC20 predicate
-        );
+        vault = Deploy.deployL1Vault();
         strategy = new L1AnchorStrategy(
             vault,
             IERC20(0xFff8fb0C13314c90805a808F48c7DFF37e95Eb16),

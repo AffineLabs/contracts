@@ -19,7 +19,10 @@ export async function deployVaults(
   polygonNetworkName: string,
   config: Config,
 ): Promise<VaultContracts> {
-  // Deploy vault in eth.
+  /**
+   * Deploy vault in eth.
+   *
+   * */
   hre.changeNetwork(ethNetworkName);
 
   // Generate random wallet and send money to it
@@ -50,8 +53,16 @@ export async function deployVaults(
   await addToAddressBookAndDefender(ETH_GOERLI, `${ethNetworkName} Alpine Save`, "L1Vault", l1Vault);
   logContractDeploymentInfo(ethNetworkName, "L1Vault", l1Vault);
 
-  // Deploy vault in polygon.
+  /**
+   * Deploy vault in Polygon.
+   *
+   * */
   hre.changeNetwork(polygonNetworkName);
+
+  // Deploy relayer
+  const relayerFactory = await ethers.getContractFactory("Relayer", governanceSigner);
+  const relayer = await relayerFactory.deploy();
+  await relayer.deployed();
 
   // Generate random wallet and send money to it
   [governanceSigner] = await ethers.getSigners();
@@ -78,8 +89,8 @@ export async function deployVaults(
       await getContractAddress(deployer),
       9,
       1,
-      config.biconomyForwarder,
-      config.withdrawFee,
+      relayer.address,
+      [config.withdrawFee, config.managementFee],
     ],
     { kind: "uups" },
   )) as L2Vault;
@@ -92,6 +103,10 @@ export async function deployVaults(
     await l2Vault.relayer(),
   );
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
+
+  // Initialize relayer
+  const initTx = await relayer.initialize(config.biconomyForwarder, l2Vault.address);
+  await initTx.wait();
 
   return {
     l1Vault,

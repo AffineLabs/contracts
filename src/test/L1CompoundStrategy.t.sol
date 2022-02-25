@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import { DSTestPlus } from "./TestPlus.sol";
-import { IHevm } from "./IHevm.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
+import { DSTestPlus } from "./TestPlus.sol";
+import { IHevm } from "./IHevm.sol";
+import { Deploy } from "./Deploy.sol";
+
 import { L1Vault } from "../ethereum/L1Vault.sol";
-import { Create2Deployer } from "./Create2Deployer.sol";
-import { IWormhole } from "../interfaces/IWormhole.sol";
-import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { ICToken } from "../interfaces/compound/ICToken.sol";
 import { IComptroller } from "../interfaces/compound/IComptroller.sol";
 import { L1CompoundStrategy } from "../ethereum/L1CompoundStrategy.sol";
@@ -18,7 +17,6 @@ contract L1CompoundStratTestFork is DSTestPlus {
     ERC20 usdc = ERC20(0xD87Ba7A50B2E7E660f678A895E4B72E7CB4CCd9C);
 
     L1Vault vault;
-    Create2Deployer create2Deployer;
     L1CompoundStrategy strategy;
 
     // constants
@@ -31,16 +29,7 @@ contract L1CompoundStratTestFork is DSTestPlus {
     IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
     function setUp() public {
-        create2Deployer = new Create2Deployer();
-        vault = new L1Vault();
-        vault.initialize(
-            address(this), // governance
-            usdc, // token -> Goerli USDC that Compund takes in
-            IWormhole(0x706abc4E45D419950511e474C7B9Ed348A4a716c), // wormhole
-            create2Deployer, // create2deployer (needs to be a real contract)
-            IRootChainManager(address(0)), // Polygon root chain manager
-            address(0) // Polygon ERC20 predicate
-        );
+        vault = Deploy.deployL1Vault();
         strategy = new L1CompoundStrategy(
             vault,
             ICToken(0xCEC4a43eBB02f9B80916F1c718338169d6d5C1F0), // cToken
