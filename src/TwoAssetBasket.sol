@@ -53,7 +53,7 @@ contract TwoAssetBasket is ERC20 {
 
     /** DEPOSIT / WITHDRAW
      **************************************************************************/
-    function deposit(uint256 amountInput) external notRebalancing {
+    function deposit(uint256 amountInput) external {
         // Get current amounts of btc/eth (in dollars)
         uint256 vaultDollars = valueOfVault();
 
@@ -105,7 +105,7 @@ contract TwoAssetBasket is ERC20 {
         _mint(msg.sender, numShares);
     }
 
-    function withdraw(uint256 amountInput) external notRebalancing returns (uint256 dollarsLiquidated) {
+    function withdraw(uint256 amountInput) external returns (uint256 dollarsLiquidated) {
         // Try to get `amountInput` of `inputToken` out of vault
 
         uint256 vaultDollars = valueOfVault();
@@ -253,10 +253,7 @@ contract TwoAssetBasket is ERC20 {
 
     /// @notice Is the auction active
     bool isRebalancing;
-    modifier notRebalancing() {
-        require(!isRebalancing, "REBALANCING");
-        _;
-    }
+
     /// @notice The size of each rebalancing trade
     /// @dev This should be smaller than the rebalance delta
     uint256 blockSize;
@@ -267,7 +264,7 @@ contract TwoAssetBasket is ERC20 {
 
     /// @notice Initiate the auction. This can be done by anyone since it will only proceed if
     /// vault is significantly imbalanced
-    function startRebalance() external notRebalancing {
+    function startRebalance() external {
         (bool needRebalance, uint256 numBlocks, ERC20 _tokenToSell) = _isImbalanced();
         if (!needRebalance) return;
         isRebalancing = true;
