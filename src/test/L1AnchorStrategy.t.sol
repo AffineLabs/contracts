@@ -6,6 +6,7 @@ import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
 import { DSTestPlus } from "./TestPlus.sol";
 import { IHevm } from "./IHevm.sol";
+import "forge-std/src/stdlib.sol";
 import { Deploy } from "./Deploy.sol";
 
 import { L1Vault } from "../ethereum/L1Vault.sol";
@@ -29,9 +30,16 @@ contract EthAnchorStratTestFork is DSTestPlus {
     uint256 usdcBalancesStorageSlot = 6;
 
     IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
+    StdStorage stdstore;
+    using stdStorage for StdStorage;
 
     function setUp() public {
         vault = Deploy.deployL1Vault();
+        // make vault token equal to the L1 (ropsten) usdc address
+        uint256 slot = stdstore.target(address(vault)).sig("token()").find();
+        bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
+        hevm.store(address(vault), bytes32(slot), tokenAddr);
+
         strategy = new L1AnchorStrategy(
             vault,
             IERC20(0xFff8fb0C13314c90805a808F48c7DFF37e95Eb16),
