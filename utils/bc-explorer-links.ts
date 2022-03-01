@@ -1,13 +1,13 @@
 import { Contract, ContractTransaction } from "ethers";
 
 const NETWORK_TO_EXPLORER_URL = new Map([
-  ["ethMainnet", "mainnet.etherscan.io"],
-  ["ethGoerli", "goerli.etherscan.io"],
-  ["ethKovan", "kovan.etherscan.io"],
-  ["ethRinkeby", "rinkeby.etherscan.io"],
-  ["ethRopsten", "ropsten.etherscan.io"],
-  ["polygonMainnet", "mainnet.polygonscan.com"],
-  ["polygonMumbai", "mumbai.polygonscan.com"],
+  ["eth-mainnet", "mainnet.etherscan.io"],
+  ["eth-goerli", "goerli.etherscan.io"],
+  ["eth-kovan", "kovan.etherscan.io"],
+  ["eth-rinkeby", "rinkeby.etherscan.io"],
+  ["eth-ropsten", "ropsten.etherscan.io"],
+  ["polygon-mainnet", "mainnet.polygonscan.com"],
+  ["polygon-mumbai", "mumbai.polygonscan.com"],
 ]);
 
 export function logContractDeploymentInfo(networkName: string, contractName: string, contract: Contract) {

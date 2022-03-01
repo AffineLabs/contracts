@@ -1,12 +1,16 @@
-import { ethers } from "hardhat";
 import { config } from "../utils/config";
 import { AllContracts, deployAll } from "./utils/deploy-all";
 
-const ETH_NETWORK_NAME = "ethGoerli";
-const POLYGON_NETWORK_NAME = "polygonMumbai";
-
 async function deployAllGoerliMumbai(): Promise<AllContracts> {
-  return deployAll(config.l1Governance, config.l2Governance, ETH_NETWORK_NAME, POLYGON_NETWORK_NAME, config);
+  console.log("eth: ", process.env.ETH_NETWORK);
+  console.log("polygon: ", process.env.POLYGON_NETWORK);
+  return deployAll(
+    config.l1Governance,
+    config.l2Governance,
+    process.env.ETH_NETWORK || "eth-goerli-fork",
+    process.env.POLYGON_NETWORK || "polygon-mumbai-fork",
+    config,
+  );
 }
 
 deployAllGoerliMumbai()
