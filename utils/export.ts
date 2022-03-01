@@ -17,14 +17,14 @@ export async function getContractAddress(contract: Contract): Promise<string> {
 
 async function addContractToDefender(
   blockchainInfo: BlockchainInfo,
-  contractName: string,
+  contractTicker: string,
   contractAddr: address,
   abi: string,
+  version: string,
 ) {
-  const version: string = process.env.VERSION || "";
-  if (version === "") return;
+  if (version === "test") return;
   let defenderContract: DefenderContract = {
-    name: `${contractName} - ${version}.\n Deployed at: ${new Date().toUTCString()}`,
+    name: `${contractTicker} - ${version}.\n Deployed at: ${new Date().toUTCString()}`,
     network: blockchainInfo.network.toLowerCase() as DefenderNetwork,
     abi: JSON.stringify(abi),
     address: contractAddr,
@@ -34,7 +34,7 @@ async function addContractToDefender(
 
 export async function addToAddressBookAndDefender(
   blockchainInfo: BlockchainInfo,
-  contractName: string,
+  contractTicker: string,
   contractType: string,
   contractOrAddress: Contract | address,
   events_to_watch: Array<string> = [],
@@ -58,20 +58,23 @@ export async function addToAddressBookAndDefender(
     abi = {};
     console.warn(`Reading contract abi for contract type "${contractType}" failed.`);
   }
+  const version: string = process.env.VERSION || "test";
 
   let entry = {
     blockchain: blockchainInfo.name,
     deployment_net: blockchainInfo.network,
+    network_id: blockchainInfo.network_id,
     address: contractAddr,
     lastUpdated: new Date().toUTCString(),
     contractType,
     abi,
     events_to_watch,
     proof_format: blockchainInfo.proof_format,
+    version: version,
   };
 
-  addressBook[contractName] = entry;
+  addressBook[contractTicker] = entry;
 
   await outputJSON(addressBookPath, addressBook, { spaces: 2 });
-  await addContractToDefender(blockchainInfo, contractName, contractAddr, abi);
+  await addContractToDefender(blockchainInfo, contractTicker, contractAddr, abi, version);
 }

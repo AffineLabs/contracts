@@ -19,7 +19,7 @@ import "@openzeppelin/hardhat-defender";
 
 import "./tasks/accounts";
 
-const ethChainIds = {
+export const ethChainIds = {
   ganache: 1337,
   goerli: 5,
   hardhat: 31337,
@@ -29,7 +29,7 @@ const ethChainIds = {
   ropsten: 3,
 };
 
-const polygonChainIds = {
+export const polygonChainIds = {
   mainnet: 137,
   mumbai: 80001,
 };
