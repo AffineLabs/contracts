@@ -55,5 +55,3 @@ jobs:
 
       - name: Typescript compiles correctly
         run: yarn tsc
-      - name: Deployment scripts still work
-        run: yarn script scripts/deploy-all-goerli-mumbai.ts
