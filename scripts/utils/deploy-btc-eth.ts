@@ -1,7 +1,8 @@
 import { ethers } from "hardhat";
 import { TwoAssetBasket } from "../../typechain";
 import { Config } from "../../utils/config";
-
+import { POLYGON_MUMBAI } from "../../utils/constants/blockchain";
+import { addToAddressBookAndDefender } from "../../utils/export";
 // This only works on mumbai for now
 export async function deployBasket(config: Config): Promise<TwoAssetBasket> {
   const [deployer] = await ethers.getSigners();
@@ -19,5 +20,6 @@ export async function deployBasket(config: Config): Promise<TwoAssetBasket> {
   );
   console.log("basket at: ", basket.address);
   await basket.deployed();
+  await addToAddressBookAndDefender(POLYGON_MUMBAI, "PolygonBtcEthVault", "BtcEthVault", basket);
   return basket;
 }
