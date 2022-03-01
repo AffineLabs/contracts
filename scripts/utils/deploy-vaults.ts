@@ -96,12 +96,7 @@ export async function deployVaults(
   )) as L2Vault;
   await l2Vault.deployed();
   await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonAlpSave`, "L2Vault", l2Vault);
-  await addToAddressBookAndDefender(
-    POLYGON_MUMBAI,
-    `PolygonRelayer`,
-    "Relayer",
-    await l2Vault.relayer(),
-  );
+  await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonRelayer`, "Relayer", await l2Vault.relayer());
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
 
   // Initialize relayer

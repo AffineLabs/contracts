@@ -26,12 +26,7 @@ export async function deployStrategies(
   let stratFactory = await ethers.getContractFactory("MintableStrategy", signer);
   const l2Strategy = (await stratFactory.deploy(vaults.l2Vault.address)) as MintableStrategy;
   await l2Strategy.deployed();
-  await addToAddressBookAndDefender(
-    POLYGON_MUMBAI,
-    `PolygonMintableStrategy`,
-    "MintableStrategy",
-    l2Strategy,
-  );
+  await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonMintableStrategy`, "MintableStrategy", l2Strategy);
   console.log("strategy L2: ", l2Strategy.address);
 
   // Deploy Mintable strategy on ethereum
