@@ -1,12 +1,9 @@
 import { ethers } from "hardhat";
-import { config as dotenvConfig } from "dotenv";
-import { resolve } from "path";
-import { config } from "../utils/config";
-
-dotenvConfig({ path: resolve(__dirname, "./.env") });
+import { TwoAssetBasket } from "../../typechain";
+import { Config } from "../../utils/config";
 
 // This only works on mumbai for now
-async function deployBasket(): Promise<any> {
+export async function deployBasket(config: Config): Promise<TwoAssetBasket> {
   const [deployer] = await ethers.getSigners();
 
   const BasketFactory = await ethers.getContractFactory("TwoAssetBasket");
@@ -21,14 +18,6 @@ async function deployBasket(): Promise<any> {
     ["0x007A22900a3B98143368Bd5906f8E17e9867581b", "0x0715A7794a1dc8e42615F059dD6e406A6594651A"], // btc/eth price feeds
   );
   console.log("basket at: ", basket.address);
+  await basket.deployed();
+  return basket;
 }
-
-deployBasket()
-  .then(() => {
-    console.log("Dummy deployment finished");
-    process.exit(0);
-  })
-  .catch((error: Error) => {
-    console.error(error);
-    process.exit(1);
-  });
