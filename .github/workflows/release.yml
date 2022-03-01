@@ -19,11 +19,13 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: "us-east-2"
-      DEST_DIR: ${{ github.event.release.tag_name || 'test' }}
+      VERSION: ${{ github.event.release.tag_name }}
       # Hardhat env variables
       MNEMONIC: ${{ secrets.MNEMONIC }}
       ALCHEMY_ETH_KEY: ${{ secrets.ALCHEMY_ETH_KEY }}
       ALCHEMY_POLYGON_KEY: ${{ secrets.ALCHEMY_POLYGON_KEY }}
+      DEFENDER_API_KEY: ${{ secrets.DEFENDER_API_KEY }}
+      DEFENDER_API_SECRET: ${{ secrets.DEFENDER_API_SECRET }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -42,7 +44,17 @@ jobs:
       - name: Run deployment scripts
         run: yarn script scripts/deploy-all-goerli-mumbai.ts
 
-      - name: Uploading addressbook to S3 bucket
+      - name: Uploading addressbook to S3 bucket in version spacific subdirectory
         uses: jakejarvis/s3-sync-action@master
         with:
           args: --follow-symlinks --delete --exclude '*' --include 'addressbook.json' --include 'abi/*.json'
+        env:
+          DEST_DIR: ${{ env.VERSION || 'test' }}
+      
+      - name: Uploading addressbook to S3 bucket in `latest` subdirectory
+        if: ${{ env.VERSION }}
+        uses: jakejarvis/s3-sync-action@master
+        with:
+          args: --follow-symlinks --delete --exclude '*' --include 'addressbook.json' --include 'abi/*.json'
+        env:
+          DEST_DIR: latest
