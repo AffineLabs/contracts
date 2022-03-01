@@ -98,7 +98,7 @@ export async function deployVaults(
   await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonAlpSave`, "L2Vault", l2Vault);
   await addToAddressBookAndDefender(
     POLYGON_MUMBAI,
-    `${polygonNetworkName} Relayer`,
+    `PolygonRelayer`,
     "Relayer",
     await l2Vault.relayer(),
   );
