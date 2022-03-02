@@ -38,7 +38,7 @@ contract L2BtcEthBasketTestFork is DSTest {
 
     function testDepositWithdraw() public {
         // mint some usdc, can remove hardcoded selector later
-        uint256 mintAmount = 1 * 1e6;
+        uint256 mintAmount = 100 * 1e6;
         bytes memory mintData = abi.encodeWithSelector(0x40c10f19, address(this), mintAmount);
         address(usdc).call(mintData);
         assertEq(usdc.balanceOf(address(this)), mintAmount);
@@ -49,14 +49,14 @@ contract L2BtcEthBasketTestFork is DSTest {
         // you receive the dollar value of the amount of btc/eth deposited into the basket
         // the testnet usdc/btc usdc/eth pools do not have accurate prices
         assertTrue(basket.balanceOf(address(this)) > 0);
+        emit log_named_uint("VALUE OF VAULT", basket.valueOfVault());
+        (uint256 amountInputFromBtc, uint256 amountInputFromEth) = basket._getSellDollarsByToken(5 * 1e6);
+        emit log_named_uint("amountInputFromBtc,", amountInputFromBtc);
+        emit log_named_uint("amountInputFromEth,", amountInputFromEth);
         emit log_named_uint("BTC received: ", btc.balanceOf(address(basket)));
         emit log_named_uint("ETH received: ", weth.balanceOf(address(basket)));
 
-        // TODO: add this back. Withdraw will fail becuase prices aren't accurate. 1 USDC = 1 BTC
-        // The amounts of USDC to get from _getSellDollarsByToken will be to large since it will
-        // use real prices from chainlnk
-
-        // basket.withdraw(0.8 * 1e6); // withdraw $0.80 (a little less than $1 to account for slippage)
+        basket.withdraw(5 * 1e6); // withdraw
     }
 
     function testAuction() public {}

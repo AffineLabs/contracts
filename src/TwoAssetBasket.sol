@@ -34,7 +34,7 @@ contract TwoAssetBasket is ERC20 {
         ERC20[2] memory _tokens,
         uint256[2] memory _ratios,
         AggregatorV3Interface[2] memory _priceFeeds
-    ) ERC20("Alpine Large Vault Token", "AlpLarge", 18) {
+    ) ERC20("Alpine Large Vault Token", "alpLarge", 18) {
         require(_rebalanceDelta >= _blockSize, "DELTA_TOO_SMALL");
         governance = _governance;
         rebalanceDelta = _rebalanceDelta;
@@ -122,23 +122,30 @@ contract TwoAssetBasket is ERC20 {
         pathEth[0] = address(token2);
         pathEth[1] = address(inputToken);
 
-        uint256[] memory btcAmounts = uniRouter.swapTokensForExactTokens(
-            amountInputFromBtc,
-            type(uint256).max,
-            pathBtc,
-            address(this),
-            block.timestamp
-        );
-        uint256[] memory ethAmounts = uniRouter.swapTokensForExactTokens(
-            amountInputFromEth,
-            type(uint256).max,
-            pathEth,
-            address(this),
-            block.timestamp
-        );
-
-        uint256 btcSent = btcAmounts[0];
-        uint256 ethSent = ethAmounts[0];
+        uint256[] memory btcAmounts;
+        uint256 btcSent;
+        if (amountInputFromBtc > 0) {
+            btcAmounts = uniRouter.swapTokensForExactTokens(
+                amountInputFromBtc,
+                type(uint256).max,
+                pathBtc,
+                address(this),
+                block.timestamp
+            );
+            btcSent = btcAmounts[0];
+        }
+        uint256[] memory ethAmounts;
+        uint256 ethSent;
+        if (amountInputFromEth > 0) {
+            ethAmounts = uniRouter.swapTokensForExactTokens(
+                amountInputFromEth,
+                type(uint256).max,
+                pathEth,
+                address(this),
+                block.timestamp
+            );
+            ethSent = ethAmounts[0];
+        }
 
         // NOTE: The user eats the slippage and trading fees. E.g. if you get $10 out but we spend $12 of collateral
         // to give that to the user, we still burn $12 of shares
@@ -153,8 +160,9 @@ contract TwoAssetBasket is ERC20 {
 
         _burn(msg.sender, numShares);
 
+        uint256 tokensToSend = Math.min(dollarsLiquidated / 1e2, amountInput);
         // TODO: remove this decimal place assumption
-        inputToken.transfer(msg.sender, dollarsLiquidated / 1e2); // usdc uses six decimal places
+        inputToken.transfer(msg.sender, tokensToSend); // usdc uses six decimal places
     }
 
     /** EXCHANGE RATES
@@ -180,7 +188,7 @@ contract TwoAssetBasket is ERC20 {
         return (amountInputToBtc, amountInputToEth);
     }
 
-    function _getSellDollarsByToken(uint256 amountInput) internal view returns (uint256, uint256) {
+    function _getSellDollarsByToken(uint256 amountInput) public view returns (uint256, uint256) {
         (uint256 btcDollars, uint256 ethDollars) = _valueOfVaultComponents();
         (uint256 r1, uint256 r2) = (ratios[0], ratios[1]);
 
