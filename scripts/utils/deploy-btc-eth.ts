@@ -20,6 +20,6 @@ export async function deployBasket(config: Config): Promise<TwoAssetBasket> {
   );
   console.log("basket at: ", basket.address);
   await basket.deployed();
-  await addToAddressBookAndDefender(POLYGON_MUMBAI, "PolygonBtcEthVault", "BtcEthVault", basket);
+  await addToAddressBookAndDefender(POLYGON_MUMBAI, "PolygonBtcEthVault", "TwoAssetBasket", basket);
   return basket;
 }
