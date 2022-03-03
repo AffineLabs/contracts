@@ -2,7 +2,6 @@
 pragma solidity ^0.8.10;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IUniLikeSwapRouter } from "./interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
@@ -160,9 +159,7 @@ contract TwoAssetBasket is ERC20 {
 
         _burn(msg.sender, numShares);
 
-        uint256 tokensToSend = Math.min(dollarsLiquidated / 1e2, amountInput);
-        // TODO: remove this decimal place assumption
-        inputToken.transfer(msg.sender, tokensToSend); // usdc uses six decimal places
+        inputToken.transfer(msg.sender, amountInput);
     }
 
     /** EXCHANGE RATES
