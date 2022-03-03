@@ -8,7 +8,9 @@ contract MockERC20 is ERC20 {
         string memory _name,
         string memory _symbol,
         uint8 _decimals
-    ) ERC20(_name, _symbol, _decimals) {}
+    ) ERC20(_name, _symbol, _decimals) {
+        _mint(msg.sender, 100 * (10 ** _decimals));
+    }
 
     function mint(address to, uint256 value) public virtual {
         _mint(to, value);
