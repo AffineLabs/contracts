@@ -15,8 +15,8 @@ contract WithdrawalQueueTest is DSTest {
 
     IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
-    address vault = address(uint160(uint(keccak256("VAULT"))));
-    address governance = address(uint160(uint(keccak256("GOVERNANCE"))));
+    address vault = address(uint160(uint256(keccak256("VAULT"))));
+    address governance = address(uint160(uint256(keccak256("GOVERNANCE"))));
 
     address user1 = address(uint160(block.timestamp));
     address user2 = address(uint160(block.timestamp + 1));
@@ -27,11 +27,7 @@ contract WithdrawalQueueTest is DSTest {
 
     function setUp() public {
         usdc = new MockERC20("Test USDC", "USDC", 6);
-        withdrawalQueue = new WithdrawalQueue(
-            vault,
-            governance,
-            usdc
-        );
+        withdrawalQueue = new WithdrawalQueue(vault, governance, usdc);
     }
 
     function testEnqueueSuccess() external {
@@ -49,9 +45,10 @@ contract WithdrawalQueueTest is DSTest {
     function testEnqueueOnlyVaultCanEnqueue() external {
         hevm.expectRevert(
             bytes(
-                abi.encodePacked("AccessControl: account ", 
-                    ConvertLib.toString(address(this)), 
-                    " is missing role ", 
+                abi.encodePacked(
+                    "AccessControl: account ",
+                    ConvertLib.toString(address(this)),
+                    " is missing role ",
                     ConvertLib.toString(keccak256("OPERATOR"))
                 )
             )
@@ -79,7 +76,7 @@ contract WithdrawalQueueTest is DSTest {
 
     function testDequeueSuccess() external {
         usdc.transfer(address(withdrawalQueue), 6000);
-        
+
         hevm.expectEmit(true, true, true, true);
         emit WithdrawalQueueEnqueue(1, user1, 1000);
         emit WithdrawalQueueEnqueue(2, user2, 2000);
