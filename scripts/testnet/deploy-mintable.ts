@@ -33,7 +33,7 @@ async function deployToken() {
 // Assume we have already deployed mintable usdc
 // Deploy btc/eth,  usdc/btc, and usdc/eth pairs
 async function deployBtcEth() {
-  let [signer] = await ethers.getSigners();
+  const [signer] = await ethers.getSigners();
 
   // mint some usdc to add to pairs
   const usdc = MintableToken__factory.connect(config.l2USDC, signer);
@@ -48,26 +48,13 @@ async function deployBtcEth() {
   await weth.deployed();
   console.log("WETH: ", weth.address);
 
-  // We would use btc.address and weth.address but there's bug with getting contract addresses on mumbai via ethers
-  // right now
-  // This solves the bug in Mumbai network where the contract address is not the real one
-  // https://github.com/nomiclabs/hardhat/issues/2162
-  let txHash = btc.deployTransaction.hash;
-  console.log(`Tx hash: ${txHash}\nWaiting for transaction to be mined...`);
-  let txReceipt = await ethers.provider.waitForTransaction(txHash);
-  const btcAddr = txReceipt.contractAddress;
-  console.log("Real btc address:", btcAddr);
-
-  txHash = weth.deployTransaction.hash;
-  console.log(`Tx hash: ${txHash}\nWaiting for transaction to be mined...`);
-  txReceipt = await ethers.provider.waitForTransaction(txHash);
-  const ethAddr = txReceipt.contractAddress;
-  console.log("Real weth address: ", ethAddr);
+  const btcAddr = btc.address;
+  const ethAddr = weth.address;
 
   // Deploy btc/eth,  usdc/btc, and usdc/eth pairs
   const router = IUniLikeSwapRouter__factory.connect("0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506", signer);
 
-  // Max approvals
+  // Max approvals in order to add liquidity
   let tx: TransactionResponse = await btc
     .attach(btcAddr)
     .connect(signer)
@@ -79,12 +66,34 @@ async function deployBtcEth() {
   await tx.wait();
 
   console.log("approvals done");
+}
+
+async function addLiquidity() {
+  hre.changeNetwork(process.env.POLYGON_NETWORK || "");
+  let [signer] = await ethers.getSigners();
+  const { wbtc: btcAddr, weth: ethAddr } = config;
+
+  const router = IUniLikeSwapRouter__factory.connect("0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506", signer);
+  const usdc = MintableToken__factory.connect(config.l2USDC, signer);
+  const btc = MintableToken__factory.connect(btcAddr, signer);
+  const eth = MintableToken__factory.connect(ethAddr, signer);
+
+  const oneToken = ethers.BigNumber.from(10).pow(18);
+  const oneHunderedMUsdc = ethers.BigNumber.from(100e6).mul(1e6); // 2500 BTC at a price of $40k, 33,333 at price of $3k
+  const oneHunderedMBtc = ethers.BigNumber.from(2500).mul(oneToken);
+  const oneHundredMEth = ethers.BigNumber.from(33_333).mul(oneToken);
+
+  // Mint some tokens
+  let tx = await usdc.mint(signer.address, oneHunderedMUsdc.mul(2));
+  await tx.wait();
+  tx = await btc.mint(signer.address, oneHunderedMBtc);
+  await tx.wait();
+  tx = await eth.mint(signer.address, oneHundredMEth);
+  await tx.wait;
 
   // Add liquidity
-  const oneHunderedWeth = ethers.utils.parseUnits(String(100), 18);
-  const oneHunderedUsdc = 100e6;
   const deadline = Math.floor(Date.now() / 1000) + 24 * 60 * 60; // unix timestamp in seconds plus 24 hours
-  tx = await router.addLiquidity(btcAddr, ethAddr, oneHunderedWeth, oneHunderedWeth, 0, 0, signer.address, deadline, {
+  tx = await router.addLiquidity(btcAddr, ethAddr, oneHunderedMBtc, oneHundredMEth, 0, 0, signer.address, deadline, {
     gasLimit: 10e6,
   });
   await tx.wait();
@@ -92,8 +101,8 @@ async function deployBtcEth() {
   tx = await router.addLiquidity(
     config.l2USDC,
     btcAddr,
-    oneHunderedUsdc,
-    oneHunderedWeth,
+    oneHunderedMUsdc,
+    oneHunderedMBtc,
     0,
     0,
     signer.address,
@@ -105,8 +114,8 @@ async function deployBtcEth() {
   tx = await router.addLiquidity(
     config.l2USDC,
     ethAddr,
-    oneHunderedUsdc,
-    oneHunderedWeth,
+    oneHunderedMUsdc,
+    oneHundredMEth,
     0,
     0,
     signer.address,
@@ -117,7 +126,7 @@ async function deployBtcEth() {
   console.log("Liquidity added");
 }
 
-deployBtcEth()
+addLiquidity()
   .then(() => {
     process.exit(0);
   })

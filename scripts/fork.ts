@@ -42,7 +42,7 @@ program.parse();
 // environment variables
 // TODO: use spawn
 if (!shouldFork) {
-  execSync(`yarn script ${hhScript}`, {
+  execSync(`yarn hardhat run ${hhScript}`, {
     env: { ...process.env, ETH_NETWORK: ethNetwork, POLYGON_NETWORK: polygonNetwork },
     stdio: "inherit",
   });
