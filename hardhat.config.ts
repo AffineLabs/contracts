@@ -29,47 +29,47 @@ export const ethChainIds = {
   ropsten: 3,
 };
 
+type ethNetwork = keyof typeof ethChainIds;
 export const polygonChainIds = {
   mainnet: 137,
   mumbai: 80001,
 };
+type polygonNetwork = keyof typeof polygonChainIds;
 
 const MNEMONIC = process.env.MNEMONIC || "";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 const ALCHEMY_ETH_KEY = process.env.ALCHEMY_ETH_KEY || "";
 const ALCHEMY_POLYGON_KEY = process.env.ALCHEMY_POLYGON_KEY || "";
 
-function createETHNetworkConfig(network: keyof typeof ethChainIds): NetworkUserConfig {
-  const url: string = `https://eth-${network}.alchemyapi.io/v2/${ALCHEMY_ETH_KEY}`;
-  return {
+interface ethNetworkConfig {
+  [key: string]: NetworkUserConfig;
+}
+function createNetworkConfig(network: ethNetwork | polygonNetwork, type: "eth" | "polygon" = "eth"): ethNetworkConfig {
+  const isEth = type === "eth";
+  const url: string = isEth
+    ? `https://eth-${network}.alchemyapi.io/v2/${ALCHEMY_ETH_KEY}`
+    : `https://polygon-${network}.g.alchemy.com/v2/${ALCHEMY_POLYGON_KEY}`;
+
+  const networkConfig: NetworkUserConfig = {
     accounts: {
       count: 14,
       initialIndex: 0,
       mnemonic: MNEMONIC,
       path: "m/44'/60'/0'/0",
     },
-    chainId: ethChainIds[network],
+    chainId: isEth ? ethChainIds[network as ethNetwork] : polygonChainIds[network as polygonNetwork],
     url,
   };
-}
-
-function createPolygonNetworkConfig(network: keyof typeof polygonChainIds): NetworkUserConfig {
-  const url: string = `https://polygon-${network}.g.alchemy.com/v2/${ALCHEMY_POLYGON_KEY}`;
-  return {
-    accounts: {
-      count: 14,
-      initialIndex: 0,
-      mnemonic: MNEMONIC,
-      path: "m/44'/60'/0'/0",
-    },
-    chainId: polygonChainIds[network],
-    url,
+  const forkPort = isEth ? 8545 : 8546;
+  const forkConfig: NetworkUserConfig = {
+    ...networkConfig,
+    url: `http://localhost:${forkPort}`,
+    chainId: ethChainIds.hardhat,
   };
+  return { [`${type}-${network}`]: networkConfig, [`${type}-${network}-fork`]: forkConfig };
 }
 
-// You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
-
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   paths: { sources: "./src", cache: "./hh-cache" },
@@ -81,25 +81,14 @@ const config: HardhatUserConfig = {
       chainId: ethChainIds.hardhat,
     },
     // Eth networks
-    ethMainnet: createETHNetworkConfig("mainnet"),
-    ethGoerli: createETHNetworkConfig("goerli"),
-    ethKovan: createETHNetworkConfig("kovan"),
-    ethRinkeby: createETHNetworkConfig("rinkeby"),
-    ethRopsten: createETHNetworkConfig("ropsten"),
+    ...createNetworkConfig("mainnet"),
+    ...createNetworkConfig("goerli"),
+    ...createNetworkConfig("kovan"),
+    ...createNetworkConfig("rinkeby"),
+    ...createNetworkConfig("ropsten"),
     // Polygon networks
-    polygonMainnet: createPolygonNetworkConfig("mainnet"),
-    polygonMumbai: createPolygonNetworkConfig("mumbai"),
-
-    mumbaiFork: {
-      ...createPolygonNetworkConfig("mumbai"),
-      url: "http://localhost:8545",
-      chainId: ethChainIds.hardhat,
-    },
-    goerliFork: {
-      ...createETHNetworkConfig("goerli"),
-      url: "http://localhost:8546",
-      chainId: ethChainIds.hardhat,
-    },
+    ...createNetworkConfig("mainnet", "polygon"),
+    ...createNetworkConfig("mumbai", "polygon"),
   },
   solidity: {
     version: "0.8.10",

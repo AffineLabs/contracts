@@ -7,7 +7,7 @@
     "test": "forge test --no-match-contract \".*Fork\"",
     "test-hh": "hardhat test",
     "clean": "forge clean",
-    "script": "hardhat run",
+    "script": "ts-node scripts/fork.ts",
     "build": "forge build",
     "build-hh": "hardhat compile",
     "lint": "solhint src/**/*.sol",
@@ -32,6 +32,8 @@
     "@types/mocha": "^8.2.2",
     "@types/node": "^15.12.2",
     "chai": "^4.3.4",
+    "commander": "^9.0.0",
+    "concurrently": "^7.0.0",
     "defender-admin-client": "^1.14.0",
     "defender-base-client": "^1.14.0",
     "dotenv": "^10.0.0",
@@ -61,7 +63,7 @@
     "@openzeppelin/contracts-upgradeable": "^4.4.2",
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "axios": "^0.21.4",
-    "solmate": "npm:@rari-capital/solmate@6.2.0",
-    "forge-std": "https://github.com/Multiplyr/forge-std.git#0a0ab7e"
+    "forge-std": "https://github.com/Multiplyr/forge-std.git#0a0ab7e",
+    "solmate": "npm:@rari-capital/solmate@6.2.0"
   }
 }
