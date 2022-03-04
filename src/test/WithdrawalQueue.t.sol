@@ -11,7 +11,7 @@ import { ConvertLib } from "./ConvertLib.sol";
 
 contract WithdrawalQueueTest is DSTest {
     WithdrawalQueue withdrawalQueue;
-    ERC20 usdc;
+    MockERC20 usdc;
 
     IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
@@ -28,6 +28,7 @@ contract WithdrawalQueueTest is DSTest {
     function setUp() public {
         usdc = new MockERC20("Test USDC", "USDC", 6);
         withdrawalQueue = new WithdrawalQueue(vault, governance, usdc);
+        usdc.mint(address(withdrawalQueue), 10000);
     }
 
     function testEnqueueSuccess() external {
@@ -75,8 +76,6 @@ contract WithdrawalQueueTest is DSTest {
     }
 
     function testDequeueSuccess() external {
-        usdc.transfer(address(withdrawalQueue), 6000);
-
         hevm.expectEmit(true, true, true, true);
         emit WithdrawalQueueEnqueue(1, user1, 1000);
         emit WithdrawalQueueEnqueue(2, user2, 2000);
