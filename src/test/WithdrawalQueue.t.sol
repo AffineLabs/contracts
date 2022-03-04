@@ -88,36 +88,22 @@ contract WithdrawalQueueTest is DSTest {
         withdrawalQueue.enqueue(user1, 3000);
         hevm.stopPrank();
 
-        hevm.expectEmit(true, true, false, true);
+        hevm.expectEmit(false, false, false, false);
+        emit Transfer(address(withdrawalQueue), user1, 1000);
+        hevm.expectEmit(false, false, false, false);
         emit WithdrawalQueueDequeue(1, user1, 1000);
         withdrawalQueue.dequeue();
         assertEq(withdrawalQueue.size(), 2);
 
         hevm.expectEmit(false, false, false, false);
-        emit WithdrawalQueueDequeue(2, user2, 2000);
-        hevm.expectEmit(false, false, false, false);
-        emit WithdrawalQueueEnqueue(3, user1, 3000);
-        withdrawalQueue.dequeueBatch(2);
-        assertEq(withdrawalQueue.size(), 0);
-    }
-
-    function testTransferDuringDequeue() external {
-        // Impersonate vault
-        hevm.startPrank(vault);
-        // Only vault should be able to enqueue.
-        withdrawalQueue.enqueue(user1, 1000);
-        withdrawalQueue.enqueue(user2, 2000);
-        withdrawalQueue.enqueue(user1, 3000);
-        hevm.stopPrank();
-
-        hevm.expectEmit(true, true, false, true);
-        emit Transfer(address(withdrawalQueue), user1, 1000);
-        withdrawalQueue.dequeue();
-
-        hevm.expectEmit(false, false, false, false);
         emit Transfer(address(withdrawalQueue), user2, 2000);
         hevm.expectEmit(false, false, false, false);
+        emit WithdrawalQueueDequeue(2, user2, 2000);
+        hevm.expectEmit(false, false, false, false);
         emit Transfer(address(withdrawalQueue), user1, 3000);
+        hevm.expectEmit(false, false, false, false);
+        emit WithdrawalQueueDequeue(3, user2, 3000);
         withdrawalQueue.dequeueBatch(2);
+        assertEq(withdrawalQueue.size(), 0);
     }
 }
