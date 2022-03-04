@@ -21,9 +21,9 @@ contract WithdrawalQueueTest is DSTest {
     address user1 = address(uint160(block.timestamp));
     address user2 = address(uint160(block.timestamp + 1));
 
-    event Transfer(address from, address to, uint256 amount);
-    event WithdrawalQueueEnqueue(uint256 pos, address addr, uint256 amount);
-    event WithdrawalQueueDequeue(uint256 pos, address addr, uint256 amount);
+    event Transfer(address indexed from, address indexed to, uint256 amount);
+    event WithdrawalQueueEnqueue(uint256 indexed pos, address indexed addr, uint256 amount);
+    event WithdrawalQueueDequeue(uint256 indexed pos, address indexed addr, uint256 amount);
 
     function setUp() public {
         usdc = new MockERC20("Test USDC", "USDC", 6);
@@ -32,7 +32,7 @@ contract WithdrawalQueueTest is DSTest {
     }
 
     function testEnqueueSuccess() external {
-        hevm.expectEmit(true, true, true, true);
+        hevm.expectEmit(true, true, false, true);
         emit WithdrawalQueueEnqueue(1, user1, 1000);
         // Impersonate vault
         hevm.startPrank(vault);
@@ -59,11 +59,27 @@ contract WithdrawalQueueTest is DSTest {
     }
 
     function testEnqueueCorreclyEnqueuReturningUser() external {
-        hevm.expectEmit(true, true, true, true);
-        emit WithdrawalQueueEnqueue(1, user1, 1000);
-        emit WithdrawalQueueEnqueue(2, user2, 2000);
-        emit WithdrawalQueueEnqueue(3, user1, 3000);
+        // Impersonate vault
+        hevm.startPrank(vault);
 
+        hevm.expectEmit(true, true, false, true);
+        emit WithdrawalQueueEnqueue(1, user1, 1000);
+        withdrawalQueue.enqueue(user1, 1000);
+        
+        hevm.expectEmit(true, true, false, true);
+        emit WithdrawalQueueEnqueue(2, user2, 2000);
+        withdrawalQueue.enqueue(user2, 2000);
+
+        hevm.expectEmit(true, true, false, true);
+        emit WithdrawalQueueEnqueue(3, user1, 3000);
+        withdrawalQueue.enqueue(user1, 3000);
+        
+        hevm.stopPrank();
+
+        assertEq(withdrawalQueue.size(), 3);
+    }
+
+    function testDequeueSuccess() external {
         // Impersonate vault
         hevm.startPrank(vault);
         // Only vault should be able to enqueue.
@@ -72,33 +88,15 @@ contract WithdrawalQueueTest is DSTest {
         withdrawalQueue.enqueue(user1, 3000);
         hevm.stopPrank();
 
-        assertEq(withdrawalQueue.size(), 3);
-    }
-
-    function testDequeueSuccess() external {
-        hevm.expectEmit(true, true, true, true);
-        emit WithdrawalQueueEnqueue(1, user1, 1000);
-        emit WithdrawalQueueEnqueue(2, user2, 2000);
-        emit WithdrawalQueueEnqueue(3, user1, 3000);
-
-        emit Transfer(address(withdrawalQueue), user1, 1000);
+        hevm.expectEmit(true, true, false, true);
         emit WithdrawalQueueDequeue(1, user1, 1000);
-        emit Transfer(address(withdrawalQueue), user2, 2000);
-        emit WithdrawalQueueDequeue(2, user2, 2000);
-        emit Transfer(address(withdrawalQueue), user1, 3000);
-        emit WithdrawalQueueDequeue(3, user1, 3000);
-
-        // Impersonate vault
-        hevm.startPrank(vault);
-        // Only vault should be able to enqueue.
-        withdrawalQueue.enqueue(user1, 1000);
-        withdrawalQueue.enqueue(user2, 1000);
-        withdrawalQueue.enqueue(user1, 1000);
-        hevm.stopPrank();
-
-        assertEq(withdrawalQueue.size(), 3);
         withdrawalQueue.dequeue();
         assertEq(withdrawalQueue.size(), 2);
+
+        hevm.expectEmit(false, false, false, false);
+        emit WithdrawalQueueDequeue(2, user2, 2000);
+        hevm.expectEmit(false, false, false, false);
+        emit WithdrawalQueueEnqueue(3, user1, 3000);
         withdrawalQueue.dequeueBatch(2);
         assertEq(withdrawalQueue.size(), 0);
     }

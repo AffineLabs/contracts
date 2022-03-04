@@ -32,11 +32,11 @@ contract WithdrawalQueue is AccessControl {
     ERC20 public usdc;
 
     /// @notice Total debt.
-    uint256 totalDebt;
+    uint256 public totalDebt;
 
     /// @notice Envents
-    event WithdrawalQueueEnqueue(uint256 pos, address addr, uint256 amount);
-    event WithdrawalQueueDequeue(uint256 pos, address addr, uint256 amount);
+    event WithdrawalQueueEnqueue(uint256 indexed pos, address indexed addr, uint256 amount);
+    event WithdrawalQueueDequeue(uint256 indexed pos, address indexed addr, uint256 amount);
 
     constructor(
         address _vault,
@@ -53,7 +53,7 @@ contract WithdrawalQueue is AccessControl {
     }
 
     /// @notice current size of the queue
-    function size() external view returns (uint256) {
+    function size() public view returns (uint256) {
         return (tailPtr + 1) - headPtr;
     }
 
@@ -67,7 +67,7 @@ contract WithdrawalQueue is AccessControl {
 
     /// @notice dequeue user withdrawal requests from the queue.
     function dequeue() external {
-        require(tailPtr >= headPtr); // non-empty queue
+        require(tailPtr >= headPtr, "Queue is empty");
         QueueData memory withdrawalRequest = queue[headPtr];
         delete queue[headPtr];
         headPtr += 1;
@@ -78,8 +78,9 @@ contract WithdrawalQueue is AccessControl {
 
     /// @notice dequeue user withdrawal requests from the queue in batch.
     function dequeueBatch(uint256 batchSize) external {
-        require(this.size() >= batchSize);
-        for (uint256 ptr = headPtr; ptr < headPtr + batchSize; ptr++) {
+        require(size() >= batchSize, "Batch size too big");
+        uint256 batchTailPtr =  headPtr + batchSize;
+        for (uint256 ptr = headPtr; ptr < batchTailPtr; ptr++) {
             QueueData memory withdrawalRequest = queue[ptr];
             delete queue[ptr];
             totalDebt -= withdrawalRequest.amount;
