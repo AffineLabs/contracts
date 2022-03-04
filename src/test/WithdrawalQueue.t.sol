@@ -65,7 +65,7 @@ contract WithdrawalQueueTest is DSTest {
         hevm.expectEmit(true, true, false, true);
         emit WithdrawalQueueEnqueue(1, user1, 1000);
         withdrawalQueue.enqueue(user1, 1000);
-        
+
         hevm.expectEmit(true, true, false, true);
         emit WithdrawalQueueEnqueue(2, user2, 2000);
         withdrawalQueue.enqueue(user2, 2000);
@@ -73,7 +73,7 @@ contract WithdrawalQueueTest is DSTest {
         hevm.expectEmit(true, true, false, true);
         emit WithdrawalQueueEnqueue(3, user1, 3000);
         withdrawalQueue.enqueue(user1, 3000);
-        
+
         hevm.stopPrank();
 
         assertEq(withdrawalQueue.size(), 3);
