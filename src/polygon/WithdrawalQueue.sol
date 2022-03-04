@@ -70,10 +70,10 @@ contract WithdrawalQueue is AccessControl {
         require(tailPtr >= headPtr, "Queue is empty");
         QueueData memory withdrawalRequest = queue[headPtr];
         delete queue[headPtr];
-        headPtr += 1;
         totalDebt -= withdrawalRequest.amount;
         usdc.safeTransfer(withdrawalRequest.addr, withdrawalRequest.amount);
-        emit WithdrawalQueueDequeue(tailPtr, withdrawalRequest.addr, withdrawalRequest.amount);
+        emit WithdrawalQueueDequeue(headPtr, withdrawalRequest.addr, withdrawalRequest.amount);
+        headPtr += 1;
     }
 
     function unchecked_inc(uint256 i) internal pure returns (uint256) {
@@ -91,7 +91,7 @@ contract WithdrawalQueue is AccessControl {
             delete queue[ptr];
             totalDebt -= withdrawalRequest.amount;
             usdc.safeTransfer(withdrawalRequest.addr, withdrawalRequest.amount);
-            emit WithdrawalQueueDequeue(tailPtr, withdrawalRequest.addr, withdrawalRequest.amount);
+            emit WithdrawalQueueDequeue(ptr, withdrawalRequest.addr, withdrawalRequest.amount);
         }
         headPtr += batchSize;
     }
