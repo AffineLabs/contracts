@@ -76,11 +76,18 @@ contract WithdrawalQueue is AccessControl {
         emit WithdrawalQueueDequeue(tailPtr, withdrawalRequest.addr, withdrawalRequest.amount);
     }
 
+    function unchecked_inc(uint256 i) internal pure returns (uint256) {
+        unchecked {                                             
+            return i + 1;
+        }
+    }
+
+
     /// @notice dequeue user withdrawal requests from the queue in batch.
     function dequeueBatch(uint256 batchSize) external {
         require(size() >= batchSize, "Batch size too big");
         uint256 batchTailPtr =  headPtr + batchSize;
-        for (uint256 ptr = headPtr; ptr < batchTailPtr; ptr++) {
+        for (uint256 ptr = headPtr; ptr < batchTailPtr; ptr = unchecked_inc(ptr)) {
             QueueData memory withdrawalRequest = queue[ptr];
             delete queue[ptr];
             totalDebt -= withdrawalRequest.amount;
