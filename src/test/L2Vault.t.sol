@@ -23,12 +23,17 @@ contract VaultTest is DSTest {
         relayer = Relayer(address(vault.relayer()));
     }
 
+    event Deposit(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
+    event Withdraw(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
+
     function testDepositRedeem(uint256 amountToken) public {
         address user = address(this);
         token.mint(user, amountToken);
 
         // user gives max approval to vault for token
         token.approve(address(vault), type(uint256).max);
+        hevm.expectEmit(true, false, false, true);
+        emit Deposit(address(this), amountToken, amountToken);
         vault.deposit(amountToken);
 
         // If vault is empty, tokens are converted to shares at 1:1
@@ -36,7 +41,10 @@ contract VaultTest is DSTest {
         assertEq(numShares, amountToken);
         assertEq(token.balanceOf(address(user)), 0);
 
+        hevm.expectEmit(true, false, false, true);
+        emit Withdraw(address(this), amountToken, amountToken);
         vault.redeem(numShares);
+
         assertEq(vault.balanceOf(user), 0);
         assertEq(token.balanceOf(user), amountToken);
     }
@@ -77,12 +85,17 @@ contract VaultTest is DSTest {
         address user = address(this);
         token.mint(user, amountToken);
         token.approve(address(vault), type(uint256).max);
+
+        hevm.expectEmit(true, false, false, true);
+        emit Deposit(address(this), amountToken, amountToken);
         vault.deposit(amountToken);
 
         // If vault is empty, tokens are converted to shares at 1:1
         assertEq(vault.balanceOf(user), amountToken);
         assertEq(token.balanceOf(user), 0);
 
+        hevm.expectEmit(true, false, false, true);
+        emit Withdraw(address(this), amountToken, amountToken);
         vault.withdraw(amountToken);
         assertEq(vault.balanceOf(user), 0);
         assertEq(token.balanceOf(user), amountToken);

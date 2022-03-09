@@ -45,6 +45,7 @@ contract L2BtcEthBasketTestFork is DSTest {
 
         usdc.approve(address(basket), type(uint256).max);
         emit log_named_uint("BTC PRICE: ", basket._valueOfToken(btc, 1e18));
+
         basket.deposit(mintAmount);
         // you receive the dollar value of the amount of btc/eth deposited into the basket
         // the testnet usdc/btc usdc/eth pools do not have accurate prices

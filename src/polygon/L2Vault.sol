@@ -102,6 +102,10 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         return token.decimals();
     }
 
+    /** DEPOSIT
+     **************************************************************************/
+    event Deposit(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
+
     function deposit(uint256 amountToken) external {
         _deposit(msg.sender, amountToken);
     }
@@ -117,6 +121,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         uint256 numShares = sharesFromTokens(amountToken);
         _mint(user, numShares);
 
+        emit Deposit(user, amountToken, numShares);
         // Get usdc
         token.safeTransferFrom(user, address(this), amountToken);
     }
@@ -138,6 +143,11 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         return vaultTVL() - lockedProfit() + L1TotalLockedValue;
     }
 
+    /** WITHDRAW / REDEEM
+     **************************************************************************/
+
+    event Withdraw(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
+
     function _redeem(address user, uint256 shares) internal {
         uint256 valueOfShares = tokensFromShares(shares);
 
@@ -149,6 +159,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
 
         uint256 userTokens = _applyWithdrawalFee(valueOfShares);
 
+        emit Withdraw(user, userTokens, shares);
         // transfer usdc out
         token.safeTransfer(user, userTokens);
     }
@@ -178,6 +189,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
 
         // Deduct withdrawal fee from amountToken
         uint256 userTokens = _applyWithdrawalFee(amountToken);
+        emit Withdraw(user, amountToken, numShares);
         token.transfer(user, userTokens);
     }
 

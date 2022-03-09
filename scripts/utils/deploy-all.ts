@@ -3,7 +3,7 @@ import { Config } from "../../utils/config";
 import { deployStrategies, StrategyContracts } from "./deploy-strategies";
 import { deployBasket } from "./deploy-btc-eth";
 import { address } from "../../utils/types";
-import { TwoAssetBasket } from "../../typechain";
+import { MintableToken__factory, TwoAssetBasket } from "../../typechain";
 import { ethers, changeNetwork } from "hardhat";
 
 export interface AllContracts {
@@ -39,6 +39,27 @@ export async function deployAll(
 
   changeNetwork(polygonNetworkName);
   const basket = await deployBasket(config);
+
+  // TODO: make sure this only runs when we are in testnet mode
+
+  const [signer] = await ethers.getSigners();
+  const usdc = MintableToken__factory.connect(config.l2USDC, signer);
+  const oneUsdc = ethers.BigNumber.from(10).pow(6);
+  const maxUint = ethers.BigNumber.from(2).pow(256).sub(1);
+  let tx = await usdc.approve(vaults.l2Vault.address, maxUint);
+  await tx.wait();
+  tx = await usdc.approve(basket.address, maxUint);
+  await tx.wait();
+
+  tx = await vaults.l2Vault.deposit(oneUsdc.mul(2));
+  await tx.wait();
+  tx = await vaults.l2Vault.withdraw(oneUsdc);
+  await tx.wait();
+
+  tx = await basket.deposit(oneUsdc.mul(2));
+  await tx.wait();
+  tx = await basket.withdraw(oneUsdc.div(10));
+  await tx.wait();
 
   return {
     vaults,
