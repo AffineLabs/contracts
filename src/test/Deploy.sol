@@ -9,6 +9,7 @@ import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { Create2Deployer } from "./Create2Deployer.sol";
 import { Relayer } from "../polygon/Relayer.sol";
 import { L1Vault } from "../ethereum/L1Vault.sol";
+import { WithdrawalQueue } from "../polygon/WithdrawalQueue.sol";
 
 library Deploy {
     function deployL2Vault() internal returns (L2Vault vault) {
@@ -18,17 +19,19 @@ library Deploy {
         Relayer relayer = new Relayer();
 
         vault = new L2Vault();
+        WithdrawalQueue withdrawalQueue = new WithdrawalQueue(address(this), token);
         vault.initialize(
             address(this), // governance
             token, // token
             IWormhole(address(0)), // wormhole
             create2Deployer, // create2deployer (needs to be a real contract)
+            withdrawalQueue,
             1, // l1 ratio
             1, // l2 ratio
             relayer, // relayer
             [uint256(0), uint256(200)] // withdrawal and AUM fees
         );
-
+        withdrawalQueue.addVault(address(vault));
         relayer.initialize(address(0), vault);
     }
 

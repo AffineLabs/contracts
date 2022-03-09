@@ -27,7 +27,8 @@ contract WithdrawalQueueTest is DSTest {
 
     function setUp() public {
         usdc = new MockERC20("Test USDC", "USDC", 6);
-        withdrawalQueue = new WithdrawalQueue(vault, governance, usdc);
+        withdrawalQueue = new WithdrawalQueue(governance, usdc);
+        withdrawalQueue.addVault(vault);
         usdc.mint(address(withdrawalQueue), 10000);
     }
 

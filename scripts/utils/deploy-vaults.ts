@@ -80,6 +80,9 @@ export async function deployVaults(
   await deployer.deployed();
 
   const l2VaultFactory = await ethers.getContractFactory("L2Vault");
+  const withdrawalQueueFactory = await ethers.getContractFactory("WithdrawalQueue");
+  const withdrawalQueue = await withdrawalQueueFactory.deploy(l2Governance, config.l2USDC);
+  await withdrawalQueue.deployed();
   const l2Vault = (await upgrades.deployProxy(
     l2VaultFactory,
     [
@@ -87,6 +90,7 @@ export async function deployVaults(
       config.l2USDC,
       config.l2worm,
       await getContractAddress(deployer),
+      withdrawalQueue,
       9,
       1,
       relayer.address,
@@ -95,6 +99,7 @@ export async function deployVaults(
     { kind: "uups" },
   )) as L2Vault;
   await l2Vault.deployed();
+  withdrawalQueue.addVault(l2Vault.address);
   await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonAlpSave`, "L2Vault", l2Vault);
   await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonRelayer`, "Relayer", await l2Vault.relayer());
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
