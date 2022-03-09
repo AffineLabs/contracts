@@ -262,7 +262,6 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
     }
 
     function initiateEmergencyWithdrawal() external {
-        require(msg.sender == address(withdrawalQueue), "Only withdrawal queue.");
         require(canTransferToL1 == false, "No need for emergency withdrawal. No funds moving from L2 to L1.");
         canTransferToL1 = true;
         uint256 withdrawalQueueTotalDebt = withdrawalQueue.totalDebt();
