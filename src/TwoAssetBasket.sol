@@ -52,6 +52,8 @@ contract TwoAssetBasket is ERC20 {
 
     /** DEPOSIT / WITHDRAW
      **************************************************************************/
+    event Deposit(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
+
     function deposit(uint256 amountInput) external {
         // Get current amounts of btc/eth (in dollars)
         uint256 vaultDollars = valueOfVault();
@@ -101,8 +103,11 @@ contract TwoAssetBasket is ERC20 {
             numShares = (dollarsReceived * totalSupply) / vaultDollars;
         }
 
+        emit Deposit(msg.sender, amountInput, numShares);
         _mint(msg.sender, numShares);
     }
+
+    event Withdraw(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
 
     function withdraw(uint256 amountInput) external returns (uint256 dollarsLiquidated) {
         // Try to get `amountInput` of `inputToken` out of vault
@@ -159,6 +164,7 @@ contract TwoAssetBasket is ERC20 {
 
         _burn(msg.sender, numShares);
 
+        emit Withdraw(msg.sender, amountInput, numShares);
         inputToken.transfer(msg.sender, amountInput);
     }
 
