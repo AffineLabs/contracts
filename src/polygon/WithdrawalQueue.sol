@@ -38,18 +38,23 @@ contract WithdrawalQueue is AccessControl {
     event WithdrawalQueueEnqueue(uint256 indexed pos, address indexed addr, uint256 amount);
     event WithdrawalQueueDequeue(uint256 indexed pos, address indexed addr, uint256 amount);
 
-    constructor(
-        address _vault,
-        address _governance,
-        ERC20 _usdc
-    ) {
+    /// @notice Deployer
+    address deployer;
+
+    constructor(address _governance, ERC20 _usdc) {
+        deployer = msg.sender;
+
         _setRoleAdmin(GOVERNANCE_ROLE, GOVERNANCE_ROLE);
         _setRoleAdmin(OPERATOR_ROLE, GOVERNANCE_ROLE);
 
         _setupRole(GOVERNANCE_ROLE, _governance);
-        _setupRole(OPERATOR_ROLE, _vault);
 
         usdc = _usdc;
+    }
+
+    function addVault(address _vault) external {
+        require(msg.sender == deployer, "Only deployer");
+        _setupRole(OPERATOR_ROLE, _vault);
     }
 
     /// @notice current size of the queue

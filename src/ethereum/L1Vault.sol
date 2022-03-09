@@ -15,6 +15,7 @@ import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { IStaging } from "../interfaces/IStaging.sol";
 import { BaseVault } from "../BaseVault.sol";
+import { Constants } from "../Constants.sol";
 
 contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     /////// Cross chain rebalancing
@@ -80,10 +81,25 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         // TODO: check chain ID, emitter address
 
         // get amount requested
-        uint256 amountRequested = abi.decode(vm.payload, (uint256));
+        (bytes32 msgType, uint256 amountRequested) = abi.decode(vm.payload, (bytes32, uint256));
         _liquidate(amountRequested);
         uint256 amountToSend = Math.min(token.balanceOf(address(this)), amountRequested);
-        _transferFundsToL2(amountToSend);
+        if (msgType == Constants.NORMAL_REBALANCE) {
+            _transferFundsToL2(amountToSend);
+        } else {
+            _transferFundsToL2Emergency(amountToSend);
+        }
+    }
+
+    // Send `token` to L2 staging via polygon bridge in emergency
+    function _transferFundsToL2Emergency(uint256 amount) internal {
+        token.approve(predicate, amount);
+        chainManager.depositFor(staging, address(token), abi.encodePacked(amount));
+
+        // Let L2 know how much money we sent
+        uint64 sequence = wormhole.nextSequence(address(this));
+        bytes memory payload = abi.encodePacked(Constants.EMERGENCY_REBALANCE, amount);
+        wormhole.publishMessage(uint32(sequence), payload, 4);
     }
 
     // Send `token` to L2 staging via polygon bridge
@@ -93,7 +109,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
 
         // Let L2 know how much money we sent
         uint64 sequence = wormhole.nextSequence(address(this));
-        bytes memory payload = abi.encodePacked(amount);
+        bytes memory payload = abi.encodePacked(Constants.NORMAL_REBALANCE, amount);
         wormhole.publishMessage(uint32(sequence), payload, 4);
     }
 

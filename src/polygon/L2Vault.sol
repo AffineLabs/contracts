@@ -16,6 +16,8 @@ import { IWormhole } from "../interfaces/IWormhole.sol";
 import { Staging } from "../Staging.sol";
 import { Relayer } from "./Relayer.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
+import { WithdrawalQueue } from "./WithdrawalQueue.sol";
+import { Constants } from "../Constants.sol";
 
 contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, BaseVault {
     using SafeTransferLib for ERC20;
@@ -36,6 +38,11 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
     // Whether we can send or receive money from L1
     bool public canTransferToL1;
     bool public canRequestFromL1;
+
+    // Withdrawal queue
+    WithdrawalQueue public withdrawalQueue;
+    // Whether to ignore TVL from L1 or not.
+    bool public ignoreTVLFromL1;
 
     event SendToL1(uint256 amount);
     event ReceiveFromL1(uint256 amount);
@@ -67,6 +74,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         ERC20 _token,
         IWormhole _wormhole,
         ICreate2Deployer create2Deployer,
+        WithdrawalQueue _withdrawalQueue,
         uint256 L1Ratio,
         uint256 L2Ratio,
         Relayer _relayer,
@@ -76,7 +84,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         __UUPSUpgradeable_init();
         __Pausable_init();
         BaseVault.init(_governance, _token, _wormhole, create2Deployer);
-
+        withdrawalQueue = _withdrawalQueue;
         layerRatios = LayerBalanceRatios({ layer1: L1Ratio, layer2: L2Ratio });
         canTransferToL1 = true;
         canRequestFromL1 = true;
@@ -222,8 +230,12 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
     }
 
     function receiveTVL(bytes calldata message) external {
+        require(ignoreTVLFromL1 == false, "Emergency withdrawal in progress");
+
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
+        require(int32(vm.nonce) > Staging(staging).vaultNonce(), "Old TVL");
+        Staging(staging).setVaultNonce(int32(vm.nonce));
 
         // TODO: check chain ID, emitter address
         // Get tvl from payload
@@ -249,9 +261,23 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         _L1L2Rebalance(invest, delta);
     }
 
+    function initiateEmergencyWithdrawal() external {
+        require(msg.sender == address(withdrawalQueue), "Only withdrawal queue.");
+        require(canTransferToL1 == false, "No need for emergency withdrawal. No funds moving from L2 to L1.");
+        canTransferToL1 = true;
+        uint256 withdrawalQueueTotalDebt = withdrawalQueue.totalDebt();
+        uint256 numSlices = layerRatios.layer1 + layerRatios.layer2;
+        uint256 amount = withdrawalQueueTotalDebt +
+            (layerRatios.layer2 * (globalTVL() - withdrawalQueueTotalDebt)) /
+            numSlices;
+        bytes memory payload = abi.encodePacked(Constants.EMERGENCY_REBALANCE, amount);
+        uint64 sequence = wormhole.nextSequence(address(this));
+        wormhole.publishMessage(uint32(sequence), payload, 4);
+    }
+
     function _computeRebalance() internal view returns (bool, uint256) {
         uint256 numSlices = layerRatios.layer1 + layerRatios.layer2;
-        uint256 L1IdealAmount = (layerRatios.layer1 * globalTVL()) / numSlices;
+        uint256 L1IdealAmount = (layerRatios.layer1 * (globalTVL() - withdrawalQueue.totalDebt())) / numSlices;
 
         bool invest;
         uint256 delta;
@@ -291,22 +317,27 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
 
         // Let L1 know how much money we sent
         uint64 sequence = wormhole.nextSequence(address(this));
-        bytes memory payload = abi.encodePacked(amount);
+        bytes memory payload = abi.encodePacked(Constants.NORMAL_REBALANCE, amount);
         wormhole.publishMessage(uint32(sequence), payload, 4);
     }
 
     function _divestFromL1(uint256 amount) internal {
         // TODO: make wormhole address, consistencyLevel configurable
-        bytes memory payload = abi.encodePacked(amount);
+        bytes memory payload = abi.encodePacked(Constants.NORMAL_REBALANCE, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
         wormhole.publishMessage(uint32(sequence), payload, 4);
         canRequestFromL1 = false;
     }
 
-    function afterReceive(uint256 amount) external {
+    function afterReceive(bytes32 msgType, uint256 amount) external {
         require(msg.sender == staging, "Only L2 staging.");
         L1TotalLockedValue -= amount;
-        canRequestFromL1 = true;
+        if (msgType == Constants.NORMAL_REBALANCE) {
+            canRequestFromL1 = true;
+        }
+        if (msgType == Constants.EMERGENCY_REBALANCE) {
+            ignoreTVLFromL1 = false;
+        }
         emit ReceiveFromL1(amount);
     }
 }
