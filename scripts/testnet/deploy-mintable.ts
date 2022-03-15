@@ -4,8 +4,8 @@ import hre from "hardhat";
 import { ethers } from "hardhat";
 import { config } from "../../utils/config";
 
-const ETH_NETWORK_NAME = "ethGoerli";
-const POLYGON_NETWORK_NAME = "polygonMumbai";
+const ETH_NETWORK_NAME = process.env.ETH_NETWORK || "";
+const POLYGON_NETWORK_NAME = process.env.POLYGON_NETWORK || "";
 
 // Deploy Mintable USDC (ran once, don't need to run again)
 async function deployToken() {
@@ -126,7 +126,7 @@ async function addLiquidity() {
   console.log("Liquidity added");
 }
 
-addLiquidity()
+deployToken()
   .then(() => {
     process.exit(0);
   })

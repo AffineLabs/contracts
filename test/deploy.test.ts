@@ -8,11 +8,11 @@ import { config } from "../utils/config";
 chai.use(solidity);
 const { expect } = chai;
 
-const ETH_NETWORK_NAME = "ethGoerli";
-const POLYGON_NETWORK_NAME = "polygonMumbai";
+const ETH_NETWORK_NAME = "eth-goerli";
+const POLYGON_NETWORK_NAME = "polygon-mumbai";
 
 it("Deploy Vaults", async () => {
-  const { l1Vault, l2Vault } = await deployVaults(
+  const { l1Vault, l2Vault, relayer } = await deployVaults(
     config.l1Governance,
     config.l2Governance,
     ETH_NETWORK_NAME,
@@ -24,8 +24,10 @@ it("Deploy Vaults", async () => {
   expect(await l2Vault.token()).to.equal(config.l2USDC);
   expect(await l1Vault.token()).to.equal(config.l1USDC);
 
-  expect(await l2Vault.relayer()).to.be.properAddress;
-  expect(await l2Vault.relayer()).to.not.equal(ethers.constants.AddressZero);
+  const actualRelayer = await l2Vault.relayer();
+  expect(actualRelayer).to.be.properAddress;
+  expect(actualRelayer).to.not.equal(ethers.constants.AddressZero);
+  expect(actualRelayer).to.equal(relayer.address);
 });
 
 // TODO: check that we can upgrade proxies successfully

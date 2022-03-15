@@ -2,19 +2,20 @@
 pragma solidity ^0.8.9;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { EIP712MetaTransaction } from "../../lib/EIP712MetaTransaction.sol";
 
 // A mintable token for easy testing of vaults
 
 // This contract will be used for Goerli/Mumbai USDC
 // The two tokens will be mapped (https://docs.polygon.technology/docs/develop/ethereum-polygon/submit-mapping-request)
 // Note that there are no access controls since these are just testnet contracts
-contract MintableToken is ERC20 {
+contract MintableToken is ERC20, EIP712MetaTransaction {
     constructor(
         string memory _name,
         string memory _symbol,
         uint8 _decimals,
         uint256 initialSupply
-    ) ERC20(_name, _symbol, _decimals) {
+    ) ERC20(_name, _symbol, _decimals) EIP712MetaTransaction(_name, "1") {
         _mint(msg.sender, initialSupply);
     }
 
