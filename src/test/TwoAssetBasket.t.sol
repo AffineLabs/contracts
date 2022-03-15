@@ -47,17 +47,14 @@ contract L2BtcEthBasketTestFork is DSTest {
         emit log_named_uint("BTC PRICE: ", basket._valueOfToken(btc, 1e18));
 
         basket.deposit(mintAmount);
+
         // you receive the dollar value of the amount of btc/eth deposited into the basket
         // the testnet usdc/btc usdc/eth pools do not have accurate prices
         assertTrue(basket.balanceOf(address(this)) > 0);
         emit log_named_uint("VALUE OF VAULT", basket.valueOfVault());
-        (uint256 amountInputFromBtc, uint256 amountInputFromEth) = basket._getSellDollarsByToken(5 * 1e6);
-        emit log_named_uint("amountInputFromBtc,", amountInputFromBtc);
-        emit log_named_uint("amountInputFromEth,", amountInputFromEth);
-        emit log_named_uint("BTC received: ", btc.balanceOf(address(basket)));
-        emit log_named_uint("ETH received: ", weth.balanceOf(address(basket)));
 
-        basket.withdraw(5 * 1e6); // withdraw
+        uint256 dollarsReceived = basket.withdraw(mintAmount);
+        emit log_named_uint("DOLLARS WITHDRAWN: ", dollarsReceived);
     }
 
     function testAuction() public {}
