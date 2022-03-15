@@ -2,7 +2,7 @@ import { ethers, upgrades } from "hardhat";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../../utils/bc-explorer-links";
 import { Config } from "../../utils/config";
-import { L1Vault, L2Vault } from "../../typechain";
+import { L1Vault, L2Vault, Relayer } from "../../typechain";
 import { addToAddressBookAndDefender, getContractAddress } from "../../utils/export";
 import { ETH_GOERLI, POLYGON_MUMBAI } from "../../utils/constants/blockchain";
 import { address } from "../../utils/types";
@@ -10,6 +10,7 @@ import { address } from "../../utils/types";
 export interface VaultContracts {
   l1Vault: L1Vault;
   l2Vault: L2Vault;
+  relayer: Relayer;
 }
 
 export async function deployVaults(
@@ -60,14 +61,13 @@ export async function deployVaults(
   hre.changeNetwork(polygonNetworkName);
 
   // Deploy relayer
+  [governanceSigner] = await ethers.getSigners();
   const relayerFactory = await ethers.getContractFactory("Relayer", governanceSigner);
   const relayer = await relayerFactory.deploy();
   await relayer.deployed();
 
   // Generate random wallet and send money to it
-  [governanceSigner] = await ethers.getSigners();
   wallet = wallet.connect(ethers.provider);
-
   fundTx = await governanceSigner.sendTransaction({
     to: wallet.address,
     value: ethers.utils.parseEther("0.02"),
@@ -106,5 +106,6 @@ export async function deployVaults(
   return {
     l1Vault,
     l2Vault,
+    relayer,
   };
 }
