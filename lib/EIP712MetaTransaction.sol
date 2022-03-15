@@ -70,7 +70,7 @@ contract EIP712MetaTransaction is EIP712Base {
         return signer == user;
     }
 
-    function msgSender() internal view returns (address sender) {
+    function _msgSender() internal view virtual returns (address sender) {
         if (msg.sender == address(this)) {
             bytes memory array = msg.data;
             uint256 index = msg.data.length;
