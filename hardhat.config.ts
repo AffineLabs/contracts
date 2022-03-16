@@ -126,6 +126,8 @@ const config: HardhatUserConfig = {
     clear: true,
     flat: true,
     spacing: 2,
+    // We use both Openzeppelin and solmate ERC20, so exporting abi will throw "duplicate output destination" error
+    except: [":ERC20$"],
   },
   defender: {
     apiKey: process.env.DEFENDER_API_KEY || "",

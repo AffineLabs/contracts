@@ -5,6 +5,8 @@ import { deployBasket } from "./deploy-btc-eth";
 import { address } from "../../utils/types";
 import { MintableToken__factory, TwoAssetBasket } from "../../typechain";
 import { ethers, changeNetwork } from "hardhat";
+import { addToAddressBookAndDefender, getContractAddress } from "../../utils/export";
+import { POLYGON_MUMBAI } from "../../utils/constants/blockchain";
 
 export interface AllContracts {
   vaults: VaultContracts;
@@ -40,15 +42,15 @@ export async function deployAll(
   changeNetwork(polygonNetworkName);
   const basket = await deployBasket(config);
 
+  // Add some transactions
   // TODO: make sure this only runs when we are in testnet mode
-
   const [signer] = await ethers.getSigners();
   const usdc = MintableToken__factory.connect(config.l2USDC, signer);
   const oneUsdc = ethers.BigNumber.from(10).pow(6);
   const maxUint = ethers.BigNumber.from(2).pow(256).sub(1);
-  let tx = await usdc.approve(vaults.l2Vault.address, maxUint);
+  let tx = await usdc.approve(await getContractAddress(vaults.l2Vault), maxUint);
   await tx.wait();
-  tx = await usdc.approve(basket.address, maxUint);
+  tx = await usdc.approve(await getContractAddress(basket), maxUint);
   await tx.wait();
 
   tx = await vaults.l2Vault.deposit(oneUsdc.mul(2));
@@ -60,6 +62,9 @@ export async function deployAll(
   await tx.wait();
   tx = await basket.withdraw(oneUsdc.div(10));
   await tx.wait();
+
+  // Add usdc to address book, TODO: handle the production version of this
+  await addToAddressBookAndDefender(POLYGON_MUMBAI, "PolygonUSDC", "MintableToken", usdc.address);
 
   return {
     vaults,
