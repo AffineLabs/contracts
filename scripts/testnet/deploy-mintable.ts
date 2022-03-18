@@ -3,9 +3,10 @@ import { IUniLikeSwapRouter__factory, MintableToken__factory } from "../../typec
 import hre from "hardhat";
 import { ethers } from "hardhat";
 import { config } from "../../utils/config";
+import { getContractAddress } from "../../utils/export";
 
-const ETH_NETWORK_NAME = "ethGoerli";
-const POLYGON_NETWORK_NAME = "polygonMumbai";
+const ETH_NETWORK_NAME = process.env.ETH_NETWORK || "";
+const POLYGON_NETWORK_NAME = process.env.POLYGON_NETWORK || "";
 
 // Deploy Mintable USDC (ran once, don't need to run again)
 async function deployToken() {
@@ -31,8 +32,9 @@ async function deployToken() {
 
 // Mumbai only
 // Assume we have already deployed mintable usdc
-// Deploy btc/eth,  usdc/btc, and usdc/eth pairs
+// Deploy usdc/btc, and usdc/eth pairs
 async function deployBtcEth() {
+  hre.changeNetwork(POLYGON_NETWORK_NAME);
   const [signer] = await ethers.getSigners();
 
   // mint some usdc to add to pairs
@@ -42,23 +44,20 @@ async function deployBtcEth() {
   let tokenFactory = await ethers.getContractFactory("MintableToken", signer);
   const btc = await tokenFactory.deploy("Mintable BTC", "BTC", 18, ethers.utils.parseUnits(String(10_000), 18));
   await btc.deployed();
-  console.log("BTC ", btc.address);
 
   const weth = await tokenFactory.deploy("Mintable WETH", "WETH", 18, ethers.utils.parseUnits(String(10_000), 18));
   await weth.deployed();
-  console.log("WETH: ", weth.address);
 
-  const btcAddr = btc.address;
-  const ethAddr = weth.address;
+  const btcAddr = await getContractAddress(btc);
+  const ethAddr = await getContractAddress(weth);
+  console.log("BTC ", btcAddr);
+  console.log("WETH: ", ethAddr);
 
-  // Deploy btc/eth,  usdc/btc, and usdc/eth pairs
+  // Deploy usdc/btc, and usdc/eth pairs
   const router = IUniLikeSwapRouter__factory.connect("0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506", signer);
 
   // Max approvals in order to add liquidity
-  let tx: TransactionResponse = await btc
-    .attach(btcAddr)
-    .connect(signer)
-    .approve(router.address, ethers.BigNumber.from(2).pow(256).sub(1));
+  let tx = await btc.attach(btcAddr).connect(signer).approve(router.address, ethers.BigNumber.from(2).pow(256).sub(1));
   await tx.wait();
   tx = await weth.attach(ethAddr).connect(signer).approve(router.address, ethers.BigNumber.from(2).pow(256).sub(1));
   await tx.wait();
@@ -69,7 +68,7 @@ async function deployBtcEth() {
 }
 
 async function addLiquidity() {
-  hre.changeNetwork(process.env.POLYGON_NETWORK || "");
+  hre.changeNetwork(POLYGON_NETWORK_NAME);
   let [signer] = await ethers.getSigners();
   const { wbtc: btcAddr, weth: ethAddr } = config;
 
@@ -93,11 +92,8 @@ async function addLiquidity() {
 
   // Add liquidity
   const deadline = Math.floor(Date.now() / 1000) + 24 * 60 * 60; // unix timestamp in seconds plus 24 hours
-  tx = await router.addLiquidity(btcAddr, ethAddr, oneHunderedMBtc, oneHundredMEth, 0, 0, signer.address, deadline, {
-    gasLimit: 10e6,
-  });
-  await tx.wait();
 
+  // usdc/btc
   tx = await router.addLiquidity(
     config.l2USDC,
     btcAddr,
@@ -111,6 +107,7 @@ async function addLiquidity() {
   );
   await tx.wait();
 
+  // usdc/eth
   tx = await router.addLiquidity(
     config.l2USDC,
     ethAddr,

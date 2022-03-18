@@ -38,6 +38,7 @@ type polygonNetwork = keyof typeof polygonChainIds;
 
 const MNEMONIC = process.env.MNEMONIC || "";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
+const POLYGONSCAN_API_KEY = process.env.POLYGONSCAN_API_KEY || "";
 const ALCHEMY_ETH_KEY = process.env.ALCHEMY_ETH_KEY || "";
 const ALCHEMY_POLYGON_KEY = process.env.ALCHEMY_POLYGON_KEY || "";
 
@@ -100,7 +101,12 @@ const config: HardhatUserConfig = {
     },
   },
   etherscan: {
-    apiKey: ETHERSCAN_API_KEY,
+    apiKey: {
+      mainnet: ETHERSCAN_API_KEY,
+      goerli: ETHERSCAN_API_KEY,
+      polygon: POLYGONSCAN_API_KEY,
+      polygonMumbai: POLYGONSCAN_API_KEY,
+    },
   },
   gasReporter: {
     currency: "USD",
@@ -120,6 +126,8 @@ const config: HardhatUserConfig = {
     clear: true,
     flat: true,
     spacing: 2,
+    // We use both Openzeppelin and solmate ERC20, so exporting abi will throw "duplicate output destination" error
+    except: [":ERC20$"],
   },
   defender: {
     apiKey: process.env.DEFENDER_API_KEY || "",

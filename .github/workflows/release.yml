@@ -1,5 +1,5 @@
 # Upload artifacts to S3 bucket when a new release is started.
-name: Relese Workflow
+name: Release Workflow
 
 # Triggers the workflow on push of a release tag
 on:
@@ -50,7 +50,7 @@ jobs:
           args: --follow-symlinks --delete --exclude '*' --include 'addressbook.json' --include 'abi/*.json'
         env:
           DEST_DIR: ${{ env.VERSION || 'test' }}
-      
+
       - name: Uploading addressbook to S3 bucket in `latest` subdirectory
         if: ${{ env.VERSION }}
         uses: jakejarvis/s3-sync-action@master

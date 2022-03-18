@@ -2,6 +2,7 @@
 pragma solidity ^0.8.10;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IUniLikeSwapRouter } from "./interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
@@ -109,7 +110,7 @@ contract TwoAssetBasket is ERC20 {
 
     event Withdraw(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
 
-    function withdraw(uint256 amountInput) external returns (uint256 dollarsLiquidated) {
+    function withdraw(uint256 amountInput) external returns (uint256 dollarsReceived) {
         // Try to get `amountInput` of `inputToken` out of vault
 
         uint256 vaultDollars = valueOfVault();
@@ -126,46 +127,43 @@ contract TwoAssetBasket is ERC20 {
         pathEth[0] = address(token2);
         pathEth[1] = address(inputToken);
 
-        uint256[] memory btcAmounts;
-        uint256 btcSent;
         if (amountInputFromBtc > 0) {
-            btcAmounts = uniRouter.swapTokensForExactTokens(
-                amountInputFromBtc,
-                type(uint256).max,
+            uint256[] memory btcAmounts = uniRouter.swapExactTokensForTokens(
+                _tokensFromDollars(token1, amountInputFromBtc),
+                0,
                 pathBtc,
                 address(this),
                 block.timestamp
             );
-            btcSent = btcAmounts[0];
+            dollarsReceived += btcAmounts[1];
         }
-        uint256[] memory ethAmounts;
-        uint256 ethSent;
+
         if (amountInputFromEth > 0) {
-            ethAmounts = uniRouter.swapTokensForExactTokens(
-                amountInputFromEth,
-                type(uint256).max,
+            uint256[] memory ethAmounts = uniRouter.swapExactTokensForTokens(
+                _tokensFromDollars(token2, amountInputFromEth),
+                0,
                 pathEth,
                 address(this),
                 block.timestamp
             );
-            ethSent = ethAmounts[0];
+            dollarsReceived += ethAmounts[1];
         }
 
-        // NOTE: The user eats the slippage and trading fees. E.g. if you get $10 out but we spend $12 of collateral
-        // to give that to the user, we still burn $12 of shares
-
-        dollarsLiquidated = _valueOfToken(token1, btcSent) + _valueOfToken(token2, ethSent);
+        // NOTE: The user eats the slippage and trading fees. E.g. if you request $10 you may only get $9 out
         // TODO: Remove assumption that inputToken is equal to one dollar
 
-        // Get share/dollar ratio (`shares_per_dollar`)
         // Calculate number of shares to burn with numShares = dollarAmount * shares_per_dollar
         // Try to burn numShares, will revert if user does not have enough
-        uint256 numShares = (dollarsLiquidated * totalSupply) / vaultDollars;
+
+        // NOTE: Even if dollarsReceived > amountInput, the vault only sold $amountInput worth of assets
+        // (according to chainlink). The share price is a chainlink price, and so the user can at most be asked to
+        // burn $amountInput worth of shares
+        uint256 numShares = (amountInput * totalSupply) / vaultDollars;
 
         _burn(msg.sender, numShares);
 
         emit Withdraw(msg.sender, amountInput, numShares);
-        inputToken.transfer(msg.sender, amountInput);
+        inputToken.transfer(msg.sender, dollarsReceived);
     }
 
     /** EXCHANGE RATES

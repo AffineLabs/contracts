@@ -6,5 +6,5 @@ coverage/
 node_modules/
 package.json
 typechain/
-lib/
+dist/
 src/test/test.sol
