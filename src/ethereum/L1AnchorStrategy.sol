@@ -82,15 +82,16 @@ contract L1AnchorStrategy is Strategy {
         return amount;
     }
 
-    function divest(uint256 amountToFree) external override onlyVault {
+    function divest(uint256 amountToFree) external override onlyVault returns (uint256) {
         // TODO: take current balance into consideration and only withdraw the amount that you need to
-        if (amountToFree == 0) return;
+        if (amountToFree == 0) return 0;
 
         uint256 aTokenAmount = balanceOfATokenInToken();
         uint256 withdrawAmount = Math.min(amountToFree, aTokenAmount);
 
         uint256 withdrawnAmount = _withdrawWant(withdrawAmount);
         token.transfer(address(vault), withdrawnAmount);
+        return withdrawnAmount;
     }
 
     /** TVL ESTIMATION

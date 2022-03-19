@@ -14,7 +14,7 @@ import { IStaging } from "./interfaces/IStaging.sol";
 import { Staging } from "./Staging.sol";
 import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
 
-abstract contract BaseVault is Initializable, AccessControl {
+contract BaseVault is AccessControl {
     using SafeTransferLib for ERC20;
 
     /** UNDERLYING ASSET AND INITIALIZATION
@@ -28,7 +28,7 @@ abstract contract BaseVault is Initializable, AccessControl {
         ERC20 _token,
         IWormhole _wormhole,
         ICreate2Deployer create2Deployer
-    ) public onlyInitializing {
+    ) public {
         governance = _governance;
         token = _token;
         wormhole = _wormhole;
@@ -307,20 +307,29 @@ abstract contract BaseVault is Initializable, AccessControl {
     /// @param strategy The strategy to withdraw from.
     /// @param tokenAmount  The amount of underlying tokens to withdraw.
     /// @dev Withdrawing from a strategy will not remove it from the withdrawal stack.
-    function withdrawFromStrategy(Strategy strategy, uint256 tokenAmount) external onlyRole(bankerRole) {
+    /// @return The amount withdrawn from the strategy.
+    function withdrawFromStrategy(Strategy strategy, uint256 tokenAmount)
+        external
+        onlyRole(bankerRole)
+        returns (uint256)
+    {
+        // NOTE: this violates check-effects-interactions, but this is fine since only trusted
+        // strategies will be added
+
+        // Withdraw from the strategy
+        uint256 amountWithdrawn = strategy.divest(tokenAmount);
         // Without this the next harvest would count the withdrawal as a loss.
-        strategies[strategy].balance -= tokenAmount;
+        strategies[strategy].balance -= amountWithdrawn;
 
         unchecked {
             // Decrease totalStrategyHoldings to account for the withdrawal.
             // Cannot underflow as the balance of one strategy will never exceed the sum of all.
-            totalStrategyHoldings -= tokenAmount;
+            totalStrategyHoldings -= amountWithdrawn;
         }
 
-        emit StrategyWithdrawal(msg.sender, strategy, tokenAmount);
+        emit StrategyWithdrawal(msg.sender, strategy, amountWithdrawn);
 
-        // Withdraw from the strategy, will revert upon failure
-        strategy.divest(tokenAmount);
+        return amountWithdrawn;
     }
 
     /** HARVESTING
@@ -445,15 +454,10 @@ abstract contract BaseVault is Initializable, AccessControl {
         return amountLiquidated;
     }
 
-    function _reportLoss(Strategy strategy, uint256 loss) internal {
-        // Adjust our strategy's parameters by the loss
-        strategies[strategy].totalLoss += loss;
-    }
-
     uint256 public constant MAX_BPS = 10_000;
 
     function _assessFees() internal virtual {}
 
-    // Rebalance strategies on this chain. No need for now. We can simply update strategy debtRatios
+    // Rebalance strategies on this chain.
     function rebalance() external onlyGovernance {}
 }
