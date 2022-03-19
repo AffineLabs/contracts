@@ -10,7 +10,7 @@ import { Relayer } from "../polygon/Relayer.sol";
 import { Strategy } from "../Strategy.sol";
 import { Deploy } from "./Deploy.sol";
 
-contract VaultTest is DSTest {
+contract L2VaultTest is DSTest {
     L2Vault vault;
     MockERC20 token;
     Relayer relayer;

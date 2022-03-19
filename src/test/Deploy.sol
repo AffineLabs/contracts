@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import { MockERC20 } from "./MockERC20.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
+import { BaseVault } from "../BaseVault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { Create2Deployer } from "./Create2Deployer.sol";
@@ -44,6 +45,19 @@ library Deploy {
             create2Deployer, // create2deployer (must be real address)
             IRootChainManager(address(0)), // chain manager
             address(0) // predicate
+        );
+    }
+
+    function deployBaseVault() internal returns (BaseVault vault) {
+        MockERC20 token = new MockERC20("Mock", "MT", 18);
+        Create2Deployer create2Deployer = new Create2Deployer();
+
+        vault = new BaseVault();
+        vault.init(
+            address(this), // governance
+            token, // token
+            IWormhole(address(0)), // wormhole
+            create2Deployer // create2deployer (needs to be a real contract)
         );
     }
 }

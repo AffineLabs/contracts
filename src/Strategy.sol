@@ -19,6 +19,7 @@ abstract contract Strategy {
 
     /// @notice Withdraw vault's underlying token from strategy.
     /// @param amount The amount to withdraw.
-    /// @dev This function must revert if divestment fails.
-    function divest(uint256 amount) external virtual;
+    /// @dev This function will not revert if we get less than `amount` out of the strategy
+    /// @return The amount of `token` divested from the strategy
+    function divest(uint256 amount) external virtual returns (uint256);
 }

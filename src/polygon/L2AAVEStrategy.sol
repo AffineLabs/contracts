@@ -111,7 +111,7 @@ contract L2AAVEStrategy is Strategy {
 
     /** DIVESTMENT
      **************************************************************************/
-    function divest(uint256 amount) external override onlyVault {
+    function divest(uint256 amount) external override onlyVault returns (uint256) {
         // TODO: take current balance into consideration and only withdraw the amount that you need to
         _claimAndSellRewards();
         uint256 aTokenAmount = balanceOfAToken();
@@ -119,6 +119,7 @@ contract L2AAVEStrategy is Strategy {
 
         uint256 withdrawnAmount = _withdrawWant(withdrawAmount);
         token.transfer(address(vault), withdrawnAmount);
+        return withdrawnAmount;
     }
 
     function _withdrawWant(uint256 amount) internal returns (uint256) {
