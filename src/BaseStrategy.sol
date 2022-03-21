@@ -3,9 +3,12 @@ pragma solidity ^0.8.10;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { BaseVault } from "./BaseVault.sol";
+import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 
 /// @notice Base strategy contract
 abstract contract BaseStrategy {
+    using SafeTransferLib for ERC20;
+
     ///@notice The vault which owns this contract
     BaseVault public vault;
     modifier onlyVault() {
@@ -33,5 +36,12 @@ abstract contract BaseStrategy {
 
     /// @notice The total amount of `token` that the strategy is managing
     /// @dev This should not overestimate, and should account for slippage during divestment
+    /// @return The strategy tvl
     function totalLockedValue() external virtual returns (uint256);
+
+    function sweep(ERC20 rewardToken) external {
+        require(msg.sender == vault.governance(), "ONLY_GOVERNANCE");
+        require(rewardToken != token, "!token");
+        rewardToken.safeTransfer(vault.governance(), rewardToken.balanceOf(address(this)));
+    }
 }
