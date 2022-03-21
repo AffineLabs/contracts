@@ -39,9 +39,9 @@ abstract contract BaseStrategy {
     /// @return The strategy tvl
     function totalLockedValue() external virtual returns (uint256);
 
-    function sweep(ERC20 _token) external virtual onlyVault {
+    function sweep(ERC20 rewardToken) external {
         require(msg.sender == vault.governance(), "ONLY_GOVERNANCE");
-        require(_token != token, "!token");
-        token.safeTransfer(vault.governance(), token.balanceOf(address(this)));
+        require(rewardToken != token, "!token");
+        rewardToken.safeTransfer(vault.governance(), rewardToken.balanceOf(address(this)));
     }
 }
