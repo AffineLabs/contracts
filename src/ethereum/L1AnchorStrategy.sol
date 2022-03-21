@@ -40,14 +40,6 @@ contract L1AnchorStrategy is BaseStrategy {
         token.approve(address(usdcConversionPool), type(uint256).max);
     }
 
-    /** AUTHENTICATION
-     **************************************************************************/
-    BaseVault public vault;
-    modifier onlyVault() {
-        require(msg.sender == address(vault), "ONLY_VAULT");
-        _;
-    }
-
     /** BALANCES
      **************************************************************************/
     function balanceOfToken() public view override returns (uint256) {

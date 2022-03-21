@@ -55,14 +55,6 @@ contract L1CompoundStrategy is BaseStrategy {
         token.approve(address(cToken), type(uint256).max);
     }
 
-    /** AUTHENTICATION
-     **************************************************************************/
-    BaseVault public vault;
-    modifier onlyVault() {
-        require(msg.sender == address(vault), "ONLY_VAULT");
-        _;
-    }
-
     /** BALANCES
      **************************************************************************/
 

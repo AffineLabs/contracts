@@ -23,6 +23,11 @@ contract L2VaultTest is DSTest {
         relayer = Relayer(address(vault.relayer()));
     }
 
+    // Adding this since this test contract is used as a strategy
+    function totalLockedValue() public view returns (uint256) {
+        return token.balanceOf(address(this));
+    }
+
     event Deposit(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
     event Withdraw(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
 

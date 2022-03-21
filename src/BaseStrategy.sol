@@ -2,9 +2,17 @@
 pragma solidity ^0.8.10;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { BaseVault } from "./BaseVault.sol";
 
 /// @notice Base strategy contract
 abstract contract BaseStrategy {
+    ///@notice The vault which owns this contract
+    BaseVault public vault;
+    modifier onlyVault() {
+        require(msg.sender == address(vault), "ONLY_VAULT");
+        _;
+    }
+
     /// @notice Returns the underlying ERC20 token the strategy accepts.
     ERC20 public token;
 

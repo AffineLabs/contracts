@@ -73,14 +73,6 @@ contract L2AAVEStrategy is BaseStrategy {
         IERC20(rewardToken).approve(_router, type(uint256).max);
     }
 
-    /** AUTHENTICATION
-     **************************************************************************/
-    BaseVault public vault;
-    modifier onlyVault() {
-        require(msg.sender == address(vault), "ONLY_VAULT");
-        _;
-    }
-
     /** BALANCES
      **************************************************************************/
 

@@ -376,7 +376,7 @@ contract BaseVault is AccessControl {
 
             // Get the strategy's previous and current balance.
             uint256 balanceLastHarvest = strategies[strategy].balance;
-            uint256 balanceThisHarvest = strategy.balanceOfToken();
+            uint256 balanceThisHarvest = strategy.totalLockedValue();
 
             // Update the strategy's stored balance.
             strategies[strategy].balance = balanceThisHarvest;
