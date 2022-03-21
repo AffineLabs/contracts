@@ -13,13 +13,13 @@ import { ILendingPool } from "../interfaces/aave/ILendingPool.sol";
 import { IAToken } from "../interfaces/aave/IAToken.sol";
 
 import { BaseVault } from "../BaseVault.sol";
-import { Strategy } from "../Strategy.sol";
+import { BaseStrategy } from "../BaseStrategy.sol";
 
 interface ILendingPoolAddressesProviderRegistry {
     function getAddressesProvidersList() external view returns (address[] memory);
 }
 
-contract L2AAVEStrategy is Strategy {
+contract L2AAVEStrategy is BaseStrategy {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -153,7 +153,7 @@ contract L2AAVEStrategy is Strategy {
 
     /** TVL ESTIMATION
      **************************************************************************/
-    function estimatedTotalAssets() public view returns (uint256) {
+    function totalLockedValue() public view override returns (uint256) {
         uint256 balanceExcludingRewards = balanceOfToken() + balanceOfAToken();
 
         // if we don't have a position, don't worry about rewards

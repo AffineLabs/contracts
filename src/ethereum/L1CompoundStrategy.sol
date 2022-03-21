@@ -9,9 +9,9 @@ import { ICToken } from "../interfaces/compound/ICToken.sol";
 import { IComptroller } from "../interfaces/compound/IComptroller.sol";
 
 import { BaseVault } from "../BaseVault.sol";
-import { Strategy } from "../Strategy.sol";
+import { BaseStrategy } from "../BaseStrategy.sol";
 
-contract L1CompoundStrategy is Strategy {
+contract L1CompoundStrategy is BaseStrategy {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -142,7 +142,7 @@ contract L1CompoundStrategy is Strategy {
 
     /** TVL ESTIMATION
      **************************************************************************/
-    function estimatedTotalAssets() public view returns (uint256) {
+    function totalLockedValue() public view override returns (uint256) {
         uint256 balanceExcludingRewards = balanceOfToken() + balanceOfCToken();
 
         // if we don't have a position, don't worry about rewards

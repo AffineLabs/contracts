@@ -6,7 +6,7 @@ import { IHevm } from "./IHevm.sol";
 import { Deploy } from "./Deploy.sol";
 import { MockERC20 } from "./MockERC20.sol";
 
-import { Strategy } from "../Strategy.sol";
+import { BaseStrategy } from "../BaseStrategy.sol";
 import { BaseVault } from "../BaseVault.sol";
 
 contract VaultTest is DSTest {
