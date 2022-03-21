@@ -8,7 +8,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 
-import { Strategy } from "./Strategy.sol";
+import { BaseStrategy as Strategy } from "./BaseStrategy.sol";
 import { IWormhole } from "./interfaces/IWormhole.sol";
 import { IStaging } from "./interfaces/IStaging.sol";
 import { Staging } from "./Staging.sol";
@@ -376,7 +376,7 @@ contract BaseVault is AccessControl {
 
             // Get the strategy's previous and current balance.
             uint256 balanceLastHarvest = strategies[strategy].balance;
-            uint256 balanceThisHarvest = strategy.balanceOfToken();
+            uint256 balanceThisHarvest = strategy.totalLockedValue();
 
             // Update the strategy's stored balance.
             strategies[strategy].balance = balanceThisHarvest;
