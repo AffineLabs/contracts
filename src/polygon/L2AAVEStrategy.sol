@@ -13,13 +13,13 @@ import { ILendingPool } from "../interfaces/aave/ILendingPool.sol";
 import { IAToken } from "../interfaces/aave/IAToken.sol";
 
 import { BaseVault } from "../BaseVault.sol";
-import { Strategy } from "../Strategy.sol";
+import { BaseStrategy } from "../BaseStrategy.sol";
 
 interface ILendingPoolAddressesProviderRegistry {
     function getAddressesProvidersList() external view returns (address[] memory);
 }
 
-contract L2AAVEStrategy is Strategy {
+contract L2AAVEStrategy is BaseStrategy {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -73,14 +73,6 @@ contract L2AAVEStrategy is Strategy {
         IERC20(rewardToken).approve(_router, type(uint256).max);
     }
 
-    /** AUTHENTICATION
-     **************************************************************************/
-    BaseVault public vault;
-    modifier onlyVault() {
-        require(msg.sender == address(vault), "ONLY_VAULT");
-        _;
-    }
-
     /** BALANCES
      **************************************************************************/
 
@@ -111,7 +103,7 @@ contract L2AAVEStrategy is Strategy {
 
     /** DIVESTMENT
      **************************************************************************/
-    function divest(uint256 amount) external override onlyVault {
+    function divest(uint256 amount) external override onlyVault returns (uint256) {
         // TODO: take current balance into consideration and only withdraw the amount that you need to
         _claimAndSellRewards();
         uint256 aTokenAmount = balanceOfAToken();
@@ -119,6 +111,7 @@ contract L2AAVEStrategy is Strategy {
 
         uint256 withdrawnAmount = _withdrawWant(withdrawAmount);
         token.transfer(address(vault), withdrawnAmount);
+        return withdrawnAmount;
     }
 
     function _withdrawWant(uint256 amount) internal returns (uint256) {
@@ -152,7 +145,7 @@ contract L2AAVEStrategy is Strategy {
 
     /** TVL ESTIMATION
      **************************************************************************/
-    function estimatedTotalAssets() public view returns (uint256) {
+    function totalLockedValue() public view override returns (uint256) {
         uint256 balanceExcludingRewards = balanceOfToken() + balanceOfAToken();
 
         // if we don't have a position, don't worry about rewards

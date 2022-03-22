@@ -7,10 +7,10 @@ import { MockERC20 } from "./MockERC20.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
 import { Relayer } from "../polygon/Relayer.sol";
-import { Strategy } from "../Strategy.sol";
+import { BaseStrategy } from "../BaseStrategy.sol";
 import { Deploy } from "./Deploy.sol";
 
-contract VaultTest is DSTest {
+contract L2VaultTest is DSTest {
     L2Vault vault;
     MockERC20 token;
     Relayer relayer;
@@ -21,6 +21,11 @@ contract VaultTest is DSTest {
         vault = Deploy.deployL2Vault();
         token = MockERC20(address(vault.token()));
         relayer = Relayer(address(vault.relayer()));
+    }
+
+    // Adding this since this test contract is used as a strategy
+    function totalLockedValue() public view returns (uint256) {
+        return token.balanceOf(address(this));
     }
 
     event Deposit(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
@@ -132,19 +137,19 @@ contract VaultTest is DSTest {
         assertEq(vault.totalSupply(), 1e18);
 
         // Add this contract as a strategy
-        Strategy myStrat = Strategy(address(this));
+        BaseStrategy myStrat = BaseStrategy(address(this));
         vault.addStrategy(myStrat);
 
         // call to balanceOfToken in harvest() will return 1e18
-        hevm.mockCall(address(this), abi.encodeWithSelector(Strategy.balanceOfToken.selector), abi.encode(1e18));
+        hevm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfToken.selector), abi.encode(1e18));
         // block.timestap must be >= lastHarvest + lockInterval when harvesting
         hevm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
 
         // Call harvest to update lastHarvest, note that no shares are minted here because
         // (block.timestamp - lastHarvest) = lockInterval + 1 =  3 hours + 1 second
         // and feeBps gets truncated to zero
-        Strategy[] memory strategyList = new Strategy[](1);
-        strategyList[0] = Strategy(address(this));
+        BaseStrategy[] memory strategyList = new BaseStrategy[](1);
+        strategyList[0] = BaseStrategy(address(this));
         vault.harvest(strategyList);
 
         hevm.warp(block.timestamp + vault.SECS_PER_YEAR() / 2);
@@ -159,19 +164,19 @@ contract VaultTest is DSTest {
 
     function testLockedProfit() public {
         // Add this contract as a strategy
-        Strategy myStrat = Strategy(address(this));
+        BaseStrategy myStrat = BaseStrategy(address(this));
         vault.addStrategy(myStrat);
 
         // call to balanceOfToken in harvest() will return 1e18
-        hevm.mockCall(address(this), abi.encodeWithSelector(Strategy.balanceOfToken.selector), abi.encode(1e18));
+        hevm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfToken.selector), abi.encode(1e18));
         // block.timestap must be >= lastHarvest + lockInterval when harvesting
         hevm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
 
         token.mint(address(myStrat), 1e18);
         token.approve(address(vault), type(uint256).max);
 
-        Strategy[] memory strategyList = new Strategy[](1);
-        strategyList[0] = Strategy(address(this));
+        BaseStrategy[] memory strategyList = new BaseStrategy[](1);
+        strategyList[0] = BaseStrategy(address(this));
         vault.harvest(strategyList);
 
         assertEq(vault.lockedProfit(), 1e18);

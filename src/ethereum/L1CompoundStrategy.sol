@@ -9,9 +9,9 @@ import { ICToken } from "../interfaces/compound/ICToken.sol";
 import { IComptroller } from "../interfaces/compound/IComptroller.sol";
 
 import { BaseVault } from "../BaseVault.sol";
-import { Strategy } from "../Strategy.sol";
+import { BaseStrategy } from "../BaseStrategy.sol";
 
-contract L1CompoundStrategy is Strategy {
+contract L1CompoundStrategy is BaseStrategy {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -55,14 +55,6 @@ contract L1CompoundStrategy is Strategy {
         token.approve(address(cToken), type(uint256).max);
     }
 
-    /** AUTHENTICATION
-     **************************************************************************/
-    BaseVault public vault;
-    modifier onlyVault() {
-        require(msg.sender == address(vault), "ONLY_VAULT");
-        _;
-    }
-
     /** BALANCES
      **************************************************************************/
 
@@ -93,7 +85,7 @@ contract L1CompoundStrategy is Strategy {
 
     /** DIVESTMENT
      **************************************************************************/
-    function divest(uint256 amount) external override onlyVault {
+    function divest(uint256 amount) external override onlyVault returns (uint256) {
         // TODO: take current balance into consideration and only withdraw the amount that you need to
         _claimAndSellRewards();
         uint256 cTokenAmount = balanceOfCToken();
@@ -101,6 +93,7 @@ contract L1CompoundStrategy is Strategy {
 
         uint256 withdrawnAmount = _withdrawWant(withdrawAmount);
         token.transfer(address(vault), withdrawnAmount);
+        return withdrawnAmount;
     }
 
     function _withdrawWant(uint256 amount) internal returns (uint256) {
@@ -141,7 +134,7 @@ contract L1CompoundStrategy is Strategy {
 
     /** TVL ESTIMATION
      **************************************************************************/
-    function estimatedTotalAssets() public view returns (uint256) {
+    function totalLockedValue() public view override returns (uint256) {
         uint256 balanceExcludingRewards = balanceOfToken() + balanceOfCToken();
 
         // if we don't have a position, don't worry about rewards

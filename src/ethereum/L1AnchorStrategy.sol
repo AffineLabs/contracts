@@ -4,14 +4,14 @@ pragma solidity ^0.8.9;
 import { SafeERC20, IERC20, Address } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { Strategy } from "../Strategy.sol";
+import { BaseStrategy } from "../BaseStrategy.sol";
 import { IConversionPool } from "../interfaces/anchor/IConversionPool.sol";
 import { IExchangeRateFeeder } from "../interfaces/anchor/IExchangeRateFeeder.sol";
 
 import { BaseVault } from "../BaseVault.sol";
 
 // https://docs.anchorprotocol.com/ethanchor/ethanchor-contracts
-contract L1AnchorStrategy is Strategy {
+contract L1AnchorStrategy is BaseStrategy {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -38,14 +38,6 @@ contract L1AnchorStrategy is Strategy {
         exchangeRateFeeder = _exchangeRateFeeder;
         // Approve transfer on the usdcConversionPool contract
         token.approve(address(usdcConversionPool), type(uint256).max);
-    }
-
-    /** AUTHENTICATION
-     **************************************************************************/
-    BaseVault public vault;
-    modifier onlyVault() {
-        require(msg.sender == address(vault), "ONLY_VAULT");
-        _;
     }
 
     /** BALANCES
@@ -82,21 +74,22 @@ contract L1AnchorStrategy is Strategy {
         return amount;
     }
 
-    function divest(uint256 amountToFree) external override onlyVault {
+    function divest(uint256 amountToFree) external override onlyVault returns (uint256) {
         // TODO: take current balance into consideration and only withdraw the amount that you need to
-        if (amountToFree == 0) return;
+        if (amountToFree == 0) return 0;
 
         uint256 aTokenAmount = balanceOfATokenInToken();
         uint256 withdrawAmount = Math.min(amountToFree, aTokenAmount);
 
         uint256 withdrawnAmount = _withdrawWant(withdrawAmount);
         token.transfer(address(vault), withdrawnAmount);
+        return withdrawnAmount;
     }
 
     /** TVL ESTIMATION
      **************************************************************************/
 
-    function estimatedTotalAssets() public view returns (uint256) {
+    function totalLockedValue() public view override returns (uint256) {
         return balanceOfToken() + balanceOfATokenInToken();
     }
 }
