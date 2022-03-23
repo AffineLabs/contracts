@@ -4,7 +4,10 @@
   "description": "Alpine Ethereum and Matic smart contracts",
   "main": "index.js",
   "scripts": {
-    "test": "forge test --no-match-contract \".*Fork\"",
+    "test": "ts-node scripts/forge.ts test",
+    "test-all": "test --l1 --l2 --anchor",
+    "snap": "ts-node scripts/forge.ts snapshot",
+    "snap-all": "yarn snap --l1 --l2 --anchor",
     "test-hh": "hardhat test",
     "clean": "forge clean",
     "script": "ts-node scripts/fork.ts",

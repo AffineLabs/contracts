@@ -63,7 +63,13 @@ $ yarn test-hh path/to/test
 Run the solidity tests
 
 ```sh
-$ yarn test
+$ yarn test-all
+```
+
+Update all gas snapshots
+
+```sh
+$ yarn snap-all --check
 ```
 
 ### Deploy Vaults

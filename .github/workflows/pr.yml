@@ -36,8 +36,8 @@ jobs:
       - name: Install yarn dependencies
         run: yarn --frozen-lockfile
 
-      - name: Build and run tests.
-        run: make test
+      - name: Run tests and check gas snapshots.
+        run: yarn snap-all --check
 
       - name: Check lint errors
         run: yarn lint
