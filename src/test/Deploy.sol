@@ -11,6 +11,7 @@ import { Create2Deployer } from "./Create2Deployer.sol";
 import { Relayer } from "../polygon/Relayer.sol";
 import { L1Vault } from "../ethereum/L1Vault.sol";
 import { WithdrawalQueue } from "../polygon/WithdrawalQueue.sol";
+import { WormholeRouter } from "../polygon/WormholeRouter.sol";
 
 library Deploy {
     function deployL2Vault() internal returns (L2Vault vault) {
@@ -21,10 +22,12 @@ library Deploy {
 
         vault = new L2Vault();
         WithdrawalQueue withdrawalQueue = new WithdrawalQueue(address(this), token);
+        WormholeRouter wormholeRouter = new WormholeRouter();
         vault.initialize(
             address(this), // governance
             token, // token
             IWormhole(address(0)), // wormhole
+            address(wormholeRouter),
             create2Deployer, // create2deployer (needs to be a real contract)
             withdrawalQueue,
             1, // l1 ratio

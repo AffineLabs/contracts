@@ -21,6 +21,8 @@ contract Staging {
     address public vault;
     ERC20 public token;
     IRootChainManager public rootChainManager;
+    address public wormholeRouter;
+
     bool public initialized;
 
     constructor() {}
@@ -28,18 +30,15 @@ contract Staging {
     function initialize(
         address _vault,
         address _wormhole,
-        address _token
+        address _token,
+        address _wormholeRouter
     ) external {
         require(!initialized, "Can only init once");
         vault = _vault;
         wormhole = IWormhole(_wormhole);
         token = ERC20(_token);
+        wormholeRouter = _wormholeRouter;
         initialized = true;
-    }
-
-    function setVaultNonce(int32 nonce) external {
-        require(msg.sender == vault, "Only vault");
-        vaultNonce = nonce;
     }
 
     function initializeL1(address manager) external {
@@ -53,17 +52,9 @@ contract Staging {
         IChildERC20(address(token)).withdraw(amount);
     }
 
-    function l2ClearFund(bytes calldata message) external {
-        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
-        require(valid, reason);
-
-        // TODO: check chain ID, emitter address
-        // Get amount and nonce
-        (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
-        int32 nonce = int32(vm.nonce);
-        require(nonce > vaultNonce, "No old transactions");
-        vaultNonce = nonce;
-
+    function l2ClearFund(bytes32 msgType, uint256 amount) external {
+        require(msg.sender == wormholeRouter, "only wormhole router");
+        
         uint256 balance = token.balanceOf(address(this));
         require(balance >= amount, "Funds not received");
 

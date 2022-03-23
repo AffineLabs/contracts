@@ -66,6 +66,8 @@ function createNetworkConfig(network: ethNetwork | polygonNetwork, type: "eth" |
     ...networkConfig,
     url: `http://localhost:${forkPort}`,
     chainId: ethChainIds.hardhat,
+    gas: 2100000,
+    gasPrice: 8000000000
   };
   return { [`${type}-${network}`]: networkConfig, [`${type}-${network}-fork`]: forkConfig };
 }

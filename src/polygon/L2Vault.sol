@@ -50,6 +50,9 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
     /////// Gasless transactions
     Relayer public relayer;
 
+    // Wormhole router address
+    address public wormholeRouter;
+
     /** Fees
      **************************************************************************/
 
@@ -73,6 +76,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
+        address _wormholeRouter,
         ICreate2Deployer create2Deployer,
         WithdrawalQueue _withdrawalQueue,
         uint256 L1Ratio,
@@ -85,6 +89,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         __Pausable_init();
         BaseVault.init(_governance, _token, _wormhole, create2Deployer);
         withdrawalQueue = _withdrawalQueue;
+        wormholeRouter = _wormholeRouter;
         layerRatios = LayerBalanceRatios({ layer1: L1Ratio, layer2: L2Ratio });
         canTransferToL1 = true;
         canRequestFromL1 = true;
@@ -229,17 +234,9 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         _mint(governance, numSharesToMint);
     }
 
-    function receiveTVL(bytes calldata message) external {
+    function receiveTVL(uint256 tvl, bool received) external {
+        require(msg.sender == wormholeRouter, "Only wormhole router");
         require(ignoreTVLFromL1 == false, "Emergency withdrawal in progress");
-
-        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
-        require(valid, reason);
-        require(int32(vm.nonce) > Staging(staging).vaultNonce(), "Old TVL");
-        Staging(staging).setVaultNonce(int32(vm.nonce));
-
-        // TODO: check chain ID, emitter address
-        // Get tvl from payload
-        (uint256 tvl, bool received) = abi.decode(vm.payload, (uint256, bool));
 
         // If L1 has received the last transfer we sent it, unlock the L2->L1 bridge
         if (received && !canTransferToL1) canTransferToL1 = true;

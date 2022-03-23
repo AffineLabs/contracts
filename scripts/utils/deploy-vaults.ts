@@ -81,14 +81,21 @@ export async function deployVaults(
 
   const l2VaultFactory = await ethers.getContractFactory("L2Vault");
   const withdrawalQueueFactory = await ethers.getContractFactory("WithdrawalQueue");
-  const withdrawalQueue = await withdrawalQueueFactory.deploy(l2Governance, config.l2USDC);
+  const withdrawalQueue = await withdrawalQueueFactory.deploy(l2Governance, config.l2USDC, { gasLimit: 300000 });
   await withdrawalQueue.deployed();
+  logContractDeploymentInfo(ethNetworkName, "WithdrawalQueue", withdrawalQueue);
+  const wormholeRouterFactory = await ethers.getContractFactory("WormholeRouter");
+  const wormholeRouter = await wormholeRouterFactory.deploy();
+  await wormholeRouter.deployed();
+  logContractDeploymentInfo(ethNetworkName, "WormholeRouter", wormholeRouter);
+
   const l2Vault = (await upgrades.deployProxy(
     l2VaultFactory,
     [
       l2Governance,
       config.l2USDC,
       config.l2worm,
+      wormholeRouter.address,
       await getContractAddress(deployer),
       withdrawalQueue,
       9,
@@ -99,7 +106,7 @@ export async function deployVaults(
     { kind: "uups" },
   )) as L2Vault;
   await l2Vault.deployed();
-  withdrawalQueue.addVault(l2Vault.address);
+  await withdrawalQueue.addVault(l2Vault.address);
   await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonAlpSave`, "L2Vault", l2Vault);
   await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonRelayer`, "Relayer", await l2Vault.relayer());
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
