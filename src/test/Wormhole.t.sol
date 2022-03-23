@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "./test.sol";
-import "./IHevm.sol";
-import "forge-std/src/stdlib.sol";
+import { DSTestPlus } from "./TestPlus.sol";
+import { stdStorage, StdStorage } from "forge-std/src/stdlib.sol";
 import { Deploy } from "./Deploy.sol";
+
 import { L2Vault } from "../polygon/L2Vault.sol";
 import { L1Vault } from "../ethereum/L1Vault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
@@ -46,12 +46,10 @@ contract MockWormhole is IWormhole {
     }
 }
 
-contract WormholeTest is DSTest {
+contract WormholeTest is DSTestPlus {
     L1Vault l1vault;
     L2Vault l2vault;
-    IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
-    StdStorage stdstore;
     using stdStorage for StdStorage;
 
     function setUp() public {

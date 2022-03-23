@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "./test.sol";
-
-import { IHevm } from "./IHevm.sol";
-import { MockERC20 } from "./MockERC20.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
-import { WithdrawalQueue } from "../polygon/WithdrawalQueue.sol";
+
+import { DSTestPlus } from "./TestPlus.sol";
+import { stdStorage, StdStorage } from "forge-std/src/stdlib.sol";
+import { Deploy } from "./Deploy.sol";
+import { MockERC20 } from "./MockERC20.sol";
 import { ConvertLib } from "./ConvertLib.sol";
 
-contract WithdrawalQueueTest is DSTest {
+import { WithdrawalQueue } from "../polygon/WithdrawalQueue.sol";
+
+contract WithdrawalQueueTest is DSTestPlus {
     WithdrawalQueue withdrawalQueue;
     MockERC20 usdc;
-
-    IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
     address vault = address(uint160(uint256(keccak256("VAULT"))));
     address governance = address(uint160(uint256(keccak256("GOVERNANCE"))));

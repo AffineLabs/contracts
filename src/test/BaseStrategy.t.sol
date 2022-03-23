@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
-import "./test.sol";
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
-import { IHevm } from "./IHevm.sol";
+import { DSTestPlus } from "./TestPlus.sol";
+import { stdStorage, StdStorage } from "forge-std/src/stdlib.sol";
 import { Deploy } from "./Deploy.sol";
 import { MockERC20 } from "./MockERC20.sol";
 
@@ -32,8 +32,7 @@ contract MockStrategy is BaseStrategy {
     }
 }
 
-contract BaseStrategyTest is DSTest {
-    IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
+contract BaseStrategyTest is DSTestPlus {
     MockStrategy strategy;
     MockERC20 rewardToken;
 

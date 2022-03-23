@@ -2,8 +2,13 @@
 pragma solidity ^0.8.10;
 
 import { DSTest } from "./test.sol";
+import { IHevm } from "./IHevm.sol";
+import "forge-std/src/stdlib.sol";
 
 contract DSTestPlus is DSTest {
+    IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
+    StdStorage stdstore;
+
     function assertInRange(
         uint256 a,
         uint256 b1,

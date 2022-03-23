@@ -5,8 +5,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol"
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
 import { DSTestPlus } from "./TestPlus.sol";
-import { IHevm } from "./IHevm.sol";
-import "forge-std/src/stdlib.sol";
+import { stdStorage, StdStorage } from "forge-std/src/stdlib.sol";
 import { Deploy } from "./Deploy.sol";
 
 import { L1Vault } from "../ethereum/L1Vault.sol";
@@ -18,6 +17,7 @@ import { IConversionPool } from "../interfaces/anchor/IConversionPool.sol";
 import { L1AnchorStrategy } from "../ethereum/L1AnchorStrategy.sol";
 
 contract EthAnchorStratTestFork is DSTestPlus {
+    using stdStorage for StdStorage;
     ERC20 usdc = ERC20(0xE015FD30cCe08Bc10344D934bdb2292B1eC4BBBD);
 
     L1Vault vault;
@@ -28,10 +28,6 @@ contract EthAnchorStratTestFork is DSTestPlus {
     uint256 hundredUSDC = 1e8;
     uint256 fiftyUSDC = hundredUSDC / 2;
     uint256 usdcBalancesStorageSlot = 6;
-
-    IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-    StdStorage stdstore;
-    using stdStorage for StdStorage;
 
     function setUp() public {
         vault = Deploy.deployL1Vault();

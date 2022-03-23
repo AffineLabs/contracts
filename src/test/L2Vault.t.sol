@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "./test.sol";
-import { IHevm } from "./IHevm.sol";
+import { DSTestPlus } from "./TestPlus.sol";
+import { stdStorage, StdStorage } from "forge-std/src/stdlib.sol";
+import { Deploy } from "./Deploy.sol";
 import { MockERC20 } from "./MockERC20.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
@@ -10,12 +11,10 @@ import { Relayer } from "../polygon/Relayer.sol";
 import { BaseStrategy } from "../BaseStrategy.sol";
 import { Deploy } from "./Deploy.sol";
 
-contract L2VaultTest is DSTest {
+contract L2VaultTest is DSTestPlus {
     L2Vault vault;
     MockERC20 token;
     Relayer relayer;
-
-    IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
     function setUp() public {
         vault = Deploy.deployL2Vault();

@@ -1,25 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "./test.sol";
-import { IHevm } from "./IHevm.sol";
-import "forge-std/src/stdlib.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+
+import { DSTestPlus } from "./TestPlus.sol";
+import { stdStorage, StdStorage } from "forge-std/src/stdlib.sol";
+import { Deploy } from "./Deploy.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
 import { L2AAVEStrategy } from "../polygon/L2AAVEStrategy.sol";
 import { Deploy } from "./Deploy.sol";
 
 // TODO: make it so that the first test always works => Truncation means the assert will fail at some blocks
-contract L2AAVEStratTestFork is DSTest {
+contract L2AAVEStratTestFork is DSTestPlus {
+    using stdStorage for StdStorage;
     L2Vault vault;
     L2AAVEStrategy strategy;
     // Mumbai USDC that AAVE takes in
     ERC20 usdc = ERC20(0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e);
-    IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-
-    StdStorage stdstore;
-    using stdStorage for StdStorage;
 
     function setUp() public {
         vault = Deploy.deployL2Vault();

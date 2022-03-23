@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "ts-node scripts/forge.ts test",
-    "test-all": "test --l1 --l2 --anchor",
+    "test-all": "yarn test --l1 --l2 --anchor",
     "snap": "ts-node scripts/forge.ts snapshot",
     "snap-all": "yarn snap --l1 --l2 --anchor",
     "test-hh": "hardhat test",
