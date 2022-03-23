@@ -32,7 +32,7 @@ contract L1CompoundStratTestFork is DSTestPlus {
         // make vault token equal to the L1 (Goerli) usdc address
         uint256 slot = stdstore.target(address(vault)).sig("token()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
-        hevm.store(address(vault), bytes32(slot), tokenAddr);
+        cheats.store(address(vault), bytes32(slot), tokenAddr);
 
         strategy = new L1CompoundStrategy(
             vault,
@@ -46,7 +46,7 @@ contract L1CompoundStratTestFork is DSTestPlus {
 
     function testStrategyHarvestSuccessfully() public {
         // Give the Vault 1 usdc
-        hevm.store(address(usdc), keccak256(abi.encode(address(vault), usdcBalancesStorageSlot)), bytes32(oneUSDC));
+        cheats.store(address(usdc), keccak256(abi.encode(address(vault), usdcBalancesStorageSlot)), bytes32(oneUSDC));
 
         vault.addStrategy(strategy);
         vault.depositIntoStrategy(strategy, halfUSDC);

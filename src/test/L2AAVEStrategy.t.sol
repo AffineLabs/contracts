@@ -23,7 +23,7 @@ contract L2AAVEStratTestFork is DSTestPlus {
         vault = Deploy.deployL2Vault();
         uint256 slot = stdstore.target(address(vault)).sig("token()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
-        hevm.store(address(vault), bytes32(slot), tokenAddr);
+        cheats.store(address(vault), bytes32(slot), tokenAddr);
 
         strategy = new L2AAVEStrategy(
             vault,
@@ -44,7 +44,7 @@ contract L2AAVEStratTestFork is DSTestPlus {
 
         // abi encoding pads the address to 32 bytes before concatenating
         bytes memory h_of_k_dot_p = abi.encode(address(vault), 0);
-        hevm.store(0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e, keccak256(h_of_k_dot_p), bytes32(uint256(1e6)));
+        cheats.store(0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e, keccak256(h_of_k_dot_p), bytes32(uint256(1e6)));
 
         // This contract is the governance address so this will work
         vault.addStrategy(strategy);
@@ -53,7 +53,7 @@ contract L2AAVEStratTestFork is DSTestPlus {
         vault.depositIntoStrategy(strategy, 1e6 / 2);
 
         // Go 10 days into the future and make sure that the vault makes money
-        hevm.warp(block.timestamp + 10 days);
+        cheats.warp(block.timestamp + 10 days);
 
         uint256 profit = strategy.aToken().balanceOf(address(strategy)) - 1e6 / 2;
         assertGe(profit, 100);
@@ -61,7 +61,7 @@ contract L2AAVEStratTestFork is DSTestPlus {
 
     function testStrategyLosesMoney() public {
         bytes memory h_of_k_dot_p = abi.encode(address(vault), 0);
-        hevm.store(0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e, keccak256(h_of_k_dot_p), bytes32(uint256(1e6)));
+        cheats.store(0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e, keccak256(h_of_k_dot_p), bytes32(uint256(1e6)));
 
         vault.addStrategy(strategy);
 
@@ -69,11 +69,11 @@ contract L2AAVEStratTestFork is DSTestPlus {
         vault.depositIntoStrategy(strategy, 1e6);
 
         // Impersonate strategy
-        hevm.startPrank(address(strategy));
+        cheats.startPrank(address(strategy));
         // withdraw from lending pool
         // Lose money by withdrawing lent USDC to the USDC contract
         strategy.lendingPool().withdraw(address(strategy.token()), 1e6 / 2, address(usdc));
-        hevm.stopPrank();
+        cheats.stopPrank();
 
         vault.withdrawFromStrategy(strategy, 1e6 / 2);
         assertEq(usdc.balanceOf(address(vault)), 1e6 / 2);

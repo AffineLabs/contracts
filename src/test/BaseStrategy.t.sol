@@ -44,13 +44,13 @@ contract BaseStrategyTest is DSTestPlus {
 
     function testSweep() public {
         // Will revert if non governance tries to call it
-        hevm.expectRevert(bytes("ONLY_GOVERNANCE"));
-        hevm.prank(0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045); // vitalik
+        cheats.expectRevert(bytes("ONLY_GOVERNANCE"));
+        cheats.prank(0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045); // vitalik
         strategy.sweep(rewardToken);
 
         // Will revert if trying to sell `token` of BaseStrategy
         ERC20 assetToken = strategy.vault().token();
-        hevm.expectRevert(bytes("!token"));
+        cheats.expectRevert(bytes("!token"));
         strategy.sweep(assetToken);
 
         // award the strategy some tokens

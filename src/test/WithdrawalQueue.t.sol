@@ -32,19 +32,19 @@ contract WithdrawalQueueTest is DSTestPlus {
     }
 
     function testEnqueueSuccess() external {
-        hevm.expectEmit(true, true, false, true);
+        cheats.expectEmit(true, true, false, true);
         emit WithdrawalQueueEnqueue(1, user1, 1000);
         // Impersonate vault
-        hevm.startPrank(vault);
+        cheats.startPrank(vault);
         // Only vault should be able to enqueue.
         withdrawalQueue.enqueue(user1, 1000);
-        hevm.stopPrank();
+        cheats.stopPrank();
 
         assertEq(withdrawalQueue.size(), 1);
     }
 
     function testEnqueueOnlyVaultCanEnqueue() external {
-        hevm.expectRevert(
+        cheats.expectRevert(
             bytes(
                 abi.encodePacked(
                     "AccessControl: account ",
@@ -60,48 +60,48 @@ contract WithdrawalQueueTest is DSTestPlus {
 
     function testEnqueueCorreclyEnqueuReturningUser() external {
         // Impersonate vault
-        hevm.startPrank(vault);
+        cheats.startPrank(vault);
 
-        hevm.expectEmit(true, true, false, true);
+        cheats.expectEmit(true, true, false, true);
         emit WithdrawalQueueEnqueue(1, user1, 1000);
         withdrawalQueue.enqueue(user1, 1000);
 
-        hevm.expectEmit(true, true, false, true);
+        cheats.expectEmit(true, true, false, true);
         emit WithdrawalQueueEnqueue(2, user2, 2000);
         withdrawalQueue.enqueue(user2, 2000);
 
-        hevm.expectEmit(true, true, false, true);
+        cheats.expectEmit(true, true, false, true);
         emit WithdrawalQueueEnqueue(3, user1, 3000);
         withdrawalQueue.enqueue(user1, 3000);
 
-        hevm.stopPrank();
+        cheats.stopPrank();
 
         assertEq(withdrawalQueue.size(), 3);
     }
 
     function testDequeueSuccess() external {
         // Impersonate vault
-        hevm.startPrank(vault);
+        cheats.startPrank(vault);
         // Only vault should be able to enqueue.
         withdrawalQueue.enqueue(user1, 1000);
         withdrawalQueue.enqueue(user2, 2000);
         withdrawalQueue.enqueue(user1, 3000);
-        hevm.stopPrank();
+        cheats.stopPrank();
 
-        hevm.expectEmit(false, false, false, false);
+        cheats.expectEmit(false, false, false, false);
         emit Transfer(address(withdrawalQueue), user1, 1000);
-        hevm.expectEmit(false, false, false, false);
+        cheats.expectEmit(false, false, false, false);
         emit WithdrawalQueueDequeue(1, user1, 1000);
         withdrawalQueue.dequeue();
         assertEq(withdrawalQueue.size(), 2);
 
-        hevm.expectEmit(false, false, false, false);
+        cheats.expectEmit(false, false, false, false);
         emit Transfer(address(withdrawalQueue), user2, 2000);
-        hevm.expectEmit(false, false, false, false);
+        cheats.expectEmit(false, false, false, false);
         emit WithdrawalQueueDequeue(2, user2, 2000);
-        hevm.expectEmit(false, false, false, false);
+        cheats.expectEmit(false, false, false, false);
         emit Transfer(address(withdrawalQueue), user1, 3000);
-        hevm.expectEmit(false, false, false, false);
+        cheats.expectEmit(false, false, false, false);
         emit WithdrawalQueueDequeue(3, user2, 3000);
         withdrawalQueue.dequeueBatch(2);
         assertEq(withdrawalQueue.size(), 0);

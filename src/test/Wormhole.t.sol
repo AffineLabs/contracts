@@ -58,7 +58,7 @@ contract WormholeTest is DSTestPlus {
         MockWormhole wormhole = new MockWormhole();
         uint256 slot = stdstore.target(address(l1vault)).sig("wormhole()").find();
         bytes32 wormholeAddr = bytes32(uint256(uint160(address(wormhole))));
-        hevm.store(address(l1vault), bytes32(slot), wormholeAddr);
+        cheats.store(address(l1vault), bytes32(slot), wormholeAddr);
 
         l2vault = Deploy.deployL2Vault();
     }
@@ -70,7 +70,7 @@ contract WormholeTest is DSTestPlus {
             abi.encode(0, false),
             4
         );
-        hevm.expectCall(address(l1vault.wormhole()), publishMessageData);
+        cheats.expectCall(address(l1vault.wormhole()), publishMessageData);
         l1vault.sendTVL();
         // TODO: assert that publish message was called wih certain arguments
 

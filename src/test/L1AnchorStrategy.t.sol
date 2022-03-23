@@ -34,7 +34,7 @@ contract EthAnchorStratTestFork is DSTestPlus {
         // make vault token equal to the L1 (ropsten) usdc address
         uint256 slot = stdstore.target(address(vault)).sig("token()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
-        hevm.store(address(vault), bytes32(slot), tokenAddr);
+        cheats.store(address(vault), bytes32(slot), tokenAddr);
 
         strategy = new L1AnchorStrategy(
             vault,
@@ -46,13 +46,17 @@ contract EthAnchorStratTestFork is DSTestPlus {
 
     function testStrategyHarvestSuccessfully() public {
         // Give the Vault 100 usdc
-        hevm.store(address(usdc), keccak256(abi.encode(address(vault), usdcBalancesStorageSlot)), bytes32(hundredUSDC));
+        cheats.store(
+            address(usdc),
+            keccak256(abi.encode(address(vault), usdcBalancesStorageSlot)),
+            bytes32(hundredUSDC)
+        );
         vault.addStrategy(strategy);
 
         // Make sure strategy deposits fifty USDC to Eth Anchor during harvest.
         bytes4 funcSelector = bytes4(keccak256("deposit(uint256)"));
         bytes memory expectedData = abi.encodeWithSelector(funcSelector, fiftyUSDC);
-        hevm.expectCall(address(strategy.usdcConversionPool()), expectedData);
+        cheats.expectCall(address(strategy.usdcConversionPool()), expectedData);
 
         vault.depositIntoStrategy(strategy, fiftyUSDC);
     }

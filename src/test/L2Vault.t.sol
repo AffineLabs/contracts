@@ -36,7 +36,7 @@ contract L2VaultTest is DSTestPlus {
 
         // user gives max approval to vault for token
         token.approve(address(vault), type(uint256).max);
-        hevm.expectEmit(true, false, false, true);
+        cheats.expectEmit(true, false, false, true);
         emit Deposit(address(this), amountToken, amountToken);
         vault.deposit(amountToken);
 
@@ -45,7 +45,7 @@ contract L2VaultTest is DSTestPlus {
         assertEq(numShares, amountToken);
         assertEq(token.balanceOf(address(user)), 0);
 
-        hevm.expectEmit(true, false, false, true);
+        cheats.expectEmit(true, false, false, true);
         emit Withdraw(address(this), amountToken, amountToken);
         vault.redeem(numShares);
 
@@ -60,7 +60,7 @@ contract L2VaultTest is DSTestPlus {
 
         // truster forwarder is zero address and is the one who calls deposit on the relayer
         // The trusted forwarder adds the original user as the last twenty bytes of calldata
-        hevm.startPrank(relayer.trustedForwarder());
+        cheats.startPrank(relayer.trustedForwarder());
         bytes memory depositData = abi.encodeWithSelector(relayer.deposit.selector, 1e18);
         address(relayer).call(abi.encodePacked(depositData, user));
         assertEq(vault.balanceOf(user), 1e18);
@@ -70,15 +70,15 @@ contract L2VaultTest is DSTestPlus {
         assertEq(vault.balanceOf(user), 0);
         assertEq(token.balanceOf(user), 1e18);
 
-        hevm.stopPrank();
+        cheats.stopPrank();
 
         // TODO: check that a bad user B imitating forwarder will
         // end with a call to deposit gasless with (B, amountToken)
 
         // only the relayer can call deposit gasless
-        hevm.expectRevert(bytes("Only relayer"));
+        cheats.expectRevert(bytes("Only relayer"));
         vault.depositGasLess(user, 1e18);
-        hevm.expectRevert(bytes("Only relayer"));
+        cheats.expectRevert(bytes("Only relayer"));
         vault.redeemGasLess(user, 1e18);
     }
 
@@ -90,7 +90,7 @@ contract L2VaultTest is DSTestPlus {
         token.mint(user, amountToken);
         token.approve(address(vault), type(uint256).max);
 
-        hevm.expectEmit(true, false, false, true);
+        cheats.expectEmit(true, false, false, true);
         emit Deposit(address(this), amountToken, amountToken);
         vault.deposit(amountToken);
 
@@ -98,7 +98,7 @@ contract L2VaultTest is DSTestPlus {
         assertEq(vault.balanceOf(user), amountToken);
         assertEq(token.balanceOf(user), 0);
 
-        hevm.expectEmit(true, false, false, true);
+        cheats.expectEmit(true, false, false, true);
         emit Withdraw(address(this), amountToken, amountToken);
         vault.withdraw(amountToken);
         assertEq(vault.balanceOf(user), 0);
@@ -110,7 +110,7 @@ contract L2VaultTest is DSTestPlus {
         token.mint(user, 1e18);
         token.approve(address(vault), type(uint256).max);
 
-        hevm.startPrank(relayer.trustedForwarder());
+        cheats.startPrank(relayer.trustedForwarder());
         bytes memory depositData = abi.encodeWithSelector(relayer.deposit.selector, 1e18);
         address(relayer).call(abi.encodePacked(depositData, user));
         assertEq(vault.balanceOf(user), 1e18);
@@ -120,10 +120,10 @@ contract L2VaultTest is DSTestPlus {
         assertEq(vault.balanceOf(user), 0);
         assertEq(token.balanceOf(user), 1e18);
 
-        hevm.stopPrank();
+        cheats.stopPrank();
 
         // only the relayer can withdraw
-        hevm.expectRevert(bytes("Only relayer"));
+        cheats.expectRevert(bytes("Only relayer"));
         vault.withdrawGasLess(user, 1e18);
     }
 
@@ -131,7 +131,7 @@ contract L2VaultTest is DSTestPlus {
         // Add total supply => occupies ERC20Upgradeable which inherits from two contracts with storage,
         // One contract has one slots and the other has 50 slots. totalSupply is at slot three in ERC20Up, so
         // the slot would is number 50 + 1 + 3 = 54 (index 53)
-        hevm.store(address(vault), bytes32(uint256(53)), bytes32(uint256(1e18)));
+        cheats.store(address(vault), bytes32(uint256(53)), bytes32(uint256(1e18)));
 
         assertEq(vault.totalSupply(), 1e18);
 
@@ -140,9 +140,9 @@ contract L2VaultTest is DSTestPlus {
         vault.addStrategy(myStrat);
 
         // call to balanceOfToken in harvest() will return 1e18
-        hevm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfToken.selector), abi.encode(1e18));
+        cheats.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfToken.selector), abi.encode(1e18));
         // block.timestap must be >= lastHarvest + lockInterval when harvesting
-        hevm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        cheats.warp(vault.lastHarvest() + vault.lockInterval() + 1);
 
         // Call harvest to update lastHarvest, note that no shares are minted here because
         // (block.timestamp - lastHarvest) = lockInterval + 1 =  3 hours + 1 second
@@ -151,7 +151,7 @@ contract L2VaultTest is DSTestPlus {
         strategyList[0] = BaseStrategy(address(this));
         vault.harvest(strategyList);
 
-        hevm.warp(block.timestamp + vault.SECS_PER_YEAR() / 2);
+        cheats.warp(block.timestamp + vault.SECS_PER_YEAR() / 2);
 
         // Call harvest to trigger fee assessment
         vault.harvest(strategyList);
@@ -167,9 +167,9 @@ contract L2VaultTest is DSTestPlus {
         vault.addStrategy(myStrat);
 
         // call to balanceOfToken in harvest() will return 1e18
-        hevm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfToken.selector), abi.encode(1e18));
+        cheats.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfToken.selector), abi.encode(1e18));
         // block.timestap must be >= lastHarvest + lockInterval when harvesting
-        hevm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        cheats.warp(vault.lastHarvest() + vault.lockInterval() + 1);
 
         token.mint(address(myStrat), 1e18);
         token.approve(address(vault), type(uint256).max);
@@ -182,7 +182,7 @@ contract L2VaultTest is DSTestPlus {
         assertEq(vault.globalTVL(), 0);
 
         // Using up 50% of lockInterval unlocks 50% of profit
-        hevm.warp(block.timestamp + vault.lockInterval() / 2);
+        cheats.warp(block.timestamp + vault.lockInterval() / 2);
         assertEq(vault.lockedProfit(), 1e18 / 2);
         assertEq(vault.globalTVL(), 1e18 / 2);
     }
@@ -192,7 +192,7 @@ contract L2VaultTest is DSTestPlus {
         vault.setWithdrawalFee(50);
 
         address user = 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045; // vitalik
-        hevm.startPrank(user);
+        cheats.startPrank(user);
         token.mint(user, amountToken);
         token.approve(address(vault), type(uint256).max);
         vault.deposit(amountToken);
@@ -212,10 +212,10 @@ contract L2VaultTest is DSTestPlus {
         vault.setWithdrawalFee(10);
         assertEq(vault.withdrawalFee(), 10);
 
-        hevm.startPrank(0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045);
-        hevm.expectRevert(bytes("Only Governance."));
+        cheats.startPrank(0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045);
+        cheats.expectRevert(bytes("Only Governance."));
         vault.setManagementFee(300);
-        hevm.expectRevert(bytes("Only Governance."));
+        cheats.expectRevert(bytes("Only Governance."));
         vault.setWithdrawalFee(10);
     }
     // TODO: Get the below test to pass
@@ -226,7 +226,7 @@ contract L2VaultTest is DSTestPlus {
     // ) public {
     //     // update vaults total supply (number of shares)
     //     // storage slots can be found in dapptools' abi output
-    //     hevm.store(address(vault), bytes32(uint256(2)), bytes32(totalShares));
+    //     cheats.store(address(vault), bytes32(uint256(2)), bytes32(totalShares));
     //     emit log_named_uint("foo", vault.totalSupply());
 
     //     // update vaults total underlying tokens  => could just overwrite storage as well
