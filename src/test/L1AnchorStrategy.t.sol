@@ -5,8 +5,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol"
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
 import { DSTestPlus } from "./TestPlus.sol";
-import { IHevm } from "./IHevm.sol";
-import "forge-std/src/stdlib.sol";
+import { stdStorage, StdStorage } from "forge-std/src/stdlib.sol";
 import { Deploy } from "./Deploy.sol";
 
 import { L1Vault } from "../ethereum/L1Vault.sol";
@@ -18,6 +17,7 @@ import { IConversionPool } from "../interfaces/anchor/IConversionPool.sol";
 import { L1AnchorStrategy } from "../ethereum/L1AnchorStrategy.sol";
 
 contract EthAnchorStratTestFork is DSTestPlus {
+    using stdStorage for StdStorage;
     ERC20 usdc = ERC20(0xE015FD30cCe08Bc10344D934bdb2292B1eC4BBBD);
 
     L1Vault vault;
@@ -29,16 +29,12 @@ contract EthAnchorStratTestFork is DSTestPlus {
     uint256 fiftyUSDC = hundredUSDC / 2;
     uint256 usdcBalancesStorageSlot = 6;
 
-    IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-    StdStorage stdstore;
-    using stdStorage for StdStorage;
-
     function setUp() public {
         vault = Deploy.deployL1Vault();
         // make vault token equal to the L1 (ropsten) usdc address
         uint256 slot = stdstore.target(address(vault)).sig("token()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
-        hevm.store(address(vault), bytes32(slot), tokenAddr);
+        cheats.store(address(vault), bytes32(slot), tokenAddr);
 
         strategy = new L1AnchorStrategy(
             vault,
@@ -50,13 +46,17 @@ contract EthAnchorStratTestFork is DSTestPlus {
 
     function testStrategyHarvestSuccessfully() public {
         // Give the Vault 100 usdc
-        hevm.store(address(usdc), keccak256(abi.encode(address(vault), usdcBalancesStorageSlot)), bytes32(hundredUSDC));
+        cheats.store(
+            address(usdc),
+            keccak256(abi.encode(address(vault), usdcBalancesStorageSlot)),
+            bytes32(hundredUSDC)
+        );
         vault.addStrategy(strategy);
 
         // Make sure strategy deposits fifty USDC to Eth Anchor during harvest.
         bytes4 funcSelector = bytes4(keccak256("deposit(uint256)"));
         bytes memory expectedData = abi.encodeWithSelector(funcSelector, fiftyUSDC);
-        hevm.expectCall(address(strategy.usdcConversionPool()), expectedData);
+        cheats.expectCall(address(strategy.usdcConversionPool()), expectedData);
 
         vault.depositIntoStrategy(strategy, fiftyUSDC);
     }

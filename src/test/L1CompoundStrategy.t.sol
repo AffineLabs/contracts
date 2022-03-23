@@ -4,8 +4,7 @@ pragma solidity ^0.8.10;
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
 import { DSTestPlus } from "./TestPlus.sol";
-import { IHevm } from "./IHevm.sol";
-import "forge-std/src/stdlib.sol";
+import { stdStorage, StdStorage } from "forge-std/src/stdlib.sol";
 import { Deploy } from "./Deploy.sol";
 
 import { L1Vault } from "../ethereum/L1Vault.sol";
@@ -15,6 +14,8 @@ import { L1CompoundStrategy } from "../ethereum/L1CompoundStrategy.sol";
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 
 contract L1CompoundStratTestFork is DSTestPlus {
+    using stdStorage for StdStorage;
+
     ERC20 usdc = ERC20(0xD87Ba7A50B2E7E660f678A895E4B72E7CB4CCd9C);
 
     L1Vault vault;
@@ -25,20 +26,13 @@ contract L1CompoundStratTestFork is DSTestPlus {
     uint256 oneUSDC = 1e6;
     uint256 halfUSDC = oneUSDC / 2;
 
-    // 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D is a cheat address of hevm which allows manipulating time
-    // See https://github.com/dapphub/dapptools/pull/71
-    IHevm hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-
-    StdStorage stdstore;
-    using stdStorage for StdStorage;
-
     function setUp() public {
         vault = Deploy.deployL1Vault();
 
         // make vault token equal to the L1 (Goerli) usdc address
         uint256 slot = stdstore.target(address(vault)).sig("token()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
-        hevm.store(address(vault), bytes32(slot), tokenAddr);
+        cheats.store(address(vault), bytes32(slot), tokenAddr);
 
         strategy = new L1CompoundStrategy(
             vault,
@@ -52,7 +46,7 @@ contract L1CompoundStratTestFork is DSTestPlus {
 
     function testStrategyHarvestSuccessfully() public {
         // Give the Vault 1 usdc
-        hevm.store(address(usdc), keccak256(abi.encode(address(vault), usdcBalancesStorageSlot)), bytes32(oneUSDC));
+        cheats.store(address(usdc), keccak256(abi.encode(address(vault), usdcBalancesStorageSlot)), bytes32(oneUSDC));
 
         vault.addStrategy(strategy);
         vault.depositIntoStrategy(strategy, halfUSDC);

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 // See https://onbjerg.github.io/foundry-book/reference/cheatcodes.html for more
-interface IHevm {
+interface CheatCodes {
     // Set block.timestamp
     function warp(uint256) external;
 
