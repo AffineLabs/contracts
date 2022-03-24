@@ -33,7 +33,7 @@ it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
     config,
   );
 
-  const { l1Vault, l2Vault } = allContracts.vaults;
+  const { l1Vault, l2Vault, l1WormholeRouter, l2WormholeRouter } = allContracts.vaults;
 
   const initialL2TVL = ethers.utils.parseUnits("0.001", 6);
 
@@ -58,7 +58,7 @@ it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
   hre.changeNetwork(POLYGON_NETWORK_NAME);
   console.log("\n\nreceiving TVL on L2");
   [, defender] = await ethers.getSigners();
-  tx = await l2Vault.connect(defender).receiveTVL(tvlVAA);
+  tx = await l2WormholeRouter.connect(defender).receiveTVL(tvlVAA);
   await tx.wait();
   console.log("TVL received. Sending tokens to L1");
 
@@ -80,9 +80,8 @@ it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
   hre.changeNetwork(ETH_NETWORK_NAME);
   [, defender] = await ethers.getSigners();
 
-  const l1Staging = (await ethers.getContractFactory("Staging", defender)).attach(stagingAddr);
   console.log("Clearing funds from staging");
-  tx = await l1Staging.connect(defender).l1ClearFund(transferVAA, ethers.utils.arrayify(messageProof));
+  tx = await l1WormholeRouter.connect(defender).receiveFunds(transferVAA, ethers.utils.arrayify(messageProof));
   await tx.wait();
 
   expect(await l1Vault.vaultTVL()).to.eq(initialL2TVL.mul(90).div(100));

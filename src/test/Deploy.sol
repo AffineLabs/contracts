@@ -10,6 +10,7 @@ import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { Create2Deployer } from "./Create2Deployer.sol";
 import { Relayer } from "../polygon/Relayer.sol";
 import { L1Vault } from "../ethereum/L1Vault.sol";
+import { IL1WormholeRouter, IL2WormholeRouter } from "../interfaces/IWormholeRouter.sol";
 
 library Deploy {
     function deployL2Vault() internal returns (L2Vault vault) {
@@ -23,6 +24,7 @@ library Deploy {
             address(this), // governance
             token, // token
             IWormhole(address(0)), // wormhole
+            IL2WormholeRouter(address(0)), // Wormhole router
             create2Deployer, // create2deployer (needs to be a real contract)
             1, // l1 ratio
             1, // l2 ratio
@@ -41,7 +43,8 @@ library Deploy {
         vault.initialize(
             address(this), // governance
             token, // token
-            IWormhole(address(0)), // wormhole, // wormhole
+            IWormhole(address(0)), // wormhole,
+            IL1WormholeRouter(address(0)), // Wormhole router
             create2Deployer, // create2deployer (must be real address)
             IRootChainManager(address(0)), // chain manager
             address(0) // predicate

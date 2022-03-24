@@ -2,7 +2,7 @@ import { ethers, upgrades } from "hardhat";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../../utils/bc-explorer-links";
 import { Config } from "../../utils/config";
-import { L1Vault, L2Vault, Relayer } from "../../typechain";
+import { L1Vault, L1WormholeRotuer, L2Vault, L2WormholeRotuer, Relayer } from "../../typechain";
 import { addToAddressBookAndDefender, getContractAddress } from "../../utils/export";
 import { ETH_GOERLI, POLYGON_MUMBAI } from "../../utils/constants/blockchain";
 import { address } from "../../utils/types";
@@ -11,6 +11,8 @@ export interface VaultContracts {
   l1Vault: L1Vault;
   l2Vault: L2Vault;
   relayer: Relayer;
+  l1WormholeRouter: L1WormholeRotuer;
+  l2WormholeRouter: L2WormholeRotuer;
 }
 
 export async function deployVaults(
@@ -45,12 +47,18 @@ export async function deployVaults(
   const l1VaultFactory = await ethers.getContractFactory("L1Vault");
   console.log("about to deploy l1 vault: ", config);
 
+  let l1WormholeRouterFactory = await ethers.getContractFactory("L1WormholeRouter");
+  let l1WormholeRouter = await l1WormholeRouterFactory.deploy() as L1WormholeRotuer;
+  await l1WormholeRouter.deployed();
+
   const l1Vault = (await upgrades.deployProxy(
     l1VaultFactory,
-    [l1Governance, config.l1USDC, config.l1worm, deployer.address, config.l1ChainManager, config.l2ERC20Predicate],
+    [l1Governance, config.l1USDC, config.l1worm, l1WormholeRouter.address, deployer.address, config.l1ChainManager, config.l2ERC20Predicate],
     { kind: "uups" },
   )) as L1Vault;
+
   await l1Vault.deployed();
+  await l1WormholeRouter.initialize(config.l1worm, l1Vault.address);
   await addToAddressBookAndDefender(ETH_GOERLI, `EthAlpSave`, "L1Vault", l1Vault);
   logContractDeploymentInfo(ethNetworkName, "L1Vault", l1Vault);
 
@@ -79,6 +87,10 @@ export async function deployVaults(
   deployer = await deployerFactory.deploy();
   await deployer.deployed();
 
+  let l2WormholeRouterFactory = await ethers.getContractFactory("L2WormholeRouter");
+  let l2WormholeRouter = await l2WormholeRouterFactory.deploy() as L2WormholeRotuer;
+  await l2WormholeRouter.deployed();
+
   const l2VaultFactory = await ethers.getContractFactory("L2Vault");
   const l2Vault = (await upgrades.deployProxy(
     l2VaultFactory,
@@ -86,6 +98,7 @@ export async function deployVaults(
       l2Governance,
       config.l2USDC,
       config.l2worm,
+      l2WormholeRouter.address,
       await getContractAddress(deployer),
       9,
       1,
@@ -95,6 +108,7 @@ export async function deployVaults(
     { kind: "uups" },
   )) as L2Vault;
   await l2Vault.deployed();
+  await l2WormholeRouter.initialize(config.l2worm, l2Vault.address);
   await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonAlpSave`, "L2Vault", l2Vault);
   await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonRelayer`, "Relayer", await l2Vault.relayer());
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
@@ -107,5 +121,7 @@ export async function deployVaults(
     l1Vault,
     l2Vault,
     relayer,
+    l1WormholeRouter,
+    l2WormholeRouter,
   };
 }

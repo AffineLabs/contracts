@@ -13,4 +13,10 @@ interface IStaging {
         IWormhole wormhole,
         ERC20 token
     ) external;
+
+    function l2Withdraw(uint256 amount) external;
+
+    function l2ClearFund(uint256 amount) external;
+
+    function l1ClearFund(uint256 amount, bytes calldata data) external;
 }

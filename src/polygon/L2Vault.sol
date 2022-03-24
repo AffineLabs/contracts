@@ -13,9 +13,10 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { BaseVault } from "../BaseVault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
-import { Staging } from "../Staging.sol";
+import { IStaging } from "../interfaces/IStaging.sol";
 import { Relayer } from "./Relayer.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
+import { IL2WormholeRouter } from "../interfaces/IWormholeRouter.sol";
 
 contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, BaseVault {
     using SafeTransferLib for ERC20;
@@ -51,6 +52,9 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
     // fee charged on redemption of shares, number is in bps
     uint256 public withdrawalFee;
 
+    /// L2 wormhole router address
+    IL2WormholeRouter wormholeRouter;
+
     function setManagementFee(uint256 feeBps) external onlyGovernance {
         managementFee = feeBps;
     }
@@ -66,6 +70,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
+        IL2WormholeRouter _wormholeRouter,
         ICreate2Deployer create2Deployer,
         uint256 L1Ratio,
         uint256 L2Ratio,
@@ -76,6 +81,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         __UUPSUpgradeable_init();
         __Pausable_init();
         BaseVault.init(_governance, _token, _wormhole, create2Deployer);
+        wormholeRouter = _wormholeRouter;
 
         layerRatios = LayerBalanceRatios({ layer1: L1Ratio, layer2: L2Ratio });
         canTransferToL1 = true;
@@ -221,13 +227,8 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         _mint(governance, numSharesToMint);
     }
 
-    function receiveTVL(bytes calldata message) external {
-        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
-        require(valid, reason);
-
-        // TODO: check chain ID, emitter address
-        // Get tvl from payload
-        (uint256 tvl, bool received) = abi.decode(vm.payload, (uint256, bool));
+    function receiveTVL(uint256 tvl, bool received) external {
+        require(msg.sender == address(wormholeRouter), "Only wormhole router");
 
         // If L1 has received the last transfer we sent it, unlock the L2->L1 bridge
         if (received && !canTransferToL1) canTransferToL1 = true;
@@ -281,7 +282,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
     function _transferToL1(uint256 amount) internal {
         // Send token
         token.safeTransfer(staging, amount);
-        Staging(staging).l2Withdraw(amount);
+        IStaging(staging).l2Withdraw(amount);
         emit SendToL1(amount);
 
         // Update bridge state and L1 TVL
@@ -290,16 +291,12 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         L1TotalLockedValue += amount;
 
         // Let L1 know how much money we sent
-        uint64 sequence = wormhole.nextSequence(address(this));
-        bytes memory payload = abi.encodePacked(amount);
-        wormhole.publishMessage(uint32(sequence), payload, 4);
+        wormholeRouter.reportTrasferredFund(amount);
     }
 
     function _divestFromL1(uint256 amount) internal {
         // TODO: make wormhole address, consistencyLevel configurable
-        bytes memory payload = abi.encodePacked(amount);
-        uint64 sequence = wormhole.nextSequence(address(this));
-        wormhole.publishMessage(uint32(sequence), payload, 4);
+        wormholeRouter.requestFunds(amount);
         canRequestFromL1 = false;
     }
 

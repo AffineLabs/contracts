@@ -15,6 +15,7 @@ import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { IStaging } from "../interfaces/IStaging.sol";
 import { BaseVault } from "../BaseVault.sol";
+import { IL1WormholeRouter } from "../interfaces/IWormholeRouter.sol";
 
 contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     /////// Cross chain rebalancing
@@ -25,12 +26,15 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     // https://github.com/maticnetwork/pos-portal/blob/88dbf0a88fd68fa11f7a3b9d36629930f6b93a05/contracts/root/RootChainManager/RootChainManager.sol#L267
     address public predicate;
 
+    IL1WormholeRouter public wormholeRouter;
+
     constructor() {}
 
     function initialize(
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
+        IL1WormholeRouter _wormholeRouter,
         ICreate2Deployer create2Deployer,
         IRootChainManager _chainManager,
         address _predicate
@@ -41,6 +45,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         chainManager = _chainManager;
         IStaging(staging).initializeL1(chainManager);
         predicate = _predicate;
+        wormholeRouter = _wormholeRouter;
     }
 
     function _msgSender() internal view override(Context, ContextUpgradeable) returns (address) {
@@ -55,32 +60,15 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
 
     function sendTVL() external {
         uint256 tvl = vaultTVL();
-        // You can't decode an int with a bool if they are encoded with encodePacked
-        bytes memory payload = abi.encode(tvl, received);
-
-        uint64 sequence = wormhole.nextSequence(address(this));
-        // NOTE: We use the current tx count (to wormhole) of this contract
-        // as a nonce when publishing messages
-        // This casting is fine so long as we send less than 2 ** 32 - 1 (~ 4 billion) messages
-
-        // NOTE: 4 ETH blocks will take about 1 minute to propagate
-        // TODO: make wormhole address, consistencyLevel configurable
-        wormhole.publishMessage(uint32(sequence), payload, 4);
-
+        wormholeRouter.reportTVL(tvl);
         // If received == true then the l2-l1 bridge gets unlocked upon message reception in l2
         // Resetting this to false since we haven't received any new transfers from L2 yet
         if (received) received = false;
     }
 
     // Process a request for funds from L2 vault
-    function receiveMessage(bytes calldata message) external {
-        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
-        require(valid, reason);
-
-        // TODO: check chain ID, emitter address
-
-        // get amount requested
-        uint256 amountRequested = abi.decode(vm.payload, (uint256));
+    function processFundRequest(uint256 amountRequested) external {
+        require(msg.sender == address(wormholeRouter), "Only wormhole router");
         _liquidate(amountRequested);
         uint256 amountToSend = Math.min(token.balanceOf(address(this)), amountRequested);
         _transferFundsToL2(amountToSend);
@@ -92,9 +80,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         chainManager.depositFor(staging, address(token), abi.encodePacked(amount));
 
         // Let L2 know how much money we sent
-        uint64 sequence = wormhole.nextSequence(address(this));
-        bytes memory payload = abi.encodePacked(amount);
-        wormhole.publishMessage(uint32(sequence), payload, 4);
+        wormholeRouter.reportTrasferredFund(amount);
     }
 
     function afterReceive() external {

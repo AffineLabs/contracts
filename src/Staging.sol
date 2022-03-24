@@ -6,12 +6,13 @@ import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { IWormhole } from "./interfaces/IWormhole.sol";
 import { IRootChainManager } from "./interfaces/IRootChainManager.sol";
 import { IL1Vault, IL2Vault } from "./interfaces/IVault.sol";
+import { Initializable } from "./Initializable.sol";
 
 interface IChildERC20 {
     function withdraw(uint256 amount) external;
 }
 
-contract Staging {
+contract Staging is Initializable {
     using SafeTransferLib for ERC20;
 
     // Number of transactions sent by opposite vault to wormhole contract on opposite chain
@@ -20,6 +21,7 @@ contract Staging {
     address public vault;
     ERC20 public token;
     IRootChainManager public rootChainManager;
+    address public wormholeRouter;
     bool public initialized;
 
     constructor() {}
@@ -27,37 +29,28 @@ contract Staging {
     function initialize(
         address _vault,
         address _wormhole,
-        address _token
-    ) external {
-        require(!initialized, "Can only init once");
+        address _token,
+        address _wormholeRouter
+    ) external initializer() {
         vault = _vault;
         wormhole = IWormhole(_wormhole);
         token = ERC20(_token);
-        initialized = true;
+        wormholeRouter = _wormholeRouter;
     }
 
-    function initializeL1(address manager) external {
+    function initializeL1(address manager) external onlyIfInitialized() {
         require(msg.sender == vault, "Only vault");
         rootChainManager = IRootChainManager(manager);
     }
 
     // Transfer to L1
-    function l2Withdraw(uint256 amount) external {
+    function l2Withdraw(uint256 amount) external onlyIfInitialized() {
         require(msg.sender == vault, "Only vault");
         IChildERC20(address(token)).withdraw(amount);
     }
 
-    function l2ClearFund(bytes calldata message) external {
-        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
-        require(valid, reason);
-
-        // TODO: check chain ID, emitter address
-        // Get amount and nonce
-        uint256 amount = abi.decode(vm.payload, (uint256));
-        int32 nonce = int32(vm.nonce);
-        require(nonce > vaultNonce, "No old transactions");
-        vaultNonce = nonce;
-
+    function l2ClearFund(uint256 amount) external onlyIfInitialized() {
+        require(msg.sender == wormholeRouter, "Only L2 wormhole router");
         uint256 balance = token.balanceOf(address(this));
         require(balance >= amount, "Funds not received");
 
@@ -67,16 +60,8 @@ contract Staging {
         l2Vault.afterReceive(balance);
     }
 
-    function l1ClearFund(bytes calldata message, bytes calldata data) external {
-        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
-        require(valid, reason);
-        // TODO: check chain ID, emitter address
-        // Get amount and nonce
-        uint256 amount = abi.decode(vm.payload, (uint256));
-        int32 nonce = int32(vm.nonce);
-        require(nonce > vaultNonce, "No old transactions");
-        vaultNonce = nonce;
-
+    function l1ClearFund(uint256 amount, bytes calldata data) external onlyIfInitialized() {
+        require(msg.sender == wormholeRouter, "Only L1 wormhole router");
         // Exit tokens, after that the withdrawn tokens from L2 will be reflected in L1 staging.
         rootChainManager.exit(data);
 

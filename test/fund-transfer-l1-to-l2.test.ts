@@ -36,7 +36,7 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
     config,
   );
 
-  const { l1Vault, l2Vault } = allContracts.vaults;
+  const { l1Vault, l2Vault, l1WormholeRouter, l2WormholeRouter } = allContracts.vaults;
 
   const initialL1TVL = ethers.utils.parseUnits("0.001", 6);
 
@@ -66,7 +66,7 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
   hre.changeNetwork(POLYGON_NETWORK_NAME);
   console.log("\n\nreceiving TVL on L2");
   [governance] = await ethers.getSigners();
-  tx = await l2Vault.connect(governance).receiveTVL(tvlVAA);
+  tx = await l2WormholeRouter.connect(governance).receiveTVL(tvlVAA);
   await tx.wait();
   console.log("TVL received");
 
@@ -77,7 +77,7 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
 
   hre.changeNetwork(ETH_NETWORK_NAME);
   [governance] = await ethers.getSigners();
-  tx = await l1Vault.connect(governance).receiveMessage(requestVAA, { gasLimit: 10_000_000 });
+  tx = await l1WormholeRouter.connect(governance).receiveFundRequest(requestVAA, { gasLimit: 10_000_000 });
   await tx.wait();
   console.log("Received request from L2 on L1. Transfer from L1 to L2 initiated.");
 
@@ -102,7 +102,7 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
   l1Sequence += 1;
 
   console.log("Clearing funds from staging");
-  tx = await l2Staging.connect(governance).l2ClearFund(transferVAA);
+  tx = await l2WormholeRouter.connect(governance).receiveFunds(transferVAA);
   await tx.wait();
   console.log(` > tx: ${getTxExplorerLink(POLYGON_NETWORK_NAME, tx)}`);
 
