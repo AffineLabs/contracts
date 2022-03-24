@@ -20,7 +20,7 @@ it("Deploy Vaults", async () => {
     config,
   );
 
-  // If tokens are set correctly, most likely everything else is. TODO: add a couple more asserts
+  // If tokens are set correctly, most likely everything else is.
   expect(await l2Vault.token()).to.equal(config.l2USDC);
   expect(await l1Vault.token()).to.equal(config.l1USDC);
 
@@ -28,6 +28,8 @@ it("Deploy Vaults", async () => {
   expect(actualRelayer).to.be.properAddress;
   expect(actualRelayer).to.not.equal(ethers.constants.AddressZero);
   expect(actualRelayer).to.equal(relayer.address);
+
+  // Check that staging addresses are the same
 });
 
 // TODO: check that we can upgrade proxies successfully

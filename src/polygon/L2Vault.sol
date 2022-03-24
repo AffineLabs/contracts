@@ -67,6 +67,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         ERC20 _token,
         IWormhole _wormhole,
         ICreate2Deployer create2Deployer,
+        bytes32 salt,
         uint256 L1Ratio,
         uint256 L2Ratio,
         Relayer _relayer,
@@ -75,7 +76,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
         __Pausable_init();
-        BaseVault.init(_governance, _token, _wormhole, create2Deployer);
+        BaseVault.init(_governance, _token, _wormhole, create2Deployer, salt);
 
         layerRatios = LayerBalanceRatios({ layer1: L1Ratio, layer2: L2Ratio });
         canTransferToL1 = true;
@@ -280,8 +281,8 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
     // TODO: liquidate properly
     function _transferToL1(uint256 amount) internal {
         // Send token
-        token.safeTransfer(staging, amount);
-        Staging(staging).l2Withdraw(amount);
+        token.safeTransfer(address(staging), amount);
+        staging.l2Withdraw(amount);
         emit SendToL1(amount);
 
         // Update bridge state and L1 TVL
@@ -304,7 +305,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
     }
 
     function afterReceive(uint256 amount) external {
-        require(msg.sender == staging, "Only L2 staging.");
+        require(msg.sender == address(staging), "Only L2 staging.");
         L1TotalLockedValue -= amount;
         canRequestFromL1 = true;
         emit ReceiveFromL1(amount);

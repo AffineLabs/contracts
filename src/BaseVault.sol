@@ -14,6 +14,8 @@ import { IStaging } from "./interfaces/IStaging.sol";
 import { Staging } from "./Staging.sol";
 import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
 
+import "hardhat/console.sol";
+
 contract BaseVault is AccessControl {
     using SafeTransferLib for ERC20;
 
@@ -23,11 +25,13 @@ contract BaseVault is AccessControl {
     /// @notice The token that the vault takes in and gives to strategies, e.g. USDC
     ERC20 public token;
 
+    // TODO: handle access control in a better way
     function init(
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
-        ICreate2Deployer create2Deployer
+        ICreate2Deployer create2Deployer,
+        bytes32 salt
     ) public {
         governance = _governance;
         token = _token;
@@ -36,10 +40,16 @@ contract BaseVault is AccessControl {
         _grantRole(bankerRole, governance);
         _grantRole(stackOperatorRole, governance);
 
-        ICreate2Deployer deployer = create2Deployer;
         bytes memory bytecode = type(Staging).creationCode;
-        staging = deployer.deploy(0, bytes32("staging1"), bytecode);
-        IStaging(staging).initialize(address(this), _wormhole, _token);
+        // console.logBytes(bytecode);
+        console.log("BEFORE DEPLOY");
+        create2Deployer.deploy(0, bytes32("foo"), bytecode);
+        console.log("AFTER DEPLOY");
+        staging = Staging(create2Deployer.computeAddress(salt, keccak256(bytecode)));
+        console.log("ADDRESS COMPUTED");
+        console.log("staging IN HARDHAT: %s", address(staging));
+
+        staging.initialize(address(this), _wormhole, _token);
     }
 
     /** CROSS CHAIN MESSAGE PASSING AND REBALANCING
@@ -47,7 +57,7 @@ contract BaseVault is AccessControl {
 
     // Wormhole contract for sending/receiving messages
     IWormhole public wormhole;
-    address public staging;
+    Staging public staging;
 
     /** AUTHENTICATION
      **************************************************************************/

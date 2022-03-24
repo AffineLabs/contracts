@@ -1,6 +1,6 @@
 import concurrently from "concurrently";
 import { program } from "commander";
-import { spawn, exec, execSync } from "child_process";
+import { execSync } from "child_process";
 
 import { config as dotenvConfig } from "dotenv";
 import { resolve } from "path";

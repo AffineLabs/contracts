@@ -24,6 +24,7 @@ library Deploy {
             token, // token
             IWormhole(address(0)), // wormhole
             create2Deployer, // create2deployer (needs to be a real contract)
+            bytes32("salt"), // salt to be used by create2Deployer
             1, // l1 ratio
             1, // l2 ratio
             relayer, // relayer
@@ -43,6 +44,7 @@ library Deploy {
             token, // token
             IWormhole(address(0)), // wormhole, // wormhole
             create2Deployer, // create2deployer (must be real address)
+            bytes32("salt"), // salt
             IRootChainManager(address(0)), // chain manager
             address(0) // predicate
         );
@@ -57,7 +59,8 @@ library Deploy {
             address(this), // governance
             token, // token
             IWormhole(address(0)), // wormhole
-            create2Deployer // create2deployer (needs to be a real contract)
+            create2Deployer, // create2deployer (needs to be a real contract)
+            bytes32("salt")
         );
     }
 }

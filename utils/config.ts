@@ -11,6 +11,8 @@ const POLYGON_ERC20_PREDICATE = "0x37c3bfC05d5ebF9EBb3FF80ce0bd0133Bf221BC8";
 const ROOT_CHAIN_MANAGER = "0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74";
 const ETH_WORMHOLE = "0x706abc4E45D419950511e474C7B9Ed348A4a716c";
 const POLYGON_WORMHOLE = "0x0CBE91CF822c73C2315FB05100C2F714765d5c20";
+// This contract exists on many evm chains, including Ethereum/Polygon and their testnets
+const create2Deployer = "0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2";
 const wbtc = "0xc8BA1fdaf17c1f16C68778fde5f78F3D37cD1509";
 const weth = "0x3dd7F3CF122e0460Dba8A75d191b3486752B6A61";
 const BICONOMY_FORWARDER = "0x9399BB24DBB5C4b782C70c2969F58716Ebbd6a3b";
@@ -28,6 +30,7 @@ export interface Config {
   l2ERC20Predicate: address;
   l1worm: address;
   l2worm: address;
+  create2Deployer: address;
   weth: address;
   wbtc: address;
   biconomyForwarder: address;
@@ -43,6 +46,7 @@ export const config: Config = {
   l2ERC20Predicate: POLYGON_ERC20_PREDICATE,
   l1worm: ETH_WORMHOLE,
   l2worm: POLYGON_WORMHOLE,
+  create2Deployer,
   wbtc,
   weth,
   biconomyForwarder: BICONOMY_FORWARDER,

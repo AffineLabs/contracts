@@ -14,4 +14,8 @@ contract Create2Deployer is ICreate2Deployer {
     ) external returns (address) {
         return Create2.deploy(value, salt, code);
     }
+
+    function computeAddress(bytes32 salt, bytes32 codeHash) public view returns (address) {
+        return Create2.computeAddress(salt, codeHash);
+    }
 }
