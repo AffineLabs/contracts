@@ -69,7 +69,7 @@ $ yarn test-all
 Update all gas snapshots
 
 ```sh
-$ yarn snap-all --check
+$ yarn snap-all
 ```
 
 ### Deploy Vaults
