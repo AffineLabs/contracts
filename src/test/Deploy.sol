@@ -7,15 +7,13 @@ import { L2Vault } from "../polygon/L2Vault.sol";
 import { BaseVault } from "../BaseVault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
-import { Create2Deployer } from "./Create2Deployer.sol";
 import { Relayer } from "../polygon/Relayer.sol";
 import { L1Vault } from "../ethereum/L1Vault.sol";
+import { Staging } from "../Staging.sol";
 
 library Deploy {
     function deployL2Vault() internal returns (L2Vault vault) {
         MockERC20 token = new MockERC20("Mock", "MT", 18);
-        Create2Deployer create2Deployer = new Create2Deployer();
-
         Relayer relayer = new Relayer();
 
         vault = new L2Vault();
@@ -23,8 +21,7 @@ library Deploy {
             address(this), // governance
             token, // token
             IWormhole(address(0)), // wormhole
-            create2Deployer, // create2deployer (needs to be a real contract)
-            bytes32("salt"), // salt to be used by create2Deployer
+            Staging(address(0)),
             1, // l1 ratio
             1, // l2 ratio
             relayer, // relayer
@@ -36,15 +33,12 @@ library Deploy {
 
     function deployL1Vault() internal returns (L1Vault vault) {
         MockERC20 token = new MockERC20("Mock", "MT", 18);
-        Create2Deployer create2Deployer = new Create2Deployer();
-
         vault = new L1Vault();
         vault.initialize(
             address(this), // governance
             token, // token
             IWormhole(address(0)), // wormhole, // wormhole
-            create2Deployer, // create2deployer (must be real address)
-            bytes32("salt"), // salt
+            Staging(address(0)),
             IRootChainManager(address(0)), // chain manager
             address(0) // predicate
         );
@@ -52,15 +46,12 @@ library Deploy {
 
     function deployBaseVault() internal returns (BaseVault vault) {
         MockERC20 token = new MockERC20("Mock", "MT", 18);
-        Create2Deployer create2Deployer = new Create2Deployer();
-
         vault = new BaseVault();
         vault.init(
             address(this), // governance
             token, // token
             IWormhole(address(0)), // wormhole
-            create2Deployer, // create2deployer (needs to be a real contract)
-            bytes32("salt")
+            Staging(address(0))
         );
     }
 }

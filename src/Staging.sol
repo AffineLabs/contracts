@@ -22,23 +22,25 @@ contract Staging {
     IRootChainManager public rootChainManager;
     bool public initialized;
 
-    constructor() {}
+    address public owner;
+
+    constructor() {
+        owner = msg.sender;
+    }
 
     function initialize(
         address _vault,
         IWormhole _wormhole,
-        ERC20 _token
+        ERC20 _token,
+        IRootChainManager manager
     ) external {
-        require(!initialized, "Can only init once");
+        require(msg.sender == owner, "ONLY_OWNER");
+        require(!initialized, "INIT_DONE");
         vault = _vault;
         wormhole = _wormhole;
         token = _token;
-        initialized = true;
-    }
-
-    function initializeL1(IRootChainManager manager) external {
-        require(msg.sender == vault, "Only vault");
         rootChainManager = manager;
+        initialized = true;
     }
 
     // Transfer to L1
