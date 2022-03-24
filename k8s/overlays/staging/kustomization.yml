@@ -4,6 +4,6 @@ namespace: staging
 images:
 - name: rebalancer
   newName: 959984261658.dkr.ecr.us-east-2.amazonaws.com/rebalancer
-  newTag: 12ea8b75b4d1a37c3ea1b8fa22c95d4723b4742a
+  newTag: 92a11b6d593487f101e525fa48c4b4d0e175f33c
 resources:
 - ../../base
