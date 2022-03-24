@@ -66,8 +66,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
-        ICreate2Deployer create2Deployer,
-        bytes32 salt,
+        Staging _staging,
         uint256 L1Ratio,
         uint256 L2Ratio,
         Relayer _relayer,
@@ -76,7 +75,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
         __Pausable_init();
-        BaseVault.init(_governance, _token, _wormhole, create2Deployer, salt);
+        BaseVault.init(_governance, _token, _wormhole, _staging);
 
         layerRatios = LayerBalanceRatios({ layer1: L1Ratio, layer2: L2Ratio });
         canTransferToL1 = true;

@@ -31,16 +31,14 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
-        ICreate2Deployer create2Deployer,
-        bytes32 salt,
+        Staging _staging,
         IRootChainManager _chainManager,
         address _predicate
     ) public initializer {
         __UUPSUpgradeable_init();
         __Pausable_init();
-        BaseVault.init(_governance, _token, _wormhole, create2Deployer, salt);
+        BaseVault.init(_governance, _token, _wormhole, _staging);
         chainManager = _chainManager;
-        staging.initializeL1(chainManager);
         predicate = _predicate;
     }
 

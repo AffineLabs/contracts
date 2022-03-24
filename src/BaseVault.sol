@@ -28,8 +28,7 @@ contract BaseVault is AccessControl {
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
-        ICreate2Deployer create2Deployer,
-        bytes32 salt
+        Staging _staging
     ) public {
         governance = _governance;
         token = _token;
@@ -38,9 +37,7 @@ contract BaseVault is AccessControl {
         _grantRole(bankerRole, governance);
         _grantRole(stackOperatorRole, governance);
 
-        bytes memory bytecode = type(Staging).creationCode;
-        staging = Staging(create2Deployer.deploy(0, salt, bytecode));
-        staging.initialize(address(this), _wormhole, _token);
+        staging = _staging;
     }
 
     /** CROSS CHAIN MESSAGE PASSING AND REBALANCING

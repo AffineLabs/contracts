@@ -1,4 +1,4 @@
-L2AAVEStratTestFork:testStrategyLosesMoney() (gas: 546733)
-L2AAVEStratTestFork:testStrategyMakesMoney() (gas: 435058)
+L2AAVEStratTestFork:testStrategyLosesMoney() (gas: 546777)
+L2AAVEStratTestFork:testStrategyMakesMoney() (gas: 435080)
 L2BtcEthBasketTestFork:testAuction() (gas: 120)
 L2BtcEthBasketTestFork:testDepositWithdraw() (gas: 582833)
