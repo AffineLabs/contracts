@@ -24,8 +24,8 @@ contract Staging {
 
     address public owner;
 
-    constructor() {
-        owner = msg.sender;
+    constructor(address _owner) {
+        owner = _owner;
     }
 
     function initialize(
