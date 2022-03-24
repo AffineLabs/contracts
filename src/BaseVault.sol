@@ -14,8 +14,6 @@ import { IStaging } from "./interfaces/IStaging.sol";
 import { Staging } from "./Staging.sol";
 import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
 
-import "hardhat/console.sol";
-
 contract BaseVault is AccessControl {
     using SafeTransferLib for ERC20;
 
@@ -41,14 +39,7 @@ contract BaseVault is AccessControl {
         _grantRole(stackOperatorRole, governance);
 
         bytes memory bytecode = type(Staging).creationCode;
-        // console.logBytes(bytecode);
-        console.log("BEFORE DEPLOY");
-        create2Deployer.deploy(0, bytes32("foo"), bytecode);
-        console.log("AFTER DEPLOY");
-        staging = Staging(create2Deployer.computeAddress(salt, keccak256(bytecode)));
-        console.log("ADDRESS COMPUTED");
-        console.log("staging IN HARDHAT: %s", address(staging));
-
+        staging = Staging(create2Deployer.deploy(0, salt, bytecode));
         staging.initialize(address(this), _wormhole, _token);
     }
 

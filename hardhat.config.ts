@@ -131,7 +131,7 @@ const config: HardhatUserConfig = {
     except: [":ERC20$"],
   },
   contractSizer: {
-    only: ["Vault"],
+    only: ["Vault|Staging"],
   },
   defender: {
     apiKey: process.env.DEFENDER_API_KEY || "",

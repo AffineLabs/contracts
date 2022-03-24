@@ -30,6 +30,9 @@ it("Deploy Vaults", async () => {
   expect(actualRelayer).to.equal(relayer.address);
 
   // Check that staging addresses are the same
+  const l1Staging = await l1Vault.staging();
+  expect(l1Staging).to.be.properAddress;
+  expect(l1Staging).to.equal(await l2Vault.staging());
 });
 
 // TODO: check that we can upgrade proxies successfully
