@@ -23,11 +23,13 @@ contract BaseVault is AccessControl {
     /// @notice The token that the vault takes in and gives to strategies, e.g. USDC
     ERC20 public token;
 
+    // TODO: handle access control in a better way
     function init(
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
-        ICreate2Deployer create2Deployer
+        ICreate2Deployer create2Deployer,
+        bytes32 salt
     ) public {
         governance = _governance;
         token = _token;
@@ -36,10 +38,9 @@ contract BaseVault is AccessControl {
         _grantRole(bankerRole, governance);
         _grantRole(stackOperatorRole, governance);
 
-        ICreate2Deployer deployer = create2Deployer;
         bytes memory bytecode = type(Staging).creationCode;
-        staging = deployer.deploy(0, bytes32("staging1"), bytecode);
-        IStaging(staging).initialize(address(this), _wormhole, _token);
+        staging = Staging(create2Deployer.deploy(0, salt, bytecode));
+        staging.initialize(address(this), _wormhole, _token);
     }
 
     /** CROSS CHAIN MESSAGE PASSING AND REBALANCING
@@ -47,7 +48,7 @@ contract BaseVault is AccessControl {
 
     // Wormhole contract for sending/receiving messages
     IWormhole public wormhole;
-    address public staging;
+    Staging public staging;
 
     /** AUTHENTICATION
      **************************************************************************/

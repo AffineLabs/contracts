@@ -26,19 +26,19 @@ contract Staging {
 
     function initialize(
         address _vault,
-        address _wormhole,
-        address _token
+        IWormhole _wormhole,
+        ERC20 _token
     ) external {
         require(!initialized, "Can only init once");
         vault = _vault;
-        wormhole = IWormhole(_wormhole);
-        token = ERC20(_token);
+        wormhole = _wormhole;
+        token = _token;
         initialized = true;
     }
 
-    function initializeL1(address manager) external {
+    function initializeL1(IRootChainManager manager) external {
         require(msg.sender == vault, "Only vault");
-        rootChainManager = IRootChainManager(manager);
+        rootChainManager = manager;
     }
 
     // Transfer to L1

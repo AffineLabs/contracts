@@ -10,10 +10,11 @@ import "@typechain/hardhat";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
 
+import "@nomiclabs/hardhat-etherscan";
 import "hardhat-change-network";
 import "hardhat-gas-reporter";
-import "@nomiclabs/hardhat-etherscan";
 import "hardhat-abi-exporter";
+import "hardhat-contract-sizer";
 import "@openzeppelin/hardhat-upgrades";
 import "@openzeppelin/hardhat-defender";
 
@@ -128,6 +129,9 @@ const config: HardhatUserConfig = {
     spacing: 2,
     // We use both Openzeppelin and solmate ERC20, so exporting abi will throw "duplicate output destination" error
     except: [":ERC20$"],
+  },
+  contractSizer: {
+    only: ["Vault|Staging"],
   },
   defender: {
     apiKey: process.env.DEFENDER_API_KEY || "",

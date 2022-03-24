@@ -13,7 +13,7 @@ import { IWormhole } from "../interfaces/IWormhole.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
-import { IStaging } from "../interfaces/IStaging.sol";
+import { Staging } from "../Staging.sol";
 import { BaseVault } from "../BaseVault.sol";
 
 contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
@@ -32,14 +32,15 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         ERC20 _token,
         IWormhole _wormhole,
         ICreate2Deployer create2Deployer,
+        bytes32 salt,
         IRootChainManager _chainManager,
         address _predicate
     ) public initializer {
         __UUPSUpgradeable_init();
         __Pausable_init();
-        BaseVault.init(_governance, _token, _wormhole, create2Deployer);
+        BaseVault.init(_governance, _token, _wormhole, create2Deployer, salt);
         chainManager = _chainManager;
-        IStaging(staging).initializeL1(chainManager);
+        staging.initializeL1(chainManager);
         predicate = _predicate;
     }
 
@@ -89,7 +90,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     // Send `token` to L2 staging via polygon bridge
     function _transferFundsToL2(uint256 amount) internal {
         token.approve(predicate, amount);
-        chainManager.depositFor(staging, address(token), abi.encodePacked(amount));
+        chainManager.depositFor(address(staging), address(token), abi.encodePacked(amount));
 
         // Let L2 know how much money we sent
         uint64 sequence = wormhole.nextSequence(address(this));
@@ -98,7 +99,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     }
 
     function afterReceive() external {
-        require(msg.sender == staging, "Only L1 staging.");
+        require(msg.sender == address(staging), "Only L1 staging.");
         received = true;
     }
 }
