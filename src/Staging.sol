@@ -29,13 +29,12 @@ contract Staging is Initializable {
     function initialize(
         address _vault,
         address _wormhole,
-        address _token,
-        address _wormholeRouter
+        address _token
     ) external initializer() {
         vault = _vault;
         wormhole = IWormhole(_wormhole);
         token = ERC20(_token);
-        wormholeRouter = _wormholeRouter;
+        wormholeRouter = address(IL2Vault(vault).wormholeRouter());
     }
 
     function initializeL1(address manager) external onlyIfInitialized() {
