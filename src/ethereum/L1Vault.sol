@@ -79,7 +79,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         chainManager.depositFor(address(staging), address(token), abi.encodePacked(amount));
 
         // Let L2 know how much money we sent
-        wormholeRouter.reportTrasferredFund(amount);
+        wormholeRouter.reportTransferredFund(amount);
     }
 
     function afterReceive() external {

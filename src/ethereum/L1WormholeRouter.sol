@@ -40,7 +40,7 @@ contract L1WormholeRouter is Initializable {
         wormhole.publishMessage(uint32(sequence), payload, 4);
     }
 
-    function reportTrasferredFund(uint256 amount) external {
+    function reportTransferredFund(uint256 amount) external {
         require(msg.sender == address(vault), "Only vault");
         bytes memory payload = abi.encodePacked(Constants.L1_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));

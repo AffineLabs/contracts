@@ -291,7 +291,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         L1TotalLockedValue += amount;
 
         // Let L1 know how much money we sent
-        wormholeRouter.reportTrasferredFund(amount);
+        wormholeRouter.reportTransferredFund(amount);
     }
 
     function _divestFromL1(uint256 amount) internal {

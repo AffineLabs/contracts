@@ -27,7 +27,7 @@ contract L2WormholeRouter is Initializable {
         staging = Staging(vault.staging());
     }
 
-    function reportTrasferredFund(uint256 amount) external {
+    function reportTransferredFund(uint256 amount) external {
         require(msg.sender == address(vault), "Only vault");
         bytes memory payload = abi.encodePacked(Constants.L2_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
