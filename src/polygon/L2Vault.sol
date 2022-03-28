@@ -11,13 +11,14 @@ import { Context } from "@openzeppelin/contracts/utils/Context.sol";
 import { ContextUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
+import { BaseRelayRecipient } from "@opengsn/contracts/src/BaseRelayRecipient.sol";
+
 import { BaseVault } from "../BaseVault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { Staging } from "../Staging.sol";
-import { Relayer } from "./Relayer.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 
-contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, BaseVault {
+contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, BaseVault, BaseRelayRecipient {
     using SafeTransferLib for ERC20;
 
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
@@ -39,9 +40,6 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
 
     event SendToL1(uint256 amount);
     event ReceiveFromL1(uint256 amount);
-
-    /////// Gasless transactions
-    Relayer public relayer;
 
     /** Fees
      **************************************************************************/
@@ -67,9 +65,9 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         ERC20 _token,
         IWormhole _wormhole,
         Staging _staging,
+        address forwarder,
         uint256 L1Ratio,
         uint256 L2Ratio,
-        Relayer _relayer,
         uint256[2] memory fees
     ) public initializer {
         __ERC20_init("Alpine Save", "alpSave");
@@ -81,7 +79,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         canTransferToL1 = true;
         canRequestFromL1 = true;
 
-        relayer = _relayer;
+        _setTrustedForwarder(forwarder);
 
         withdrawalFee = fees[0];
         managementFee = fees[1];
@@ -89,13 +87,21 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
-    // BaseVault is `Context` while ERC20Upgradeable is `ContextUpgradeable`. We don't need these functions
-    function _msgSender() internal view override(Context, ContextUpgradeable) returns (address) {
-        return Context._msgSender();
+    function _msgSender() internal view override(Context, ContextUpgradeable, BaseRelayRecipient) returns (address) {
+        return BaseRelayRecipient._msgSender();
     }
 
-    function _msgData() internal view override(Context, ContextUpgradeable) returns (bytes calldata) {
-        return Context._msgData();
+    function _msgData()
+        internal
+        view
+        override(Context, ContextUpgradeable, BaseRelayRecipient)
+        returns (bytes calldata)
+    {
+        return BaseRelayRecipient._msgData();
+    }
+
+    function versionRecipient() external pure override returns (string memory) {
+        return "1";
     }
 
     function decimals() public view override returns (uint8) {
@@ -107,13 +113,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
     event Deposit(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
 
     function deposit(uint256 amountToken) external {
-        _deposit(msg.sender, amountToken);
-    }
-
-    // To be called only by the relayer.
-    function depositGasLess(address user, uint256 amountToken) external {
-        require(msg.sender == address(relayer), "Only relayer");
-        _deposit(user, amountToken);
+        _deposit(_msgSender(), amountToken);
     }
 
     function _deposit(address user, uint256 amountToken) internal {
@@ -165,21 +165,11 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
     }
 
     function redeem(uint256 shares) external {
-        _redeem(msg.sender, shares);
-    }
-
-    function redeemGasLess(address user, uint256 shares) external {
-        require(msg.sender == address(relayer), "Only relayer");
-        _redeem(user, shares);
+        _redeem(_msgSender(), shares);
     }
 
     function withdraw(uint256 amountToken) external {
-        _withdraw(msg.sender, amountToken);
-    }
-
-    function withdrawGasLess(address user, uint256 amountToken) external {
-        require(msg.sender == address(relayer), "Only relayer");
-        _withdraw(user, amountToken);
+        _withdraw(_msgSender(), amountToken);
     }
 
     function _withdraw(address user, uint256 amountToken) internal {
@@ -304,7 +294,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
     }
 
     function afterReceive(uint256 amount) external {
-        require(msg.sender == address(staging), "Only L2 staging.");
+        require(_msgSender() == address(staging), "Only L2 staging.");
         L1TotalLockedValue -= amount;
         canRequestFromL1 = true;
         emit ReceiveFromL1(amount);
