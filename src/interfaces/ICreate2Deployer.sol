@@ -7,4 +7,6 @@ interface ICreate2Deployer {
         bytes32 salt,
         bytes memory code
     ) external returns (address);
+
+    function computeAddress(bytes32 salt, bytes32 codeHash) external view returns (address);
 }

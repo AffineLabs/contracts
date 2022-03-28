@@ -2,7 +2,7 @@ import { ethers, upgrades } from "hardhat";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../../utils/bc-explorer-links";
 import { Config } from "../../utils/config";
-import { L1Vault, L1WormholeRotuer, L2Vault, L2WormholeRotuer, Relayer } from "../../typechain";
+import { ICreate2Deployer__factory, L1WormholeRotuer, L1Vault, L2WormholeRotuer, L2Vault, Relayer, Staging__factory } from "../../typechain";
 import { addToAddressBookAndDefender, getContractAddress } from "../../utils/export";
 import { ETH_GOERLI, POLYGON_MUMBAI } from "../../utils/constants/blockchain";
 import { address } from "../../utils/types";
@@ -26,34 +26,35 @@ export async function deployVaults(
    * Deploy vault in eth.
    *
    * */
+  console.log("about to deploy l1 vault: ", config);
   hre.changeNetwork(ethNetworkName);
 
-  // Generate random wallet and send money to it
-  let [governanceSigner] = await ethers.getSigners();
-  let wallet = ethers.Wallet.createRandom().connect(ethers.provider);
-  console.log("deployer mnemonic: ", wallet.mnemonic);
+  let [deployerSigner] = await ethers.getSigners();
 
-  let fundTx = await governanceSigner.sendTransaction({
-    to: wallet.address,
-    value: ethers.utils.parseEther("0.002"),
-  });
-  await fundTx.wait();
+  // Deploy Staging contract
+  // padding to unix timestamp (in milliseconds) to 32 bytes
+  const rawBytes = ethers.utils.hexZeroPad(`0x${Date.now().toString()}`, 32);
+  const salt = ethers.utils.keccak256(rawBytes);
+  const stagingCode = (await ethers.getContractFactory("Staging")).bytecode;
+  const constructorParams = ethers.utils.defaultAbiCoder.encode(["address"], [await deployerSigner.getAddress()]);
 
-  // deploy deployer from newly funded wallet
-  let deployerFactory = await ethers.getContractFactory("Create2Deployer", wallet);
-  let deployer = await deployerFactory.deploy();
-  await deployer.deployed();
+  const stagingCreationCode = ethers.utils.hexConcat([stagingCode, constructorParams]); // bytecode concat constructor params
+
+  let create2 = ICreate2Deployer__factory.connect(config.create2Deployer, deployerSigner);
+  let stagindDeployTx = await create2.deploy(0, salt, stagingCreationCode);
+  await stagindDeployTx.wait();
+
+  const stagingAddr = await create2.computeAddress(salt, ethers.utils.keccak256(stagingCreationCode));
 
   const l1VaultFactory = await ethers.getContractFactory("L1Vault");
-  console.log("about to deploy l1 vault: ", config);
 
   let l1WormholeRouterFactory = await ethers.getContractFactory("L1WormholeRouter");
   let l1WormholeRouter = await l1WormholeRouterFactory.deploy() as L1WormholeRotuer;
   await l1WormholeRouter.deployed();
-
+  // Deploy vault
   const l1Vault = (await upgrades.deployProxy(
     l1VaultFactory,
-    [l1Governance, config.l1USDC, config.l1worm, l1WormholeRouter.address, deployer.address, config.l1ChainManager, config.l2ERC20Predicate],
+    [l1Governance, config.l1USDC, config.l1worm, l1WormholeRouter.address, stagingAddr, config.l1ChainManager, config.l2ERC20Predicate],
     { kind: "uups" },
   )) as L1Vault;
 
@@ -62,6 +63,16 @@ export async function deployVaults(
   await addToAddressBookAndDefender(ETH_GOERLI, `EthAlpSave`, "L1Vault", l1Vault);
   logContractDeploymentInfo(ethNetworkName, "L1Vault", l1Vault);
 
+  // Initialize staging
+  let staging = Staging__factory.connect(stagingAddr, deployerSigner);
+  let stagingInitTx = await staging.initialize(
+    await getContractAddress(l1Vault),
+    config.l1worm,
+    config.l1USDC,
+    config.l1ChainManager,
+  );
+  await stagingInitTx.wait();
+
   /**
    * Deploy vault in Polygon.
    *
@@ -69,23 +80,15 @@ export async function deployVaults(
   hre.changeNetwork(polygonNetworkName);
 
   // Deploy relayer
-  [governanceSigner] = await ethers.getSigners();
-  const relayerFactory = await ethers.getContractFactory("Relayer", governanceSigner);
+  [deployerSigner] = await ethers.getSigners();
+  const relayerFactory = await ethers.getContractFactory("Relayer", deployerSigner);
   const relayer = await relayerFactory.deploy();
   await relayer.deployed();
 
-  // Generate random wallet and send money to it
-  wallet = wallet.connect(ethers.provider);
-  fundTx = await governanceSigner.sendTransaction({
-    to: wallet.address,
-    value: ethers.utils.parseEther("0.02"),
-  });
-  await fundTx.wait();
-
-  // deploy deployer from newly funded wallet
-  deployerFactory = await ethers.getContractFactory("Create2Deployer", wallet);
-  deployer = await deployerFactory.deploy();
-  await deployer.deployed();
+  // Deploy staging
+  create2 = ICreate2Deployer__factory.connect(config.create2Deployer, deployerSigner);
+  stagindDeployTx = await create2.deploy(0, salt, stagingCreationCode);
+  await stagindDeployTx.wait();
 
   let l2WormholeRouterFactory = await ethers.getContractFactory("L2WormholeRouter");
   let l2WormholeRouter = await l2WormholeRouterFactory.deploy() as L2WormholeRotuer;
@@ -98,8 +101,8 @@ export async function deployVaults(
       l2Governance,
       config.l2USDC,
       config.l2worm,
-      l2WormholeRouter.address,
-      await getContractAddress(deployer),
+      l2WormholeRouter.address, 
+      stagingAddr,
       9,
       1,
       relayer.address,
@@ -112,6 +115,16 @@ export async function deployVaults(
   await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonAlpSave`, "L2Vault", l2Vault);
   await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonRelayer`, "Relayer", await l2Vault.relayer());
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
+
+  // Initialize staging
+  staging = Staging__factory.connect(stagingAddr, deployerSigner);
+  stagingInitTx = await staging.initialize(
+    await getContractAddress(l2Vault),
+    config.l2worm,
+    config.l2USDC,
+    ethers.constants.AddressZero, // there is no root chain manager in polygon
+  );
+  await stagingInitTx.wait();
 
   // Initialize relayer
   const initTx = await relayer.initialize(config.biconomyForwarder, l2Vault.address);

@@ -24,22 +24,25 @@ contract Staging is Initializable {
     address public wormholeRouter;
     bool public initialized;
 
-    constructor() {}
+    address public owner;
+
+    constructor(address _owner) {
+        owner = _owner;
+    }
 
     function initialize(
         address _vault,
-        address _wormhole,
-        address _token
-    ) external initializer() {
+        IWormhole _wormhole,
+        ERC20 _token,
+        IRootChainManager manager
+    ) external {
+        require(msg.sender == owner, "ONLY_OWNER");
+        require(!initialized, "INIT_DONE");
         vault = _vault;
-        wormhole = IWormhole(_wormhole);
-        token = ERC20(_token);
-        wormholeRouter = address(IL2Vault(vault).wormholeRouter());
-    }
-
-    function initializeL1(address manager) external onlyIfInitialized() {
-        require(msg.sender == vault, "Only vault");
-        rootChainManager = IRootChainManager(manager);
+        wormhole = _wormhole;
+        token = _token;
+        rootChainManager = manager;
+        initialized = true;
     }
 
     // Transfer to L1
