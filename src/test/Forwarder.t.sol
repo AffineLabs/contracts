@@ -25,10 +25,14 @@ contract ForwardTest is DSTestPlus {
         token = MockERC20(address(vault.token()));
         basket = Deploy.deployTwoAssetBasket(token);
         forwarder = new Forwarder();
-        // Update trusted forwarder
+        // Update trusted forwarder in vault
         uint256 slot = stdstore.target(address(vault)).sig("trustedForwarder()").find();
         bytes32 forwarderAddr = bytes32(uint256(uint160(address(forwarder))));
         cheats.store(address(vault), bytes32(slot), forwarderAddr);
+
+        // Update trusted forwarder in basket
+        slot = stdstore.target(address(basket)).sig("trustedForwarder()").find();
+        cheats.store(address(basket), bytes32(slot), forwarderAddr);
     }
 
     function toTypedDataHash(bytes32 domainSeparator, bytes32 structHash) internal pure returns (bytes32) {
