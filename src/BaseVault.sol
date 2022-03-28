@@ -10,11 +10,10 @@ import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 
 import { BaseStrategy as Strategy } from "./BaseStrategy.sol";
 import { IWormhole } from "./interfaces/IWormhole.sol";
-import { IStaging } from "./interfaces/IStaging.sol";
 import { Staging } from "./Staging.sol";
 import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
 
-contract BaseVault is AccessControl {
+abstract contract BaseVault is AccessControl {
     using SafeTransferLib for ERC20;
 
     /** UNDERLYING ASSET AND INITIALIZATION

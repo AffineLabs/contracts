@@ -15,7 +15,7 @@ import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { Staging } from "../Staging.sol";
 import { BaseVault } from "../BaseVault.sol";
-import { IL1WormholeRouter } from "../interfaces/IWormholeRouter.sol";
+import { L1WormholeRouter } from "./L1WormholeRouter.sol";
 
 contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     /////// Cross chain rebalancing
@@ -26,7 +26,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     // https://github.com/maticnetwork/pos-portal/blob/88dbf0a88fd68fa11f7a3b9d36629930f6b93a05/contracts/root/RootChainManager/RootChainManager.sol#L267
     address public predicate;
 
-    IL1WormholeRouter public wormholeRouter;
+    L1WormholeRouter public wormholeRouter;
 
     constructor() {}
 
@@ -34,7 +34,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
-        IL1WormholeRouter _wormholeRouter,
+        L1WormholeRouter _wormholeRouter,
         Staging _staging,
         IRootChainManager _chainManager,
         address _predicate

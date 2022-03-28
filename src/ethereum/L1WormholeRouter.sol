@@ -3,16 +3,16 @@ pragma solidity ^0.8.10;
 
 import { Initializable } from "../Initializable.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
-import { IStaging } from "../interfaces/IStaging.sol";
-import { IL1Vault } from "../interfaces/IVault.sol";
+import { Staging } from "../Staging.sol";
+import { L1Vault } from "./L1Vault.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Constants } from "../Constants.sol";
 
-contract L1WormholeRotuer is Initializable {
+contract L1WormholeRouter is Initializable {
     IWormhole public wormhole;
-    IL1Vault public vault;
-    IStaging public staging;
+    L1Vault public vault;
+    Staging public staging;
 
     uint256 nextVaildNonce;
 
@@ -20,14 +20,15 @@ contract L1WormholeRotuer is Initializable {
 
     function initialize(
         IWormhole _wormhole,
-        IL1Vault _vault
+        L1Vault _vault
     ) external initializer() {
         wormhole = _wormhole;
         vault = _vault;
-        staging = IStaging(vault.staging());
+        staging = Staging(vault.staging());
     }
 
     function reportTVL(uint256 tvl) external {
+        require(msg.sender == address(vault), "Only vault");
         bytes memory payload = abi.encodePacked(Constants.L1_TVL, tvl);
         // NOTE: We use the current tx count (to wormhole) of this contract
         // as a nonce when publishing messages
@@ -40,6 +41,7 @@ contract L1WormholeRotuer is Initializable {
     }
 
     function reportTrasferredFund(uint256 amount) external {
+        require(msg.sender == address(vault), "Only vault");
         bytes memory payload = abi.encodePacked(Constants.L1_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
         wormhole.publishMessage(uint32(sequence), payload, 4);

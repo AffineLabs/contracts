@@ -5,7 +5,8 @@ import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { IWormhole } from "./interfaces/IWormhole.sol";
 import { IRootChainManager } from "./interfaces/IRootChainManager.sol";
-import { IL1Vault, IL2Vault } from "./interfaces/IVault.sol";
+import { L1Vault } from "./ethereum/L1Vault.sol";
+import { L2Vault } from "./polygon/L2Vault.sol";
 import { Initializable } from "./Initializable.sol";
 
 interface IChildERC20 {

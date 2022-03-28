@@ -9,8 +9,8 @@ import { IWormhole } from "../interfaces/IWormhole.sol";
 import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { Relayer } from "../polygon/Relayer.sol";
 import { L1Vault } from "../ethereum/L1Vault.sol";
-import { IL1WormholeRouter, IL2WormholeRouter } from "../interfaces/IWormholeRouter.sol";
-import { Staging } from "../Staging.sol";
+import { L1WormholeRouter } from "../ethereum/L1WormholeRouter.sol";
+import { L2WormholeRouter } from "../polygon/L2WormholeRouter.sol";
 
 library Deploy {
     function deployL2Vault() internal returns (L2Vault vault) {

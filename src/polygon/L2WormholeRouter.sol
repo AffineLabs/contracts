@@ -3,16 +3,16 @@ pragma solidity ^0.8.10;
 
 import { Initializable } from "../Initializable.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
-import { IStaging } from "../interfaces/IStaging.sol";
-import { IL2Vault } from "../interfaces/IVault.sol";
+import { Staging } from "../Staging.sol";
+import { L2Vault } from "./L2Vault.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Constants } from "../Constants.sol";
 
-contract L2WormholeRotuer is Initializable {
+contract L2WormholeRouter is Initializable {
     IWormhole public wormhole;
-    IL2Vault public vault;
-    IStaging public staging;
+    L2Vault public vault;
+    Staging public staging;
 
     uint256 nextVaildNonce;
 
@@ -20,20 +20,22 @@ contract L2WormholeRotuer is Initializable {
 
     function initialize(
         IWormhole _wormhole,
-        IL2Vault _vault
+        L2Vault _vault
     ) external initializer() {
         wormhole = _wormhole;
         vault = _vault;
-        staging = IStaging(vault.staging());
+        staging = Staging(vault.staging());
     }
 
     function reportTrasferredFund(uint256 amount) external {
+        require(msg.sender == address(vault), "Only vault");
         bytes memory payload = abi.encodePacked(Constants.L2_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
         wormhole.publishMessage(uint32(sequence), payload, 4);
     }
 
     function requestFunds(uint256 amount) external {
+        require(msg.sender == address(vault), "Only vault");
         bytes memory payload = abi.encodePacked(Constants.L2_FUND_REQUEST, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
         wormhole.publishMessage(uint32(sequence), payload, 4);
