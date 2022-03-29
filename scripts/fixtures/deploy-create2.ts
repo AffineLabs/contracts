@@ -3,8 +3,6 @@ import { ethers } from "hardhat";
 
 import { config as dotenvConfig } from "dotenv";
 import { resolve } from "path";
-import { getContractAddress } from "../../utils/export";
-import { Provider } from "@ethersproject/abstract-provider";
 
 dotenvConfig({ path: resolve(__dirname, "./.env") });
 

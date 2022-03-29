@@ -58,7 +58,8 @@ library Deploy {
         MockERC20 btc = new MockERC20("Mock BTC", "mBTC", 18);
         MockERC20 weth = new MockERC20("Mock WETH", "mWETH", 18);
         basket = new TwoAssetBasket(
-            address(this), // governance
+            address(this), // governance,
+            address(0), // forwarder
             10_000 * 1e6, // once the vault is $10,000 out of balance then we can rebalance
             5_000 * 1e6, // selling in $5,000 blocks
             IUniLikeSwapRouter(address(0)), // sushiswap router

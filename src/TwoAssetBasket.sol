@@ -28,6 +28,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient {
 
     constructor(
         address _governance,
+        address forwarder,
         uint256 _rebalanceDelta,
         uint256 _blockSize,
         IUniLikeSwapRouter _uniRouter,
@@ -38,6 +39,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient {
     ) ERC20("Alpine Large Vault Token", "alpLarge", 18) {
         require(_rebalanceDelta >= _blockSize, "DELTA_TOO_SMALL");
         governance = _governance;
+        _setTrustedForwarder(forwarder);
         rebalanceDelta = _rebalanceDelta;
         blockSize = _blockSize;
         (token1, token2) = (_tokens[0], _tokens[1]);

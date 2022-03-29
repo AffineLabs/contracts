@@ -11,14 +11,14 @@ const POLYGON_ERC20_PREDICATE = "0x37c3bfC05d5ebF9EBb3FF80ce0bd0133Bf221BC8";
 const ROOT_CHAIN_MANAGER = "0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74";
 const ETH_WORMHOLE = "0x706abc4E45D419950511e474C7B9Ed348A4a716c";
 const POLYGON_WORMHOLE = "0x0CBE91CF822c73C2315FB05100C2F714765d5c20";
-// This contract exists on many evm chains, including Ethereum/Polygon and their testnets
-// const create2Deployer = "0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2";
-// Testnet version deployed by alpine
+
+// Testnet create2 deployer contract version deployed by alpine
 const create2Deployer = "0x7F4eD93f8Da2A07008de3f87759d220e2f7B8C40";
 
 const wbtc = "0xc8BA1fdaf17c1f16C68778fde5f78F3D37cD1509";
 const weth = "0x3dd7F3CF122e0460Dba8A75d191b3486752B6A61";
-const BICONOMY_FORWARDER = "0x9399BB24DBB5C4b782C70c2969F58716Ebbd6a3b";
+// Forwarder contract for meta transactions (and batched meta transactions) on layer 3
+const forwarder = "0x52c8e413Ed9E961565D8D1de67e805E81b26C01b";
 const withdrawFee = 50; // user pays 50 bps
 const managementFee = 200; // 200 bps to be charged to vault over the course of the year
 // https://defender.openzeppelin.com/#/admin/contracts/goerli-0xdbA49884464689800BF95C7BbD50eBA0DA0F67b9
@@ -36,7 +36,7 @@ export interface Config {
   create2Deployer: address;
   weth: address;
   wbtc: address;
-  biconomyForwarder: address;
+  forwarder: address;
   withdrawFee: number;
   managementFee: number;
   l1Governance: address;
@@ -52,7 +52,7 @@ export const config: Config = {
   create2Deployer,
   wbtc,
   weth,
-  biconomyForwarder: BICONOMY_FORWARDER,
+  forwarder,
   withdrawFee,
   managementFee,
   l1Governance: L1_GOVERNANCE,
