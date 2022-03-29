@@ -1,0 +1,6 @@
+{
+  "detectors_to_exclude": "naming-convention",
+  "filter_paths": "src/test|src/testnet|src/interfaces|node_modules",
+  "ignore_compile": "true",
+  "hardhat_cache_directory": "hh-cache"
+}
