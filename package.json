@@ -17,7 +17,7 @@
     "lint:fix": "solhint --fix src/**/*.sol",
     "format": "prettier --check \"**/*.{ts,js,sol}\"",
     "format:fix": "prettier --write \"**/*.{ts,js,sol}\"",
-    "postinstall": "yarn build && yarn build-hh"
+    "postinstall": "yarn build-hh"
   },
   "author": "Alpine",
   "license": "MIT",
