@@ -12,7 +12,7 @@ const ETH_NETWORK_NAME = "eth-goerli";
 const POLYGON_NETWORK_NAME = "polygon-mumbai";
 
 it("Deploy Vaults", async () => {
-  const { l1Vault, l2Vault, relayer } = await deployVaults(
+  const { l1Vault, l2Vault } = await deployVaults(
     config.l1Governance,
     config.l2Governance,
     ETH_NETWORK_NAME,
@@ -24,10 +24,10 @@ it("Deploy Vaults", async () => {
   expect(await l2Vault.token()).to.equal(config.l2USDC);
   expect(await l1Vault.token()).to.equal(config.l1USDC);
 
-  const actualRelayer = await l2Vault.relayer();
-  expect(actualRelayer).to.be.properAddress;
-  expect(actualRelayer).to.not.equal(ethers.constants.AddressZero);
-  expect(actualRelayer).to.equal(relayer.address);
+  const forwarder = await l2Vault.trustedForwarder();
+  expect(forwarder).to.be.properAddress;
+  expect(forwarder).to.not.equal(ethers.constants.AddressZero);
+  expect(forwarder).to.equal(config.forwarder);
 
   // Check that staging addresses are the same
   const l1Staging = await l1Vault.staging();
