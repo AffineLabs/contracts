@@ -7,19 +7,16 @@ import { Deploy } from "./Deploy.sol";
 import { MockERC20 } from "./MockERC20.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
-import { Relayer } from "../polygon/Relayer.sol";
 import { BaseStrategy } from "../BaseStrategy.sol";
 import { Deploy } from "./Deploy.sol";
 
 contract L2VaultTest is DSTestPlus {
     L2Vault vault;
     MockERC20 token;
-    Relayer relayer;
 
     function setUp() public {
         vault = Deploy.deployL2Vault();
         token = MockERC20(address(vault.token()));
-        relayer = Relayer(address(vault.relayer()));
     }
 
     // Adding this since this test contract is used as a strategy
@@ -53,35 +50,6 @@ contract L2VaultTest is DSTestPlus {
         assertEq(token.balanceOf(user), amountToken);
     }
 
-    function testDepositRedeemGasLess() public {
-        address user = address(this);
-        token.mint(user, 1e18);
-        token.approve(address(vault), type(uint256).max);
-
-        // truster forwarder is zero address and is the one who calls deposit on the relayer
-        // The trusted forwarder adds the original user as the last twenty bytes of calldata
-        cheats.startPrank(relayer.trustedForwarder());
-        bytes memory depositData = abi.encodeWithSelector(relayer.deposit.selector, 1e18);
-        address(relayer).call(abi.encodePacked(depositData, user));
-        assertEq(vault.balanceOf(user), 1e18);
-
-        bytes memory withdrawData = abi.encodeWithSelector(relayer.redeem.selector, 1e18);
-        address(relayer).call(abi.encodePacked(withdrawData, user));
-        assertEq(vault.balanceOf(user), 0);
-        assertEq(token.balanceOf(user), 1e18);
-
-        cheats.stopPrank();
-
-        // TODO: check that a bad user B imitating forwarder will
-        // end with a call to deposit gasless with (B, amountToken)
-
-        // only the relayer can call deposit gasless
-        cheats.expectRevert(bytes("Only relayer"));
-        vault.depositGasLess(user, 1e18);
-        cheats.expectRevert(bytes("Only relayer"));
-        vault.redeemGasLess(user, 1e18);
-    }
-
     function testDepositWithdraw(uint64 amountToken) public {
         // Using a uint64 since we multiply totalSupply by amountToken in sharesFromTokens
         // Using a uint64 makes sure the calculation will not overflow
@@ -103,28 +71,6 @@ contract L2VaultTest is DSTestPlus {
         vault.withdraw(amountToken);
         assertEq(vault.balanceOf(user), 0);
         assertEq(token.balanceOf(user), amountToken);
-    }
-
-    function testDepositWithdrawGasLess() public {
-        address user = address(this);
-        token.mint(user, 1e18);
-        token.approve(address(vault), type(uint256).max);
-
-        cheats.startPrank(relayer.trustedForwarder());
-        bytes memory depositData = abi.encodeWithSelector(relayer.deposit.selector, 1e18);
-        address(relayer).call(abi.encodePacked(depositData, user));
-        assertEq(vault.balanceOf(user), 1e18);
-
-        bytes memory withdrawData = abi.encodeWithSelector(relayer.withdraw.selector, 1e18);
-        address(relayer).call(abi.encodePacked(withdrawData, user));
-        assertEq(vault.balanceOf(user), 0);
-        assertEq(token.balanceOf(user), 1e18);
-
-        cheats.stopPrank();
-
-        // only the relayer can withdraw
-        cheats.expectRevert(bytes("Only relayer"));
-        vault.withdrawGasLess(user, 1e18);
     }
 
     function testManagementFee() public {

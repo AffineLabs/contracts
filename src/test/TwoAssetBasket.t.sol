@@ -22,6 +22,7 @@ contract L2BtcEthBasketTestFork is DSTestPlus {
 
         basket = new TwoAssetBasket(
             address(this), // governance
+            address(0), // forwarder
             10_000 * 1e6, // once the vault is $10,000 out of balance then we can rebalance
             5_000 * 1e6, // selling in $5,000 blocks
             IUniLikeSwapRouter(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506), // sushiswap router

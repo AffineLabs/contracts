@@ -2,7 +2,7 @@ import { ethers, upgrades } from "hardhat";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../../utils/bc-explorer-links";
 import { Config } from "../../utils/config";
-import { ICreate2Deployer__factory, L1Vault, L2Vault, Relayer, Staging__factory } from "../../typechain";
+import { ICreate2Deployer__factory, L1Vault, L2Vault, Staging__factory } from "../../typechain";
 import { addToAddressBookAndDefender, getContractAddress } from "../../utils/export";
 import { ETH_GOERLI, POLYGON_MUMBAI } from "../../utils/constants/blockchain";
 import { address } from "../../utils/types";
@@ -10,7 +10,6 @@ import { address } from "../../utils/types";
 export interface VaultContracts {
   l1Vault: L1Vault;
   l2Vault: L2Vault;
-  relayer: Relayer;
 }
 
 export async function deployVaults(
@@ -71,12 +70,7 @@ export async function deployVaults(
    *
    * */
   hre.changeNetwork(polygonNetworkName);
-
-  // Deploy relayer
   [deployerSigner] = await ethers.getSigners();
-  const relayerFactory = await ethers.getContractFactory("Relayer", deployerSigner);
-  const relayer = await relayerFactory.deploy();
-  await relayer.deployed();
 
   // Deploy staging
   create2 = ICreate2Deployer__factory.connect(config.create2Deployer, deployerSigner);
@@ -91,16 +85,15 @@ export async function deployVaults(
       config.l2USDC,
       config.l2worm,
       stagingAddr,
+      config.forwarder,
       9,
       1,
-      relayer.address,
       [config.withdrawFee, config.managementFee],
     ],
     { kind: "uups" },
   )) as L2Vault;
   await l2Vault.deployed();
   await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonAlpSave`, "L2Vault", l2Vault);
-  await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonRelayer`, "Relayer", await l2Vault.relayer());
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
 
   // Initialize staging
@@ -113,13 +106,8 @@ export async function deployVaults(
   );
   await stagingInitTx.wait();
 
-  // Initialize relayer
-  const initTx = await relayer.initialize(config.biconomyForwarder, l2Vault.address);
-  await initTx.wait();
-
   return {
     l1Vault,
     l2Vault,
-    relayer,
   };
 }

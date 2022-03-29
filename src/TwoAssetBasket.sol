@@ -3,11 +3,12 @@ pragma solidity ^0.8.10;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { BaseRelayRecipient } from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
 import { IUniLikeSwapRouter } from "./interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
 
-contract TwoAssetBasket is ERC20 {
+contract TwoAssetBasket is ERC20, BaseRelayRecipient {
     address public governance;
 
     // The token which we take in to buy token1 and token2, e.g. USDC
@@ -27,6 +28,7 @@ contract TwoAssetBasket is ERC20 {
 
     constructor(
         address _governance,
+        address forwarder,
         uint256 _rebalanceDelta,
         uint256 _blockSize,
         IUniLikeSwapRouter _uniRouter,
@@ -37,6 +39,7 @@ contract TwoAssetBasket is ERC20 {
     ) ERC20("Alpine Large Vault Token", "alpLarge", 18) {
         require(_rebalanceDelta >= _blockSize, "DELTA_TOO_SMALL");
         governance = _governance;
+        _setTrustedForwarder(forwarder);
         rebalanceDelta = _rebalanceDelta;
         blockSize = _blockSize;
         (token1, token2) = (_tokens[0], _tokens[1]);
@@ -49,6 +52,10 @@ contract TwoAssetBasket is ERC20 {
         inputToken.approve(address(uniRouter), type(uint256).max);
         token1.approve(address(uniRouter), type(uint256).max);
         token2.approve(address(uniRouter), type(uint256).max);
+    }
+
+    function versionRecipient() external pure override returns (string memory) {
+        return "1";
     }
 
     /** DEPOSIT / WITHDRAW
@@ -66,7 +73,7 @@ contract TwoAssetBasket is ERC20 {
         (uint256 amountInputToBtc, uint256 amountInputToEth) = _getBuyDollarsByToken(amountInput);
 
         // TODO: don't allow infinite slippage. Will need price oracle of inputToken and ETH
-        inputToken.transferFrom(msg.sender, address(this), amountInput);
+        inputToken.transferFrom(_msgSender(), address(this), amountInput);
         address[] memory pathBtc = new address[](2);
         pathBtc[0] = address(inputToken);
         pathBtc[1] = address(token1);
@@ -104,8 +111,8 @@ contract TwoAssetBasket is ERC20 {
             numShares = (dollarsReceived * totalSupply) / vaultDollars;
         }
 
-        emit Deposit(msg.sender, amountInput, numShares);
-        _mint(msg.sender, numShares);
+        emit Deposit(_msgSender(), amountInput, numShares);
+        _mint(_msgSender(), numShares);
     }
 
     event Withdraw(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
@@ -160,10 +167,10 @@ contract TwoAssetBasket is ERC20 {
         // burn $amountInput worth of shares
         uint256 numShares = (amountInput * totalSupply) / vaultDollars;
 
-        _burn(msg.sender, numShares);
+        _burn(_msgSender(), numShares);
 
-        emit Withdraw(msg.sender, amountInput, numShares);
-        inputToken.transfer(msg.sender, dollarsReceived);
+        emit Withdraw(_msgSender(), amountInput, numShares);
+        inputToken.transfer(_msgSender(), dollarsReceived);
     }
 
     /** EXCHANGE RATES
@@ -261,7 +268,7 @@ contract TwoAssetBasket is ERC20 {
     uint256 rebalanceDelta;
 
     /// @notice Is the auction active
-    bool isRebalancing;
+    bool public isRebalancing;
 
     /// @notice The size of each rebalancing trade
     /// @dev This should be smaller than the rebalance delta
@@ -321,8 +328,8 @@ contract TwoAssetBasket is ERC20 {
         uint256 sellTokenAmount = _tokensFromDollars(sellToken, blockSize);
         uint256 buyTokenAmount = _tokensFromDollars(buyToken, blockSize);
 
-        buyToken.transferFrom(msg.sender, address(this), buyTokenAmount);
-        sellToken.transfer(msg.sender, sellTokenAmount);
+        buyToken.transferFrom(_msgSender(), address(this), buyTokenAmount);
+        sellToken.transfer(_msgSender(), sellTokenAmount);
 
         _endAuction();
     }
