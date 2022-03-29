@@ -17,12 +17,6 @@ This hardhat project is based on [this template](https://github.com/amanusk/hard
 
 See instructions for installation [here](https://github.com/gakonst/foundry#installation).
 
-### Dapp Tools (Optional)
-
-Foundry is the main toolset that we're using. You may find having dapptools useful at times though.
-
-- Install Dapptools with these [instructions](https://github.com/dapphub/dapptools#installation). **WARNING**: If you are on an M1 mac you may have a ton of trouble. Try to follow this [gist](https://gist.github.com/kendricktan/8463eb9561f30c521fcb10c4c2c95709). If you're still having trouble, try to join the Dapptools [chat](https://dapphub.chat/).
-
 ### Hardhat
 
 - Install nvm with these [instructions](https://github.com/nvm-sh/nvm#install--update-script)
@@ -39,6 +33,15 @@ yarn install
 ```
 
 - If using vscode, install the [prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) and [solidity](https://marketplace.visualstudio.com/items?itemName=JuanBlanco.solidity) extensions
+
+### Slither
+
+Install slither with these [instructions](https://github.com/crytic/slither#using-pip). Install [solc-select](https://github.com/crytic/solc-select#quickstart). Update your solc version with:
+
+```sh
+solc-select install 0.8.10
+solc-select use 0.8.10
+```
 
 ## Usage
 
@@ -72,18 +75,18 @@ Update all gas snapshots
 $ yarn snap-all
 ```
 
-### Deploy Vaults
+### Lint/Analyze
 
-To deploy the Polygon contracts:
-`yarn script scripts/deployPolygon.ts --network <network>`
+Run solhint:
 
-To deploy the Ethereum contracts:
-`yarn script scripts/deployEth.ts --network <network>`
-
-### Deploy contract to netowrk (requires Mnemonic and infura API key)
-
+```sh
+$ yarn lint
 ```
-yarn script --network rinkeby ./scripts/deploy.ts
+
+Run slither:
+
+```sh
+$ slither .
 ```
 
 ### Validate a contract with etherscan (requires API key)
