@@ -3,16 +3,15 @@ pragma solidity ^0.8.10;
 
 import { Initializable } from "../Initializable.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
-import { Staging } from "../Staging.sol";
-import { L2Vault } from "./L2Vault.sol";
+import { IStaging } from "../interfaces/IStaging.sol";
+import { IL2Vault } from "../interfaces/IVault.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Constants } from "../Constants.sol";
 
 contract L2WormholeRouter is Initializable {
     IWormhole public wormhole;
-    L2Vault public vault;
-    Staging public staging;
+    IL2Vault public vault;
 
     uint256 nextVaildNonce;
 
@@ -20,14 +19,13 @@ contract L2WormholeRouter is Initializable {
 
     function initialize(
         IWormhole _wormhole,
-        L2Vault _vault
+        IL2Vault _vault
     ) external initializer() {
         wormhole = _wormhole;
         vault = _vault;
-        staging = Staging(vault.staging());
     }
 
-    function reportTransferredFund(uint256 amount) external {
+    function reportTrasferredFund(uint256 amount) external {
         require(msg.sender == address(vault), "Only vault");
         bytes memory payload = abi.encodePacked(Constants.L2_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
@@ -50,7 +48,7 @@ contract L2WormholeRouter is Initializable {
         // Get amount and nonce
         (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
         require(msgType == Constants.L1_FUND_TRANSFER_REPORT);
-        staging.l2ClearFund(amount);
+        vault.staging().l2ClearFund(amount);
     }
 
     function receiveTVL(bytes calldata message) external {

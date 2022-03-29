@@ -12,7 +12,6 @@ import { Constants } from "../Constants.sol";
 contract L1WormholeRouter is Initializable {
     IWormhole public wormhole;
     L1Vault public vault;
-    Staging public staging;
 
     uint256 nextVaildNonce;
 
@@ -24,7 +23,6 @@ contract L1WormholeRouter is Initializable {
     ) external initializer() {
         wormhole = _wormhole;
         vault = _vault;
-        staging = Staging(vault.staging());
     }
 
     function reportTVL(uint256 tvl) external {
@@ -40,7 +38,7 @@ contract L1WormholeRouter is Initializable {
         wormhole.publishMessage(uint32(sequence), payload, 4);
     }
 
-    function reportTransferredFund(uint256 amount) external {
+    function reportTrasferredFund(uint256 amount) external {
         require(msg.sender == address(vault), "Only vault");
         bytes memory payload = abi.encodePacked(Constants.L1_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
@@ -57,7 +55,7 @@ contract L1WormholeRouter is Initializable {
         (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
         require(msgType == Constants.L2_FUND_TRANSFER_REPORT);
 
-        staging.l1ClearFund(amount, data);
+        vault.staging().l1ClearFund(amount, data);
     }
 
     function receiveFundRequest(bytes calldata message) external {

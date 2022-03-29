@@ -9,8 +9,8 @@ import { IWormhole } from "../interfaces/IWormhole.sol";
 import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { Relayer } from "../polygon/Relayer.sol";
 import { L1Vault } from "../ethereum/L1Vault.sol";
-import { L1WormholeRouter } from "../ethereum/L1WormholeRouter.sol";
-import { L2WormholeRouter } from "../polygon/L2WormholeRouter.sol";
+import { IStaging } from "../interfaces/IStaging.sol";
+import { IL1WormholeRouter, IL2WormholeRouter } from "../interfaces/IWormholeRouter.sol";
 
 library Deploy {
     function deployL2Vault() internal returns (L2Vault vault) {
@@ -23,7 +23,7 @@ library Deploy {
             token, // token
             IWormhole(address(0)), // wormhole
             IL2WormholeRouter(address(0)), // Wormhole router
-            Staging(address(0)),
+            IStaging(address(0)),
             1, // l1 ratio
             1, // l2 ratio
             relayer, // relayer
@@ -41,7 +41,7 @@ library Deploy {
             token, // token
             IWormhole(address(0)), // wormhole,
             IL1WormholeRouter(address(0)), // Wormhole router
-            Staging(address(0)),
+            IStaging(address(0)),
             IRootChainManager(address(0)), // chain manager
             address(0) // predicate
         );
@@ -54,7 +54,7 @@ library Deploy {
             address(this), // governance
             token, // token
             IWormhole(address(0)), // wormhole
-            Staging(address(0))
+            IStaging(address(0))
         );
     }
 }

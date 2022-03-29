@@ -57,7 +57,7 @@ contract Staging is Initializable {
         uint256 balance = token.balanceOf(address(this));
         require(balance >= amount, "Funds not received");
 
-        IL2Vault l2Vault = IL2Vault(vault);
+        L2Vault l2Vault = L2Vault(vault);
         token.safeTransfer(address(l2Vault), balance);
 
         l2Vault.afterReceive(balance);
@@ -72,7 +72,7 @@ contract Staging is Initializable {
         uint256 balance = token.balanceOf(address(this));
         require(balance >= amount, "Funds not received");
 
-        IL1Vault l1Vault = IL1Vault(vault);
+        L1Vault l1Vault = L1Vault(vault);
         token.safeTransfer(address(l1Vault), balance);
 
         l1Vault.afterReceive();

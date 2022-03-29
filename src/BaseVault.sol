@@ -10,10 +10,10 @@ import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 
 import { BaseStrategy as Strategy } from "./BaseStrategy.sol";
 import { IWormhole } from "./interfaces/IWormhole.sol";
-import { Staging } from "./Staging.sol";
+import { IStaging } from "./interfaces/IStaging.sol";
 import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
 
-abstract contract BaseVault is AccessControl {
+contract BaseVault is AccessControl {
     using SafeTransferLib for ERC20;
 
     /** UNDERLYING ASSET AND INITIALIZATION
@@ -27,7 +27,7 @@ abstract contract BaseVault is AccessControl {
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
-        Staging _staging
+        IStaging _staging
     ) public {
         governance = _governance;
         token = _token;
@@ -44,7 +44,7 @@ abstract contract BaseVault is AccessControl {
 
     // Wormhole contract for sending/receiving messages
     IWormhole public wormhole;
-    Staging public staging;
+    IStaging public staging;
 
     /** AUTHENTICATION
      **************************************************************************/

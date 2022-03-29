@@ -2,7 +2,7 @@ import { ethers, upgrades } from "hardhat";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../../utils/bc-explorer-links";
 import { Config } from "../../utils/config";
-import { ICreate2Deployer__factory, L1WormholeRotuer, L1Vault, L2WormholeRotuer, L2Vault, Relayer, Staging__factory } from "../../typechain";
+import { ICreate2Deployer__factory, L1WormholeRouter, L1Vault, L2WormholeRotuer, L2Vault, Relayer, Staging__factory } from "../../typechain";
 import { addToAddressBookAndDefender, getContractAddress } from "../../utils/export";
 import { ETH_GOERLI, POLYGON_MUMBAI } from "../../utils/constants/blockchain";
 import { address } from "../../utils/types";
@@ -11,7 +11,7 @@ export interface VaultContracts {
   l1Vault: L1Vault;
   l2Vault: L2Vault;
   relayer: Relayer;
-  l1WormholeRouter: L1WormholeRotuer;
+  l1WormholeRouter: L1WormholeRouter;
   l2WormholeRouter: L2WormholeRotuer;
 }
 
@@ -49,7 +49,7 @@ export async function deployVaults(
   const l1VaultFactory = await ethers.getContractFactory("L1Vault");
 
   let l1WormholeRouterFactory = await ethers.getContractFactory("L1WormholeRouter");
-  let l1WormholeRouter = await l1WormholeRouterFactory.deploy() as L1WormholeRotuer;
+  let l1WormholeRouter = await l1WormholeRouterFactory.deploy() as L1WormholeRouter;
   await l1WormholeRouter.deployed();
   // Deploy vault
   const l1Vault = (await upgrades.deployProxy(

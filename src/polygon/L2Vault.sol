@@ -3,7 +3,7 @@ pragma solidity ^0.8.9;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
-import { L2WormholeRouter } from "./L2WormholeRouter.sol";
+import { IL2WormholeRouter } from "../interfaces/IWormholeRouter.sol";
 
 import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -14,7 +14,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { BaseVault } from "../BaseVault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
-import { Staging } from "../Staging.sol";
+import { IStaging } from "../interfaces/IStaging.sol";
 import { Relayer } from "./Relayer.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 
@@ -53,7 +53,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
     uint256 public withdrawalFee;
 
     /// L2 wormhole router address
-    L2WormholeRouter wormholeRouter;
+    IL2WormholeRouter wormholeRouter;
 
     function setManagementFee(uint256 feeBps) external onlyGovernance {
         managementFee = feeBps;
@@ -70,8 +70,8 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
-        L2WormholeRouter _wormholeRouter,
-        Staging _staging,
+        IL2WormholeRouter _wormholeRouter,
+        IStaging _staging,
         uint256 L1Ratio,
         uint256 L2Ratio,
         Relayer _relayer,
@@ -291,7 +291,7 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         L1TotalLockedValue += amount;
 
         // Let L1 know how much money we sent
-        wormholeRouter.reportTransferredFund(amount);
+        wormholeRouter.reportTrasferredFund(amount);
     }
 
     function _divestFromL1(uint256 amount) internal {

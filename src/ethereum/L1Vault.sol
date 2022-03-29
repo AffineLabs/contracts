@@ -13,9 +13,9 @@ import { IWormhole } from "../interfaces/IWormhole.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
-import { Staging } from "../Staging.sol";
+import { IStaging } from "../interfaces/IStaging.sol";
 import { BaseVault } from "../BaseVault.sol";
-import { L1WormholeRouter } from "./L1WormholeRouter.sol";
+import { IL1WormholeRouter } from "../interfaces/IWormholeRouter.sol";
 
 contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     /////// Cross chain rebalancing
@@ -26,7 +26,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     // https://github.com/maticnetwork/pos-portal/blob/88dbf0a88fd68fa11f7a3b9d36629930f6b93a05/contracts/root/RootChainManager/RootChainManager.sol#L267
     address public predicate;
 
-    L1WormholeRouter public wormholeRouter;
+    IL1WormholeRouter public wormholeRouter;
 
     constructor() {}
 
@@ -34,8 +34,8 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
-        L1WormholeRouter _wormholeRouter,
-        Staging _staging,
+        IL1WormholeRouter _wormholeRouter,
+        IStaging _staging,
         IRootChainManager _chainManager,
         address _predicate
     ) public initializer {
@@ -79,7 +79,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         chainManager.depositFor(address(staging), address(token), abi.encodePacked(amount));
 
         // Let L2 know how much money we sent
-        wormholeRouter.reportTransferredFund(amount);
+        wormholeRouter.reportTrasferredFund(amount);
     }
 
     function afterReceive() external {
