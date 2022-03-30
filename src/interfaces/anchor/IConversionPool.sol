@@ -1,5 +1,5 @@
-// SPDX-License-Identifier:MIT
-pragma solidity ^0.8.9;
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity ^0.8.13;
 
 interface IConversionPool {
     function deposit(uint256 _amount) external;

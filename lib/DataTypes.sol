@@ -1,4 +1,5 @@
-pragma solidity ^0.8.9;
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity ^0.8.13;
 
 library DataTypes {
     // refer to the whitepaper, section 1.1 basic concepts for a formal description of these properties.

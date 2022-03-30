@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.13;
 
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
