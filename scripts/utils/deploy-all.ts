@@ -4,7 +4,8 @@ import { deployStrategies, StrategyContracts } from "./deploy-strategies";
 import { deployBasket } from "./deploy-btc-eth";
 import { address } from "../../utils/types";
 import { MintableToken__factory, TwoAssetBasket } from "../../typechain";
-import { ethers, changeNetwork } from "hardhat";
+import { ethers } from "hardhat";
+import hre from "hardhat";
 import { addToAddressBookAndDefender, getContractAddress } from "../../utils/export";
 import { POLYGON_MUMBAI } from "../../utils/constants/blockchain";
 
@@ -38,8 +39,7 @@ export async function deployAll(
   // [governanceSigner] = await ethers.getSigners();
   // await vaults.l1Vault.connect(governanceSigner).addStrategy(strategies.l1.compound.address);
   // console.log("Strategies added");
-
-  changeNetwork(polygonNetworkName);
+  hre.changeNetwork(polygonNetworkName);
   const basket = await deployBasket(config);
 
   // Add some transactions
