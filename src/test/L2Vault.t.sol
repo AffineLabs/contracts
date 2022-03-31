@@ -83,7 +83,7 @@ contract L2VaultTest is DSTestPlus {
 
         // Add this contract as a strategy
         BaseStrategy myStrat = BaseStrategy(address(this));
-        vault.addStrategy(myStrat);
+        vault.addStrategy(myStrat, 10_000);
 
         // call to balanceOfToken in harvest() will return 1e18
         cheats.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfToken.selector), abi.encode(1e18));
@@ -110,7 +110,7 @@ contract L2VaultTest is DSTestPlus {
     function testLockedProfit() public {
         // Add this contract as a strategy
         BaseStrategy myStrat = BaseStrategy(address(this));
-        vault.addStrategy(myStrat);
+        vault.addStrategy(myStrat, 10_000);
 
         // call to balanceOfToken in harvest() will return 1e18
         cheats.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfToken.selector), abi.encode(1e18));

@@ -44,16 +44,16 @@ contract L1CompoundStratTestFork is DSTestPlus {
         );
     }
 
-    function testStrategyHarvestSuccessfully() public {
+    function testStrategyInvest() public {
         // Give the Vault 1 usdc
-        cheats.store(address(usdc), keccak256(abi.encode(address(vault), usdcBalancesStorageSlot)), bytes32(oneUSDC));
+        uint256 slot = stdstore.target(address(usdc)).sig(usdc.balanceOf.selector).with_key(address(vault)).find();
+        cheats.store(address(usdc), bytes32(slot), bytes32(uint256(1e6)));
 
-        vault.addStrategy(strategy);
-        vault.depositIntoStrategy(strategy, halfUSDC);
+        vault.addStrategy(strategy, 5000);
+        cheats.prank(address(0)); // staging address is 0 in the default vault
+        vault.afterReceive();
 
         // Strategy deposits all of usdc into Compound
         assertInRange(strategy.cToken().balanceOfUnderlying(address(strategy)), halfUSDC - 1, halfUSDC);
     }
-
-    // TODO: Add more unit tests.
 }
