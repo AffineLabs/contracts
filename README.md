@@ -91,12 +91,12 @@ $ slither .
 
 ### Running a Script
 
-To run a script run `yarn script <script>`. Pass in the ethereum and polygon networks you want to use with the `-eth` and `-p` flags. The two network names will be in the `ETH_NETWORK` and `POLYGON_NETWORK` environment variables. In the script, use `hre.changeNetwork` to change the current network. If run without `--no-fork` flag `yarn script` will bring up two hardhat nodes, one which forks the selected ethereum network, and one which forks the selected polygon network.
+To run a script run `yarn script <script>`. Pass in the ethereum and polygon networks you want to use with the `-eth` and `-p` flags. The two network names will be in the `ETH_NETWORK` and `POLYGON_NETWORK` environment variables. In the script, use `hre.changeNetwork` to change the current network. If run without the `--no-fork` flag `yarn script` will bring up two hardhat nodes, one which forks the selected ethereum network, and one which forks the selected polygon network.
 
 To deploy the contracts to forked versions of ropsten and mumbai run
 
 ```sh
-$ yarn scripts/deploy-all.ts -eth ropsten -p mumbai
+$ yarn script scripts/deploy-all.ts -eth ropsten -p mumbai
 ```
 
 ### Validate a contract with etherscan

@@ -35,7 +35,7 @@ contract BaseVault is AccessControl {
         wormhole = _wormhole;
 
         _grantRole(bankerRole, governance);
-        _grantRole(stackOperatorRole, governance);
+        _grantRole(queueOperatorRole, governance);
 
         staging = _staging;
     }
@@ -56,162 +56,59 @@ contract BaseVault is AccessControl {
         _;
     }
     bytes32 public constant bankerRole = keccak256("BANKER");
-    bytes32 public constant stackOperatorRole = keccak256("STACK_OPERATOR");
+    bytes32 public constant queueOperatorRole = keccak256("QUEUE_OPERATOR");
 
-    /** WITHDRAWAL STACK
+    /** WITHDRAWAL QUEUE
      **************************************************************************/
 
     uint8 public constant MAX_STRATEGIES = 20;
 
-    /// @notice An ordered array of strategies representing the withdrawal stack.
-    /// @dev The stack is processed in descending order, meaning the last index will be withdrawn from first.
-    /// @dev Strategies that are untrusted, duplicated, or have no balance are filtered out when encountered at
-    /// withdrawal time, not validated upfront, meaning the stack may not reflect the "true" set used for withdrawals.
-    Strategy[] public withdrawalStack;
+    /// @notice An ordered array of strategies representing the withdrawal queue.
+    /// @dev The first strategy in the array is withdrawn from first.
+    /// @dev This is a list of the currently active strategies  (all non-zero addresses are active)
+    Strategy[MAX_STRATEGIES] public withdrawalQueue;
 
-    /// @notice Gets the full withdrawal stack.
-    /// @return An ordered array of strategies representing the withdrawal stack.
+    /// @notice Gets the full withdrawal queue.
+    /// @return The withdrawal queue.
     /// @dev This is provided because Solidity converts public arrays into index getters,
     /// but we need a way to allow external contracts and users to access the whole array.
-    function getWithdrawalStack() external view returns (Strategy[] memory) {
-        return withdrawalStack;
+    function getWithdrawalQueue() external view returns (Strategy[MAX_STRATEGIES] memory) {
+        return withdrawalQueue;
     }
 
-    /// @notice Pushes a single strategy to front of the withdrawal stack.
-    /// @param strategy The strategy to be inserted at the front of the withdrawal stack.
+    /// @notice Sets a new withdrawal queue.
+    /// @param newQueue The new withdrawal queue.
     /// @dev Strategies that are untrusted, duplicated, or have no balance are
     /// filtered out when encountered at withdrawal time, not validated upfront.
-    function pushToWithdrawalStack(Strategy strategy) external onlyRole(stackOperatorRole) {
-        _pushToWithdrawalStack(strategy);
+    function setWithdrawalQueue(Strategy[MAX_STRATEGIES] calldata newQueue) external onlyRole(queueOperatorRole) {
+        // Ensure the new queue is not larger than the maximum queue size.
+        require(newQueue.length <= MAX_STRATEGIES, "QUEUE_TOO_BIG");
+
+        // Replace the withdrawal queue.
+        withdrawalQueue = newQueue;
+
+        emit WithdrawalQueueSet(msg.sender, newQueue);
     }
 
-    /// @dev This is to maintain the old logic where a strategy gets added to the withdrawal stack
-    /// right when it is added
-    function _pushToWithdrawalStack(Strategy strategy) internal {
-        // Ensure pushing the strategy will not cause the stack exceed its limit.
-        require(withdrawalStack.length < MAX_STRATEGIES, "STACK_FULL");
-
-        // Push the strategy to the front of the stack.
-        withdrawalStack.push(strategy);
-
-        emit WithdrawalStackPushed(msg.sender, strategy);
-    }
-
-    /// @notice Removes the strategy at the tip of the withdrawal stack.
-    /// @dev Be careful, another authorized user could push a different strategy
-    /// than expected to the stack while a popFromWithdrawalStack transaction is pending.
-    function popFromWithdrawalStack() external onlyRole(stackOperatorRole) {
-        // Get the (soon to be) popped strategy.
-        Strategy poppedStrategy = withdrawalStack[withdrawalStack.length - 1];
-
-        // Pop the first strategy in the stack.
-        withdrawalStack.pop();
-
-        emit WithdrawalStackPopped(msg.sender, poppedStrategy);
-    }
-
-    /// @notice Sets a new withdrawal stack.
-    /// @param newStack The new withdrawal stack.
-    /// @dev Strategies that are untrusted, duplicated, or have no balance are
-    /// filtered out when encountered at withdrawal time, not validated upfront.
-    function setWithdrawalStack(Strategy[] calldata newStack) external onlyRole(stackOperatorRole) {
-        // Ensure the new stack is not larger than the maximum stack size.
-        require(newStack.length <= MAX_STRATEGIES, "STACK_TOO_BIG");
-
-        // Replace the withdrawal stack.
-        withdrawalStack = newStack;
-
-        emit WithdrawalStackSet(msg.sender, newStack);
-    }
-
-    /// @notice Replaces an index in the withdrawal stack with another strategy.
-    /// @param index The index in the stack to replace.
-    /// @param replacementStrategy The strategy to override the index with.
-    /// @dev Strategies that are untrusted, duplicated, or have no balance are
-    /// filtered out when encountered at withdrawal time, not validated upfront.
-    function replaceWithdrawalStackIndex(uint256 index, Strategy replacementStrategy)
-        external
-        onlyRole(stackOperatorRole)
-    {
-        // Get the (soon to be) replaced strategy.
-        Strategy replacedStrategy = withdrawalStack[index];
-
-        // Update the index with the replacement strategy.
-        withdrawalStack[index] = replacementStrategy;
-
-        emit WithdrawalStackIndexReplaced(msg.sender, index, replacedStrategy, replacementStrategy);
-    }
-
-    /// @notice Moves the strategy at the tip of the stack to the specified index and pop the tip off the stack.
-    /// @param index The index of the strategy in the withdrawal stack to replace with the tip.
-    /// @dev Useful for removing a strategy from the stack
-    function replaceWithdrawalStackIndexWithTip(uint256 index) external onlyRole(stackOperatorRole) {
-        // Get the (soon to be) previous tip and strategy we will replace at the index.
-        Strategy previousTipStrategy = withdrawalStack[withdrawalStack.length - 1];
-        Strategy replacedStrategy = withdrawalStack[index];
-
-        // Replace the index specified with the tip of the stack.
-        withdrawalStack[index] = previousTipStrategy;
-
-        // Remove the now duplicated tip from the array.
-        withdrawalStack.pop();
-
-        emit WithdrawalStackIndexReplacedWithTip(msg.sender, index, replacedStrategy, previousTipStrategy);
-    }
-
-    /// @notice Swaps two indexes in the withdrawal stack.
+    /// @notice Swaps two indexes in the withdrawal queue.
     /// @param index1 One index involved in the swap
     /// @param index2 The other index involved in the swap.
-    function swapWithdrawalStackIndexes(uint256 index1, uint256 index2) external onlyRole(stackOperatorRole) {
+    function swapWithdrawalQueueIndexes(uint256 index1, uint256 index2) external onlyRole(queueOperatorRole) {
         // Get the (soon to be) new strategies at each index.
-        Strategy newStrategy2 = withdrawalStack[index1];
-        Strategy newStrategy1 = withdrawalStack[index2];
+        Strategy newStrategy2 = withdrawalQueue[index1];
+        Strategy newStrategy1 = withdrawalQueue[index2];
 
         // Swap the strategies at both indexes.
-        withdrawalStack[index1] = newStrategy1;
-        withdrawalStack[index2] = newStrategy2;
+        withdrawalQueue[index1] = newStrategy1;
+        withdrawalQueue[index2] = newStrategy2;
 
-        emit WithdrawalStackIndexesSwapped(msg.sender, index1, index2, newStrategy1, newStrategy2);
+        emit WithdrawalQueueIndexesSwapped(msg.sender, index1, index2, newStrategy1, newStrategy2);
     }
 
-    /// @notice Emitted when a strategy is pushed to the withdrawal stack.
-    /// @param user The authorized user who triggered the push.
-    /// @param pushedStrategy The strategy pushed to the withdrawal stack.
-    event WithdrawalStackPushed(address indexed user, Strategy indexed pushedStrategy);
-
-    /// @notice Emitted when a strategy is popped from the withdrawal stack.
-    /// @param user The authorized user who triggered the pop.
-    /// @param poppedStrategy The strategy popped from the withdrawal stack.
-    event WithdrawalStackPopped(address indexed user, Strategy indexed poppedStrategy);
-
-    /// @notice Emitted when the withdrawal stack is updated.
+    /// @notice Emitted when the withdrawal queue is updated.
     /// @param user The authorized user who triggered the set.
-    /// @param replacedWithdrawalStack The new withdrawal stack.
-    event WithdrawalStackSet(address indexed user, Strategy[] replacedWithdrawalStack);
-
-    /// @notice Emitted when an index in the withdrawal stack is replaced.
-    /// @param user The authorized user who triggered the replacement.
-    /// @param index The index of the replaced strategy in the withdrawal stack.
-    /// @param replacedStrategy The strategy in the withdrawal stack that was replaced.
-    /// @param replacementStrategy The strategy that overrode the replaced strategy at the index.
-    event WithdrawalStackIndexReplaced(
-        address indexed user,
-        uint256 index,
-        Strategy indexed replacedStrategy,
-        Strategy indexed replacementStrategy
-    );
-
-    /// @notice Emitted when an index in the withdrawal stack is replaced with the tip.
-    /// @param user The authorized user who triggered the replacement.
-    /// @param index The index of the replaced strategy in the withdrawal stack.
-    /// @param replacedStrategy The strategy in the withdrawal stack replaced by the tip.
-    /// @param previousTipStrategy The previous tip of the stack that replaced the strategy.
-    event WithdrawalStackIndexReplacedWithTip(
-        address indexed user,
-        uint256 index,
-        Strategy indexed replacedStrategy,
-        Strategy indexed previousTipStrategy
-    );
+    /// @param replacedWithdrawalQueue The new withdrawal queue.
+    event WithdrawalQueueSet(address indexed user, Strategy[MAX_STRATEGIES] replacedWithdrawalQueue);
 
     /// @notice Emitted when the strategies at two indexes are swapped.
     /// @param user The authorized user who triggered the swap.
@@ -219,7 +116,7 @@ contract BaseVault is AccessControl {
     /// @param index2 The other index involved in the swap.
     /// @param newStrategy1 The strategy (previously at index2) that replaced index1.
     /// @param newStrategy2 The strategy (previously at index1) that replaced index2.
-    event WithdrawalStackIndexesSwapped(
+    event WithdrawalQueueIndexesSwapped(
         address indexed user,
         uint256 index1,
         uint256 index2,
@@ -247,31 +144,53 @@ contract BaseVault is AccessControl {
 
     function addStrategy(Strategy strategy) external onlyGovernance {
         strategies[strategy].isActive = true;
-
-        //  Add strategy to withdrawal stack
+        //  Add strategy to withdrawal queue
+        withdrawalQueue[withdrawalQueue.length - 1] = strategy;
         emit StrategyAdded(strategy);
-        _pushToWithdrawalStack(strategy);
+        _organizeWithdrawalQueue();
+    }
+
+    /// @notice Push all zero addresses to the end of the array
+    /// @dev Relative ordering of non-zero values is maintained.
+    function _organizeWithdrawalQueue() internal {
+        // number or empty values we've seen iterating from left to right
+        uint256 offset;
+
+        uint256 length = withdrawalQueue.length;
+        for (uint256 i = 0; i < length; i++) {
+            Strategy strategy = withdrawalQueue[i];
+            if (address(strategy) == address(0)) offset += 1;
+            else if (offset > 0) {
+                // idx of first empty value seen takes on value of `strategy`
+                withdrawalQueue[i - offset] = strategy;
+                withdrawalQueue[i] = Strategy(address(0));
+            }
+        }
     }
 
     function removeStrategy(Strategy strategy) external onlyGovernance {
-        strategies[strategy].isActive = false;
+        // TODO: consider withdrawaing all possible money from a strategy before popping it from withdrawal queue
 
-        //  Remove from withdrawal stack
-        emit StrategyRemoved(strategy);
-
-        // TODO: consider withdrawaing all possible money from a strategy before popping it from withdrawal stack
-        // We don't need to actually remove the bad strategy from the withdrawal stack here since we only withdraw from
-        // active strategies
+        //  Remove from withdrawal queue
+        uint256 length = withdrawalQueue.length;
+        for (uint256 i = 0; i < length; i++) {
+            if (strategy == withdrawalQueue[i]) {
+                strategies[strategy].isActive = false;
+                withdrawalQueue[i] = Strategy(address(0));
+                emit StrategyRemoved(strategy);
+                _organizeWithdrawalQueue();
+                break;
+            }
+        }
     }
 
     /** STRATEGY DEPOSIT/WITHDRAWAL
      **************************************************************************/
 
     /// @notice Emitted after the Vault deposits into a strategy contract.
-    /// @param user The authorized user who triggered the deposit.
     /// @param strategy The strategy that was deposited into.
     /// @param tokenAmount The amount of underlying tokens that were deposited.
-    event StrategyDeposit(address indexed user, Strategy indexed strategy, uint256 tokenAmount);
+    event StrategyDeposit(Strategy indexed strategy, uint256 tokenAmount);
 
     /// @notice Emitted after the Vault withdraws funds from a strategy contract.
     /// @param user The authorized user who triggered the withdrawal.
@@ -282,7 +201,7 @@ contract BaseVault is AccessControl {
     /// @notice Deposit a specific amount of token into a trusted strategy.
     /// @param strategy The trusted strategy to deposit into.
     /// @param tokenAmount The amount of underlying tokens to deposit.
-    function depositIntoStrategy(Strategy strategy, uint256 tokenAmount) external onlyRole(bankerRole) {
+    function depositIntoStrategy(Strategy strategy, uint256 tokenAmount) internal {
         // Increase totalStrategyHoldings to account for the deposit.
         totalStrategyHoldings += tokenAmount;
 
@@ -292,19 +211,23 @@ contract BaseVault is AccessControl {
             strategies[strategy].balance += tokenAmount;
         }
 
-        emit StrategyDeposit(msg.sender, strategy, tokenAmount);
-
         // Approve tokenAmount to the strategy so we can deposit.
         token.safeApprove(address(strategy), tokenAmount);
 
         // Deposit into the strategy, will revert upon failure
         strategy.invest(tokenAmount);
+        emit StrategyDeposit(strategy, tokenAmount);
+    }
+
+    function depositIntoStrategies() internal {
+        // get all strategies that are active with a simple loop
+        // call depositIntoStrategy (can probably get rid of the function call)
     }
 
     /// @notice Withdraw a specific amount of underlying tokens from a strategy.
     /// @param strategy The strategy to withdraw from.
     /// @param tokenAmount  The amount of underlying tokens to withdraw.
-    /// @dev Withdrawing from a strategy will not remove it from the withdrawal stack.
+    /// @dev Withdrawing from a strategy will not remove it from the withdrawal queue.
     /// @return The amount withdrawn from the strategy.
     function withdrawFromStrategy(Strategy strategy, uint256 tokenAmount)
         external
@@ -428,7 +351,7 @@ contract BaseVault is AccessControl {
     function _liquidate(uint256 amount) internal returns (uint256) {
         uint256 amountLiquidated;
         for (uint8 i = 0; i < MAX_STRATEGIES; i++) {
-            Strategy strategy = withdrawalStack[i];
+            Strategy strategy = withdrawalQueue[i];
             if (strategy == Strategy(address(0))) break;
 
             uint256 balance = token.balanceOf(address(this));
