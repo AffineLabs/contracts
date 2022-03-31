@@ -117,13 +117,15 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
     }
 
     function _deposit(address user, uint256 amountToken) internal {
-        // mint
         uint256 numShares = sharesFromTokens(amountToken);
         _mint(user, numShares);
 
         emit Deposit(user, amountToken, numShares);
-        // Get usdc
+        // interaction -> will fail if user does not have correct amount
         token.safeTransferFrom(user, address(this), amountToken);
+
+        // deposit entire balance of `token` into strategies
+        depositIntoStrategies();
     }
 
     function sharesFromTokens(uint256 amountToken) public view returns (uint256) {

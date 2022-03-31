@@ -99,5 +99,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     function afterReceive() external {
         require(msg.sender == address(staging), "Only L1 staging.");
         received = true;
+        // Whenever we receive funds from L1, immediately deposit them all into strategies
+        depositIntoStrategies();
     }
 }
