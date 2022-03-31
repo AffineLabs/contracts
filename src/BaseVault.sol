@@ -133,17 +133,23 @@ contract BaseVault is AccessControl {
 
     struct StrategyInfo {
         bool isActive;
+        uint256 tvlBps;
         uint256 balance;
         uint256 totalGain;
         uint256 totalLoss;
     }
     mapping(Strategy => StrategyInfo) public strategies;
+    uint256 public constant MAX_BPS = 10_000;
+    // a number from 0 to 10_000 representing the proportion of the vault's tvl which may be given to strategies
+    uint256 public totalBps;
 
     event StrategyAdded(Strategy indexed strategy);
     event StrategyRemoved(Strategy indexed strategy);
 
-    function addStrategy(Strategy strategy) external onlyGovernance {
-        strategies[strategy].isActive = true;
+    function addStrategy(Strategy strategy, uint256 tvlBps) external onlyGovernance {
+        require(totalBps + tvlBps <= MAX_BPS, "TVL_ALLOC_TOO_BIG");
+        strategies[strategy] = StrategyInfo({ isActive: true, tvlBps: tvlBps, balance: 0, totalGain: 0, totalLoss: 0 });
+        totalBps += tvlBps;
         //  Add strategy to withdrawal queue
         withdrawalQueue[withdrawalQueue.length - 1] = strategy;
         emit StrategyAdded(strategy);
@@ -170,12 +176,13 @@ contract BaseVault is AccessControl {
 
     function removeStrategy(Strategy strategy) external onlyGovernance {
         // TODO: consider withdrawaing all possible money from a strategy before popping it from withdrawal queue
-
+        // TODO: decrement totalStrategyHoldings here
         //  Remove from withdrawal queue
         uint256 length = withdrawalQueue.length;
         for (uint256 i = 0; i < length; i++) {
             if (strategy == withdrawalQueue[i]) {
                 strategies[strategy].isActive = false;
+                strategies[strategy].tvlBps = 0;
                 withdrawalQueue[i] = Strategy(address(0));
                 emit StrategyRemoved(strategy);
                 _organizeWithdrawalQueue();
@@ -219,9 +226,17 @@ contract BaseVault is AccessControl {
         emit StrategyDeposit(strategy, tokenAmount);
     }
 
+    /// @notice Deposit entire balance of `token` into strategies
+    /// @dev Each strategy's `tvlBps` value will determine what proportion of the balance it will get
     function depositIntoStrategies() internal {
-        // get all strategies that are active with a simple loop
-        // call depositIntoStrategy (can probably get rid of the function call)
+        uint256 totalBal = token.balanceOf(address(this));
+        // All non-zero strategies are active
+        uint256 length = withdrawalQueue.length;
+        for (uint256 i = 0; i < length; i++) {
+            Strategy strat = withdrawalQueue[i];
+            if (address(strat) == address(0)) break;
+            depositIntoStrategy(strat, (totalBal * strategies[strat].tvlBps) / MAX_BPS);
+        }
     }
 
     /// @notice Withdraw a specific amount of underlying tokens from a strategy.
@@ -229,11 +244,7 @@ contract BaseVault is AccessControl {
     /// @param tokenAmount  The amount of underlying tokens to withdraw.
     /// @dev Withdrawing from a strategy will not remove it from the withdrawal queue.
     /// @return The amount withdrawn from the strategy.
-    function withdrawFromStrategy(Strategy strategy, uint256 tokenAmount)
-        external
-        onlyRole(bankerRole)
-        returns (uint256)
-    {
+    function withdrawFromStrategy(Strategy strategy, uint256 tokenAmount) internal returns (uint256) {
         // NOTE: this violates check-effects-interactions, but this is fine since only trusted
         // strategies will be added
 
@@ -343,16 +354,12 @@ contract BaseVault is AccessControl {
 
     event Liquidation(uint256 amountRequested, uint256 amountLiquidated);
 
-    /// @notice Try to get `amount` out of the strategies.
-    function liquidate(uint256 amount) external onlyGovernance {
-        _liquidate(amount);
-    }
-
     function _liquidate(uint256 amount) internal returns (uint256) {
         uint256 amountLiquidated;
-        for (uint8 i = 0; i < MAX_STRATEGIES; i++) {
+        uint256 length = withdrawalQueue.length;
+        for (uint256 i = 0; i < length; i++) {
             Strategy strategy = withdrawalQueue[i];
-            if (strategy == Strategy(address(0))) break;
+            if (address(strategy) == address(0)) break;
 
             uint256 balance = token.balanceOf(address(this));
             if (balance >= amount) break;
@@ -363,8 +370,7 @@ contract BaseVault is AccessControl {
             amountNeeded = Math.min(amountNeeded, strategies[strategy].balance);
 
             // Force withdraw of token from strategy
-            Strategy(strategy).divest(amountNeeded);
-            uint256 withdrawn = token.balanceOf(address(this)) - balance;
+            uint256 withdrawn = withdrawFromStrategy(strategy, amountNeeded);
 
             // update debts, amountLiquidated
             // Reduce the Strategy's debt by the amount withdrawn ("realized returns")
@@ -374,8 +380,6 @@ contract BaseVault is AccessControl {
         emit Liquidation(amount, amountLiquidated);
         return amountLiquidated;
     }
-
-    uint256 public constant MAX_BPS = 10_000;
 
     function _assessFees() internal virtual {}
 
