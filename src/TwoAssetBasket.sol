@@ -82,24 +82,29 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient {
         pathEth[0] = address(inputToken);
         pathEth[1] = address(token2);
 
-        uint256[] memory btcAmounts = uniRouter.swapExactTokensForTokens(
-            amountInputToBtc,
-            0,
-            pathBtc,
-            address(this),
-            block.timestamp
-        );
+        uint256 btcReceived;
+        if (amountInputToBtc > 0) {
+            uint256[] memory btcAmounts = uniRouter.swapExactTokensForTokens(
+                amountInputToBtc,
+                0,
+                pathBtc,
+                address(this),
+                block.timestamp
+            );
+            btcReceived = btcAmounts[1];
+        }
 
-        uint256[] memory ethAmounts = uniRouter.swapExactTokensForTokens(
-            amountInputToEth,
-            0,
-            pathEth,
-            address(this),
-            block.timestamp
-        );
-
-        uint256 btcReceived = btcAmounts[1];
-        uint256 ethReceived = ethAmounts[1];
+        uint256 ethReceived;
+        if (amountInputToEth > 0) {
+            uint256[] memory ethAmounts = uniRouter.swapExactTokensForTokens(
+                amountInputToEth,
+                0,
+                pathEth,
+                address(this),
+                block.timestamp
+            );
+            ethReceived = ethAmounts[1];
+        }
 
         uint256 dollarsReceived = _valueOfToken(token1, btcReceived) + _valueOfToken(token2, ethReceived);
 
