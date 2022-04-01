@@ -9,7 +9,6 @@ import { stdStorage, StdStorage } from "forge-std/src/stdlib.sol";
 import { Deploy } from "./Deploy.sol";
 
 import { L1Vault } from "../ethereum/L1Vault.sol";
-import { Create2Deployer } from "./Create2Deployer.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { IExchangeRateFeeder } from "../interfaces/anchor/IExchangeRateFeeder.sol";
@@ -21,13 +20,10 @@ contract EthAnchorStratTestFork is DSTestPlus {
     ERC20 usdc = ERC20(0xE015FD30cCe08Bc10344D934bdb2292B1eC4BBBD);
 
     L1Vault vault;
-    Create2Deployer create2Deployer;
     L1AnchorStrategy strategy;
 
     // constants
-    uint256 hundredUSDC = 1e8;
-    uint256 fiftyUSDC = hundredUSDC / 2;
-    uint256 usdcBalancesStorageSlot = 6;
+    uint256 hundredUSDC = 100e6;
 
     function setUp() public {
         vault = Deploy.deployL1Vault();
@@ -44,22 +40,20 @@ contract EthAnchorStratTestFork is DSTestPlus {
         );
     }
 
-    function testStrategyHarvestSuccessfully() public {
+    function testStrategyInvest() public {
         // Give the Vault 100 usdc
-        cheats.store(
-            address(usdc),
-            keccak256(abi.encode(address(vault), usdcBalancesStorageSlot)),
-            bytes32(hundredUSDC)
-        );
-        vault.addStrategy(strategy);
+        uint256 slot = stdstore.target(address(usdc)).sig(usdc.balanceOf.selector).with_key(address(vault)).find();
+        cheats.store(address(usdc), bytes32(slot), bytes32(hundredUSDC));
+        vault.addStrategy(strategy, 5_000);
 
-        // Make sure strategy deposits fifty USDC to Eth Anchor during harvest.
-        bytes4 funcSelector = bytes4(keccak256("deposit(uint256)"));
-        bytes memory expectedData = abi.encodeWithSelector(funcSelector, fiftyUSDC);
+        // Make sure strategy deposits fifty USDC to Eth Anchor after receiving money from the vault
+        bytes memory expectedData = abi.encodeWithSignature("deposit(uint256)", hundredUSDC / 2);
         cheats.expectCall(address(strategy.usdcConversionPool()), expectedData);
 
-        vault.depositIntoStrategy(strategy, fiftyUSDC);
-    }
+        // vault will invest in strategy after receiving money from staging
+        cheats.prank(address(0)); // staging address is 0 in the default vault
+        vault.afterReceive();
 
-    // TODO: Add more unit tests.
+        assertEq(usdc.balanceOf(address(vault)), hundredUSDC / 2);
+    }
 }

@@ -32,7 +32,7 @@ async function deployAAVE(): Promise<any> {
   await strategy.deployed();
 
   // add strategy to L2 vault
-  await vaultContracts.l2Vault.addStrategy(await getContractAddress(strategy));
+  await vaultContracts.l2Vault.addStrategy(await getContractAddress(strategy), 10_000);
 }
 
 deployAAVE()
