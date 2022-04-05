@@ -281,15 +281,17 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient {
 
         (uint256 r1, uint256 r2) = (ratios[0], ratios[1]);
 
-        uint256 a = (r2 * btcDollars) / (r1 + r2);
-        uint256 b = (r1 * (ethDollars - amountInput)) / (r1 + r2);
+        // Using signed integers because ethDollars - inputDollars could underflow
+        int256 a = int256((r2 * btcDollars) / (r1 + r2));
+        int256 b = (int256(r1) * (int256(ethDollars) - int256(inputDollars))) / int256(r1 + r2);
 
         // (a - b) represents the amount of dollars in btc we want to sell (see whitepaper)
+        int256 amountBtcToSell = a - b;
         // Case 1: We don't want to sell any btc
-        if (b > a) {
+        if (amountBtcToSell < 0) {
             btcAmount = 0;
             ethAmount = amountInput;
-        } else if (a - b > inputDollars) {
+        } else if (uint256(amountBtcToSell) > inputDollars) {
             // Case 2: We want to sell only btc
             // Cap the amount that we attempt to liquidate from btc
             btcAmount = amountInput;
@@ -297,8 +299,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient {
         } else {
             //  Case 3: The regular case where we split the input. Some amount of money comes from btc,
             // the rest goes comes from eth
-            uint256 dollarsFromBtc = a - b;
-            btcAmount = (dollarsFromBtc * amountInput) / inputDollars;
+            btcAmount = (uint256(amountBtcToSell) * amountInput) / inputDollars;
             ethAmount = amountInput - btcAmount;
         }
     }

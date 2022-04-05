@@ -54,7 +54,7 @@ contract L2BtcEthBasketTestFork is DSTestPlus {
         assertTrue(basket.balanceOf(address(this)) > 0);
         emit log_named_uint("VALUE OF VAULT", Dollar.unwrap(basket.valueOfVault()));
 
-        uint256 inputReceived = basket.withdraw(55 * 1e6);
+        uint256 inputReceived = basket.withdraw((mintAmount * 90) / 100);
         emit log_named_uint("DOLLARS WITHDRAWN: ", inputReceived);
     }
 
