@@ -65,6 +65,7 @@ export async function deployAll(
 
   // Add usdc to address book, TODO: handle the production version of this
   await addToAddressBookAndDefender(POLYGON_MUMBAI, "PolygonUSDC", "MintableToken", usdc.address);
+  await addToAddressBookAndDefender(POLYGON_MUMBAI, "Forwarder", "Forwarder", config.forwarder);
 
   return {
     vaults,
