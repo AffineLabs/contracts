@@ -11,7 +11,7 @@ let ethUrl = `https://eth-goerli.alchemyapi.io/v2/${ALCHEMY_ETH_KEY}`;
 let polygonUrl = `https://polygon-mumbai.g.alchemy.com/v2/${ALCHEMY_POLYGON_KEY}`;
 
 let l1Args = `--match-contract "L1.*Fork" --fork-url ${ethUrl} --fork-block-number 6267635`;
-let l2Args = `--match-contract "L2.*Fork" --fork-url ${polygonUrl} --fork-block-number 24274280`;
+let l2Args = `--match-contract "L2.*Fork" --fork-url ${polygonUrl} --fork-block-number 25804436`;
 let anchorArgs = `--match-contract ".*Anchor.*Fork" --fork-url "https://eth-ropsten.alchemyapi.io/v2/${ALCHEMY_ETH_KEY}" \
 --fork-block-number 11949985`;
 
