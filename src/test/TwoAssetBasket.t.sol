@@ -9,13 +9,14 @@ import { Deploy } from "./Deploy.sol";
 
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
+import { Dollar } from "../DollarMath.sol";
 import { TwoAssetBasket } from "../TwoAssetBasket.sol";
 
 contract L2BtcEthBasketTestFork is DSTestPlus {
     TwoAssetBasket public basket;
-    ERC20 usdc = ERC20(0x5fD6A096A23E95692E37Ec7583011863a63214AA);
-    ERC20 btc = ERC20(0x1F577114D404686B47C4A739C46B8EBee7b5156F);
-    ERC20 weth = ERC20(0x1F0EB2B499C51CDa602ba96013577A3887D7278D);
+    ERC20 usdc = ERC20(0x8f7116CA03AEB48547d0E2EdD3Faa73bfB232538);
+    ERC20 btc = ERC20(0xc8BA1fdaf17c1f16C68778fde5f78F3D37cD1509);
+    ERC20 weth = ERC20(0x3dd7F3CF122e0460Dba8A75d191b3486752B6A61);
 
     function setUp() public {
         // NOTE: using mumbai addresses
@@ -46,17 +47,15 @@ contract L2BtcEthBasketTestFork is DSTestPlus {
         assertEq(usdc.balanceOf(address(this)), mintAmount);
 
         usdc.approve(address(basket), type(uint256).max);
-        emit log_named_uint("BTC PRICE: ", basket._valueOfToken(btc, 1e18));
-
         basket.deposit(mintAmount);
 
         // you receive the dollar value of the amount of btc/eth deposited into the basket
         // the testnet usdc/btc usdc/eth pools do not have accurate prices
         assertTrue(basket.balanceOf(address(this)) > 0);
-        emit log_named_uint("VALUE OF VAULT", basket.valueOfVault());
+        emit log_named_uint("VALUE OF VAULT", Dollar.unwrap(basket.valueOfVault()));
 
-        uint256 dollarsReceived = basket.withdraw(mintAmount);
-        emit log_named_uint("DOLLARS WITHDRAWN: ", dollarsReceived);
+        uint256 inputReceived = basket.withdraw(55 * 1e6);
+        emit log_named_uint("DOLLARS WITHDRAWN: ", inputReceived);
     }
 
     function testAuction() public {}

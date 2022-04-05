@@ -7,6 +7,7 @@ import { BaseRelayRecipient } from "@opengsn/contracts/src/BaseRelayRecipient.so
 
 import { IUniLikeSwapRouter } from "./interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
+import { Dollar, DollarMath } from "./DollarMath.sol";
 
 contract TwoAssetBasket is ERC20, BaseRelayRecipient {
     address public governance;
@@ -63,14 +64,14 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient {
     event Deposit(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
 
     function deposit(uint256 amountInput) external {
-        // Get current amounts of btc/eth (in dollars)
-        uint256 vaultDollars = valueOfVault();
+        // Get current amounts of btc/eth (in dollars) => 8 decimals
+        Dollar rawVaultDollars = valueOfVault();
+        uint256 vaultDollars = Dollar.unwrap(rawVaultDollars);
 
         // We do two swaps. The amount of dollars we swap to each coin is determined by the ratios given above
         // See the whitepaper for the derivation of these amounts
-
         // Get dollar amounts of btc and eth to buy
-        (uint256 amountInputToBtc, uint256 amountInputToEth) = _getBuyDollarsByToken(amountInput);
+        (uint256 amountInputToBtc, uint256 amountInputToEth) = _getBuySplits(amountInput);
 
         // TODO: don't allow infinite slippage. Will need price oracle of inputToken and ETH
         inputToken.transferFrom(_msgSender(), address(this), amountInput);
@@ -106,12 +107,14 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient {
             ethReceived = ethAmounts[1];
         }
 
-        uint256 dollarsReceived = _valueOfToken(token1, btcReceived) + _valueOfToken(token2, ethReceived);
+        Dollar rawDollarsReceived = _valueOfToken(token1, btcReceived).add(_valueOfToken(token2, ethReceived));
+        uint256 dollarsReceived = Dollar.unwrap(rawDollarsReceived);
 
         // Issue shares based on dollar amounts of user coins vs total holdings of the vault
         uint256 numShares;
         if (totalSupply == 0) {
-            numShares = dollarsReceived;
+            // Dollars have 8 decimals, add an an extra 10 here to match the 18 that this contract uses
+            numShares = dollarsReceived * 1e10;
         } else {
             numShares = (dollarsReceived * totalSupply) / vaultDollars;
         }
@@ -122,13 +125,13 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient {
 
     event Withdraw(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
 
-    function withdraw(uint256 amountInput) external returns (uint256 dollarsReceived) {
+    function withdraw(uint256 amountInput) external returns (uint256 inputReceived) {
         // Try to get `amountInput` of `inputToken` out of vault
-
-        uint256 vaultDollars = valueOfVault();
+        Dollar rawVaultDollars = valueOfVault();
+        uint256 vaultDollars = Dollar.unwrap(rawVaultDollars);
 
         // Get dollar amounts of btc and eth to sell
-        (uint256 amountInputFromBtc, uint256 amountInputFromEth) = _getSellDollarsByToken(amountInput);
+        (uint256 amountInputFromBtc, uint256 amountInputFromEth) = _getSellSplits(amountInput);
 
         // Get desired amount of inputToken from eth and btc reserves
         address[] memory pathBtc = new address[](2);
@@ -141,90 +144,62 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient {
 
         if (amountInputFromBtc > 0) {
             uint256[] memory btcAmounts = uniRouter.swapExactTokensForTokens(
-                _tokensFromDollars(token1, amountInputFromBtc),
+                // input token => dollars => btc conversion
+                _tokensFromDollars(token1, _valueOfToken(inputToken, amountInputFromBtc)),
                 0,
                 pathBtc,
                 address(this),
                 block.timestamp
             );
-            dollarsReceived += btcAmounts[1];
+            inputReceived += btcAmounts[1];
         }
 
         if (amountInputFromEth > 0) {
             uint256[] memory ethAmounts = uniRouter.swapExactTokensForTokens(
-                _tokensFromDollars(token2, amountInputFromEth),
+                // input token => dollars => eth conversion
+                _tokensFromDollars(token2, _valueOfToken(inputToken, amountInputFromEth)),
                 0,
                 pathEth,
                 address(this),
                 block.timestamp
             );
-            dollarsReceived += ethAmounts[1];
+            inputReceived += ethAmounts[1];
         }
 
         // NOTE: The user eats the slippage and trading fees. E.g. if you request $10 you may only get $9 out
-        // TODO: Remove assumption that inputToken is equal to one dollar
 
         // Calculate number of shares to burn with numShares = dollarAmount * shares_per_dollar
         // Try to burn numShares, will revert if user does not have enough
 
-        // NOTE: Even if dollarsReceived > amountInput, the vault only sold $amountInput worth of assets
+        // NOTE: Even if inputReceived > amountInput, the vault only sold $amountInputDollars worth of assets
         // (according to chainlink). The share price is a chainlink price, and so the user can at most be asked to
-        // burn $amountInput worth of shares
-        uint256 numShares = (amountInput * totalSupply) / vaultDollars;
+        // burn $amountInputDollars worth of shares
+
+        // Convert from Dollar for easy calculations
+        uint256 amountInputDollars = Dollar.unwrap(_valueOfToken(inputToken, amountInput));
+        uint256 numShares = (amountInputDollars * totalSupply) / vaultDollars;
 
         _burn(_msgSender(), numShares);
 
         emit Withdraw(_msgSender(), amountInput, numShares);
-        inputToken.transfer(_msgSender(), dollarsReceived);
+        inputToken.transfer(_msgSender(), inputReceived);
     }
 
     /** EXCHANGE RATES
      **************************************************************************/
-    // When depositing, determing amount of input token that should be used to buy BTC and ETH
-    // respectively
-    function _getBuyDollarsByToken(uint256 amountInput) internal view returns (uint256, uint256) {
-        (uint256 btcDollars, uint256 ethDollars) = _valueOfVaultComponents();
-        (uint256 r1, uint256 r2) = (ratios[0], ratios[1]);
 
-        uint256 a = (r1 * (ethDollars + amountInput)) / (r1 + r2);
-        uint256 b = (r2 * btcDollars) / (r1 + r2);
+    // Dollars always have 8 decimals
+    using DollarMath for Dollar;
 
-        // We want to buy a negative amount of btc. Just spend all of input token on eth.
-        if (b > a) return (0, amountInput);
-
-        // We want to buy btc with more of inputToken than we have. Cap the dollars going to btc
-        uint256 amountInputToBtc = a - b;
-        if (amountInputToBtc > amountInput) return (amountInput, 0);
-
-        // The regular case where we split the input. Some amount of money goes to btc, the rest goes to eth
-        uint256 amountInputToEth = amountInput - amountInputToBtc;
-        return (amountInputToBtc, amountInputToEth);
-    }
-
-    function _getSellDollarsByToken(uint256 amountInput) public view returns (uint256, uint256) {
-        (uint256 btcDollars, uint256 ethDollars) = _valueOfVaultComponents();
-        (uint256 r1, uint256 r2) = (ratios[0], ratios[1]);
-
-        uint256 a = (r2 * btcDollars) / (r1 + r2);
-        uint256 b = (r1 * (ethDollars - amountInput)) / (r1 + r2);
-
-        // A negative amount of the liquidation should come from btc (we want to buy btc)
-        if (b > a) return (0, amountInput);
-
-        // Cap the amount that we attempt to liquidate from btc
-        uint256 amountInputFromBtc = a - b;
-        if (amountInputFromBtc > amountInput) return (amountInput, 0);
-
-        // The regular case where we split the input. Some amount of money comes from btc, the rest goes comes from eth
-        uint256 amountInputFromEth = amountInput - amountInputFromBtc;
-        return (amountInputFromBtc, amountInputFromEth);
-    }
-
-    function _getTokenPrice(ERC20 token) internal view returns (uint256) {
+    function _getTokenPrice(ERC20 token) internal view returns (Dollar) {
         // NOTE: Chainlink price feeds report prices of the "base unit" of your token. So
         // we receive the price of 1 ether (1e18 wei). The price also comes with its own decimals. E.g. a price
         // of $1 with 8 decimals is given as 1e8.
-        // TODO: make sure the units match we would expect, go through every invocation of this
+
+        if (token == inputToken) {
+            return Dollar.wrap(uint256(1e8));
+        }
+
         AggregatorV3Interface feed;
         if (token == token1) {
             feed = priceFeed1;
@@ -232,38 +207,109 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient {
             feed = priceFeed2;
         }
         (, int256 price, , , ) = feed.latestRoundData();
-        return uint256(price);
+        return Dollar.wrap(uint256(price));
     }
 
-    function valueOfVault() public view returns (uint256) {
-        (uint256 btcDollars, uint256 ethDollars) = _valueOfVaultComponents();
-        return btcDollars + ethDollars;
-    }
-
-    function _valueOfVaultComponents() internal view returns (uint256, uint256) {
-        uint256 btcBal = token1.balanceOf(address(this));
-        uint256 ethBal = token2.balanceOf(address(this));
-
-        uint256 btcDollars = _valueOfToken(token1, btcBal);
-        uint256 ethDollars = _valueOfToken(token2, ethBal);
-        return (btcDollars, ethDollars);
-    }
-
-    function _valueOfToken(ERC20 token, uint256 amount) public view returns (uint256) {
+    function _valueOfToken(ERC20 token, uint256 amount) public view returns (Dollar) {
         // Convert tokens to dollars using as many decimal places as the price feed gives us
         // e.g. Say ether is $1. If the price feed uses 8 decimals then a price of $1 is 1e8.
         // If we have 2 ether then return 2 * 1e8 as the dollar value of our balance
 
         // NOTE: All Chainlink USD price feeds use 8 decimals, so all invocations of this function
         // should return a dollar amount with the same number of decimals.
-
-        return (amount * _getTokenPrice(token)) / (10**token.decimals());
+        uint256 tokenPrice = Dollar.unwrap(_getTokenPrice(token));
+        uint256 dollarValue = (amount * tokenPrice) / (10**token.decimals());
+        return Dollar.wrap(dollarValue);
     }
 
-    function _tokensFromDollars(ERC20 token, uint256 amountDollars) internal view returns (uint256) {
+    function valueOfVault() public view returns (Dollar) {
+        (Dollar btcDollars, Dollar ethDollars) = _valueOfVaultComponents();
+        return btcDollars.add(ethDollars);
+    }
+
+    function _valueOfVaultComponents() internal view returns (Dollar, Dollar) {
+        uint256 btcBal = token1.balanceOf(address(this));
+        uint256 ethBal = token2.balanceOf(address(this));
+
+        Dollar btcDollars = _valueOfToken(token1, btcBal);
+        Dollar ethDollars = _valueOfToken(token2, ethBal);
+        return (btcDollars, ethDollars);
+    }
+
+    /// @notice   When depositing, determine amount of input token that should be used to buy BTC and ETH respectively
+    function _getBuySplits(uint256 amountInput) internal view returns (uint256 btcAmount, uint256 ethAmount) {
+        Dollar rawInputDollars = _valueOfToken(inputToken, amountInput);
+        uint256 inputDollars = Dollar.unwrap(rawInputDollars);
+
+        // We don't care about decimals here, so we can simply treat these as integers
+        (Dollar rawBtcDollars, Dollar rawEthDollars) = _valueOfVaultComponents();
+        uint256 btcDollars = Dollar.unwrap(rawBtcDollars);
+        uint256 ethDollars = Dollar.unwrap(rawEthDollars);
+
+        (uint256 r1, uint256 r2) = (ratios[0], ratios[1]);
+
+        // (a - b) represents the amount of dollars we want to swap for btc
+        uint256 a = (r1 * (ethDollars + inputDollars)) / (r1 + r2);
+        uint256 b = (r2 * btcDollars) / (r1 + r2);
+
+        // Case 1: We want to buy a negative amount of btc. Just spend all of input token on eth.
+        if (b > a) {
+            btcAmount = 0;
+            ethAmount = amountInput;
+        } else if (a - b > inputDollars) {
+            // Case 2:
+            // We want to buy btc with more of inputToken than we have. Cap the dollars going to btc
+            btcAmount = amountInput;
+            ethAmount = 0;
+        } else {
+            // Case 3:
+            // The regular case where we split the input. Some amount of money goes to btc, the rest goes to eth
+            uint256 dollarsToBtc = a - b;
+            btcAmount = (dollarsToBtc * amountInput) / inputDollars;
+            ethAmount = amountInput - btcAmount;
+        }
+    }
+
+    function _getSellSplits(uint256 amountInput) internal view returns (uint256 btcAmount, uint256 ethAmount) {
+        Dollar rawInputDollars = _valueOfToken(inputToken, amountInput);
+        uint256 inputDollars = Dollar.unwrap(rawInputDollars);
+
+        // We don't care about decimals here, so we can simply treat these as integers
+        (Dollar rawBtcDollars, Dollar rawEthDollars) = _valueOfVaultComponents();
+        uint256 btcDollars = Dollar.unwrap(rawBtcDollars);
+        uint256 ethDollars = Dollar.unwrap(rawEthDollars);
+
+        (uint256 r1, uint256 r2) = (ratios[0], ratios[1]);
+
+        uint256 a = (r2 * btcDollars) / (r1 + r2);
+        uint256 b = (r1 * (ethDollars - amountInput)) / (r1 + r2);
+
+        // (a - b) represents the amount of dollars in btc we want to sell (see whitepaper)
+        // Case 1: We don't want to sell any btc
+        if (b > a) {
+            btcAmount = 0;
+            ethAmount = amountInput;
+        } else if (a - b > inputDollars) {
+            // Case 2: We want to sell only btc
+            // Cap the amount that we attempt to liquidate from btc
+            btcAmount = amountInput;
+            ethAmount = 0;
+        } else {
+            //  Case 3: The regular case where we split the input. Some amount of money comes from btc,
+            // the rest goes comes from eth
+            uint256 dollarsFromBtc = a - b;
+            btcAmount = (dollarsFromBtc * amountInput) / inputDollars;
+            ethAmount = amountInput - btcAmount;
+        }
+    }
+
+    function _tokensFromDollars(ERC20 token, Dollar amountDollars) internal view returns (uint256) {
         // Convert dollars to tokens with token's amount of decimals
         uint256 oneToken = 10**token.decimals();
-        return (amountDollars * oneToken) / _getTokenPrice(token);
+
+        uint256 amountDollarsInt = Dollar.unwrap(amountDollars);
+        uint256 tokenPrice = Dollar.unwrap(_getTokenPrice(token));
+        return (amountDollarsInt * oneToken) / tokenPrice;
     }
 
     /** AUCTIONS
@@ -302,7 +348,10 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient {
             ERC20 _tokenToSell
         )
     {
-        (uint256 btcDollars, uint256 ethDollars) = _valueOfVaultComponents();
+        (Dollar rawBtcDollars, Dollar rawEthDollars) = _valueOfVaultComponents();
+        uint256 btcDollars = Dollar.unwrap(rawBtcDollars);
+        uint256 ethDollars = Dollar.unwrap(rawEthDollars);
+
         uint256 vaultDollars = btcDollars + ethDollars;
 
         // See how far we are from ideal amount of Eth/Btc
@@ -330,8 +379,8 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient {
         ERC20 sellToken = tokenToSell;
         ERC20 buyToken = sellToken == token1 ? token2 : token1;
 
-        uint256 sellTokenAmount = _tokensFromDollars(sellToken, blockSize);
-        uint256 buyTokenAmount = _tokensFromDollars(buyToken, blockSize);
+        uint256 sellTokenAmount = _tokensFromDollars(sellToken, Dollar.wrap(blockSize));
+        uint256 buyTokenAmount = _tokensFromDollars(buyToken, Dollar.wrap(blockSize));
 
         buyToken.transferFrom(_msgSender(), address(this), buyTokenAmount);
         sellToken.transfer(_msgSender(), sellTokenAmount);
