@@ -14,6 +14,12 @@ import { IStaging } from "./interfaces/IStaging.sol";
 import { Staging } from "./Staging.sol";
 import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
 
+/**
+ * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding
+ * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
+ * strategy liquidation.
+ * @dev If forking this code, do not deploy this. The contract is only non-abstract for easy testing.
+ */
 contract BaseVault is AccessControl {
     using SafeTransferLib for ERC20;
 
@@ -43,19 +49,24 @@ contract BaseVault is AccessControl {
     /** CROSS CHAIN MESSAGE PASSING AND REBALANCING
      **************************************************************************/
 
-    // Wormhole contract for sending/receiving messages
+    /// @notice Wormhole contract for sending/receiving messages
     IWormhole public wormhole;
+    /// @notice A "staging" contract for sending and receiving `token` across a bridge
     Staging public staging;
 
     /** AUTHENTICATION
      **************************************************************************/
 
+    /// @notice The governance address
     address public governance;
     modifier onlyGovernance() {
         require(msg.sender == governance, "Only Governance.");
         _;
     }
+
+    /// @notice Role with authority to call "harvest", i.e. update this vault's tvl
     bytes32 public constant bankerRole = keccak256("BANKER");
+    /// @notice Role with authority to set mutate the withdrawal queue
     bytes32 public constant queueOperatorRole = keccak256("QUEUE_OPERATOR");
 
     /** WITHDRAWAL QUEUE
@@ -63,23 +74,27 @@ contract BaseVault is AccessControl {
 
     uint8 public constant MAX_STRATEGIES = 20;
 
-    /// @notice An ordered array of strategies representing the withdrawal queue.
-    /// @dev The first strategy in the array is withdrawn from first.
-    /// @dev This is a list of the currently active strategies  (all non-zero addresses are active)
+    /**
+     * @notice An ordered array of strategies representing the withdrawal queue. The withdrawal queue is used
+     whenever the vault wants to pull money out of strategies (cross-chain rebalancing and user withdrawals)xw
+     * @dev The first strategy in the array is withdrawn from first.
+     * This is a list of the currently active strategies  (all non-zero addresses are active).
+     */
     Strategy[MAX_STRATEGIES] public withdrawalQueue;
 
-    /// @notice Gets the full withdrawal queue.
-    /// @return The withdrawal queue.
-    /// @dev This is provided because Solidity converts public arrays into index getters,
-    /// but we need a way to allow external contracts and users to access the whole array.
+    /**
+     * @notice Gets the full withdrawal queue.
+     * @return The withdrawal queue.
+     * @dev This gives easy access to the whole array (by default we can only get one index at a time)
+     */
     function getWithdrawalQueue() external view returns (Strategy[MAX_STRATEGIES] memory) {
         return withdrawalQueue;
     }
 
-    /// @notice Sets a new withdrawal queue.
-    /// @param newQueue The new withdrawal queue.
-    /// @dev Strategies that are untrusted, duplicated, or have no balance are
-    /// filtered out when encountered at withdrawal time, not validated upfront.
+    /**
+     * @notice Sets a new withdrawal queue.
+     * @param newQueue The new withdrawal queue.
+     */
     function setWithdrawalQueue(Strategy[MAX_STRATEGIES] calldata newQueue) external onlyRole(queueOperatorRole) {
         // Ensure the new queue is not larger than the maximum queue size.
         require(newQueue.length <= MAX_STRATEGIES, "QUEUE_TOO_BIG");
@@ -90,9 +105,11 @@ contract BaseVault is AccessControl {
         emit WithdrawalQueueSet(msg.sender, newQueue);
     }
 
-    /// @notice Swaps two indexes in the withdrawal queue.
-    /// @param index1 One index involved in the swap
-    /// @param index2 The other index involved in the swap.
+    /**
+     * @notice Swaps two indexes in the withdrawal queue.
+     * @param index1 One index involved in the swap
+     * @param index2 The other index involved in the swap.
+     */
     function swapWithdrawalQueueIndexes(uint256 index1, uint256 index2) external onlyRole(queueOperatorRole) {
         // Get the (soon to be) new strategies at each index.
         Strategy newStrategy2 = withdrawalQueue[index1];
@@ -105,17 +122,20 @@ contract BaseVault is AccessControl {
         emit WithdrawalQueueIndexesSwapped(msg.sender, index1, index2, newStrategy1, newStrategy2);
     }
 
-    /// @notice Emitted when the withdrawal queue is updated.
-    /// @param user The authorized user who triggered the set.
-    /// @param replacedWithdrawalQueue The new withdrawal queue.
+    /**@notice Emitted when the withdrawal queue is updated.
+     * @param user The authorized user who triggered the set.
+     * @param replacedWithdrawalQueue The new withdrawal queue.
+     */
     event WithdrawalQueueSet(address indexed user, Strategy[MAX_STRATEGIES] replacedWithdrawalQueue);
 
-    /// @notice Emitted when the strategies at two indexes are swapped.
-    /// @param user The authorized user who triggered the swap.
-    /// @param index1 One index involved in the swap
-    /// @param index2 The other index involved in the swap.
-    /// @param newStrategy1 The strategy (previously at index2) that replaced index1.
-    /// @param newStrategy2 The strategy (previously at index1) that replaced index2.
+    /**
+     * @notice Emitted when the strategies at two indexes are swapped.
+     * @param user The authorized user who triggered the swap.
+     * @param index1 One index involved in the swap
+     * @param index2 The other index involved in the swap.
+     * @param newStrategy1 The strategy (previously at index2) that replaced index1.
+     * @param newStrategy2 The strategy (previously at index1) that replaced index2.
+     */
     event WithdrawalQueueIndexesSwapped(
         address indexed user,
         uint256 index1,
@@ -128,7 +148,6 @@ contract BaseVault is AccessControl {
      **************************************************************************/
 
     /// @notice The total amount of underlying tokens held in strategies at the time of the last harvest.
-    /// @dev Includes maxLockedProfit, must be correctly subtracted to compute available/free holdings.
     uint256 public totalStrategyHoldings;
 
     struct StrategyInfo {
@@ -138,14 +157,23 @@ contract BaseVault is AccessControl {
         uint256 totalGain;
         uint256 totalLoss;
     }
+    /// @notice A map of strategy addresses to details about the strategy
     mapping(Strategy => StrategyInfo) public strategies;
+
     uint256 public constant MAX_BPS = 10_000;
-    // a number from 0 to 10_000 representing the proportion of the vault's tvl which may be given to strategies
+    /// @notice The number of bps of the vault's tvl which may be given to strategies (at most MAX_BPS)
     uint256 public totalBps;
 
+    /// @notice Emitted when a strategy is added by governance
     event StrategyAdded(Strategy indexed strategy);
+    /// @notice Emitted when a strategy is removed by governance
     event StrategyRemoved(Strategy indexed strategy);
 
+    /**
+     * @notice Add a strategy
+     * @param strategy The strategy to add
+     * @param tvlBps The number of bps of our tvl the strategy will get when funds are distributed to strategies
+     */
     function addStrategy(Strategy strategy, uint256 tvlBps) external onlyGovernance {
         require(totalBps + tvlBps <= MAX_BPS, "TVL_ALLOC_TOO_BIG");
         strategies[strategy] = StrategyInfo({ isActive: true, tvlBps: tvlBps, balance: 0, totalGain: 0, totalLoss: 0 });
@@ -156,8 +184,11 @@ contract BaseVault is AccessControl {
         _organizeWithdrawalQueue();
     }
 
-    /// @notice Push all zero addresses to the end of the array
-    /// @dev Relative ordering of non-zero values is maintained.
+    /**
+     * @notice Push all zero addresses to the end of the array. This function is used whenever a strategy is
+     * added or removed from the withdrawal queue
+     * @dev Relative ordering of non-zero values is maintained.
+     */
     function _organizeWithdrawalQueue() internal {
         // number or empty values we've seen iterating from left to right
         uint256 offset;
@@ -174,6 +205,10 @@ contract BaseVault is AccessControl {
         }
     }
 
+    /**
+     * @notice Remove a strategy
+     * @param strategy The strategy to add
+     */
     function removeStrategy(Strategy strategy) external onlyGovernance {
         // TODO: consider withdrawaing all possible money from a strategy before popping it from withdrawal queue
         // TODO: decrement totalStrategyHoldings here
@@ -194,20 +229,25 @@ contract BaseVault is AccessControl {
     /** STRATEGY DEPOSIT/WITHDRAWAL
      **************************************************************************/
 
-    /// @notice Emitted after the Vault deposits into a strategy contract.
-    /// @param strategy The strategy that was deposited into.
-    /// @param tokenAmount The amount of underlying tokens that were deposited.
+    /**
+     * @notice Emitted after the Vault deposits into a strategy contract.
+     * @param strategy The strategy that was deposited into.
+     * @param tokenAmount The amount of underlying tokens that were deposited.
+     */
     event StrategyDeposit(Strategy indexed strategy, uint256 tokenAmount);
 
-    /// @notice Emitted after the Vault withdraws funds from a strategy contract.
-    /// @param user The authorized user who triggered the withdrawal.
-    /// @param strategy The strategy that was withdrawn from.
-    /// @param tokenAmount The amount of underlying tokens that were withdrawn.
-    event StrategyWithdrawal(address indexed user, Strategy indexed strategy, uint256 tokenAmount);
+    /**
+     * @notice Emitted after the Vault withdraws funds from a strategy contract.
+     * @param strategy The strategy that was withdrawn from.
+     * @param tokenAmount The amount of underlying tokens that were withdrawn.
+     */
+    event StrategyWithdrawal(Strategy indexed strategy, uint256 tokenAmount);
 
-    /// @notice Deposit a specific amount of token into a trusted strategy.
-    /// @param strategy The trusted strategy to deposit into.
-    /// @param tokenAmount The amount of underlying tokens to deposit.
+    /**
+     * @notice Deposit a specific amount of token into a trusted strategy.
+     * @param strategy The strategy to deposit into.
+     * @param tokenAmount The amount of underlying tokens to deposit.
+     */
     function depositIntoStrategy(Strategy strategy, uint256 tokenAmount) internal {
         // Increase totalStrategyHoldings to account for the deposit.
         totalStrategyHoldings += tokenAmount;
@@ -226,8 +266,7 @@ contract BaseVault is AccessControl {
         emit StrategyDeposit(strategy, tokenAmount);
     }
 
-    /// @notice Deposit entire balance of `token` into strategies
-    /// @dev Each strategy's `tvlBps` value will determine what proportion of the balance it will get
+    /// @notice Deposit entire balance of `token` into strategies according to each strategies' `tvlBps`.
     function depositIntoStrategies() internal {
         uint256 totalBal = token.balanceOf(address(this));
         // All non-zero strategies are active
@@ -239,15 +278,14 @@ contract BaseVault is AccessControl {
         }
     }
 
-    /// @notice Withdraw a specific amount of underlying tokens from a strategy.
-    /// @param strategy The strategy to withdraw from.
-    /// @param tokenAmount  The amount of underlying tokens to withdraw.
-    /// @dev Withdrawing from a strategy will not remove it from the withdrawal queue.
-    /// @return The amount withdrawn from the strategy.
+    /**
+     * @notice Withdraw a specific amount of underlying tokens from a strategy.
+     * @dev This will not revert if the tokenAmount is not withdrawn. It could potentially withdraw nothing.
+     * @param strategy The strategy to withdraw from.
+     * @param tokenAmount  The amount of underlying tokens to withdraw.
+     * @return The amount of underlying tokens withdrawn from the strategy.
+     */
     function withdrawFromStrategy(Strategy strategy, uint256 tokenAmount) internal returns (uint256) {
-        // NOTE: this violates check-effects-interactions, but this is fine since only trusted
-        // strategies will be added
-
         // Withdraw from the strategy
         uint256 amountWithdrawn = strategy.divest(tokenAmount);
         // Without this the next harvest would count the withdrawal as a loss.
@@ -259,8 +297,7 @@ contract BaseVault is AccessControl {
             totalStrategyHoldings -= amountWithdrawn;
         }
 
-        emit StrategyWithdrawal(msg.sender, strategy, amountWithdrawn);
-
+        emit StrategyWithdrawal(strategy, amountWithdrawn);
         return amountWithdrawn;
     }
 
@@ -269,20 +306,24 @@ contract BaseVault is AccessControl {
 
     /// @notice A timestamp representing when the most recent harvest occurred.
     uint256 public lastHarvest;
-    // @notice The amount of profit *originally* locked after harvesting from a strategy
+    /// @notice The amount of profit *originally* locked after harvesting from a strategy
     uint256 public maxLockedProfit;
-    // Amount of time in seconds that profit takes to fully unlock see lockedProfit().
+    /// @notice Amount of time in seconds that profit takes to fully unlock. See lockedProfit().
     uint256 public constant lockInterval = 3 hours;
     uint256 public constant SECS_PER_YEAR = 365 days;
 
-    /// @notice Emitted after a successful harvest.
-    /// @param user The authorized user who triggered the harvest.
-    /// @param strategies The trusted strategies that were harvested.
+    /**
+     * @notice Emitted after a successful harvest.
+     * @param user The authorized user who triggered the harvest.
+     * @param strategies The trusted strategies that were harvested.
+     */
     event Harvest(address indexed user, Strategy[] strategies);
 
-    /// @notice Harvest a set of trusted strategies.
-    /// @param strategyList The trusted strategies to harvest.
-    /// @dev Will always revert if profit from last harvest has not finished unlocking.
+    /**
+     * @notice Harvest a set of trusted strategies.
+     * @param strategyList The trusted strategies to harvest.
+     * @dev Will always revert if profit from last harvest has not finished unlocking.
+     */
     function harvest(Strategy[] calldata strategyList) external onlyRole(bankerRole) {
         // Profit must not be unlocking
         require(block.timestamp >= lastHarvest + lockInterval, "PROFIT_UNLOCKING");
@@ -339,8 +380,10 @@ contract BaseVault is AccessControl {
         emit Harvest(msg.sender, strategyList);
     }
 
-    /// @notice Current locked profit amount.
-    /// @dev Profit unlocks uniformly over `lockInterval` seconds after the last harvest
+    /**
+     * @notice Current locked profit amount.
+     * @dev Profit unlocks uniformly over `lockInterval` seconds after the last harvest
+     */
     function lockedProfit() public view returns (uint256) {
         if (block.timestamp >= lastHarvest + lockInterval) return 0;
 
@@ -348,12 +391,25 @@ contract BaseVault is AccessControl {
         return maxLockedProfit - unlockedProfit;
     }
 
+    /// @notice The total amount of the underlying asset the vault has.
     function vaultTVL() public view returns (uint256) {
         return token.balanceOf(address(this)) + totalStrategyHoldings;
     }
 
+    /**
+     * @notice Emitted whenever the vault withdraws from multiple strategies
+     * @dev We liquidate from cross chain rebalancing
+     * @param amountRequested The amount we wanted to liquidate
+     * @param amountLiquidated The amount we actually liquidated
+     */
     event Liquidation(uint256 amountRequested, uint256 amountLiquidated);
 
+    /**
+     * @notice Withdraw `amount` of underlying asset from strategies.
+     * @dev Always check the return value when using this function, we might not liquidate anything!
+     * @param amount The amount we want to liquidate
+     * @return The amount we actually liquidated
+     */
     function _liquidate(uint256 amount) internal returns (uint256) {
         uint256 amountLiquidated;
         uint256 length = withdrawalQueue.length;
@@ -381,8 +437,13 @@ contract BaseVault is AccessControl {
         return amountLiquidated;
     }
 
+    /**
+     * @notice Assess fees.
+     * @dev This is called during harvest() to assess management fees.
+     */
     function _assessFees() internal virtual {}
 
-    // Rebalance strategies on this chain.
+    // TODO: implement this
+    /// @notice  Rebalance strategies according to new tvl bps
     function rebalance() external onlyGovernance {}
 }
