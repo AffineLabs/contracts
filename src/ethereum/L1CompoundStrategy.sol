@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { SafeERC20, IERC20, Address } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
@@ -12,9 +13,7 @@ import { BaseVault } from "../BaseVault.sol";
 import { BaseStrategy } from "../BaseStrategy.sol";
 
 contract L1CompoundStrategy is BaseStrategy {
-    using SafeERC20 for IERC20;
-    using Address for address;
-
+    using SafeTransferLib for ERC20;
     // Compund protocol contracts
     IComptroller public immutable comptroller;
     // Corresponding Compund token (USDC -> cUSDC)
@@ -52,7 +51,7 @@ contract L1CompoundStrategy is BaseStrategy {
         rewardToken = _rewardToken;
         wrappedNative = _wrappedNative;
         // Approve transfer on the cToken contract
-        token.approve(address(cToken), type(uint256).max);
+        token.safeApprove(address(cToken), type(uint256).max);
     }
 
     /** BALANCES
@@ -63,7 +62,7 @@ contract L1CompoundStrategy is BaseStrategy {
     }
 
     function balanceOfRewardToken() public view returns (uint256) {
-        return IERC20(rewardToken).balanceOf(address(this));
+        return ERC20(rewardToken).balanceOf(address(this));
     }
 
     function balanceOfCToken() public view returns (uint256) {

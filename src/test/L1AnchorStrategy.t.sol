@@ -34,7 +34,7 @@ contract EthAnchorStratTestFork is DSTestPlus {
 
         strategy = new L1AnchorStrategy(
             vault,
-            IERC20(0xFff8fb0C13314c90805a808F48c7DFF37e95Eb16),
+            ERC20(0xFff8fb0C13314c90805a808F48c7DFF37e95Eb16),
             IConversionPool(0x92E68C8C24a0267fa962470618d2ffd21f9b6a95),
             IExchangeRateFeeder(0x79E0d9bD65196Ead00EE75aB78733B8489E8C1fA)
         );
