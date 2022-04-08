@@ -105,7 +105,6 @@ $ yarn script scripts/deploy-all.ts -eth ropsten -p mumbai
 yarn hardhat verify --network <network> <DEPLOYED_CONTRACT_ADDRESS> "Constructor argument 1"
 ```
 
-### Added plugins
+## Documentation
 
-- Gas reporter [hardhat-gas-reporter](https://hardhat.org/plugins/hardhat-gas-reporter.html)
-- Etherscan [hardhat-etherscan](https://hardhat.org/plugins/nomiclabs-hardhat-etherscan.html)
+You can find documentation (auto-generated from Natspec comments) in the `docs/` folder. You'll need to run `yarn` first to build the docs.
