@@ -802,6 +802,13 @@
     proper-lockfile "^4.1.1"
     solidity-ast "^0.4.15"
 
+"@primitivefi/hardhat-dodoc@^0.2.3":
+  version "0.2.3"
+  resolved "https://registry.yarnpkg.com/@primitivefi/hardhat-dodoc/-/hardhat-dodoc-0.2.3.tgz#76aebbfa70de2d6454af29e166b1430583b54c5c"
+  integrity sha512-ver9uHa79LTDTeebOKZ/eOVRL/FP1k0s0x/5Bo/8ZaDdLWFVClKqZyZYVjjW4CJqTPCt8uU9b9p71P2vzH4O9A==
+  dependencies:
+    squirrelly "^8.0.8"
+
 "@protobufjs/aspromise@^1.1.1", "@protobufjs/aspromise@^1.1.2":
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/@protobufjs/aspromise/-/aspromise-1.1.2.tgz#9b8b0cc663d669a7d8f6f5d0893a14d348f30fbf"
@@ -9107,6 +9114,11 @@ sprintf-js@~1.0.2:
   version "1.0.3"
   resolved "https://registry.yarnpkg.com/sprintf-js/-/sprintf-js-1.0.3.tgz#04e6926f662895354f3dd015203633b857297e2c"
   integrity sha1-BOaSb2YolTVPPdAVIDYzuFcpfiw=
+
+squirrelly@^8.0.8:
+  version "8.0.8"
+  resolved "https://registry.yarnpkg.com/squirrelly/-/squirrelly-8.0.8.tgz#d6704650b2170b8040d5de5bff9fa69cb62b5e0f"
+  integrity sha512-7dyZJ9Gw86MmH0dYLiESsjGOTj6KG8IWToTaqBuB6LwPI+hyNb6mbQaZwrfnAQ4cMDnSWMUvX/zAYDLTSWLk/w==
 
 sshpk@^1.7.0:
   version "1.17.0"
