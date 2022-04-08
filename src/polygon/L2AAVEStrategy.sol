@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
-import { SafeERC20, IERC20, Address } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -20,8 +20,7 @@ interface ILendingPoolAddressesProviderRegistry {
 }
 
 contract L2AAVEStrategy is BaseStrategy {
-    using SafeERC20 for IERC20;
-    using Address for address;
+    using SafeTransferLib for ERC20;
 
     // AAVE protocol contracts
     IAaveIncentivesController public immutable incentivesController;
@@ -68,9 +67,9 @@ contract L2AAVEStrategy is BaseStrategy {
         wrappedNative = _wrappedNative;
 
         // approve
-        IERC20(aToken).approve(pool, type(uint256).max);
-        token.approve(pool, type(uint256).max);
-        IERC20(rewardToken).approve(_router, type(uint256).max);
+        ERC20(_aToken).safeApprove(pool, type(uint256).max);
+        token.safeApprove(pool, type(uint256).max);
+        ERC20(rewardToken).safeApprove(_router, type(uint256).max);
     }
 
     /** BALANCES
@@ -81,7 +80,7 @@ contract L2AAVEStrategy is BaseStrategy {
     }
 
     function balanceOfRewardToken() public view returns (uint256) {
-        return IERC20(rewardToken).balanceOf(address(this));
+        return ERC20(rewardToken).balanceOf(address(this));
     }
 
     function balanceOfAToken() public view returns (uint256) {

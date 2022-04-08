@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { SafeERC20, IERC20, Address } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { BaseStrategy } from "../BaseStrategy.sol";
@@ -12,11 +13,10 @@ import { BaseVault } from "../BaseVault.sol";
 
 // https://docs.anchorprotocol.com/ethanchor/ethanchor-contracts
 contract L1AnchorStrategy is BaseStrategy {
-    using SafeERC20 for IERC20;
-    using Address for address;
+    using SafeTransferLib for ERC20;
 
     // aUSDC.
-    IERC20 public immutable aToken;
+    ERC20 public immutable aToken;
     // EthAnchor USDC conversion pool.
     IConversionPool public immutable usdcConversionPool;
     // Exchange rate feeder.
@@ -27,7 +27,7 @@ contract L1AnchorStrategy is BaseStrategy {
 
     constructor(
         BaseVault _vault,
-        IERC20 _aToken,
+        ERC20 _aToken,
         IConversionPool _usdcConversionPool,
         IExchangeRateFeeder _exchangeRateFeeder
     ) {
@@ -37,7 +37,7 @@ contract L1AnchorStrategy is BaseStrategy {
         usdcConversionPool = _usdcConversionPool;
         exchangeRateFeeder = _exchangeRateFeeder;
         // Approve transfer on the usdcConversionPool contract
-        token.approve(address(usdcConversionPool), type(uint256).max);
+        token.safeApprove(address(usdcConversionPool), type(uint256).max);
     }
 
     /** BALANCES

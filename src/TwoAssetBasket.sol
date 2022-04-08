@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { BaseRelayRecipient } from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
@@ -10,6 +11,7 @@ import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
 import { Dollar, DollarMath } from "./DollarMath.sol";
 
 contract TwoAssetBasket is ERC20, BaseRelayRecipient {
+    using SafeTransferLib for ERC20;
     address public governance;
 
     // The token which we take in to buy token1 and token2, e.g. USDC
@@ -50,9 +52,9 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient {
         (priceFeed1, priceFeed2) = (_priceFeeds[0], _priceFeeds[1]);
 
         // Allow uniRouter to spend all tokens that we may swap
-        inputToken.approve(address(uniRouter), type(uint256).max);
-        token1.approve(address(uniRouter), type(uint256).max);
-        token2.approve(address(uniRouter), type(uint256).max);
+        inputToken.safeApprove(address(uniRouter), type(uint256).max);
+        token1.safeApprove(address(uniRouter), type(uint256).max);
+        token2.safeApprove(address(uniRouter), type(uint256).max);
     }
 
     function versionRecipient() external pure override returns (string memory) {

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
@@ -17,6 +18,7 @@ import { Staging } from "../Staging.sol";
 import { BaseVault } from "../BaseVault.sol";
 
 contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
+    using SafeTransferLib for ERC20;
     /////// Cross chain rebalancing
     bool public received;
     IRootChainManager public chainManager;
@@ -87,7 +89,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
 
     // Send `token` to L2 staging via polygon bridge
     function _transferFundsToL2(uint256 amount) internal {
-        token.approve(predicate, amount);
+        token.safeApprove(predicate, amount);
         chainManager.depositFor(address(staging), address(token), abi.encodePacked(amount));
 
         // Let L2 know how much money we sent
