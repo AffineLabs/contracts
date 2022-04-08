@@ -15,6 +15,7 @@ import "hardhat-change-network";
 import "hardhat-gas-reporter";
 import "hardhat-abi-exporter";
 import "hardhat-contract-sizer";
+import "@primitivefi/hardhat-dodoc";
 import "@openzeppelin/hardhat-upgrades";
 import "@openzeppelin/hardhat-defender";
 
@@ -132,6 +133,10 @@ const config: HardhatUserConfig = {
   },
   contractSizer: {
     only: ["Vault|Staging"],
+  },
+  dodoc: {
+    include: ["src"],
+    exclude: ["test"],
   },
   defender: {
     apiKey: process.env.DEFENDER_API_KEY || "",

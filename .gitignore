@@ -9,6 +9,7 @@ typechain
 hh-cache
 .openzeppelin/unknown-*.json
 abi/
+docs/
 
 # Foundry
 out
