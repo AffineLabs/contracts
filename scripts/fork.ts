@@ -17,12 +17,14 @@ let ethUrl = "",
   ethNetwork = "",
   polygonNetwork = "";
 let shouldFork = true;
+let hhCommand = "yarn hardhat run";
 
 program
   .argument("<script>", "Script to run, e.g. deploy.ts")
   .option("--no-fork", "If present, runs script against real networks instead of forking")
   .option("-eth, --ethereum <net>", "The ethereum network", "goerli")
   .option("-p, --polygon <net>", "The polygon network", "mumbai")
+  .option("-t, --test", "If present runs a hardhat test instead of a script")
   .action((script, options) => {
     hhScript = script;
     console.log({ script });
@@ -34,15 +36,17 @@ program
     polygonUrl = `https://polygon-${options.polygon}.g.alchemy.com/v2/${ALCHEMY_POLYGON_KEY}`;
 
     shouldFork = options.fork;
+    if (options.test) {
+      hhCommand = "yarn hardhat test";
+    }
   });
 
 program.parse();
 
 // If we shouldn't fork, then just run the script as usual, putting the chosen networks into our
 // environment variables
-// TODO: use spawn
 if (!shouldFork) {
-  execSync(`yarn hardhat run ${hhScript}`, {
+  execSync(`${hhCommand} ${hhScript}`, {
     env: { ...process.env, ETH_NETWORK: ethNetwork, POLYGON_NETWORK: polygonNetwork },
     stdio: "inherit",
   });
@@ -55,7 +59,7 @@ const { result } = concurrently(
   [
     `yarn hardhat node --fork ${ethUrl}`,
     `yarn hardhat node --fork ${polygonUrl} --port 8546`,
-    `yarn hardhat run ${hhScript}`,
+    `${hhCommand} ${hhScript}`,
   ],
   { successCondition: "first", killOthers: ["failure", "failure", "success"] },
 );
