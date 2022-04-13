@@ -36,8 +36,11 @@ jobs:
       - name: Install yarn dependencies
         run: yarn --frozen-lockfile
 
-      - name: Run tests.
+      - name: Run forge tests.
         run: yarn test-all
+
+      - name: Run hardhat tests.
+        run: yarn test-hh
 
       - name: Check slither errors
         uses: crytic/slither-action@v0.1.1
