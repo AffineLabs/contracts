@@ -17,8 +17,11 @@ jobs:
     name: PR Sanity Check
     runs-on: ubuntu-latest
     env:
+      MNEMONIC: ${{ secrets.MNEMONIC }}
       ALCHEMY_ETH_KEY: ${{ secrets.ALCHEMY_ETH_KEY }}
       ALCHEMY_POLYGON_KEY: ${{ secrets.ALCHEMY_POLYGON_KEY }}
+      DEFENDER_API_KEY: ${{ secrets.DEFENDER_API_KEY }}
+      DEFENDER_API_SECRET: ${{ secrets.DEFENDER_API_SECRET }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -36,8 +39,11 @@ jobs:
       - name: Install yarn dependencies
         run: yarn --frozen-lockfile
 
-      - name: Run tests.
+      - name: Run forge tests.
         run: yarn test-all
+
+      - name: Run hardhat tests.
+        run: yarn test-hh
 
       - name: Check slither errors
         uses: crytic/slither-action@v0.1.1

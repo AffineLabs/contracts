@@ -8,15 +8,12 @@ import { config } from "../utils/config";
 chai.use(solidity);
 const { expect } = chai;
 
-const ETH_NETWORK_NAME = "eth-goerli";
-const POLYGON_NETWORK_NAME = "polygon-mumbai";
-
 it("Deploy Vaults", async () => {
   const { l1Vault, l2Vault } = await deployVaults(
     config.l1Governance,
     config.l2Governance,
-    ETH_NETWORK_NAME,
-    POLYGON_NETWORK_NAME,
+    process.env.ETH_NETWORK || "eth-goerli-fork",
+    process.env.POLYGON_NETWORK || "polygon-mumbai-fork",
     config,
   );
 

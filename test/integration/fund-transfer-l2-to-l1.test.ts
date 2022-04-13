@@ -1,14 +1,14 @@
 import chai from "chai";
 import hre from "hardhat";
-import usdcABI from "./assets/usdc-abi.json";
+import usdcABI from "../assets/usdc-abi.json";
 
 import { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
-import { config } from "../utils/config";
+import { config } from "../../utils/config";
 import { ContractTransaction } from "ethers";
-import { deployAll } from "../scripts/utils/deploy-all";
-import utils from "./utils";
-import { address } from "../utils/types";
+import { deployAll } from "../../scripts/utils/deploy-all";
+import utils from "../utils";
+import { address } from "../../utils/types";
 
 const ETH_NETWORK_NAME = "ethGoerli";
 const POLYGON_NETWORK_NAME = "polygonMumbai";
