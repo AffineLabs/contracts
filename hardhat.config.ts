@@ -137,6 +137,7 @@ const config: HardhatUserConfig = {
   dodoc: {
     include: ["src"],
     exclude: ["test"],
+    runOnCompile: false,
   },
   defender: {
     apiKey: process.env.DEFENDER_API_KEY || "",
