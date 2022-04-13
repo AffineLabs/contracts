@@ -63,7 +63,7 @@ program
   .description("Run the hardhat tests")
   .argument("[testFiles]", "Glob of tests files, e.g. test/deploy.test.ts")
   .action((testFiles, options) => {
-    const script = testFiles ? testFiles : "";
+    const script = testFiles ? testFiles : "test/*.test.ts";
     executeScript(script, options, true);
   });
 
