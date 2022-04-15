@@ -20,23 +20,7 @@ import "@openzeppelin/hardhat-upgrades";
 import "@openzeppelin/hardhat-defender";
 
 import "./tasks/accounts";
-
-export const ethChainIds = {
-  ganache: 1337,
-  goerli: 5,
-  hardhat: 31337,
-  kovan: 42,
-  mainnet: 1,
-  rinkeby: 4,
-  ropsten: 3,
-};
-
-type ethNetwork = keyof typeof ethChainIds;
-export const polygonChainIds = {
-  mainnet: 137,
-  mumbai: 80001,
-};
-type polygonNetwork = keyof typeof polygonChainIds;
+import { ethChainIds, polygonChainIds, ethNetwork, polygonNetwork } from "./scripts/utils/constants/types";
 
 const MNEMONIC = process.env.MNEMONIC || "";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";

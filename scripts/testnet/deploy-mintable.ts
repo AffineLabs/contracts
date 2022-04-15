@@ -1,9 +1,8 @@
-import { TransactionResponse } from "@ethersproject/abstract-provider";
 import { IUniLikeSwapRouter__factory, MintableToken__factory } from "../../typechain";
 import hre from "hardhat";
 import { ethers } from "hardhat";
-import { config } from "../../utils/config";
-import { getContractAddress } from "../../utils/export";
+import { config } from "../utils/config";
+import { getContractAddress } from "../utils/export";
 
 const ETH_NETWORK_NAME = process.env.ETH_NETWORK || "";
 const POLYGON_NETWORK_NAME = process.env.POLYGON_NETWORK || "";

@@ -4,7 +4,7 @@ import utils from "../test/utils";
 import { resolve } from "path";
 import { readFileSync } from "fs";
 
-import { REBALANCE_CONFIG } from "../utils/config";
+import { REBALANCE_CONFIG } from "./utils/config";
 
 const abiDir = resolve(__dirname, "../abi");
 const l1VaultABI = JSON.parse(readFileSync(`${abiDir}/L1Vault.abi`).toString());

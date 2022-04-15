@@ -41,7 +41,7 @@ export async function addToAddressBookAndDefender(
 ) {
   const contractAddr =
     typeof contractOrAddress === "string" ? contractOrAddress : await getContractAddress(contractOrAddress);
-  const rootDir = resolve(__dirname, "..");
+  const rootDir = resolve(__dirname, "../..");
   const addressBookPath = join(rootDir, "addressbook.json");
   let addressBook;
   try {
@@ -51,13 +51,8 @@ export async function addToAddressBookAndDefender(
   }
 
   const contractABIPath = join(rootDir, "abi", `${contractType}.json`);
-  let abi;
-  try {
-    abi = await readJSON(contractABIPath);
-  } catch (err) {
-    abi = {};
-    console.warn(`Reading contract abi for contract type "${contractType}" failed.`);
-  }
+  const abi = await readJSON(contractABIPath);
+
   const version: string = process.env.VERSION || "test";
 
   let entry = {

@@ -1,5 +1,5 @@
-import { config } from "../utils/config";
-import { AllContracts, deployAll } from "./utils/deploy-all";
+import { config } from "./utils/config";
+import { AllContracts, deployAll } from "./helpers/deploy-all";
 
 async function deployAllGoerliMumbai(): Promise<AllContracts> {
   console.log("eth: ", process.env.ETH_NETWORK);

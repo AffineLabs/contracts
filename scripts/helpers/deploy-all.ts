@@ -1,13 +1,13 @@
 import { deployVaults, VaultContracts } from "./deploy-vaults";
-import { Config } from "../../utils/config";
+import { Config } from "../utils/config";
 import { deployStrategies, StrategyContracts } from "./deploy-strategies";
 import { deployBasket } from "./deploy-btc-eth";
-import { address } from "../../utils/types";
+import { address } from "../utils/types";
 import { MintableToken__factory, TwoAssetBasket } from "../../typechain";
 import { ethers } from "hardhat";
 import hre from "hardhat";
-import { addToAddressBookAndDefender, getContractAddress } from "../../utils/export";
-import { POLYGON_MUMBAI } from "../../utils/constants/blockchain";
+import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
+import { POLYGON_MUMBAI } from "../utils/constants/blockchain";
 
 export interface AllContracts {
   vaults: VaultContracts;
