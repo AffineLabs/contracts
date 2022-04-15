@@ -1,4 +1,3 @@
-import { TransactionResponse } from "@ethersproject/abstract-provider";
 import { IUniLikeSwapRouter__factory, MintableToken__factory } from "../../typechain";
 import hre from "hardhat";
 import { ethers } from "hardhat";

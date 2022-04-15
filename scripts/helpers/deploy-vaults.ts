@@ -2,7 +2,7 @@ import { ethers, upgrades } from "hardhat";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../utils/bc-explorer-links";
 import { Config } from "../utils/config";
-import { ICreate2Deployer__factory, L1Vault, L2Vault, Staging__factory } from "typechain";
+import { ICreate2Deployer__factory, L1Vault, L2Vault, Staging__factory } from "../../typechain";
 import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
 import { ETH_GOERLI, POLYGON_MUMBAI } from "../utils/constants/blockchain";
 import { address } from "../utils/types";
