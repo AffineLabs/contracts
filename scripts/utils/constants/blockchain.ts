@@ -1,5 +1,5 @@
 import { BlockchainInfo } from "./types";
-import { ethChainIds, polygonChainIds } from "../../hardhat.config";
+import { ethChainIds, polygonChainIds } from "hardhat.config";
 
 enum blockchains {
   ETHEREUM = "Ethereum",

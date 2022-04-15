@@ -2,7 +2,7 @@ import axios from "axios";
 
 import { ethers } from "ethers";
 import { BigNumber, Contract } from "ethers";
-import { address } from "../../utils/types";
+import { address } from "scripts/utils/types";
 
 export async function sleep(ms: number) {
   await new Promise(f => setTimeout(f, ms));

@@ -4,10 +4,10 @@ import usdcABI from "../assets/usdc-abi.json";
 
 import { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
-import { config } from "../../utils/config";
+import { config } from "scripts/utils/config";
 import { ContractTransaction } from "ethers";
-import { getTxExplorerLink } from "../../utils/bc-explorer-links";
-import { AllContracts, deployAll } from "../../scripts/utils/deploy-all";
+import { getTxExplorerLink } from "scripts/utils/bc-explorer-links";
+import { AllContracts, deployAll } from "scripts/helpers/deploy-all";
 import utils from "../utils";
 
 const ETH_NETWORK_NAME = "ethGoerli";

@@ -2,8 +2,8 @@ import { ethers } from "hardhat";
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
 
-import { deployVaults } from "../scripts/utils/deploy-vaults";
-import { config } from "../utils/config";
+import { deployVaults } from "../scripts/helpers/deploy-vaults";
+import { config } from "../scripts/utils/config";
 
 chai.use(solidity);
 const { expect } = chai;

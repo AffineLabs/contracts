@@ -4,11 +4,11 @@ import usdcABI from "../assets/usdc-abi.json";
 
 import { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
-import { config } from "../../utils/config";
+import { config } from "scripts/utils/config";
 import { ContractTransaction } from "ethers";
-import { deployAll } from "../../scripts/utils/deploy-all";
+import { deployAll } from "scripts/helpers/deploy-all";
 import utils from "../utils";
-import { address } from "../../utils/types";
+import { address } from "scripts/utils/types";
 
 const ETH_NETWORK_NAME = "ethGoerli";
 const POLYGON_NETWORK_NAME = "polygonMumbai";

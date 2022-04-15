@@ -1,10 +1,9 @@
 import { ethers } from "hardhat";
 import hre from "hardhat";
-import { Config } from "../../utils/config";
-import { MintableStrategy } from "../../typechain";
+import { MintableStrategy } from "typechain";
 import { VaultContracts } from "./deploy-vaults";
-import { addToAddressBookAndDefender } from "../../utils/export";
-import { ETH_GOERLI, POLYGON_MUMBAI } from "../../utils/constants/blockchain";
+import { addToAddressBookAndDefender } from "../utils/export";
+import { ETH_GOERLI, POLYGON_MUMBAI } from "../utils/constants/blockchain";
 
 export interface StrategyContracts {
   l1: { [strategyName: string]: MintableStrategy };
