@@ -319,7 +319,7 @@ contract L2Vault is
     }
 
     function detailedPrice() external view override returns (Number memory price) {
-        price = Number({ num: globalTVL() / totalSupply(), decimals: decimals() });
+        price = Number({ num: (globalTVL() * 10**decimals()) / totalSupply(), decimals: decimals() });
     }
 
     function detailedTotalSupply() external view override returns (Number memory supply) {
