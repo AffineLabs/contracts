@@ -17,8 +17,16 @@ import { BaseVault } from "../BaseVault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { Staging } from "../Staging.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
+import { DetailedShare } from "./Detailed.sol";
 
-contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, BaseVault, BaseRelayRecipient {
+contract L2Vault is
+    ERC20Upgradeable,
+    UUPSUpgradeable,
+    PausableUpgradeable,
+    BaseVault,
+    BaseRelayRecipient,
+    DetailedShare
+{
     using SafeTransferLib for ERC20;
 
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
@@ -300,5 +308,21 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         L1TotalLockedValue -= amount;
         canRequestFromL1 = true;
         emit ReceiveFromL1(amount);
+    }
+
+    /** DETAILED PRICE INFO
+     **************************************************************************/
+
+    /// @dev The vault has as many decimals as the input token does
+    function detailedTVL() external view override returns (Number memory tvl) {
+        tvl = Number({ num: globalTVL(), decimals: decimals() });
+    }
+
+    function detailedPrice() external view override returns (Number memory price) {
+        price = Number({ num: (globalTVL() * 10**decimals()) / totalSupply(), decimals: decimals() });
+    }
+
+    function detailedTotalSupply() external view override returns (Number memory supply) {
+        supply = Number({ num: totalSupply(), decimals: decimals() });
     }
 }
