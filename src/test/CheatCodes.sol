@@ -98,4 +98,7 @@ interface CheatCodes {
     function expectCall(address, bytes calldata) external;
 
     function getCode(string calldata) external returns (bytes memory);
+
+    // When fuzzing, generate new inputs if conditional not met
+    function assume(bool) external;
 }

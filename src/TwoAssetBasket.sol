@@ -9,8 +9,9 @@ import { BaseRelayRecipient } from "@opengsn/contracts/src/BaseRelayRecipient.so
 import { IUniLikeSwapRouter } from "./interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
 import { Dollar, DollarMath } from "./DollarMath.sol";
+import { DetailedShare } from "./polygon/Detailed.sol";
 
-contract TwoAssetBasket is ERC20, BaseRelayRecipient {
+contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare {
     using SafeTransferLib for ERC20;
     address public governance;
 
@@ -39,7 +40,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient {
         ERC20[2] memory _tokens,
         uint256[2] memory _ratios,
         AggregatorV3Interface[2] memory _priceFeeds
-    ) ERC20("Alpine Large Vault Token", "alpLarge", 18) {
+    ) ERC20("Alpine Large Vault Token", "alpLarge", _tokens[0].decimals()) {
         require(_rebalanceDelta >= _blockSize, "DELTA_TOO_SMALL");
         governance = _governance;
         _setTrustedForwarder(forwarder);
@@ -217,8 +218,6 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient {
         // e.g. Say ether is $1. If the price feed uses 8 decimals then a price of $1 is 1e8.
         // If we have 2 ether then return 2 * 1e8 as the dollar value of our balance
 
-        // NOTE: All Chainlink USD price feeds use 8 decimals, so all invocations of this function
-        // should return a dollar amount with the same number of decimals.
         uint256 tokenPrice = Dollar.unwrap(_getTokenPrice(token));
         uint256 dollarValue = (amount * tokenPrice) / (10**token.decimals());
         return Dollar.wrap(dollarValue);
@@ -401,5 +400,29 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient {
             isRebalancing = false;
             numBlocksLeftToSell = 0;
         }
+    }
+
+    /** DETAILED PRICE INFO
+     **************************************************************************/
+
+    function detailedTVL() external view override returns (Number memory tvl) {
+        Dollar vaultDollars = valueOfVault();
+        tvl = Number({ num: Dollar.unwrap(vaultDollars), decimals: 8 });
+    }
+
+    function detailedPrice() external view override returns (Number memory price) {
+        Dollar vaultDollars = valueOfVault();
+        uint256 vaultValue = Dollar.unwrap(vaultDollars);
+        uint256 _price;
+        uint256 shareDecimals = decimals;
+
+        // Assuming that shareDecimals > 8. TODO: reconsider
+        _price = (vaultValue * (10**shareDecimals)) / totalSupply;
+
+        price = Number({ num: _price, decimals: 8 });
+    }
+
+    function detailedTotalSupply() external view override returns (Number memory supply) {
+        supply = Number({ num: totalSupply, decimals: decimals });
     }
 }
