@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { DSTest } from "./test.sol";
-import { CheatCodes } from "./CheatCodes.sol";
-import "forge-std/src/stdlib.sol";
+import { Test } from "forge-std/Test.sol";
+import { stdStorage, StdStorage } from "forge-std/Test.sol";
 
-contract DSTestPlus is DSTest {
-    CheatCodes cheats = CheatCodes(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-    StdStorage stdstore;
+contract TestPlus is Test {
+    using stdStorage for StdStorage;
 
     function assertInRange(
         uint256 a,

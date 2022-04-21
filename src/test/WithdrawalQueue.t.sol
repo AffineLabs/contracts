@@ -3,15 +3,15 @@ pragma solidity ^0.8.13;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
-import { DSTestPlus } from "./TestPlus.sol";
-import { stdStorage, StdStorage } from "forge-std/src/stdlib.sol";
+import { TestPlus } from "./TestPlus.sol";
+import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
 import { MockERC20 } from "./MockERC20.sol";
 import { ConvertLib } from "./ConvertLib.sol";
 
 import { WithdrawalQueue } from "../polygon/WithdrawalQueue.sol";
 
-contract WithdrawalQueueTest is DSTestPlus {
+contract WithdrawalQueueTest is TestPlus {
     WithdrawalQueue withdrawalQueue;
     MockERC20 usdc;
 
@@ -32,19 +32,19 @@ contract WithdrawalQueueTest is DSTestPlus {
     }
 
     function testEnqueueSuccess() external {
-        cheats.expectEmit(true, true, false, true);
+        vm.expectEmit(true, true, false, true);
         emit WithdrawalQueueEnqueue(1, user1, 1000);
         // Impersonate vault
-        cheats.startPrank(vault);
+        vm.startPrank(vault);
         // Only vault should be able to enqueue.
         withdrawalQueue.enqueue(user1, 1000);
-        cheats.stopPrank();
+        vm.stopPrank();
 
         assertEq(withdrawalQueue.size(), 1);
     }
 
     function testEnqueueOnlyVaultCanEnqueue() external {
-        cheats.expectRevert(
+        vm.expectRevert(
             bytes(
                 abi.encodePacked(
                     "AccessControl: account ",
@@ -60,48 +60,48 @@ contract WithdrawalQueueTest is DSTestPlus {
 
     function testEnqueueCorreclyEnqueuReturningUser() external {
         // Impersonate vault
-        cheats.startPrank(vault);
+        vm.startPrank(vault);
 
-        cheats.expectEmit(true, true, false, true);
+        vm.expectEmit(true, true, false, true);
         emit WithdrawalQueueEnqueue(1, user1, 1000);
         withdrawalQueue.enqueue(user1, 1000);
 
-        cheats.expectEmit(true, true, false, true);
+        vm.expectEmit(true, true, false, true);
         emit WithdrawalQueueEnqueue(2, user2, 2000);
         withdrawalQueue.enqueue(user2, 2000);
 
-        cheats.expectEmit(true, true, false, true);
+        vm.expectEmit(true, true, false, true);
         emit WithdrawalQueueEnqueue(3, user1, 3000);
         withdrawalQueue.enqueue(user1, 3000);
 
-        cheats.stopPrank();
+        vm.stopPrank();
 
         assertEq(withdrawalQueue.size(), 3);
     }
 
     function testDequeueSuccess() external {
         // Impersonate vault
-        cheats.startPrank(vault);
+        vm.startPrank(vault);
         // Only vault should be able to enqueue.
         withdrawalQueue.enqueue(user1, 1000);
         withdrawalQueue.enqueue(user2, 2000);
         withdrawalQueue.enqueue(user1, 3000);
-        cheats.stopPrank();
+        vm.stopPrank();
 
-        cheats.expectEmit(false, false, false, false);
+        vm.expectEmit(false, false, false, false);
         emit Transfer(address(withdrawalQueue), user1, 1000);
-        cheats.expectEmit(false, false, false, false);
+        vm.expectEmit(false, false, false, false);
         emit WithdrawalQueueDequeue(1, user1, 1000);
         withdrawalQueue.dequeue();
         assertEq(withdrawalQueue.size(), 2);
 
-        cheats.expectEmit(false, false, false, false);
+        vm.expectEmit(false, false, false, false);
         emit Transfer(address(withdrawalQueue), user2, 2000);
-        cheats.expectEmit(false, false, false, false);
+        vm.expectEmit(false, false, false, false);
         emit WithdrawalQueueDequeue(2, user2, 2000);
-        cheats.expectEmit(false, false, false, false);
+        vm.expectEmit(false, false, false, false);
         emit Transfer(address(withdrawalQueue), user1, 3000);
-        cheats.expectEmit(false, false, false, false);
+        vm.expectEmit(false, false, false, false);
         emit WithdrawalQueueDequeue(3, user2, 3000);
         withdrawalQueue.dequeueBatch(2);
         assertEq(withdrawalQueue.size(), 0);

@@ -23,7 +23,7 @@ abstract contract DetailedShare {
 
     /**
      * @notice The total supply of the token. The value of Number.num here is the same as `totalSupply()`
-     * @dev detailedPrice() * detailedTotalSupply() == detailedTVL()
+     * @dev detailedTVL() / detailedTotalSupply() ==  detailedPrice()
      */
     function detailedTotalSupply() external virtual returns (Number memory);
 }

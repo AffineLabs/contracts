@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { DSTestPlus } from "./TestPlus.sol";
-import { stdStorage, StdStorage } from "forge-std/src/stdlib.sol";
+import { TestPlus } from "./TestPlus.sol";
+import { stdStorage, StdStorage } from "forge-std/Test.sol";
+
 import { Deploy } from "./Deploy.sol";
 import { MockERC20 } from "./MockERC20.sol";
 
@@ -13,7 +14,7 @@ import { MinimalForwarder } from "@openzeppelin/contracts/metatx/MinimalForwarde
 import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
 import { Deploy } from "./Deploy.sol";
 
-contract ForwardTest is DSTestPlus {
+contract ForwardTest is TestPlus {
     using stdStorage for StdStorage;
     L2Vault vault;
     TwoAssetBasket basket;
@@ -28,11 +29,11 @@ contract ForwardTest is DSTestPlus {
         // Update trusted forwarder in vault
         uint256 slot = stdstore.target(address(vault)).sig("trustedForwarder()").find();
         bytes32 forwarderAddr = bytes32(uint256(uint160(address(forwarder))));
-        cheats.store(address(vault), bytes32(slot), forwarderAddr);
+        vm.store(address(vault), bytes32(slot), forwarderAddr);
 
         // Update trusted forwarder in basket
         slot = stdstore.target(address(basket)).sig("trustedForwarder()").find();
-        cheats.store(address(basket), bytes32(slot), forwarderAddr);
+        vm.store(address(basket), bytes32(slot), forwarderAddr);
     }
 
     function toTypedDataHash(bytes32 domainSeparator, bytes32 structHash) internal pure returns (bytes32) {
@@ -68,9 +69,9 @@ contract ForwardTest is DSTestPlus {
 
     function testDoubleDeposit() public {
         // send two deposits of 1 usdc to the l2vault
-        address user = cheats.addr(1);
+        address user = vm.addr(1);
         token.mint(user, 2e6);
-        cheats.startPrank(user);
+        vm.startPrank(user);
         token.approve(address(vault), type(uint256).max);
 
         // get transaction data for a deposit of 1 usdc to L2Vault
@@ -97,8 +98,8 @@ contract ForwardTest is DSTestPlus {
 
         bytes32 domainSeparator = getDomainSeparator(address(forwarder));
         // sign data
-        (uint8 v, bytes32 r, bytes32 s) = cheats.sign(1, toTypedDataHash(domainSeparator, reqStructHash1));
-        (uint8 v2, bytes32 r2, bytes32 s2) = cheats.sign(1, toTypedDataHash(domainSeparator, reqStructHash2));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(1, toTypedDataHash(domainSeparator, reqStructHash1));
+        (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(1, toTypedDataHash(domainSeparator, reqStructHash2));
 
         MinimalForwarder.ForwardRequest[] memory requests = new MinimalForwarder.ForwardRequest[](2);
         requests[0] = req1;
@@ -111,9 +112,9 @@ contract ForwardTest is DSTestPlus {
     function testTransactVaultAndBasket() public {
         // send one deposits of 1 usdc to L2Vault
         // try to start a rebalance in TwoAssetBasket
-        address user = cheats.addr(1);
+        address user = vm.addr(1);
         token.mint(user, 2e6);
-        cheats.startPrank(user);
+        vm.startPrank(user);
         token.approve(address(vault), type(uint256).max);
 
         // get transaction data for a deposit of 1 usdc to L2Vault
@@ -138,13 +139,13 @@ contract ForwardTest is DSTestPlus {
 
         bytes32 domainSeparator = getDomainSeparator(address(forwarder));
         // sign data
-        (uint8 v, bytes32 r, bytes32 s) = cheats.sign(1, toTypedDataHash(domainSeparator, reqStructHash1));
-        (uint8 v2, bytes32 r2, bytes32 s2) = cheats.sign(1, toTypedDataHash(domainSeparator, reqStructHash2));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(1, toTypedDataHash(domainSeparator, reqStructHash1));
+        (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(1, toTypedDataHash(domainSeparator, reqStructHash2));
 
         MinimalForwarder.ForwardRequest[] memory requests = new MinimalForwarder.ForwardRequest[](2);
         requests[0] = req1;
         requests[1] = req2;
-        cheats.mockCall(
+        vm.mockCall(
             address(0),
             abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
             abi.encode(uint80(0), int256(1), uint256(0), uint256(0), uint80(0))

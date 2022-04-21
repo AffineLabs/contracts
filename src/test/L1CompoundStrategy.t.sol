@@ -3,8 +3,8 @@ pragma solidity ^0.8.13;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
-import { DSTestPlus } from "./TestPlus.sol";
-import { stdStorage, StdStorage } from "forge-std/src/stdlib.sol";
+import { TestPlus } from "./TestPlus.sol";
+import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
 
 import { L1Vault } from "../ethereum/L1Vault.sol";
@@ -13,7 +13,7 @@ import { IComptroller } from "../interfaces/compound/IComptroller.sol";
 import { L1CompoundStrategy } from "../ethereum/L1CompoundStrategy.sol";
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 
-contract L1CompoundStratTestFork is DSTestPlus {
+contract L1CompoundStratTestFork is TestPlus {
     using stdStorage for StdStorage;
 
     ERC20 usdc = ERC20(0xD87Ba7A50B2E7E660f678A895E4B72E7CB4CCd9C);
@@ -32,7 +32,7 @@ contract L1CompoundStratTestFork is DSTestPlus {
         // make vault token equal to the L1 (Goerli) usdc address
         uint256 slot = stdstore.target(address(vault)).sig("token()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
-        cheats.store(address(vault), bytes32(slot), tokenAddr);
+        vm.store(address(vault), bytes32(slot), tokenAddr);
 
         strategy = new L1CompoundStrategy(
             vault,
@@ -47,10 +47,10 @@ contract L1CompoundStratTestFork is DSTestPlus {
     function testStrategyInvest() public {
         // Give the Vault 1 usdc
         uint256 slot = stdstore.target(address(usdc)).sig(usdc.balanceOf.selector).with_key(address(vault)).find();
-        cheats.store(address(usdc), bytes32(slot), bytes32(uint256(1e6)));
+        vm.store(address(usdc), bytes32(slot), bytes32(uint256(1e6)));
 
         vault.addStrategy(strategy, 5000);
-        cheats.prank(address(0)); // staging address is 0 in the default vault
+        vm.prank(address(0)); // staging address is 0 in the default vault
         vault.afterReceive();
 
         // Strategy deposits all of usdc into Compound

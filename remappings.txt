@@ -2,4 +2,5 @@
 solmate/=node_modules/solmate/
 @uniswap/=node_modules/@uniswap/
 @opengsn/=node_modules/@opengsn/
-forge-std/=node_modules/forge-std/
+forge-std/=node_modules/forge-std/src/
+ds-test/=node_modules/ds-test/src/
