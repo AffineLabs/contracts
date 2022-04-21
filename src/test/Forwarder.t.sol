@@ -7,7 +7,7 @@ import { Deploy } from "./Deploy.sol";
 import { MockERC20 } from "./MockERC20.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
-import { TwoAssetBasket } from "../TwoAssetBasket.sol";
+import { TwoAssetBasket } from "../polygon/TwoAssetBasket.sol";
 import { Forwarder } from "../polygon/Forwarder.sol";
 import { MinimalForwarder } from "@openzeppelin/contracts/metatx/MinimalForwarder.sol";
 import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";

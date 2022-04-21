@@ -10,7 +10,7 @@ import { IWormhole } from "../interfaces/IWormhole.sol";
 import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { L1Vault } from "../ethereum/L1Vault.sol";
 import { Staging } from "../Staging.sol";
-import { TwoAssetBasket } from "../TwoAssetBasket.sol";
+import { TwoAssetBasket } from "../polygon/TwoAssetBasket.sol";
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
 
