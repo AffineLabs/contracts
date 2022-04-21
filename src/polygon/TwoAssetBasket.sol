@@ -6,10 +6,10 @@ import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { BaseRelayRecipient } from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
-import { IUniLikeSwapRouter } from "./interfaces/IUniLikeSwapRouter.sol";
-import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
-import { Dollar, DollarMath } from "./DollarMath.sol";
-import { DetailedShare } from "./polygon/Detailed.sol";
+import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
+import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
+import { Dollar, DollarMath } from "../DollarMath.sol";
+import { DetailedShare } from "./Detailed.sol";
 
 contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare {
     using SafeTransferLib for ERC20;

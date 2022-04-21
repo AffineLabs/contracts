@@ -10,7 +10,7 @@ import { Deploy } from "./Deploy.sol";
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
 import { Dollar } from "../DollarMath.sol";
-import { TwoAssetBasket } from "../TwoAssetBasket.sol";
+import { TwoAssetBasket } from "../polygon/TwoAssetBasket.sol";
 
 contract L2BtcEthBasketTestFork is DSTestPlus {
     TwoAssetBasket public basket;
