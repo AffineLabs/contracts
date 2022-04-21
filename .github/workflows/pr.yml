@@ -39,8 +39,8 @@ jobs:
       - name: Install yarn dependencies
         run: yarn --frozen-lockfile
 
-      - name: Run forge tests.
-        run: yarn test-all
+      - name: Run forge tests and check gas snapshots.
+        run: yarn snap-all --check
 
       - name: Run hardhat tests.
         run: yarn test-hh
