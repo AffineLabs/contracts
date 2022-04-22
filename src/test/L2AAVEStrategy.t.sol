@@ -3,15 +3,15 @@ pragma solidity ^0.8.13;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
-import { DSTestPlus } from "./TestPlus.sol";
-import { stdStorage, StdStorage } from "forge-std/src/stdlib.sol";
+import { TestPlus } from "./TestPlus.sol";
+import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
 import { L2AAVEStrategy } from "../polygon/L2AAVEStrategy.sol";
 import { Deploy } from "./Deploy.sol";
 
-contract L2AAVEStratTestFork is DSTestPlus {
+contract L2AAVEStratTestFork is TestPlus {
     using stdStorage for StdStorage;
     L2Vault vault;
     L2AAVEStrategy strategy;
@@ -22,7 +22,7 @@ contract L2AAVEStratTestFork is DSTestPlus {
         vault = Deploy.deployL2Vault();
         uint256 slot = stdstore.target(address(vault)).sig("token()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
-        cheats.store(address(vault), bytes32(slot), tokenAddr);
+        vm.store(address(vault), bytes32(slot), tokenAddr);
 
         strategy = new L2AAVEStrategy(
             vault,
@@ -37,7 +37,7 @@ contract L2AAVEStratTestFork is DSTestPlus {
     function testStrategyMakesMoney() public {
         // Give us (this contract) 1 USDC. Deposit into vault
         uint256 slot = stdstore.target(address(usdc)).sig(usdc.balanceOf.selector).with_key(address(this)).find();
-        cheats.store(address(usdc), bytes32(slot), bytes32(uint256(1e6)));
+        vm.store(address(usdc), bytes32(slot), bytes32(uint256(1e6)));
 
         // This contract is the governance address so this will work
         vault.addStrategy(strategy, 5_000);
@@ -47,7 +47,7 @@ contract L2AAVEStratTestFork is DSTestPlus {
         vault.deposit(1e6);
 
         // Go 10 days into the future and make sure that the vault makes money
-        cheats.warp(block.timestamp + 10 days);
+        vm.warp(block.timestamp + 10 days);
 
         uint256 profit = strategy.aToken().balanceOf(address(strategy)) - 1e6 / 2;
         assertGe(profit, 100);

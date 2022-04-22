@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { DSTestPlus } from "./TestPlus.sol";
-import { stdStorage, StdStorage } from "forge-std/src/stdlib.sol";
+import { TestPlus } from "./TestPlus.sol";
+import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
 import { MockERC20 } from "./MockERC20.sol";
 
 import { BaseStrategy } from "../BaseStrategy.sol";
 import { BaseVault } from "../BaseVault.sol";
 
-contract VaultTest is DSTestPlus {
+contract VaultTest is TestPlus {
     BaseVault vault;
     MockERC20 token;
 

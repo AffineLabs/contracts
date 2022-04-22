@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { DSTestPlus } from "./TestPlus.sol";
-import { stdStorage, StdStorage } from "forge-std/src/stdlib.sol";
+import { TestPlus } from "./TestPlus.sol";
+import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
@@ -46,7 +46,7 @@ contract MockWormhole is IWormhole {
     }
 }
 
-contract WormholeTest is DSTestPlus {
+contract WormholeTest is TestPlus {
     L1Vault l1vault;
     L2Vault l2vault;
 
@@ -58,7 +58,7 @@ contract WormholeTest is DSTestPlus {
         MockWormhole wormhole = new MockWormhole();
         uint256 slot = stdstore.target(address(l1vault)).sig("wormhole()").find();
         bytes32 wormholeAddr = bytes32(uint256(uint160(address(wormhole))));
-        cheats.store(address(l1vault), bytes32(slot), wormholeAddr);
+        vm.store(address(l1vault), bytes32(slot), wormholeAddr);
 
         l2vault = Deploy.deployL2Vault();
     }
@@ -70,7 +70,7 @@ contract WormholeTest is DSTestPlus {
             abi.encode(0, false),
             4
         );
-        cheats.expectCall(address(l1vault.wormhole()), publishMessageData);
+        vm.expectCall(address(l1vault.wormhole()), publishMessageData);
         l1vault.sendTVL();
         // TODO: assert that publish message was called wih certain arguments
 

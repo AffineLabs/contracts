@@ -3,8 +3,8 @@ pragma solidity ^0.8.13;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
-import { DSTestPlus } from "./TestPlus.sol";
-import { stdStorage, StdStorage } from "forge-std/src/stdlib.sol";
+import { TestPlus } from "./TestPlus.sol";
+import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
 import { MockERC20 } from "./MockERC20.sol";
 
@@ -32,7 +32,7 @@ contract MockStrategy is BaseStrategy {
     }
 }
 
-contract BaseStrategyTest is DSTestPlus {
+contract BaseStrategyTest is TestPlus {
     MockStrategy strategy;
     MockERC20 rewardToken;
 
@@ -44,13 +44,13 @@ contract BaseStrategyTest is DSTestPlus {
 
     function testSweep() public {
         // Will revert if non governance tries to call it
-        cheats.expectRevert(bytes("ONLY_GOVERNANCE"));
-        cheats.prank(0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045); // vitalik
+        vm.expectRevert(bytes("ONLY_GOVERNANCE"));
+        vm.prank(0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045); // vitalik
         strategy.sweep(rewardToken);
 
         // Will revert if trying to sell `token` of BaseStrategy
         ERC20 assetToken = strategy.vault().token();
-        cheats.expectRevert(bytes("!token"));
+        vm.expectRevert(bytes("!token"));
         strategy.sweep(assetToken);
 
         // award the strategy some tokens

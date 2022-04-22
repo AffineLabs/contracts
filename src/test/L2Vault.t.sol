@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { DSTestPlus } from "./TestPlus.sol";
-import { stdStorage, StdStorage } from "forge-std/src/stdlib.sol";
+import { TestPlus } from "./TestPlus.sol";
+import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
 import { MockERC20 } from "./MockERC20.sol";
 
@@ -10,7 +10,7 @@ import { L2Vault } from "../polygon/L2Vault.sol";
 import { BaseStrategy } from "../BaseStrategy.sol";
 import { Deploy } from "./Deploy.sol";
 
-contract L2VaultTest is DSTestPlus {
+contract L2VaultTest is TestPlus {
     L2Vault vault;
     MockERC20 token;
 
@@ -33,7 +33,7 @@ contract L2VaultTest is DSTestPlus {
 
         // user gives max approval to vault for token
         token.approve(address(vault), type(uint256).max);
-        cheats.expectEmit(true, false, false, true);
+        vm.expectEmit(true, false, false, true);
         emit Deposit(address(this), amountToken, amountToken);
         vault.deposit(amountToken);
 
@@ -42,7 +42,7 @@ contract L2VaultTest is DSTestPlus {
         assertEq(numShares, amountToken);
         assertEq(token.balanceOf(address(user)), 0);
 
-        cheats.expectEmit(true, false, false, true);
+        vm.expectEmit(true, false, false, true);
         emit Withdraw(address(this), amountToken, amountToken);
         vault.redeem(numShares);
 
@@ -58,7 +58,7 @@ contract L2VaultTest is DSTestPlus {
         token.mint(user, amountToken);
         token.approve(address(vault), type(uint256).max);
 
-        cheats.expectEmit(true, false, false, true);
+        vm.expectEmit(true, false, false, true);
         emit Deposit(address(this), amountToken, amountToken);
         vault.deposit(amountToken);
 
@@ -66,7 +66,7 @@ contract L2VaultTest is DSTestPlus {
         assertEq(vault.balanceOf(user), amountToken);
         assertEq(token.balanceOf(user), 0);
 
-        cheats.expectEmit(true, false, false, true);
+        vm.expectEmit(true, false, false, true);
         emit Withdraw(address(this), amountToken, amountToken);
         vault.withdraw(amountToken);
         assertEq(vault.balanceOf(user), 0);
@@ -77,7 +77,7 @@ contract L2VaultTest is DSTestPlus {
         // Add total supply => occupies ERC20Upgradeable which inherits from two contracts with storage,
         // One contract has one slots and the other has 50 slots. totalSupply is at slot three in ERC20Up, so
         // the slot would is number 50 + 1 + 3 = 54 (index 53)
-        cheats.store(address(vault), bytes32(uint256(53)), bytes32(uint256(1e18)));
+        vm.store(address(vault), bytes32(uint256(53)), bytes32(uint256(1e18)));
 
         assertEq(vault.totalSupply(), 1e18);
 
@@ -86,9 +86,9 @@ contract L2VaultTest is DSTestPlus {
         vault.addStrategy(myStrat, 10_000);
 
         // call to balanceOfToken in harvest() will return 1e18
-        cheats.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfToken.selector), abi.encode(1e18));
+        vm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfToken.selector), abi.encode(1e18));
         // block.timestap must be >= lastHarvest + lockInterval when harvesting
-        cheats.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
 
         // Call harvest to update lastHarvest, note that no shares are minted here because
         // (block.timestamp - lastHarvest) = lockInterval + 1 =  3 hours + 1 second
@@ -97,7 +97,7 @@ contract L2VaultTest is DSTestPlus {
         strategyList[0] = BaseStrategy(address(this));
         vault.harvest(strategyList);
 
-        cheats.warp(block.timestamp + vault.SECS_PER_YEAR() / 2);
+        vm.warp(block.timestamp + vault.SECS_PER_YEAR() / 2);
 
         // Call harvest to trigger fee assessment
         vault.harvest(strategyList);
@@ -113,9 +113,9 @@ contract L2VaultTest is DSTestPlus {
         vault.addStrategy(myStrat, 10_000);
 
         // call to balanceOfToken in harvest() will return 1e18
-        cheats.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfToken.selector), abi.encode(1e18));
+        vm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfToken.selector), abi.encode(1e18));
         // block.timestap must be >= lastHarvest + lockInterval when harvesting
-        cheats.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
 
         token.mint(address(myStrat), 1e18);
         token.approve(address(vault), type(uint256).max);
@@ -128,7 +128,7 @@ contract L2VaultTest is DSTestPlus {
         assertEq(vault.globalTVL(), 0);
 
         // Using up 50% of lockInterval unlocks 50% of profit
-        cheats.warp(block.timestamp + vault.lockInterval() / 2);
+        vm.warp(block.timestamp + vault.lockInterval() / 2);
         assertEq(vault.lockedProfit(), 1e18 / 2);
         assertEq(vault.globalTVL(), 1e18 / 2);
     }
@@ -138,7 +138,7 @@ contract L2VaultTest is DSTestPlus {
         vault.setWithdrawalFee(50);
 
         address user = 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045; // vitalik
-        cheats.startPrank(user);
+        vm.startPrank(user);
         token.mint(user, amountToken);
         token.approve(address(vault), type(uint256).max);
         vault.deposit(amountToken);
@@ -158,10 +158,10 @@ contract L2VaultTest is DSTestPlus {
         vault.setWithdrawalFee(10);
         assertEq(vault.withdrawalFee(), 10);
 
-        cheats.startPrank(0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045);
-        cheats.expectRevert(bytes("Only Governance."));
+        vm.startPrank(0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045);
+        vm.expectRevert(bytes("Only Governance."));
         vault.setManagementFee(300);
-        cheats.expectRevert(bytes("Only Governance."));
+        vm.expectRevert(bytes("Only Governance."));
         vault.setWithdrawalFee(10);
     }
     // TODO: Get the below test to pass
@@ -172,7 +172,7 @@ contract L2VaultTest is DSTestPlus {
     // ) public {
     //     // update vaults total supply (number of shares)
     //     // storage slots can be found in dapptools' abi output
-    //     cheats.store(address(vault), bytes32(uint256(2)), bytes32(totalShares));
+    //     vm.store(address(vault), bytes32(uint256(2)), bytes32(totalShares));
     //     emit log_named_uint("foo", vault.totalSupply());
 
     //     // update vaults total underlying tokens  => could just overwrite storage as well
