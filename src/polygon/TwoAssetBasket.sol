@@ -76,7 +76,6 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare {
         // Get dollar amounts of btc and eth to buy
         (uint256 amountInputToBtc, uint256 amountInputToEth) = _getBuySplits(amountInput);
 
-        // TODO: don't allow infinite slippage. Will need price oracle of inputToken and ETH
         inputToken.transferFrom(_msgSender(), address(this), amountInput);
         address[] memory pathBtc = new address[](2);
         pathBtc[0] = address(inputToken);
@@ -185,7 +184,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare {
         uint256 amountInputDollars = Dollar.unwrap(_valueOfToken(inputToken, amountInput));
         uint256 numShares = (amountInputDollars * totalSupply) / vaultDollars;
 
-        // TODO: fix approvals
+        // TODO: fix approvals, anyone can burn a user's shares now
         _burn(owner, numShares);
 
         emit Withdraw(_msgSender(), receiver, amountInput, numShares);
