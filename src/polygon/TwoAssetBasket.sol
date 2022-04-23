@@ -64,9 +64,9 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare {
 
     /** DEPOSIT / WITHDRAW
      **************************************************************************/
-    event Deposit(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
+    event Deposit(address indexed caller, address indexed owner, uint256 tokenAmount, uint256 shareAmount);
 
-    function deposit(uint256 amountInput) external {
+    function deposit(uint256 amountInput, address receiver) external returns (uint256 shares) {
         // Get current amounts of btc/eth (in dollars) => 8 decimals
         Dollar rawVaultDollars = valueOfVault();
         uint256 vaultDollars = Dollar.unwrap(rawVaultDollars);
@@ -114,21 +114,24 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare {
         uint256 dollarsReceived = Dollar.unwrap(rawDollarsReceived);
 
         // Issue shares based on dollar amounts of user coins vs total holdings of the vault
-        uint256 numShares;
         if (totalSupply == 0) {
             // Dollars have 8 decimals, add an an extra 10 here to match the 18 that this contract uses
-            numShares = dollarsReceived * 1e10;
+            shares = dollarsReceived * 1e10;
         } else {
-            numShares = (dollarsReceived * totalSupply) / vaultDollars;
+            shares = (dollarsReceived * totalSupply) / vaultDollars;
         }
 
-        emit Deposit(_msgSender(), amountInput, numShares);
-        _mint(_msgSender(), numShares);
+        emit Deposit(_msgSender(), receiver, amountInput, shares);
+        _mint(receiver, shares);
     }
 
-    event Withdraw(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
+    event Withdraw(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
 
-    function withdraw(uint256 amountInput) external returns (uint256 inputReceived) {
+    function withdraw(
+        uint256 amountInput,
+        address receiver,
+        address owner
+    ) external returns (uint256 inputReceived) {
         // Try to get `amountInput` of `inputToken` out of vault
         Dollar rawVaultDollars = valueOfVault();
         uint256 vaultDollars = Dollar.unwrap(rawVaultDollars);
@@ -182,9 +185,10 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare {
         uint256 amountInputDollars = Dollar.unwrap(_valueOfToken(inputToken, amountInput));
         uint256 numShares = (amountInputDollars * totalSupply) / vaultDollars;
 
-        _burn(_msgSender(), numShares);
+        // TODO: fix approvals
+        _burn(owner, numShares);
 
-        emit Withdraw(_msgSender(), amountInput, numShares);
+        emit Withdraw(_msgSender(), receiver, amountInput, numShares);
         inputToken.transfer(_msgSender(), inputReceived);
     }
 
