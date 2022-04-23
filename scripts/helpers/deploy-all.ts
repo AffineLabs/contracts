@@ -8,6 +8,7 @@ import { ethers } from "hardhat";
 import hre from "hardhat";
 import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
 import { POLYGON_MUMBAI } from "../utils/constants/blockchain";
+import { sign } from "crypto";
 
 export interface AllContracts {
   vaults: VaultContracts;
@@ -58,9 +59,10 @@ export async function deployAll(
   tx = await vaults.l2Vault.withdraw(oneUsdc);
   await tx.wait();
 
-  tx = await basket.deposit(oneUsdc.mul(2));
+  const signerAddr = await signer.getAddress();
+  tx = await basket.deposit(oneUsdc.mul(2), signerAddr);
   await tx.wait();
-  tx = await basket.withdraw(oneUsdc.div(10));
+  tx = await basket.withdraw(oneUsdc.div(10), signerAddr, signerAddr);
   await tx.wait();
 
   // Add usdc to address book, TODO: handle the production version of this
