@@ -40,7 +40,7 @@ contract BaseVault is AccessControl {
         token = _token;
         wormhole = _wormhole;
 
-        _grantRole(bankerRole, governance);
+        _grantRole(harvesterRole, governance);
         _grantRole(queueOperatorRole, governance);
 
         staging = _staging;
@@ -65,7 +65,7 @@ contract BaseVault is AccessControl {
     }
 
     /// @notice Role with authority to call "harvest", i.e. update this vault's tvl
-    bytes32 public constant bankerRole = keccak256("BANKER");
+    bytes32 public constant harvesterRole = keccak256("HARVESTER");
     /// @notice Role with authority to set mutate the withdrawal queue
     bytes32 public constant queueOperatorRole = keccak256("QUEUE_OPERATOR");
 
@@ -324,7 +324,7 @@ contract BaseVault is AccessControl {
      * @param strategyList The trusted strategies to harvest.
      * @dev Will always revert if profit from last harvest has not finished unlocking.
      */
-    function harvest(Strategy[] calldata strategyList) external onlyRole(bankerRole) {
+    function harvest(Strategy[] calldata strategyList) external onlyRole(harvesterRole) {
         // Profit must not be unlocking
         require(block.timestamp >= lastHarvest + lockInterval, "PROFIT_UNLOCKING");
 
