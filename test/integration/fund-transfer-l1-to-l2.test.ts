@@ -22,7 +22,7 @@ const { expect } = chai;
   3) Receive message (receiveTVL) and send a message to L1 with amount request (L2)
   4) Receive message by posting VAA with vaultL1.receiveMessage (L1)
     - bridge tokens and send metadata in message to L2
-  5) Receive message by posting VAA in stagingL2.l2clearfund() after bridging transaction has completed (L2)
+  5) Receive message by posting VAA in bridgeEscrowL2.l2clearfund() after bridging transaction has completed (L2)
     - check tvl afterwards
  */
 
@@ -82,27 +82,29 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
   console.log("Received request from L2 on L1. Transfer from L1 to L2 initiated.");
 
   // L1 just sent money along with a message to L2
-  // Wait for money to hit staging, then use message to clear funds from staging to l2 vault
-  // Get instance of staging contract
+  // Wait for money to hit bridgeEscrow, then use message to clear funds from bridgeEscrow to l2 vault
+  // Get instance of bridgeEscrow contract
   hre.changeNetwork(POLYGON_NETWORK_NAME);
   [governance] = await ethers.getSigners();
-  const l2Staging = (await ethers.getContractFactory("Staging", governance)).attach(await l2Vault.staging());
-  console.log("L2 staging address: ", l2Staging.address);
+  const l2BridgeEscrow = (await ethers.getContractFactory("BridgeEscrow", governance)).attach(
+    await l2Vault.bridgeEscrow(),
+  );
+  console.log("L2 bridgeEscrow address: ", l2BridgeEscrow.address);
 
   await utils.waitForNonZeroAddressTokenBalance(
     config.l2USDC,
     usdcABI,
-    "L2 Staging",
-    l2Staging.address,
+    "L2 BridgeEscrow",
+    l2BridgeEscrow.address,
     ethers.provider,
   );
-  console.log("\n\nStaging contract has received funds. Getting transfer VAA from L1 Vault");
+  console.log("\n\nBridgeEscrow contract has received funds. Getting transfer VAA from L1 Vault");
 
   const transferVAA = await utils.getVAA(l1Vault.address, String(l1Sequence), 2);
   l1Sequence += 1;
 
-  console.log("Clearing funds from staging");
-  tx = await l2Staging.connect(governance).l2ClearFund(transferVAA);
+  console.log("Clearing funds from bridgeEscrow");
+  tx = await l2BridgeEscrow.connect(governance).l2ClearFund(transferVAA);
   await tx.wait();
   console.log(` > tx: ${getTxExplorerLink(POLYGON_NETWORK_NAME, tx)}`);
 

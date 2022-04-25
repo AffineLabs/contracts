@@ -2,7 +2,7 @@ import { ethers, upgrades } from "hardhat";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../utils/bc-explorer-links";
 import { Config } from "../utils/config";
-import { ICreate2Deployer__factory, L1Vault, L2Vault, Staging__factory } from "../../typechain";
+import { ICreate2Deployer__factory, L1Vault, L2Vault, BridgeEscrow__factory } from "../../typechain";
 import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
 import { ETH_GOERLI, POLYGON_MUMBAI } from "../utils/constants/blockchain";
 import { address } from "../utils/types";
@@ -28,42 +28,42 @@ export async function deployVaults(
 
   let [deployerSigner] = await ethers.getSigners();
 
-  // Deploy Staging contract
+  // Deploy BridgeEscrow contract
   // padding to unix timestamp (in milliseconds) to 32 bytes
   const rawBytes = ethers.utils.hexZeroPad(`0x${Date.now().toString()}`, 32);
   const salt = ethers.utils.keccak256(rawBytes);
-  const stagingCode = (await ethers.getContractFactory("Staging")).bytecode;
+  const bridgeEscrowCode = (await ethers.getContractFactory("BridgeEscrow")).bytecode;
   const constructorParams = ethers.utils.defaultAbiCoder.encode(["address"], [await deployerSigner.getAddress()]);
 
-  const stagingCreationCode = ethers.utils.hexConcat([stagingCode, constructorParams]); // bytecode concat constructor params
+  const bridgeEscrowCreationCode = ethers.utils.hexConcat([bridgeEscrowCode, constructorParams]); // bytecode concat constructor params
 
   let create2 = ICreate2Deployer__factory.connect(config.create2Deployer, deployerSigner);
-  let stagindDeployTx = await create2.deploy(0, salt, stagingCreationCode);
+  let stagindDeployTx = await create2.deploy(0, salt, bridgeEscrowCreationCode);
   await stagindDeployTx.wait();
 
-  const stagingAddr = await create2.computeAddress(salt, ethers.utils.keccak256(stagingCreationCode));
+  const bridgeEscrowAddr = await create2.computeAddress(salt, ethers.utils.keccak256(bridgeEscrowCreationCode));
 
   const l1VaultFactory = await ethers.getContractFactory("L1Vault");
 
   // Deploy vault
   const l1Vault = (await upgrades.deployProxy(
     l1VaultFactory,
-    [l1Governance, config.l1USDC, config.l1worm, stagingAddr, config.l1ChainManager, config.l2ERC20Predicate],
+    [l1Governance, config.l1USDC, config.l1worm, bridgeEscrowAddr, config.l1ChainManager, config.l2ERC20Predicate],
     { kind: "uups" },
   )) as L1Vault;
   await l1Vault.deployed();
   await addToAddressBookAndDefender(ETH_GOERLI, `EthAlpSave`, "L1Vault", l1Vault);
   logContractDeploymentInfo(ethNetworkName, "L1Vault", l1Vault);
 
-  // Initialize staging
-  let staging = Staging__factory.connect(stagingAddr, deployerSigner);
-  let stagingInitTx = await staging.initialize(
+  // Initialize bridgeEscrow
+  let bridgeEscrow = BridgeEscrow__factory.connect(bridgeEscrowAddr, deployerSigner);
+  let bridgeEscrowInitTx = await bridgeEscrow.initialize(
     await getContractAddress(l1Vault),
     config.l1worm,
     config.l1USDC,
     config.l1ChainManager,
   );
-  await stagingInitTx.wait();
+  await bridgeEscrowInitTx.wait();
 
   /**
    * Deploy vault in Polygon.
@@ -72,9 +72,9 @@ export async function deployVaults(
   hre.changeNetwork(polygonNetworkName);
   [deployerSigner] = await ethers.getSigners();
 
-  // Deploy staging
+  // Deploy bridgeEscrow
   create2 = ICreate2Deployer__factory.connect(config.create2Deployer, deployerSigner);
-  stagindDeployTx = await create2.deploy(0, salt, stagingCreationCode);
+  stagindDeployTx = await create2.deploy(0, salt, bridgeEscrowCreationCode);
   await stagindDeployTx.wait();
 
   const l2VaultFactory = await ethers.getContractFactory("L2Vault");
@@ -84,7 +84,7 @@ export async function deployVaults(
       l2Governance,
       config.l2USDC,
       config.l2worm,
-      stagingAddr,
+      bridgeEscrowAddr,
       config.forwarder,
       9,
       1,
@@ -96,15 +96,15 @@ export async function deployVaults(
   await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonAlpSave`, "L2Vault", l2Vault);
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
 
-  // Initialize staging
-  staging = Staging__factory.connect(stagingAddr, deployerSigner);
-  stagingInitTx = await staging.initialize(
+  // Initialize bridgeEscrow
+  bridgeEscrow = BridgeEscrow__factory.connect(bridgeEscrowAddr, deployerSigner);
+  bridgeEscrowInitTx = await bridgeEscrow.initialize(
     await getContractAddress(l2Vault),
     config.l2worm,
     config.l2USDC,
     ethers.constants.AddressZero, // there is no root chain manager in polygon
   );
-  await stagingInitTx.wait();
+  await bridgeEscrowInitTx.wait();
 
   return {
     l1Vault,

@@ -26,10 +26,10 @@ it("Deploy Vaults", async () => {
   expect(forwarder).to.not.equal(ethers.constants.AddressZero);
   expect(forwarder).to.equal(config.forwarder);
 
-  // Check that staging addresses are the same
-  const l1Staging = await l1Vault.staging();
-  expect(l1Staging).to.be.properAddress;
-  expect(l1Staging).to.equal(await l2Vault.staging());
+  // Check that bridgeEscrow addresses are the same
+  const l1BridgeEscrow = await l1Vault.bridgeEscrow();
+  expect(l1BridgeEscrow).to.be.properAddress;
+  expect(l1BridgeEscrow).to.equal(await l2Vault.bridgeEscrow());
 });
 
 // TODO: check that we can upgrade proxies successfully
