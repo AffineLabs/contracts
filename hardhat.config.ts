@@ -116,7 +116,7 @@ const config: HardhatUserConfig = {
     except: [":ERC20$"],
   },
   contractSizer: {
-    only: ["Vault|Staging"],
+    only: ["Vault|BridgeEscrow"],
   },
   dodoc: {
     include: ["src"],

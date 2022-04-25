@@ -10,8 +10,8 @@ import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 
 import { BaseStrategy as Strategy } from "./BaseStrategy.sol";
 import { IWormhole } from "./interfaces/IWormhole.sol";
-import { IStaging } from "./interfaces/IStaging.sol";
-import { Staging } from "./Staging.sol";
+import { IBridgeEscrow } from "./interfaces/IBridgeEscrow.sol";
+import { BridgeEscrow } from "./BridgeEscrow.sol";
 import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
 
 /**
@@ -34,16 +34,16 @@ contract BaseVault is AccessControl {
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
-        Staging _staging
+        BridgeEscrow _bridgeEscrow
     ) public {
         governance = _governance;
         token = _token;
         wormhole = _wormhole;
 
-        _grantRole(bankerRole, governance);
+        _grantRole(harvesterRole, governance);
         _grantRole(queueOperatorRole, governance);
 
-        staging = _staging;
+        bridgeEscrow = _bridgeEscrow;
     }
 
     /** CROSS CHAIN MESSAGE PASSING AND REBALANCING
@@ -51,8 +51,8 @@ contract BaseVault is AccessControl {
 
     /// @notice Wormhole contract for sending/receiving messages
     IWormhole public wormhole;
-    /// @notice A "staging" contract for sending and receiving `token` across a bridge
-    Staging public staging;
+    /// @notice A "BridgeEscrow" contract for sending and receiving `token` across a bridge
+    BridgeEscrow public bridgeEscrow;
 
     /** AUTHENTICATION
      **************************************************************************/
@@ -65,7 +65,7 @@ contract BaseVault is AccessControl {
     }
 
     /// @notice Role with authority to call "harvest", i.e. update this vault's tvl
-    bytes32 public constant bankerRole = keccak256("BANKER");
+    bytes32 public constant harvesterRole = keccak256("HARVESTER");
     /// @notice Role with authority to set mutate the withdrawal queue
     bytes32 public constant queueOperatorRole = keccak256("QUEUE_OPERATOR");
 
@@ -324,7 +324,7 @@ contract BaseVault is AccessControl {
      * @param strategyList The trusted strategies to harvest.
      * @dev Will always revert if profit from last harvest has not finished unlocking.
      */
-    function harvest(Strategy[] calldata strategyList) external onlyRole(bankerRole) {
+    function harvest(Strategy[] calldata strategyList) external onlyRole(harvesterRole) {
         // Profit must not be unlocking
         require(block.timestamp >= lastHarvest + lockInterval, "PROFIT_UNLOCKING");
 

@@ -11,7 +11,7 @@ interface IChildERC20 {
     function withdraw(uint256 amount) external;
 }
 
-contract Staging {
+contract BridgeEscrow {
     using SafeTransferLib for ERC20;
 
     // Number of transactions sent by opposite vault to wormhole contract on opposite chain
@@ -69,8 +69,8 @@ contract Staging {
         l2Vault.afterReceive(balance);
     }
 
-    function l1ClearFund(bytes calldata message, bytes calldata data) external {
-        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
+    function l1ClearFund(bytes calldata vaa, bytes calldata exitProof) external {
+        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(vaa);
         require(valid, reason);
         // TODO: check chain ID, emitter address
         // Get amount and nonce
@@ -79,8 +79,8 @@ contract Staging {
         require(nonce > vaultNonce, "No old transactions");
         vaultNonce = nonce;
 
-        // Exit tokens, after that the withdrawn tokens from L2 will be reflected in L1 staging.
-        rootChainManager.exit(data);
+        // Exit tokens, after that the withdrawn tokens from L2 will be reflected in L1 BridgeEscrow.
+        rootChainManager.exit(exitProof);
 
         // Transfer exited tokens to L1 Vault.
         uint256 balance = token.balanceOf(address(this));

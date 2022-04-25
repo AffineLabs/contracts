@@ -9,7 +9,7 @@ import { BaseVault } from "../BaseVault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { L1Vault } from "../ethereum/L1Vault.sol";
-import { Staging } from "../Staging.sol";
+import { BridgeEscrow } from "../BridgeEscrow.sol";
 import { TwoAssetBasket } from "../polygon/TwoAssetBasket.sol";
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
@@ -22,7 +22,7 @@ library Deploy {
             address(this), // governance
             token, // token
             IWormhole(address(0)), // wormhole
-            Staging(address(0)),
+            BridgeEscrow(address(0)),
             address(0), // forwarder
             1, // l1 ratio
             1, // l2 ratio
@@ -37,7 +37,7 @@ library Deploy {
             address(this), // governance
             token, // token
             IWormhole(address(0)), // wormhole, // wormhole
-            Staging(address(0)),
+            BridgeEscrow(address(0)),
             IRootChainManager(address(0)), // chain manager
             address(0) // predicate
         );
@@ -50,7 +50,7 @@ library Deploy {
             address(this), // governance
             token, // token
             IWormhole(address(0)), // wormhole
-            Staging(address(0))
+            BridgeEscrow(address(0))
         );
     }
 

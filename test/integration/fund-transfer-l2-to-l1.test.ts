@@ -20,7 +20,7 @@ const { expect } = chai;
   1) send money to L2 vault
   2) sendTVL (L1)
   3) Receive message (receiveTVL) and send tokens and metadata (L2)
-  4) Receive message by posting VAA in stagingL1.l1clearfund() after money has arrviced
+  4) Receive message by posting VAA in bridgeEscrowL1.l1clearfund() after money has arrviced
     - check tvl afterwards
  */
 it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
@@ -73,16 +73,16 @@ it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
   const transferVAA = await utils.getVAA(l2Vault.address, String(0), 5);
 
   // Post burn proof and VAA to clear funds
-  const stagingAddr: address = await l2Vault.staging();
-  console.log("Staging Address: ", stagingAddr);
+  const bridgeEscrowAddr: address = await l2Vault.bridgeEscrow();
+  console.log("BridgeEscrow Address: ", bridgeEscrowAddr);
 
   // clear funds on L1
   hre.changeNetwork(ETH_NETWORK_NAME);
   [, defender] = await ethers.getSigners();
 
-  const l1Staging = (await ethers.getContractFactory("Staging", defender)).attach(stagingAddr);
-  console.log("Clearing funds from staging");
-  tx = await l1Staging.connect(defender).l1ClearFund(transferVAA, ethers.utils.arrayify(messageProof));
+  const l1BridgeEscrow = (await ethers.getContractFactory("BridgeEscrow", defender)).attach(bridgeEscrowAddr);
+  console.log("Clearing funds from bridgeEscrow");
+  tx = await l1BridgeEscrow.connect(defender).l1ClearFund(transferVAA, ethers.utils.arrayify(messageProof));
   await tx.wait();
 
   expect(await l1Vault.vaultTVL()).to.eq(initialL2TVL.mul(90).div(100));

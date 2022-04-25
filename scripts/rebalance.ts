@@ -10,7 +10,7 @@ const abiDir = resolve(__dirname, "../abi");
 const l1VaultABI = JSON.parse(readFileSync(`${abiDir}/L1Vault.abi`).toString());
 const l2VaultABI = JSON.parse(readFileSync(`${abiDir}/L2Vault.abi`).toString());
 
-const stagingABI = JSON.parse(readFileSync(`${abiDir}/Staging.abi`).toString());
+const bridgeEscrowABI = JSON.parse(readFileSync(`${abiDir}/BridgeEscrow.abi`).toString());
 const wormholeABI = JSON.parse(readFileSync(`${abiDir}/IWormhole.abi`).toString());
 const usdcABI = JSON.parse(readFileSync(`${abiDir}/IERC20.abi`).toString());
 
@@ -40,8 +40,8 @@ async function main() {
   tx = await l2Vault.receiveTVL(tvlVAA);
   await tx.wait();
 
-  const l1Staging = new Contract(await l1Vault.staging(), stagingABI, ethWallet);
-  const l2Staging = new Contract(await l2Vault.staging(), stagingABI, polygonWallet);
+  const l1BridgeEscrow = new Contract(await l1Vault.bridgeEscrow(), bridgeEscrowABI, ethWallet);
+  const l2BridgeEscrow = new Contract(await l2Vault.bridgeEscrow(), bridgeEscrowABI, polygonWallet);
 
   // If L2->L1 bridge is locked, then wait for transfer to complete and clear funds on L1
   // otherwise receive message on L1
@@ -59,7 +59,7 @@ async function main() {
     const transferVAA = await utils.getVAA(l2Vault.address, String(l2VaultSeq - 1), 5);
 
     // Post VAA to clear funds
-    tx = await l1Staging.l1ClearFund(transferVAA, ethers.utils.arrayify(messageProof));
+    tx = await l1BridgeEscrow.l1ClearFund(transferVAA, ethers.utils.arrayify(messageProof));
     await tx.wait();
   } else {
     console.log("\n\nRequesting money from L1");
@@ -72,20 +72,20 @@ async function main() {
     console.log("Received request from L2 on L1. Transfer from L1 to L2 initiated.");
 
     // L1 just sent money along with a message to L2
-    // Wait for money to hit staging, then use message to clear funds from staging to l2 vault
+    // Wait for money to hit bridgeEscrow, then use message to clear funds from bridgeEscrow to l2 vault
     await utils.waitForNonZeroAddressTokenBalance(
       await l2Vault.token(),
       usdcABI,
-      "L2 Staging",
-      l2Staging.address,
+      "L2 BridgeEscrow",
+      l2BridgeEscrow.address,
       mumbaiProvider,
     );
-    console.log("\n\nStaging contract has received funds. Getting transfer VAA from L1 Vault");
+    console.log("\n\nBridgeEscrow contract has received funds. Getting transfer VAA from L1 Vault");
     let l1VaultSeq = await l1wormhole.nextSequence(l1Vault.address);
     const transferVAA = await utils.getVAA(l1Vault.address, String(l1VaultSeq - 1), 2);
 
-    console.log("Clearing funds from staging");
-    tx = await l2Staging.l2ClearFund(transferVAA);
+    console.log("Clearing funds from bridgeEscrow");
+    tx = await l2BridgeEscrow.l2ClearFund(transferVAA);
     await tx.wait();
   }
 }

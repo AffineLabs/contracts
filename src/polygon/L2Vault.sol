@@ -15,7 +15,7 @@ import { BaseRelayRecipient } from "@opengsn/contracts/src/BaseRelayRecipient.so
 
 import { BaseVault } from "../BaseVault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
-import { Staging } from "../Staging.sol";
+import { BridgeEscrow } from "../BridgeEscrow.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 import { DetailedShare } from "./Detailed.sol";
 
@@ -72,7 +72,7 @@ contract L2Vault is
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
-        Staging _staging,
+        BridgeEscrow _BridgeEscrow,
         address forwarder,
         uint256 L1Ratio,
         uint256 L2Ratio,
@@ -81,7 +81,7 @@ contract L2Vault is
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
         __Pausable_init();
-        BaseVault.init(_governance, _token, _wormhole, _staging);
+        BaseVault.init(_governance, _token, _wormhole, _BridgeEscrow);
 
         layerRatios = LayerBalanceRatios({ layer1: L1Ratio, layer2: L2Ratio });
         canTransferToL1 = true;
@@ -280,8 +280,8 @@ contract L2Vault is
     // TODO: liquidate properly
     function _transferToL1(uint256 amount) internal {
         // Send token
-        token.safeTransfer(address(staging), amount);
-        staging.l2Withdraw(amount);
+        token.safeTransfer(address(bridgeEscrow), amount);
+        bridgeEscrow.l2Withdraw(amount);
         emit SendToL1(amount);
 
         // Update bridge state and L1 TVL
@@ -304,7 +304,7 @@ contract L2Vault is
     }
 
     function afterReceive(uint256 amount) external {
-        require(_msgSender() == address(staging), "Only L2 staging.");
+        require(_msgSender() == address(bridgeEscrow), "Only L2 BridgeEscrow.");
         L1TotalLockedValue -= amount;
         canRequestFromL1 = true;
         emit ReceiveFromL1(amount);

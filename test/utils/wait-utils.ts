@@ -49,8 +49,8 @@ export async function waitForNonZeroAddressTokenBalance(
   const startTime = new Date().getTime();
   while (true) {
     await sleep(60000);
-    const stagingBalance: BigNumber = await polygonUSDCContract.balanceOf(userAddress);
-    if (!stagingBalance.isZero()) {
+    const bridgeEscrowBalance: BigNumber = await polygonUSDCContract.balanceOf(userAddress);
+    if (!bridgeEscrowBalance.isZero()) {
       break;
     }
     const nowTime = new Date().getTime();
