@@ -69,8 +69,8 @@ contract BridgeEscrow {
         l2Vault.afterReceive(balance);
     }
 
-    function l1ClearFund(bytes calldata message, bytes calldata data) external {
-        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
+    function l1ClearFund(bytes calldata vaa, bytes calldata exitProof) external {
+        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(vaa);
         require(valid, reason);
         // TODO: check chain ID, emitter address
         // Get amount and nonce
@@ -80,7 +80,7 @@ contract BridgeEscrow {
         vaultNonce = nonce;
 
         // Exit tokens, after that the withdrawn tokens from L2 will be reflected in L1 BridgeEscrow.
-        rootChainManager.exit(data);
+        rootChainManager.exit(exitProof);
 
         // Transfer exited tokens to L1 Vault.
         uint256 balance = token.balanceOf(address(this));
