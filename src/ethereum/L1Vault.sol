@@ -14,7 +14,7 @@ import { IWormhole } from "../interfaces/IWormhole.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
-import { Staging } from "../Staging.sol";
+import { BridgeEscrow } from "../BridgeEscrow.sol";
 import { BaseVault } from "../BaseVault.sol";
 
 contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
@@ -33,13 +33,13 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
-        Staging _staging,
+        BridgeEscrow _bridgeEscrow,
         IRootChainManager _chainManager,
         address _predicate
     ) public initializer {
         __UUPSUpgradeable_init();
         __Pausable_init();
-        BaseVault.init(_governance, _token, _wormhole, _staging);
+        BaseVault.init(_governance, _token, _wormhole, _bridgeEscrow);
         chainManager = _chainManager;
         predicate = _predicate;
     }
@@ -87,10 +87,10 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         _transferFundsToL2(amountToSend);
     }
 
-    // Send `token` to L2 staging via polygon bridge
+    // Send `token` to L2 BridgeEscrow via polygon bridge
     function _transferFundsToL2(uint256 amount) internal {
         token.safeApprove(predicate, amount);
-        chainManager.depositFor(address(staging), address(token), abi.encodePacked(amount));
+        chainManager.depositFor(address(bridgeEscrow), address(token), abi.encodePacked(amount));
 
         // Let L2 know how much money we sent
         uint64 sequence = wormhole.nextSequence(address(this));
@@ -99,7 +99,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     }
 
     function afterReceive() external {
-        require(msg.sender == address(staging), "Only L1 staging.");
+        require(msg.sender == address(bridgeEscrow), "Only L1 BridgeEscrow.");
         received = true;
         // Whenever we receive funds from L1, immediately deposit them all into strategies
         depositIntoStrategies();

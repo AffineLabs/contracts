@@ -50,7 +50,7 @@ contract L1CompoundStratTestFork is TestPlus {
         vm.store(address(usdc), bytes32(slot), bytes32(uint256(1e6)));
 
         vault.addStrategy(strategy, 5000);
-        vm.prank(address(0)); // staging address is 0 in the default vault
+        vm.prank(address(0)); // BridgeEscrow address is 0 in the default vault
         vault.afterReceive();
 
         // Strategy deposits all of usdc into Compound

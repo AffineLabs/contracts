@@ -50,8 +50,8 @@ contract EthAnchorStratTestFork is TestPlus {
         bytes memory expectedData = abi.encodeWithSignature("deposit(uint256)", hundredUSDC / 2);
         vm.expectCall(address(strategy.usdcConversionPool()), expectedData);
 
-        // vault will invest in strategy after receiving money from staging
-        vm.prank(address(0)); // staging address is 0 in the default vault
+        // vault will invest in strategy after receiving money from BridgeEscrow
+        vm.prank(address(0)); // BridgeEscrow address is 0 in the default vault
         vault.afterReceive();
 
         assertEq(usdc.balanceOf(address(vault)), hundredUSDC / 2);

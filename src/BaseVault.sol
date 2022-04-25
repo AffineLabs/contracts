@@ -10,8 +10,8 @@ import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 
 import { BaseStrategy as Strategy } from "./BaseStrategy.sol";
 import { IWormhole } from "./interfaces/IWormhole.sol";
-import { IStaging } from "./interfaces/IStaging.sol";
-import { Staging } from "./Staging.sol";
+import { IBridgeEscrow } from "./interfaces/IBridgeEscrow.sol";
+import { BridgeEscrow } from "./BridgeEscrow.sol";
 import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
 
 /**
@@ -34,7 +34,7 @@ contract BaseVault is AccessControl {
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
-        Staging _staging
+        BridgeEscrow _bridgeEscrow
     ) public {
         governance = _governance;
         token = _token;
@@ -43,7 +43,7 @@ contract BaseVault is AccessControl {
         _grantRole(harvesterRole, governance);
         _grantRole(queueOperatorRole, governance);
 
-        staging = _staging;
+        bridgeEscrow = _bridgeEscrow;
     }
 
     /** CROSS CHAIN MESSAGE PASSING AND REBALANCING
@@ -51,8 +51,8 @@ contract BaseVault is AccessControl {
 
     /// @notice Wormhole contract for sending/receiving messages
     IWormhole public wormhole;
-    /// @notice A "staging" contract for sending and receiving `token` across a bridge
-    Staging public staging;
+    /// @notice A "BridgeEscrow" contract for sending and receiving `token` across a bridge
+    BridgeEscrow public bridgeEscrow;
 
     /** AUTHENTICATION
      **************************************************************************/

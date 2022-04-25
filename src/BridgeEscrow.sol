@@ -11,7 +11,7 @@ interface IChildERC20 {
     function withdraw(uint256 amount) external;
 }
 
-contract Staging {
+contract BridgeEscrow {
     using SafeTransferLib for ERC20;
 
     // Number of transactions sent by opposite vault to wormhole contract on opposite chain
@@ -79,7 +79,7 @@ contract Staging {
         require(nonce > vaultNonce, "No old transactions");
         vaultNonce = nonce;
 
-        // Exit tokens, after that the withdrawn tokens from L2 will be reflected in L1 staging.
+        // Exit tokens, after that the withdrawn tokens from L2 will be reflected in L1 BridgeEscrow.
         rootChainManager.exit(data);
 
         // Transfer exited tokens to L1 Vault.
