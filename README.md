@@ -99,6 +99,10 @@ To deploy the contracts to forked versions of ropsten and mumbai run
 $ yarn script scripts/deploy-all.ts -eth ropsten -p mumbai
 ```
 
+### Deploying the Contracts
+
+The deploy script can currently be found under `scripts/deploy-all.ts`. It is meant to work with the goerli/mumbai testnets only. **NOTE**: You must manually deploy a forwarder contract and add its address to `scripts/utils/config.ts` before deploying the rest of the contracts. Additionally, you should add the forwarder/usdc contracts to the biconomy dashboard in order to allow meta-transactions with these contracts.
+
 ### Validate a contract with etherscan
 
 ```
