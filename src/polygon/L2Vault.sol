@@ -112,6 +112,14 @@ contract L2Vault is
         return "1";
     }
 
+    function togglePause() external onlyRole(harvesterRole) {
+        if (paused()) {
+            _unpause();
+        } else {
+            _pause();
+        }
+    }
+
     function decimals() public view override returns (uint8) {
         return token.decimals();
     }
@@ -120,7 +128,7 @@ contract L2Vault is
      **************************************************************************/
     event Deposit(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
 
-    function deposit(uint256 amountToken) external {
+    function deposit(uint256 amountToken) external whenNotPaused {
         _deposit(_msgSender(), amountToken);
     }
 
@@ -174,11 +182,11 @@ contract L2Vault is
         token.safeTransfer(user, userTokens);
     }
 
-    function redeem(uint256 shares) external {
+    function redeem(uint256 shares) external whenNotPaused {
         _redeem(_msgSender(), shares);
     }
 
-    function withdraw(uint256 amountToken) external {
+    function withdraw(uint256 amountToken) external whenNotPaused {
         _withdraw(_msgSender(), amountToken);
     }
 
