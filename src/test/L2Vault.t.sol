@@ -53,7 +53,6 @@ contract L2VaultTest is TestPlus {
     function testDepositWithdraw(uint64 amountToken) public {
         // Using a uint64 since we multiply totalSupply by amountToken in sharesFromTokens
         // Using a uint64 makes sure the calculation will not overflow
-
         address user = address(this);
         token.mint(user, amountToken);
         token.approve(address(vault), type(uint256).max);
@@ -159,10 +158,23 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.withdrawalFee(), 10);
 
         vm.startPrank(0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045);
-        vm.expectRevert(bytes("Only Governance."));
+        vm.expectRevert("Only Governance.");
         vault.setManagementFee(300);
-        vm.expectRevert(bytes("Only Governance."));
+        vm.expectRevert("Only Governance.");
         vault.setWithdrawalFee(10);
+    }
+
+    function testVaultPause() public {
+        vault.togglePause();
+
+        vm.expectRevert("Pausable: paused");
+        vault.deposit(1e18);
+
+        vm.expectRevert("Pausable: paused");
+        vault.withdraw(1e18);
+
+        vault.togglePause();
+        testDepositWithdraw(1e18);
     }
     // TODO: Get the below test to pass
     // function testShareTokenConversion(

@@ -4,6 +4,8 @@ pragma solidity ^0.8.13;
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { Context } from "@openzeppelin/contracts/utils/Context.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { BaseRelayRecipient } from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
@@ -11,9 +13,13 @@ import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
 import { Dollar, DollarMath } from "../DollarMath.sol";
 import { DetailedShare } from "./Detailed.sol";
 
-contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare {
+contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
     using SafeTransferLib for ERC20;
     address public governance;
+    modifier onlyGovernance() {
+        require(msg.sender == governance, "Only Governance.");
+        _;
+    }
 
     // The token which we take in to buy token1 and token2, e.g. USDC
     // NOTE: Assuming that inputToken is $1 for now
@@ -62,11 +68,27 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare {
         return "1";
     }
 
+    function _msgSender() internal view override(Context, BaseRelayRecipient) returns (address) {
+        return BaseRelayRecipient._msgSender();
+    }
+
+    function _msgData() internal view override(Context, BaseRelayRecipient) returns (bytes calldata) {
+        return BaseRelayRecipient._msgData();
+    }
+
+    function togglePause() external onlyGovernance {
+        if (paused()) {
+            _unpause();
+        } else {
+            _pause();
+        }
+    }
+
     /** DEPOSIT / WITHDRAW
      **************************************************************************/
     event Deposit(address indexed caller, address indexed owner, uint256 tokenAmount, uint256 shareAmount);
 
-    function deposit(uint256 amountInput, address receiver) external returns (uint256 shares) {
+    function deposit(uint256 amountInput, address receiver) external whenNotPaused returns (uint256 shares) {
         // Get current amounts of btc/eth (in dollars) => 8 decimals
         Dollar rawVaultDollars = valueOfVault();
         uint256 vaultDollars = Dollar.unwrap(rawVaultDollars);
@@ -130,7 +152,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare {
         uint256 amountInput,
         address receiver,
         address owner
-    ) external returns (uint256 inputReceived) {
+    ) external whenNotPaused returns (uint256 inputReceived) {
         // Try to get `amountInput` of `inputToken` out of vault
         Dollar rawVaultDollars = valueOfVault();
         uint256 vaultDollars = Dollar.unwrap(rawVaultDollars);
@@ -188,7 +210,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare {
         _burn(owner, numShares);
 
         emit Withdraw(_msgSender(), receiver, amountInput, numShares);
-        inputToken.transfer(_msgSender(), inputReceived);
+        inputToken.transfer(receiver, inputReceived);
     }
 
     /** EXCHANGE RATES

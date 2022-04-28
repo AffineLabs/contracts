@@ -86,5 +86,18 @@ contract L2BtcEthBasketTestFork is TestPlus {
         // TODO: add test for withdrawal check once this mocking works again
     }
 
+    function testVaultPause() public {
+        basket.togglePause();
+
+        vm.expectRevert("Pausable: paused");
+        basket.deposit(1e18, address(this));
+
+        vm.expectRevert("Pausable: paused");
+        basket.withdraw(1e18, address(this), address(this));
+
+        basket.togglePause();
+        testDepositWithdraw();
+    }
+
     function testAuction() public {}
 }
