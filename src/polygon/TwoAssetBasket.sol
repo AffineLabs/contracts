@@ -234,7 +234,10 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
         } else {
             feed = priceFeed2;
         }
-        (, int256 price, , , ) = feed.latestRoundData();
+        (uint80 roundId, int256 price, , uint256 timestamp, uint80 answeredInRound) = feed.latestRoundData();
+        require(price > 0, "Chainlink price <= 0");
+        require(answeredInRound >= roundId, "Chainlink stale data");
+        require(timestamp != 0, "Chainlink round not complete");
         return Dollar.wrap(uint256(price));
     }
 
