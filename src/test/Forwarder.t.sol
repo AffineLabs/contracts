@@ -14,7 +14,7 @@ import { MinimalForwarder } from "@openzeppelin/contracts/metatx/MinimalForwarde
 import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
 import { Deploy } from "./Deploy.sol";
 
-contract ForwardTest is TestPlus {
+contract L2ForwardTestFork is TestPlus {
     using stdStorage for StdStorage;
     L2Vault vault;
     TwoAssetBasket basket;

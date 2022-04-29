@@ -68,7 +68,10 @@ library Deploy {
             [ERC20(btc), ERC20(weth)],
             [uint256(1), uint256(1)], // ratios (basket should contain an equal amount of btc/eth)
             // Price feeds (BTC/USD and ETH/USD)
-            [AggregatorV3Interface(address(0)), AggregatorV3Interface(address(0))]
+            [
+                AggregatorV3Interface(0x007A22900a3B98143368Bd5906f8E17e9867581b),
+                AggregatorV3Interface(0x0715A7794a1dc8e42615F059dD6e406A6594651A)
+            ]
         );
     }
 }

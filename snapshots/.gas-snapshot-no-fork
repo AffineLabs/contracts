@@ -1,7 +1,5 @@
 BaseStrategyTest:testSweep() (gas: 99478)
 VaultTest:testHarvest() (gas: 279)
-ForwardTest:testDoubleDeposit() (gas: 222684)
-ForwardTest:testTransactVaultAndBasket() (gas: 266243)
 L2VaultTest:testLockedProfit() (gas: 353567)
 L2VaultTest:testManagementFee() (gas: 239122)
 L2VaultTest:testSettingFees() (gas: 43569)
