@@ -31,7 +31,7 @@ contract L2Vault is
     using SafeTransferLib for ERC20;
 
     // Wormhole Router
-    L2WormholeRouter wormholeRouter;
+    L2WormholeRouter public wormholeRouter;
 
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
     uint256 public L1TotalLockedValue;
@@ -76,6 +76,7 @@ contract L2Vault is
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
+        L2WormholeRouter _wormholeRouter,
         BridgeEscrow _BridgeEscrow,
         address forwarder,
         uint256 L1Ratio,
@@ -86,7 +87,7 @@ contract L2Vault is
         __UUPSUpgradeable_init();
         __Pausable_init();
         BaseVault.init(_governance, _token, _wormhole, _BridgeEscrow);
-
+        wormholeRouter = _wormholeRouter;
         layerRatios = LayerBalanceRatios({ layer1: L1Ratio, layer2: L2Ratio });
         canTransferToL1 = true;
         canRequestFromL1 = true;

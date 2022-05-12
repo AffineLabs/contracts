@@ -8,6 +8,8 @@ import { Deploy } from "./Deploy.sol";
 import { L2Vault } from "../polygon/L2Vault.sol";
 import { L1Vault } from "../ethereum/L1Vault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
+import { L1WormholeRouter } from "../ethereum/L1WormholeRouter.sol";
+import { Constants } from "../Constants.sol";
 
 contract MockWormhole is IWormhole {
     uint64 public emitterSequence;
@@ -49,6 +51,7 @@ contract MockWormhole is IWormhole {
 contract WormholeTest is TestPlus {
     L1Vault l1vault;
     L2Vault l2vault;
+    L1WormholeRouter wormholeRouter;
 
     using stdStorage for StdStorage;
 
@@ -56,9 +59,17 @@ contract WormholeTest is TestPlus {
         l1vault = Deploy.deployL1Vault();
 
         MockWormhole wormhole = new MockWormhole();
-        uint256 slot = stdstore.target(address(l1vault)).sig("wormhole()").find();
+        wormholeRouter = new L1WormholeRouter();
+
+        uint256 wormholeRouterSlot = stdstore.target(address(l1vault)).sig("wormholeRouter()").find();
+        bytes32 wormholeRouterAddr = bytes32(uint256(uint160(address(wormholeRouter))));
+        vm.store(address(l1vault), bytes32(wormholeRouterSlot), wormholeRouterAddr);
+        
+        uint256 wormholeSlot = stdstore.target(address(wormholeRouter)).sig("wormhole()").find();
         bytes32 wormholeAddr = bytes32(uint256(uint160(address(wormhole))));
-        vm.store(address(l1vault), bytes32(slot), wormholeAddr);
+        vm.store(address(wormholeRouter), bytes32(wormholeSlot), wormholeAddr);
+
+        wormholeRouter.initialize(wormhole, l1vault);     
 
         l2vault = Deploy.deployL2Vault();
     }
@@ -67,10 +78,10 @@ contract WormholeTest is TestPlus {
         bytes memory publishMessageData = abi.encodeWithSelector(
             IWormhole.publishMessage.selector,
             uint32(0),
-            abi.encode(0, false),
+            abi.encodePacked(Constants.L1_TVL, uint256(0), false),
             4
         );
-        vm.expectCall(address(l1vault.wormhole()), publishMessageData);
+        vm.expectCall(address(wormholeRouter.wormhole()), publishMessageData);
         l1vault.sendTVL();
         // TODO: assert that publish message was called wih certain arguments
 

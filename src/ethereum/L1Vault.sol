@@ -22,7 +22,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     using SafeTransferLib for ERC20;
 
     // Wormhole Router
-    L1WormholeRouter wormholeRouter;
+    L1WormholeRouter public wormholeRouter;
 
     /////// Cross chain rebalancing
     bool public received;
@@ -38,6 +38,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         address _governance,
         ERC20 _token,
         IWormhole _wormhole,
+        L1WormholeRouter _wormholeRouter,
         BridgeEscrow _bridgeEscrow,
         IRootChainManager _chainManager,
         address _predicate
@@ -45,6 +46,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         __UUPSUpgradeable_init();
         __Pausable_init();
         BaseVault.init(_governance, _token, _wormhole, _bridgeEscrow);
+        wormholeRouter = _wormholeRouter;
         chainManager = _chainManager;
         predicate = _predicate;
     }
