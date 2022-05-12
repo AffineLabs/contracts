@@ -35,7 +35,7 @@ export async function deployWormholeRouters(
   const l2WormholeRouter = (await l2WormholeRouterFactory.deploy()) as L2WormholeRouter;
   await l2WormholeRouter.deployed();
   await addToAddressBookAndDefender(POLYGON_MUMBAI, "PolygonWormholeRouter", "L2WormholeRouter", l2WormholeRouter);
-  logContractDeploymentInfo(ethNetworkName, "L2WormholeRouter", l2WormholeRouter);
+  logContractDeploymentInfo(polygonNetworkName, "L2WormholeRouter", l2WormholeRouter);
 
   return {
     l1WormholeRouter,

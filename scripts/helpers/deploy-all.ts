@@ -25,7 +25,14 @@ export async function deployAll(
   config: Config,
 ): Promise<AllContracts> {
   const wormholeRouters = await deployWormholeRouters(ethNetworkName, polygonNetworkName);
-  const vaults = await deployVaults(l1Governance, l2Governance, ethNetworkName, polygonNetworkName, config, wormholeRouters);
+  const vaults = await deployVaults(
+    l1Governance,
+    l2Governance,
+    ethNetworkName,
+    polygonNetworkName,
+    config,
+    wormholeRouters,
+  );
   const strategies = await deployStrategies(ethNetworkName, polygonNetworkName, vaults);
 
   // TODO: Consider strategies. We can't add strategies anymore since the timelock address is the governance address

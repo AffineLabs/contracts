@@ -64,12 +64,12 @@ contract WormholeTest is TestPlus {
         uint256 wormholeRouterSlot = stdstore.target(address(l1vault)).sig("wormholeRouter()").find();
         bytes32 wormholeRouterAddr = bytes32(uint256(uint160(address(wormholeRouter))));
         vm.store(address(l1vault), bytes32(wormholeRouterSlot), wormholeRouterAddr);
-        
+
         uint256 wormholeSlot = stdstore.target(address(wormholeRouter)).sig("wormhole()").find();
         bytes32 wormholeAddr = bytes32(uint256(uint160(address(wormhole))));
         vm.store(address(wormholeRouter), bytes32(wormholeSlot), wormholeAddr);
 
-        wormholeRouter.initialize(wormhole, l1vault);     
+        wormholeRouter.initialize(wormhole, l1vault);
 
         l2vault = Deploy.deployL2Vault();
     }

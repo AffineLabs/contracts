@@ -16,7 +16,6 @@ import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
 import { L1WormholeRouter } from "../ethereum/L1WormholeRouter.sol";
 import { L2WormholeRouter } from "../polygon/L2WormholeRouter.sol";
 
-
 library Deploy {
     function deployL2Vault() internal returns (L2Vault vault) {
         MockERC20 token = new MockERC20("Mock", "MT", 18);

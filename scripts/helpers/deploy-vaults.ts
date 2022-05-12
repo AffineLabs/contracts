@@ -50,7 +50,15 @@ export async function deployVaults(
   // Deploy vault
   const l1Vault = (await upgrades.deployProxy(
     l1VaultFactory,
-    [l1Governance, config.l1USDC, config.l1worm, wormholeRouters.l1WormholeRouter.address, bridgeEscrowAddr, config.l1ChainManager, config.l2ERC20Predicate],
+    [
+      l1Governance,
+      config.l1USDC,
+      config.l1worm,
+      wormholeRouters.l1WormholeRouter.address,
+      bridgeEscrowAddr,
+      config.l1ChainManager,
+      config.l2ERC20Predicate,
+    ],
     { kind: "uups" },
   )) as L1Vault;
   await l1Vault.deployed();

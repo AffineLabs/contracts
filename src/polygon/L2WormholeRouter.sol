@@ -15,10 +15,7 @@ contract L2WormholeRouter {
 
     constructor() {}
 
-    function initialize(
-        IWormhole _wormhole,
-        L2Vault _vault
-    ) external {
+    function initialize(IWormhole _wormhole, L2Vault _vault) external {
         wormhole = _wormhole;
         vault = _vault;
     }
