@@ -18,6 +18,7 @@ import { IWormhole } from "../interfaces/IWormhole.sol";
 import { BridgeEscrow } from "../BridgeEscrow.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 import { DetailedShare } from "./Detailed.sol";
+import { L2WormholeRouter } from "./L2WormholeRouter.sol";
 
 contract L2Vault is
     ERC20Upgradeable,
@@ -28,6 +29,9 @@ contract L2Vault is
     DetailedShare
 {
     using SafeTransferLib for ERC20;
+
+    // Wormhole Router
+    L2WormholeRouter wormholeRouter;
 
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
     uint256 public L1TotalLockedValue;
@@ -229,13 +233,8 @@ contract L2Vault is
         _mint(governance, numSharesToMint);
     }
 
-    function receiveTVL(bytes calldata message) external {
-        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
-        require(valid, reason);
-
-        // TODO: check chain ID, emitter address
-        // Get tvl from payload
-        (uint256 tvl, bool received) = abi.decode(vm.payload, (uint256, bool));
+    function receiveTVL(uint256 tvl, bool received) external {
+        require(msg.sender == address(wormholeRouter), "Only wormhole router");
 
         // If L1 has received the last transfer we sent it, unlock the L2->L1 bridge
         if (received && !canTransferToL1) canTransferToL1 = true;
@@ -298,16 +297,12 @@ contract L2Vault is
         L1TotalLockedValue += amount;
 
         // Let L1 know how much money we sent
-        uint64 sequence = wormhole.nextSequence(address(this));
-        bytes memory payload = abi.encodePacked(amount);
-        wormhole.publishMessage(uint32(sequence), payload, 4);
+        wormholeRouter.reportTransferredFund(amount);
     }
 
     function _divestFromL1(uint256 amount) internal {
         // TODO: make wormhole address, consistencyLevel configurable
-        bytes memory payload = abi.encodePacked(amount);
-        uint64 sequence = wormhole.nextSequence(address(this));
-        wormhole.publishMessage(uint32(sequence), payload, 4);
+        wormholeRouter.requestFunds(amount);
         canRequestFromL1 = false;
     }
 

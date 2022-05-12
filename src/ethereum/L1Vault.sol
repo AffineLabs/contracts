@@ -16,9 +16,14 @@ import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { BridgeEscrow } from "../BridgeEscrow.sol";
 import { BaseVault } from "../BaseVault.sol";
+import { L1WormholeRouter } from "./L1WormholeRouter.sol";
 
 contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     using SafeTransferLib for ERC20;
+
+    // Wormhole Router
+    L1WormholeRouter wormholeRouter;
+
     /////// Cross chain rebalancing
     bool public received;
     IRootChainManager public chainManager;
@@ -56,17 +61,9 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
 
     function sendTVL() external {
         uint256 tvl = vaultTVL();
-        // You can't decode an int with a bool if they are encoded with encodePacked
-        bytes memory payload = abi.encode(tvl, received);
 
-        uint64 sequence = wormhole.nextSequence(address(this));
-        // NOTE: We use the current tx count (to wormhole) of this contract
-        // as a nonce when publishing messages
-        // This casting is fine so long as we send less than 2 ** 32 - 1 (~ 4 billion) messages
-
-        // NOTE: 4 ETH blocks will take about 1 minute to propagate
-        // TODO: make wormhole address, consistencyLevel configurable
-        wormhole.publishMessage(uint32(sequence), payload, 4);
+        // Report TVL to L2.
+        wormholeRouter.reportTVL(tvl, received);
 
         // If received == true then the l2-l1 bridge gets unlocked upon message reception in l2
         // Resetting this to false since we haven't received any new transfers from L2 yet
@@ -74,14 +71,8 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     }
 
     // Process a request for funds from L2 vault
-    function receiveMessage(bytes calldata message) external {
-        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
-        require(valid, reason);
-
-        // TODO: check chain ID, emitter address
-
-        // get amount requested
-        uint256 amountRequested = abi.decode(vm.payload, (uint256));
+    function processFundRequest(uint256 amountRequested) external {
+        require(msg.sender == address(wormholeRouter), "Only wormhole router");
         _liquidate(amountRequested);
         uint256 amountToSend = Math.min(token.balanceOf(address(this)), amountRequested);
         _transferFundsToL2(amountToSend);
