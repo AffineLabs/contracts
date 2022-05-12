@@ -9,9 +9,10 @@ import hre from "hardhat";
 import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
 import { POLYGON_MUMBAI } from "../utils/constants/blockchain";
 import { sign } from "crypto";
-import { deployWormholeRouters } from "./deploy-wormhole-router";
+import { deployWormholeRouters, WormholeRouterContracts } from "./deploy-wormhole-router";
 
 export interface AllContracts {
+  wormholeRouters: WormholeRouterContracts;
   vaults: VaultContracts;
   strategies: StrategyContracts;
   basket: TwoAssetBasket;
@@ -79,6 +80,7 @@ export async function deployAll(
   await addToAddressBookAndDefender(POLYGON_MUMBAI, "Forwarder", "Forwarder", config.forwarder);
 
   return {
+    wormholeRouters,
     vaults,
     strategies,
     basket,

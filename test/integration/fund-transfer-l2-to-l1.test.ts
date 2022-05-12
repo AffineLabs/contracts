@@ -34,6 +34,7 @@ it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
   );
 
   const { l1Vault, l2Vault } = allContracts.vaults;
+  const { l2WormholeRouter } = allContracts.wormholeRouters;
 
   const initialL2TVL = ethers.utils.parseUnits("0.001", 6);
 
@@ -58,7 +59,7 @@ it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
   hre.changeNetwork(POLYGON_NETWORK_NAME);
   console.log("\n\nreceiving TVL on L2");
   [, defender] = await ethers.getSigners();
-  tx = await l2Vault.connect(defender).receiveTVL(tvlVAA);
+  tx = await l2WormholeRouter.connect(defender).receiveTVL(tvlVAA);
   await tx.wait();
   console.log("TVL received. Sending tokens to L1");
 

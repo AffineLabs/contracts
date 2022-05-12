@@ -2,6 +2,7 @@ import { ethers } from "hardhat";
 import scriptUtils from "../helpers";
 import { config } from "../utils/config";
 import { getContractAddress } from "../utils/export";
+import { deployWormholeRouters } from "../helpers/deploy-wormhole-router";
 
 async function deployAAVE(): Promise<any> {
   let [deployer] = await ethers.getSigners();
@@ -9,12 +10,14 @@ async function deployAAVE(): Promise<any> {
   // Using address of USDC compatible with AAVE on mumbai
   const myConfig = { ...config };
   myConfig.l2USDC = "0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e";
+  const wormholeRouters = await deployWormholeRouters("ethGoerli", "polygonMumbai");
   const vaultContracts = await scriptUtils.deployVaults(
     myConfig.l1Governance,
     myConfig.l2Governance,
     "ethGoerli",
     "polygonMumbai",
     myConfig,
+    wormholeRouters,
   );
 
   const stratFactory = await ethers.getContractFactory("L2AAVEStrategy", deployer);
