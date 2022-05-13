@@ -4,14 +4,14 @@ import usdcABI from "../assets/usdc-abi.json";
 
 import { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
-import { config } from "scripts/utils/config";
+import { config } from "../../scripts/utils/config";
 import { ContractTransaction } from "ethers";
-import { getTxExplorerLink } from "scripts/utils/bc-explorer-links";
-import { AllContracts, deployAll } from "scripts/helpers/deploy-all";
+import { getTxExplorerLink } from "../../scripts/utils/bc-explorer-links";
+import { AllContracts, deployAll } from "../../scripts/helpers/deploy-all";
 import utils from "../utils";
 
-const ETH_NETWORK_NAME = "ethGoerli";
-const POLYGON_NETWORK_NAME = "polygonMumbai";
+const ETH_NETWORK_NAME = "eth-goerli";
+const POLYGON_NETWORK_NAME = "polygon-mumbai";
 
 chai.use(solidity);
 const { expect } = chai;
@@ -61,7 +61,7 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
   // Receive message (receiveTVL) and send a message to L1 with amount request (L2)
   // sequence is the number of transactions we've sent to wormhole from a given address
   let l1Sequence = 0;
-  const tvlVAA = await utils.getVAA(l1Vault.address, String(l1Sequence), 2);
+  const tvlVAA = await utils.getVAA(l1WormholeRouter.address, String(l1Sequence), 2);
   l1Sequence += 1;
 
   hre.changeNetwork(POLYGON_NETWORK_NAME);
@@ -73,7 +73,7 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
 
   // L2 just sent an amount request to L1, receive this message here
   let l2Sequence = 0;
-  const requestVAA = await utils.getVAA(l2Vault.address, String(l2Sequence), 5);
+  const requestVAA = await utils.getVAA(l2WormholeRouter.address, String(l2Sequence), 5);
   l2Sequence += 1;
 
   hre.changeNetwork(ETH_NETWORK_NAME);
@@ -101,11 +101,11 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
   );
   console.log("\n\nBridgeEscrow contract has received funds. Getting transfer VAA from L1 Vault");
 
-  const transferVAA = await utils.getVAA(l1Vault.address, String(l1Sequence), 2);
+  const transferVAA = await utils.getVAA(l1WormholeRouter.address, String(l1Sequence), 2);
   l1Sequence += 1;
 
   console.log("Clearing funds from bridgeEscrow");
-  tx = await l2BridgeEscrow.connect(governance).l2ClearFund(transferVAA);
+  tx = await l2WormholeRouter.connect(governance).receiveFunds(transferVAA);
   await tx.wait();
   console.log(` > tx: ${getTxExplorerLink(POLYGON_NETWORK_NAME, tx)}`);
 

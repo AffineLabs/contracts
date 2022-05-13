@@ -36,6 +36,13 @@ it("Deploy Vaults", async () => {
   const l1BridgeEscrow = await l1Vault.bridgeEscrow();
   expect(l1BridgeEscrow).to.be.properAddress;
   expect(l1BridgeEscrow).to.equal(await l2Vault.bridgeEscrow());
+
+  // Check wormhole routers
+  expect(await l1Vault.wormholeRouter()).to.equal(wormholeRouters.l1WormholeRouter.address);
+  expect(await l2Vault.wormholeRouter()).to.equal(wormholeRouters.l2WormholeRouter.address);
+
+  expect(await wormholeRouters.l1WormholeRouter.wormhole()).to.equal(config.l1worm);
+  expect(await wormholeRouters.l2WormholeRouter.wormhole()).to.equal(config.l2worm);
 });
 
 // TODO: check that we can upgrade proxies successfully

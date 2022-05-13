@@ -9,17 +9,3 @@ task("accounts", "Prints the list of accounts", async (args, hre) => {
     console.log(await account.getAddress());
   }
 });
-
-import { ethers } from "ethers";
-
-task("unblock", "Unblock tx", async (args, hre) => {
-  const [deployer] = await hre.ethers.getSigners();
-  const tx = await deployer.sendTransaction({
-    to: deployer.address,
-    value: ethers.utils.parseUnits("1", "gwei"),
-    nonce: 329,
-    gasPrice: ethers.utils.parseUnits("2", "gwei"),
-  });
-  console.log("Our Tx:\n", tx);
-  await tx.wait();
-});

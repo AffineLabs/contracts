@@ -4,14 +4,14 @@ import usdcABI from "../assets/usdc-abi.json";
 
 import { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
-import { config } from "scripts/utils/config";
+import { config } from "../../scripts/utils/config";
 import { ContractTransaction } from "ethers";
-import { deployAll } from "scripts/helpers/deploy-all";
+import { deployAll } from "../../scripts/helpers/deploy-all";
 import utils from "../utils";
-import { address } from "scripts/utils/types";
+import { address } from "../../scripts/utils/types";
 
-const ETH_NETWORK_NAME = "ethGoerli";
-const POLYGON_NETWORK_NAME = "polygonMumbai";
+const ETH_NETWORK_NAME = "eth-goerli";
+const POLYGON_NETWORK_NAME = "polygon-mumbai";
 
 chai.use(solidity);
 const { expect } = chai;
@@ -34,7 +34,7 @@ it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
   );
 
   const { l1Vault, l2Vault } = allContracts.vaults;
-  const { l2WormholeRouter } = allContracts.wormholeRouters;
+  const { l1WormholeRouter, l2WormholeRouter } = allContracts.wormholeRouters;
 
   const initialL2TVL = ethers.utils.parseUnits("0.001", 6);
 
@@ -53,13 +53,13 @@ it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
 
   // Receive message (receiveTVL) and send tokens with a wormhole message containing the amount sent
   let l1Sequence = 0;
-  const tvlVAA = await utils.getVAA(l1Vault.address, String(l1Sequence), 2);
+  const tvlVAA = await utils.getVAA(l1WormholeRouter.address, String(l1Sequence), 2);
   l1Sequence += 1;
 
   hre.changeNetwork(POLYGON_NETWORK_NAME);
   console.log("\n\nreceiving TVL on L2");
   [, defender] = await ethers.getSigners();
-  tx = await l2WormholeRouter.connect(defender).receiveTVL(tvlVAA);
+  tx = await l2WormholeRouter.connect(defender).receiveTVL(tvlVAA, { gasLimit: 10_000_000 });
   await tx.wait();
   console.log("TVL received. Sending tokens to L1");
 
@@ -71,7 +71,7 @@ it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
   );
 
   // Get VAA
-  const transferVAA = await utils.getVAA(l2Vault.address, String(0), 5);
+  const transferVAA = await utils.getVAA(l2WormholeRouter.address, String(0), 5);
 
   // Post burn proof and VAA to clear funds
   const bridgeEscrowAddr: address = await l2Vault.bridgeEscrow();
@@ -81,9 +81,8 @@ it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
   hre.changeNetwork(ETH_NETWORK_NAME);
   [, defender] = await ethers.getSigners();
 
-  const l1BridgeEscrow = (await ethers.getContractFactory("BridgeEscrow", defender)).attach(bridgeEscrowAddr);
   console.log("Clearing funds from bridgeEscrow");
-  tx = await l1BridgeEscrow.connect(defender).l1ClearFund(transferVAA, ethers.utils.arrayify(messageProof));
+  tx = await l1WormholeRouter.connect(defender).receiveFunds(transferVAA, ethers.utils.arrayify(messageProof));
   await tx.wait();
 
   expect(await l1Vault.vaultTVL()).to.eq(initialL2TVL.mul(90).div(100));
