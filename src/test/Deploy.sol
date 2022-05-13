@@ -13,6 +13,8 @@ import { BridgeEscrow } from "../BridgeEscrow.sol";
 import { TwoAssetBasket } from "../polygon/TwoAssetBasket.sol";
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
+import { L1WormholeRouter } from "../ethereum/L1WormholeRouter.sol";
+import { L2WormholeRouter } from "../polygon/L2WormholeRouter.sol";
 
 library Deploy {
     function deployL2Vault() internal returns (L2Vault vault) {
@@ -22,6 +24,7 @@ library Deploy {
             address(this), // governance
             token, // token
             IWormhole(address(0)), // wormhole
+            L2WormholeRouter(address(0)), // wormholer router
             BridgeEscrow(address(0)),
             address(0), // forwarder
             1, // l1 ratio
@@ -36,7 +39,8 @@ library Deploy {
         vault.initialize(
             address(this), // governance
             token, // token
-            IWormhole(address(0)), // wormhole, // wormhole
+            IWormhole(address(0)), // wormhole,
+            L1WormholeRouter(address(0)), // wormhole router
             BridgeEscrow(address(0)),
             IRootChainManager(address(0)), // chain manager
             address(0) // predicate

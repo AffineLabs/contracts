@@ -21,6 +21,7 @@ contract BridgeEscrow {
     ERC20 public token;
     IRootChainManager public rootChainManager;
     bool public initialized;
+    address public wormholeRouter;
 
     address public owner;
 
@@ -31,6 +32,7 @@ contract BridgeEscrow {
     function initialize(
         address _vault,
         IWormhole _wormhole,
+        address _wormholerRouter,
         ERC20 _token,
         IRootChainManager manager
     ) external {
@@ -38,6 +40,7 @@ contract BridgeEscrow {
         require(!initialized, "INIT_DONE");
         vault = _vault;
         wormhole = _wormhole;
+        wormholeRouter = _wormholerRouter;
         token = _token;
         rootChainManager = manager;
         initialized = true;
@@ -49,16 +52,8 @@ contract BridgeEscrow {
         IChildERC20(address(token)).withdraw(amount);
     }
 
-    function l2ClearFund(bytes calldata message) external {
-        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
-        require(valid, reason);
-
-        // TODO: check chain ID, emitter address
-        // Get amount and nonce
-        uint256 amount = abi.decode(vm.payload, (uint256));
-        int32 nonce = int32(vm.nonce);
-        require(nonce > vaultNonce, "No old transactions");
-        vaultNonce = nonce;
+    function l2ClearFund(uint256 amount) external {
+        require(msg.sender == wormholeRouter, "Only wormhole router");
 
         uint256 balance = token.balanceOf(address(this));
         require(balance >= amount, "Funds not received");
@@ -69,15 +64,8 @@ contract BridgeEscrow {
         l2Vault.afterReceive(balance);
     }
 
-    function l1ClearFund(bytes calldata vaa, bytes calldata exitProof) external {
-        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(vaa);
-        require(valid, reason);
-        // TODO: check chain ID, emitter address
-        // Get amount and nonce
-        uint256 amount = abi.decode(vm.payload, (uint256));
-        int32 nonce = int32(vm.nonce);
-        require(nonce > vaultNonce, "No old transactions");
-        vaultNonce = nonce;
+    function l1ClearFund(uint256 amount, bytes calldata exitProof) external {
+        require(msg.sender == wormholeRouter, "Only wormhole router");
 
         // Exit tokens, after that the withdrawn tokens from L2 will be reflected in L1 BridgeEscrow.
         rootChainManager.exit(exitProof);

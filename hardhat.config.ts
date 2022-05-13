@@ -1,5 +1,5 @@
 import { config as dotenvConfig } from "dotenv";
-import { resolve } from "path";
+import { resolve, join, sep } from "path";
 dotenvConfig({ path: resolve(__dirname, "./.env") });
 
 import { HardhatUserConfig } from "hardhat/types";
@@ -21,6 +21,16 @@ import "@openzeppelin/hardhat-defender";
 
 import "./tasks/accounts";
 import { ethChainIds, polygonChainIds, ethNetwork, polygonNetwork } from "./scripts/utils/constants/types";
+
+import { subtask } from "hardhat/config";
+import { TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS } from "hardhat/builtin-tasks/task-names";
+
+// Ignore foundry test files during hardhat compilation.
+subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(async (_, __, runSuper) => {
+  const paths = await runSuper();
+  // Don't compile anything under src/test/
+  return paths.filter((p: string) => !p.includes(join("src", "test") + sep));
+});
 
 const MNEMONIC = process.env.MNEMONIC || "";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";

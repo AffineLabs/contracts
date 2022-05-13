@@ -9,8 +9,10 @@ import hre from "hardhat";
 import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
 import { POLYGON_MUMBAI } from "../utils/constants/blockchain";
 import { sign } from "crypto";
+import { deployWormholeRouters, WormholeRouterContracts } from "./deploy-wormhole-router";
 
 export interface AllContracts {
+  wormholeRouters: WormholeRouterContracts;
   vaults: VaultContracts;
   strategies: StrategyContracts;
   basket: TwoAssetBasket;
@@ -23,7 +25,15 @@ export async function deployAll(
   polygonNetworkName: string,
   config: Config,
 ): Promise<AllContracts> {
-  const vaults = await deployVaults(l1Governance, l2Governance, ethNetworkName, polygonNetworkName, config);
+  const wormholeRouters = await deployWormholeRouters(ethNetworkName, polygonNetworkName);
+  const vaults = await deployVaults(
+    l1Governance,
+    l2Governance,
+    ethNetworkName,
+    polygonNetworkName,
+    config,
+    wormholeRouters,
+  );
   const strategies = await deployStrategies(ethNetworkName, polygonNetworkName, vaults);
 
   // TODO: Consider strategies. We can't add strategies anymore since the timelock address is the governance address
@@ -70,6 +80,7 @@ export async function deployAll(
   await addToAddressBookAndDefender(POLYGON_MUMBAI, "Forwarder", "Forwarder", config.forwarder);
 
   return {
+    wormholeRouters,
     vaults,
     strategies,
     basket,

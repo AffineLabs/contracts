@@ -6,6 +6,7 @@ import { ICreate2Deployer__factory, L1Vault, L2Vault, BridgeEscrow__factory } fr
 import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
 import { ETH_GOERLI, POLYGON_MUMBAI } from "../utils/constants/blockchain";
 import { address } from "../utils/types";
+import { WormholeRouterContracts } from "./deploy-wormhole-router";
 
 export interface VaultContracts {
   l1Vault: L1Vault;
@@ -18,6 +19,7 @@ export async function deployVaults(
   ethNetworkName: string,
   polygonNetworkName: string,
   config: Config,
+  wormholeRouters: WormholeRouterContracts,
 ): Promise<VaultContracts> {
   /**
    * Deploy vault in eth.
@@ -48,7 +50,15 @@ export async function deployVaults(
   // Deploy vault
   const l1Vault = (await upgrades.deployProxy(
     l1VaultFactory,
-    [l1Governance, config.l1USDC, config.l1worm, bridgeEscrowAddr, config.l1ChainManager, config.l2ERC20Predicate],
+    [
+      l1Governance,
+      config.l1USDC,
+      config.l1worm,
+      wormholeRouters.l1WormholeRouter.address,
+      bridgeEscrowAddr,
+      config.l1ChainManager,
+      config.l2ERC20Predicate,
+    ],
     { kind: "uups" },
   )) as L1Vault;
   await l1Vault.deployed();
@@ -60,10 +70,12 @@ export async function deployVaults(
   let bridgeEscrowInitTx = await bridgeEscrow.initialize(
     await getContractAddress(l1Vault),
     config.l1worm,
+    wormholeRouters.l1WormholeRouter.address,
     config.l1USDC,
     config.l1ChainManager,
   );
   await bridgeEscrowInitTx.wait();
+  await wormholeRouters.l1WormholeRouter.initialize(config.l1worm, l1Vault.address);
 
   /**
    * Deploy vault in Polygon.
@@ -84,6 +96,7 @@ export async function deployVaults(
       l2Governance,
       config.l2USDC,
       config.l2worm,
+      wormholeRouters.l2WormholeRouter.address,
       bridgeEscrowAddr,
       config.forwarder,
       9,
@@ -101,10 +114,12 @@ export async function deployVaults(
   bridgeEscrowInitTx = await bridgeEscrow.initialize(
     await getContractAddress(l2Vault),
     config.l2worm,
+    wormholeRouters.l2WormholeRouter.address,
     config.l2USDC,
     ethers.constants.AddressZero, // there is no root chain manager in polygon
   );
   await bridgeEscrowInitTx.wait();
+  await wormholeRouters.l2WormholeRouter.initialize(config.l2worm, l2Vault.address);
 
   return {
     l1Vault,
