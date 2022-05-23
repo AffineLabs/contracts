@@ -1,10 +1,10 @@
-# Upload artifacts to S3 bucket when a new release is started.
-name: Release Workflow
+# Upload artifacts to S3 bucket when we merge into the stable branch.
+name: Stable Release Workflow
 
-# Triggers the workflow on push of a release tag
 on:
-  release:
-    types: [published]
+  # Triggers the workflow on push to the stable branch
+  push:
+    branches: [stable]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -19,7 +19,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: "us-east-2"
-      VERSION: ${{ github.event.release.tag_name }}
+      VERSION: "stable"
       # Hardhat env variables
       MNEMONIC: ${{ secrets.MNEMONIC }}
       ALCHEMY_ETH_KEY: ${{ secrets.ALCHEMY_ETH_KEY }}
