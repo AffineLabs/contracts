@@ -57,5 +57,6 @@ contract VaultTest is TestPlus {
         (bool isActive, uint256 tvlBps, , , ) = vault.strategies(strategy);
         assertEq(tvlBps, 0);
         assertTrue(isActive == false);
+        assertEq(address(vault.withdrawalQueue(0)), address(0));
     }
 }
