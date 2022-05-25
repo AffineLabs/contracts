@@ -50,4 +50,12 @@ contract VaultTest is TestPlus {
         (, uint256 tvlBps, , , ) = vault.strategies(strategy);
         assertEq(tvlBps, 1000);
     }
+
+    function testStrategyRemoval() public {
+        TestStrategy strategy = new TestStrategy(token, vault);
+        vault.removeStrategy(strategy);
+        (bool isActive, uint256 tvlBps, , , ) = vault.strategies(strategy);
+        assertEq(tvlBps, 0);
+        assertTrue(isActive == false);
+    }
 }
