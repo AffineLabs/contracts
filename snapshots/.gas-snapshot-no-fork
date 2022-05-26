@@ -1,5 +1,7 @@
 BaseStrategyTest:testSweep() (gas: 99478)
 VaultTest:testHarvest() (gas: 279)
+VaultTest:testStrategyAddition() (gas: 465902)
+VaultTest:testStrategyRemoval() (gas: 378627)
 L2VaultTest:testLockedProfit() (gas: 353501)
 L2VaultTest:testManagementFee() (gas: 239164)
 L2VaultTest:testSettingFees() (gas: 43635)
