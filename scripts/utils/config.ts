@@ -78,7 +78,7 @@ const polygonAlchemyURL = process.env.ALCHEMY_POLYGON_KEY
   : "";
 const mnemonic = process.env.MNEMONIC || "";
 
-const l1VaultAddr = "0xFcA174CF987b00e79f46016e7922c445c615D723"
+const l1VaultAddr = "0xFcA174CF987b00e79f46016e7922c445c615D723";
 const l2VaultAddr = "0x8f23f3ee92CbDb36Da970Ad5d959a1386C4019CA";
 
 const l1WormholeRouterAddr = "0xf75F1fF2A4835BB141b52C2Ec0635A24Ed02264B";

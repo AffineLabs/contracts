@@ -18,7 +18,15 @@ const wormholeABI = JSON.parse(readFileSync(`${abiDir}/IWormhole.abi`).toString(
 const usdcABI = JSON.parse(readFileSync(`${abiDir}/IERC20.abi`).toString());
 
 async function main() {
-  const { l1WormholeRouterAddr, l2WormholeRouterAddr, l1VaultAddr, l2VaultAddr, mnemonic, ethAlchemyURL, polygonAlchemyURL } = REBALANCE_CONFIG;
+  const {
+    l1WormholeRouterAddr,
+    l2WormholeRouterAddr,
+    l1VaultAddr,
+    l2VaultAddr,
+    mnemonic,
+    ethAlchemyURL,
+    polygonAlchemyURL,
+  } = REBALANCE_CONFIG;
   const goerliProvider = new ethers.providers.JsonRpcProvider(ethAlchemyURL);
   const mumbaiProvider = new ethers.providers.JsonRpcProvider(polygonAlchemyURL);
 
@@ -39,7 +47,6 @@ async function main() {
   const l2WormholeRouter = new Contract(await l2WormholeRouterAddr, l2WormholeRouterABI, polygonWallet);
   const l1wormhole = new Contract(await l1Vault.wormhole(), wormholeABI, ethWallet);
   const l2wormhole = new Contract(await l2Vault.wormhole(), wormholeABI, polygonWallet);
-  
 
   let l1VaultSeq = await l1wormhole.nextSequence(l1WormholeRouterAddr);
   const tvlVAA = await utils.getVAA(l1WormholeRouterAddr, String(l1VaultSeq - 1), CHAIN_ID_ETH);
