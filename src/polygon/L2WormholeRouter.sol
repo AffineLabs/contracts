@@ -22,14 +22,14 @@ contract L2WormholeRouter {
 
     function reportTransferredFund(uint256 amount) external {
         require(msg.sender == address(vault), "Only vault");
-        bytes memory payload = abi.encodePacked(Constants.L2_FUND_TRANSFER_REPORT, amount);
+        bytes memory payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
         wormhole.publishMessage(uint32(sequence), payload, 4);
     }
 
     function requestFunds(uint256 amount) external {
         require(msg.sender == address(vault), "Only vault");
-        bytes memory payload = abi.encodePacked(Constants.L2_FUND_REQUEST, amount);
+        bytes memory payload = abi.encode(Constants.L2_FUND_REQUEST, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
         wormhole.publishMessage(uint32(sequence), payload, 4);
     }

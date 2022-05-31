@@ -9,6 +9,7 @@ import { ContractTransaction } from "ethers";
 import { getTxExplorerLink } from "../../scripts/utils/bc-explorer-links";
 import { AllContracts, deployAll } from "../../scripts/helpers/deploy-all";
 import utils from "../utils";
+import { CHAIN_ID_ETH, CHAIN_ID_POLYGON } from "@certusone/wormhole-sdk";
 
 const ETH_NETWORK_NAME = "eth-goerli";
 const POLYGON_NETWORK_NAME = "polygon-mumbai";
@@ -54,31 +55,31 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
   expect(currentL1TVL).to.eq(initialL1TVL);
 
   // Send TVL
-  console.log("\n\nsending TVL");
+  console.log("Sending TVL");
   tx = await l1Vault.sendTVL();
   await tx.wait();
 
   // Receive message (receiveTVL) and send a message to L1 with amount request (L2)
   // sequence is the number of transactions we've sent to wormhole from a given address
   let l1Sequence = 0;
-  const tvlVAA = await utils.getVAA(l1WormholeRouter.address, String(l1Sequence), 2);
+  const tvlVAA = await utils.getVAA(l1WormholeRouter.address, String(l1Sequence), CHAIN_ID_ETH);
   l1Sequence += 1;
 
   hre.changeNetwork(POLYGON_NETWORK_NAME);
-  console.log("\n\nreceiving TVL on L2");
+  console.log("Receiving TVL on L2");
   [governance] = await ethers.getSigners();
-  tx = await l2WormholeRouter.connect(governance).receiveTVL(tvlVAA);
+  tx = await l2WormholeRouter.receiveTVL(tvlVAA);
   await tx.wait();
   console.log("TVL received");
 
   // L2 just sent an amount request to L1, receive this message here
   let l2Sequence = 0;
-  const requestVAA = await utils.getVAA(l2WormholeRouter.address, String(l2Sequence), 5);
+  const requestVAA = await utils.getVAA(l2WormholeRouter.address, String(l2Sequence), CHAIN_ID_POLYGON);
   l2Sequence += 1;
 
   hre.changeNetwork(ETH_NETWORK_NAME);
   [governance] = await ethers.getSigners();
-  tx = await l1WormholeRouter.connect(governance).receiveFundRequest(requestVAA, { gasLimit: 10_000_000 });
+  tx = await l1WormholeRouter.receiveFundRequest(requestVAA, { gasLimit: 10_000_000 });
   await tx.wait();
   console.log("Received request from L2 on L1. Transfer from L1 to L2 initiated.");
 
@@ -99,13 +100,13 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
     l2BridgeEscrow.address,
     ethers.provider,
   );
-  console.log("\n\nBridgeEscrow contract has received funds. Getting transfer VAA from L1 Vault");
+  console.log("BridgeEscrow contract has received funds. Getting transfer VAA from L1 Vault");
 
-  const transferVAA = await utils.getVAA(l1WormholeRouter.address, String(l1Sequence), 2);
+  const transferVAA = await utils.getVAA(l1WormholeRouter.address, String(l1Sequence), CHAIN_ID_ETH);
   l1Sequence += 1;
 
   console.log("Clearing funds from bridgeEscrow");
-  tx = await l2WormholeRouter.connect(governance).receiveFunds(transferVAA);
+  tx = await l2WormholeRouter.receiveFunds(transferVAA);
   await tx.wait();
   console.log(` > tx: ${getTxExplorerLink(POLYGON_NETWORK_NAME, tx)}`);
 

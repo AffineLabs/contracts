@@ -22,7 +22,7 @@ contract L1WormholeRouter {
 
     function reportTVL(uint256 tvl, bool received) external {
         require(msg.sender == address(vault), "Only vault");
-        bytes memory payload = abi.encodePacked(Constants.L1_TVL, tvl, received);
+        bytes memory payload = abi.encode(Constants.L1_TVL, tvl, received);
         // NOTE: We use the current tx count (to wormhole) of this contract
         // as a nonce when publishing messages
         // This casting is fine so long as we send less than 2 ** 32 - 1 (~ 4 billion) messages
@@ -36,7 +36,7 @@ contract L1WormholeRouter {
 
     function reportTransferredFund(uint256 amount) external {
         require(msg.sender == address(vault), "Only vault");
-        bytes memory payload = abi.encodePacked(Constants.L1_FUND_TRANSFER_REPORT, amount);
+        bytes memory payload = abi.encode(Constants.L1_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
 
         wormhole.publishMessage(uint32(sequence), payload, 4);
