@@ -333,7 +333,6 @@ contract L2Vault is
         }
     }
 
-    // TODO: liquidate properly
     function _transferToL1(uint256 amount) internal {
         // Send token
         _asset.safeTransfer(address(bridgeEscrow), amount);
