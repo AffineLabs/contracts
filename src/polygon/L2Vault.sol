@@ -141,6 +141,24 @@ contract L2Vault is
         return vaultTVL() - lockedProfit() + L1TotalLockedValue;
     }
 
+    function maxDeposit(address receiver) public view returns (uint256 maxAssets) {
+        receiver;
+        maxAssets = type(uint256).max;
+    }
+
+    function maxMint(address receiver) public view returns (uint256 maxShares) {
+        receiver;
+        maxShares = type(uint256).max;
+    }
+
+    function maxRedeem(address owner) public view returns (uint256 maxShares) {
+        maxShares = balanceOf(owner);
+    }
+
+    function maxWithdraw(address owner) public view returns (uint256 maxAssets) {
+        maxAssets = convertToAssets(balanceOf(owner));
+    }
+
     /** DEPOSIT
      **************************************************************************/
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
@@ -241,7 +259,7 @@ contract L2Vault is
     }
 
     // Return number of tokens to be given to user after applying withdrawal fee
-    function _getWithdrawalFee(uint256 tokenAmount) internal returns (uint256) {
+    function _getWithdrawalFee(uint256 tokenAmount) internal view returns (uint256) {
         // TODO: round up here
         uint256 feeAmount = (tokenAmount * withdrawalFee) / MAX_BPS;
         return feeAmount;
