@@ -44,7 +44,7 @@ contract L2AAVEStratTestFork is TestPlus {
 
         // Vault deposits half of its tvl into the strategy
         usdc.approve(address(vault), type(uint256).max);
-        vault.deposit(1e6);
+        vault.deposit(1e6, address(this));
 
         // Go 10 days into the future and make sure that the vault makes money
         vm.warp(block.timestamp + 10 days);

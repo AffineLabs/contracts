@@ -23,7 +23,7 @@ contract L2ForwardTestFork is TestPlus {
 
     function setUp() public {
         vault = Deploy.deployL2Vault();
-        token = MockERC20(address(vault.token()));
+        token = MockERC20(address(vault.asset()));
         basket = Deploy.deployTwoAssetBasket(token);
         forwarder = new Forwarder();
         // Update trusted forwarder in vault

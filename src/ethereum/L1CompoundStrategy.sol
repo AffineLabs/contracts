@@ -43,7 +43,7 @@ contract L1CompoundStrategy is BaseStrategy {
         address _wrappedNative
     ) {
         vault = _vault;
-        token = vault.token();
+        token = ERC20(vault.asset());
         cToken = _cToken;
         comptroller = _comptroller;
 

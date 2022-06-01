@@ -11,7 +11,7 @@ contract MintableStrategy {
 
     constructor(BaseVault _vault) {
         vault = _vault;
-        want = MintableToken(address(vault.token()));
+        want = MintableToken(address(vault.asset()));
         // Give Vault unlimited access
         want.approve(address(_vault), type(uint256).max);
     }

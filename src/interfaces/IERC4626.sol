@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 
 /// @author Open Zeppelin
-interface IERC4626 is IERC20, IERC20Metadata {
+interface IERC4626 {
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
 
     event Withdraw(
