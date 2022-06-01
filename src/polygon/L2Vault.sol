@@ -215,10 +215,13 @@ contract L2Vault is
         // TODO: handle case where the user is trying to withdraw more value than actually exists in the vault
         if (assets > _asset.balanceOf(address(this))) {}
 
+        address caller = _msgSender();
+        _spendAllowance(owner, caller, shares);
+
         // Burn shares and give user equivalent value in `_asset` (minus withdrawal fees)
         _burn(owner, shares);
 
-        emit Withdraw(_msgSender(), receiver, owner, assets, shares);
+        emit Withdraw(caller, receiver, owner, assets, shares);
         _asset.safeTransfer(receiver, assets);
     }
 
@@ -236,9 +239,12 @@ contract L2Vault is
         // If the owner does not have enough shares, we revert
         uint256 assetsFee = _getWithdrawalFee(assets);
         shares = previewWithdraw(assets + assetsFee);
+
+        address caller = _msgSender();
+        _spendAllowance(owner, caller, shares);
         _burn(owner, shares);
 
-        emit Withdraw(_msgSender(), receiver, owner, assets, shares);
+        emit Withdraw(caller, receiver, owner, assets, shares);
         _asset.safeTransfer(receiver, assets);
         _asset.safeTransfer(governance, assetsFee);
     }
