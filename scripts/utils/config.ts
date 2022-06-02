@@ -1,6 +1,7 @@
 import { config as dotenvConfig } from "dotenv";
 import { resolve } from "path";
 import { address } from "./types";
+import axios from "axios";
 
 dotenvConfig({ path: resolve(__dirname, "./.env") });
 
@@ -63,6 +64,8 @@ export interface RebalanceConfig {
   ethAlchemyURL: string;
   polygonAlchemyURL: string;
   mnemonic: string;
+  l1WormholeRouterAddr: address;
+  l2WormholeRouterAddr: address;
   l1VaultAddr: address;
   l2VaultAddr: address;
 }
@@ -74,13 +77,19 @@ const polygonAlchemyURL = process.env.ALCHEMY_POLYGON_KEY
   ? `https://polygon-mumbai.g.alchemy.com/v2/${process.env.ALCHEMY_POLYGON_KEY}`
   : "";
 const mnemonic = process.env.MNEMONIC || "";
-const l1VaultAddr = "0xe05F99bd5B4f755Caf9bd5E46bDd1468F9D650Fa";
-const l2VaultAddr = "0xd914975c045f2d29770C11656bCe4236aF3Dfe19";
+
+const l1VaultAddr = "0xFcA174CF987b00e79f46016e7922c445c615D723";
+const l2VaultAddr = "0x8f23f3ee92CbDb36Da970Ad5d959a1386C4019CA";
+
+const l1WormholeRouterAddr = "0xf75F1fF2A4835BB141b52C2Ec0635A24Ed02264B";
+const l2WormholeRouterAddr = "0x85e91273546CfE0F42e2D759584Bb8EbA3047Cad";
 
 export const REBALANCE_CONFIG: RebalanceConfig = {
   ethAlchemyURL,
   polygonAlchemyURL,
   mnemonic,
+  l1WormholeRouterAddr,
+  l2WormholeRouterAddr,
   l1VaultAddr,
   l2VaultAddr,
 };
