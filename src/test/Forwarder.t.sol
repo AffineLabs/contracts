@@ -81,7 +81,7 @@ contract L2ForwardTestFork is TestPlus {
             0,
             15e6,
             0,
-            abi.encodeWithSelector(vault.deposit.selector, 1e6)
+            abi.encodeCall(vault.deposit, (1e6, user))
         );
         bytes32 reqStructHash1 = getHashedReq(req1);
 
@@ -92,7 +92,7 @@ contract L2ForwardTestFork is TestPlus {
             0,
             15e6,
             1,
-            abi.encodeWithSelector(vault.deposit.selector, 1e6)
+            abi.encodeCall(vault.deposit, (1e6, user))
         );
         bytes32 reqStructHash2 = getHashedReq(req2);
 
@@ -124,7 +124,7 @@ contract L2ForwardTestFork is TestPlus {
             0,
             15e6,
             0,
-            abi.encodeWithSelector(vault.deposit.selector, 1e6)
+            abi.encodeCall(vault.deposit, (1e6, user))
         );
         bytes32 reqStructHash1 = getHashedReq(req1);
         MinimalForwarder.ForwardRequest memory req2 = MinimalForwarder.ForwardRequest(

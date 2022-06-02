@@ -210,25 +210,27 @@ contract L2Vault is
         address receiver,
         address owner
     ) external whenNotPaused returns (uint256 assets) {
-        assets = previewRedeem(shares);
+        uint256 rawAssets = previewRedeem(shares);
+        uint256 assetsFee = getWithdrawalFee(rawAssets);
+        assets = rawAssets - assetsFee;
 
         // TODO: handle case where the user is trying to withdraw more value than actually exists in the vault
         if (assets > _asset.balanceOf(address(this))) {}
 
         address caller = _msgSender();
-        _spendAllowance(owner, caller, shares);
+        if (caller != owner) _spendAllowance(owner, caller, shares);
 
         // Burn shares and give user equivalent value in `_asset` (minus withdrawal fees)
         _burn(owner, shares);
 
         emit Withdraw(caller, receiver, owner, assets, shares);
+
         _asset.safeTransfer(receiver, assets);
+        _asset.safeTransfer(governance, assetsFee);
     }
 
     function previewRedeem(uint256 shares) public view returns (uint256 assets) {
-        uint256 rawAssets = convertToAssets(shares);
-        uint256 assetsFee = _getWithdrawalFee(rawAssets);
-        return rawAssets - assetsFee;
+        assets = convertToAssets(shares);
     }
 
     function withdraw(
@@ -237,11 +239,11 @@ contract L2Vault is
         address owner
     ) external whenNotPaused returns (uint256 shares) {
         // If the owner does not have enough shares, we revert
-        uint256 assetsFee = _getWithdrawalFee(assets);
+        uint256 assetsFee = getWithdrawalFee(assets);
         shares = previewWithdraw(assets + assetsFee);
 
         address caller = _msgSender();
-        _spendAllowance(owner, caller, shares);
+        if (caller != owner) _spendAllowance(owner, caller, shares);
         _burn(owner, shares);
 
         emit Withdraw(caller, receiver, owner, assets, shares);
@@ -265,7 +267,7 @@ contract L2Vault is
     }
 
     // Return number of tokens to be given to user after applying withdrawal fee
-    function _getWithdrawalFee(uint256 tokenAmount) internal view returns (uint256) {
+    function getWithdrawalFee(uint256 tokenAmount) public view returns (uint256) {
         // TODO: round up here
         uint256 feeAmount = (tokenAmount * withdrawalFee) / MAX_BPS;
         return feeAmount;
