@@ -24,8 +24,8 @@ it("Deploy Vaults", async () => {
   );
 
   // If tokens are set correctly, most likely everything else is.
-  expect(await l2Vault.token()).to.equal(config.l2USDC);
-  expect(await l1Vault.token()).to.equal(config.l1USDC);
+  expect(await l2Vault.asset()).to.equal(config.l2USDC);
+  expect(await l1Vault.asset()).to.equal(config.l1USDC);
 
   const forwarder = await l2Vault.trustedForwarder();
   expect(forwarder).to.be.properAddress;
