@@ -20,7 +20,7 @@ contract L2AAVEStratTestFork is TestPlus {
 
     function setUp() public {
         vault = Deploy.deployL2Vault();
-        uint256 slot = stdstore.target(address(vault)).sig("token()").find();
+        uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
         vm.store(address(vault), bytes32(slot), tokenAddr);
 
@@ -44,7 +44,7 @@ contract L2AAVEStratTestFork is TestPlus {
 
         // Vault deposits half of its tvl into the strategy
         usdc.approve(address(vault), type(uint256).max);
-        vault.deposit(1e6);
+        vault.deposit(1e6, address(this));
 
         // Go 10 days into the future and make sure that the vault makes money
         vm.warp(block.timestamp + 10 days);

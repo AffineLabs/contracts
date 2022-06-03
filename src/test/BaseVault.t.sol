@@ -36,7 +36,7 @@ contract VaultTest is TestPlus {
 
     function setUp() public {
         vault = Deploy.deployBaseVault();
-        token = MockERC20(address(vault.token()));
+        token = MockERC20(address(vault.asset()));
     }
 
     function testHarvest() public {

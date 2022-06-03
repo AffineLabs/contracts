@@ -4,14 +4,13 @@ pragma solidity ^0.8.13;
 import { MintableToken } from "./MintableToken.sol";
 import { BaseVault } from "../BaseVault.sol";
 
-// TODO: update this mintable strategy
 contract MintableStrategy {
     BaseVault public vault;
     MintableToken public want;
 
     constructor(BaseVault _vault) {
         vault = _vault;
-        want = MintableToken(address(vault.token()));
+        want = MintableToken(address(vault.asset()));
         // Give Vault unlimited access
         want.approve(address(_vault), type(uint256).max);
     }

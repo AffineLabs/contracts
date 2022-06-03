@@ -64,12 +64,12 @@ export async function deployAll(
   tx = await usdc.approve(await getContractAddress(basket), maxUint);
   await tx.wait();
 
-  tx = await vaults.l2Vault.deposit(oneUsdc.mul(2));
+  const signerAddr = await signer.getAddress();
+  tx = await vaults.l2Vault.deposit(oneUsdc.mul(2), signerAddr);
   await tx.wait();
-  tx = await vaults.l2Vault.withdraw(oneUsdc);
+  tx = await vaults.l2Vault.withdraw(oneUsdc, signerAddr, signerAddr);
   await tx.wait();
 
-  const signerAddr = await signer.getAddress();
   tx = await basket.deposit(oneUsdc.mul(2), signerAddr);
   await tx.wait();
   tx = await basket.withdraw(oneUsdc.div(10), signerAddr, signerAddr);

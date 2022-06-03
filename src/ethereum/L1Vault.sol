@@ -76,14 +76,14 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     function processFundRequest(uint256 amountRequested) external {
         require(msg.sender == address(wormholeRouter), "Only wormhole router");
         _liquidate(amountRequested);
-        uint256 amountToSend = Math.min(token.balanceOf(address(this)), amountRequested);
+        uint256 amountToSend = Math.min(_asset.balanceOf(address(this)), amountRequested);
         _transferFundsToL2(amountToSend);
     }
 
-    // Send `token` to L2 BridgeEscrow via polygon bridge
+    // Send `asset` to L2 BridgeEscrow via polygon bridge
     function _transferFundsToL2(uint256 amount) internal {
-        token.safeApprove(predicate, amount);
-        chainManager.depositFor(address(bridgeEscrow), address(token), abi.encodePacked(amount));
+        _asset.safeApprove(predicate, amount);
+        chainManager.depositFor(address(bridgeEscrow), address(_asset), abi.encodePacked(amount));
 
         // Let L2 know how much money we sent
         wormholeRouter.reportTransferredFund(amount);

@@ -30,7 +30,7 @@ contract L1CompoundStratTestFork is TestPlus {
         vault = Deploy.deployL1Vault();
 
         // make vault token equal to the L1 (Goerli) usdc address
-        uint256 slot = stdstore.target(address(vault)).sig("token()").find();
+        uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
         vm.store(address(vault), bytes32(slot), tokenAddr);
 

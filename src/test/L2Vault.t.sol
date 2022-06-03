@@ -16,7 +16,7 @@ contract L2VaultTest is TestPlus {
 
     function setUp() public {
         vault = Deploy.deployL2Vault();
-        token = MockERC20(address(vault.token()));
+        token = MockERC20(vault.asset());
     }
 
     // Adding this since this test contract is used as a strategy
@@ -24,8 +24,14 @@ contract L2VaultTest is TestPlus {
         return token.balanceOf(address(this));
     }
 
-    event Deposit(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
-    event Withdraw(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
+    event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
+    event Withdraw(
+        address indexed caller,
+        address indexed receiver,
+        address indexed owner,
+        uint256 assets,
+        uint256 shares
+    );
 
     function testDepositRedeem(uint256 amountToken) public {
         address user = address(this);
@@ -33,18 +39,18 @@ contract L2VaultTest is TestPlus {
 
         // user gives max approval to vault for token
         token.approve(address(vault), type(uint256).max);
-        vm.expectEmit(true, false, false, true);
-        emit Deposit(address(this), amountToken, amountToken);
-        vault.deposit(amountToken);
+        vm.expectEmit(true, true, true, true);
+        emit Deposit(address(this), address(this), amountToken, amountToken);
+        vault.deposit(amountToken, address(this));
 
         // If vault is empty, tokens are converted to shares at 1:1
         uint256 numShares = vault.balanceOf(user);
         assertEq(numShares, amountToken);
         assertEq(token.balanceOf(address(user)), 0);
 
-        vm.expectEmit(true, false, false, true);
-        emit Withdraw(address(this), amountToken, amountToken);
-        vault.redeem(numShares);
+        vm.expectEmit(true, true, true, true);
+        emit Withdraw(address(this), address(this), address(this), amountToken, amountToken);
+        vault.redeem(numShares, address(this), address(this));
 
         assertEq(vault.balanceOf(user), 0);
         assertEq(token.balanceOf(user), amountToken);
@@ -57,17 +63,17 @@ contract L2VaultTest is TestPlus {
         token.mint(user, amountToken);
         token.approve(address(vault), type(uint256).max);
 
-        vm.expectEmit(true, false, false, true);
-        emit Deposit(address(this), amountToken, amountToken);
-        vault.deposit(amountToken);
+        vm.expectEmit(true, true, true, true);
+        emit Deposit(address(this), address(this), amountToken, amountToken);
+        vault.deposit(amountToken, address(this));
 
         // If vault is empty, tokens are converted to shares at 1:1
         assertEq(vault.balanceOf(user), amountToken);
         assertEq(token.balanceOf(user), 0);
 
-        vm.expectEmit(true, false, false, true);
-        emit Withdraw(address(this), amountToken, amountToken);
-        vault.withdraw(amountToken);
+        vm.expectEmit(true, true, true, true);
+        emit Withdraw(address(this), address(this), address(this), amountToken, amountToken);
+        vault.withdraw(amountToken, address(this), address(this));
         assertEq(vault.balanceOf(user), 0);
         assertEq(token.balanceOf(user), amountToken);
     }
@@ -124,15 +130,15 @@ contract L2VaultTest is TestPlus {
         vault.harvest(strategyList);
 
         assertEq(vault.lockedProfit(), 1e18);
-        assertEq(vault.globalTVL(), 0);
+        assertEq(vault.totalAssets(), 0);
 
         // Using up 50% of lockInterval unlocks 50% of profit
         vm.warp(block.timestamp + vault.lockInterval() / 2);
         assertEq(vault.lockedProfit(), 1e18 / 2);
-        assertEq(vault.globalTVL(), 1e18 / 2);
+        assertEq(vault.totalAssets(), 1e18 / 2);
     }
 
-    function testWithdrawlFee() public {
+    function testWithdrawalFee() public {
         uint256 amountToken = 1e18;
         vault.setWithdrawalFee(50);
 
@@ -140,9 +146,9 @@ contract L2VaultTest is TestPlus {
         vm.startPrank(user);
         token.mint(user, amountToken);
         token.approve(address(vault), type(uint256).max);
-        vault.deposit(amountToken);
+        vault.deposit(amountToken, user);
 
-        vault.redeem(vault.balanceOf(user));
+        vault.redeem(vault.balanceOf(user), user, user);
         assertEq(vault.balanceOf(user), 0);
 
         // User gets the original amount with 50bps deducted
@@ -168,28 +174,12 @@ contract L2VaultTest is TestPlus {
         vault.togglePause();
 
         vm.expectRevert("Pausable: paused");
-        vault.deposit(1e18);
+        vault.deposit(1e18, address(this));
 
         vm.expectRevert("Pausable: paused");
-        vault.withdraw(1e18);
+        vault.withdraw(1e18, address(this), address(this));
 
         vault.togglePause();
         testDepositWithdraw(1e18);
     }
-    // TODO: Get the below test to pass
-    // function testShareTokenConversion(
-    //     uint256 amountToken,
-    //     uint256 totalShares,
-    //     uint256 totalTokens
-    // ) public {
-    //     // update vaults total supply (number of shares)
-    //     // storage slots can be found in dapptools' abi output
-    //     vm.store(address(vault), bytes32(uint256(2)), bytes32(totalShares));
-    //     emit log_named_uint("foo", vault.totalSupply());
-
-    //     // update vaults total underlying tokens  => could just overwrite storage as well
-    //     token.mint(address(vault), totalTokens);
-
-    //     assertEq(vault.tokensFromShares(vault.sharesFromTokens(amountToken)), amountToken);
-    // }
 }

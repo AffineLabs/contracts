@@ -19,6 +19,7 @@ import { BridgeEscrow } from "../BridgeEscrow.sol";
 import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 import { DetailedShare } from "./Detailed.sol";
 import { L2WormholeRouter } from "./L2WormholeRouter.sol";
+import { IERC4626 } from "../interfaces/IERC4626.sol";
 
 contract L2Vault is
     ERC20Upgradeable,
@@ -26,7 +27,8 @@ contract L2Vault is
     PausableUpgradeable,
     BaseVault,
     BaseRelayRecipient,
-    DetailedShare
+    DetailedShare,
+    IERC4626
 {
     using SafeTransferLib for ERC20;
 
@@ -126,101 +128,158 @@ contract L2Vault is
     }
 
     function decimals() public view override returns (uint8) {
-        return token.decimals();
+        return _asset.decimals();
+    }
+
+    /** ERC4626
+     **************************************************************************/
+    function asset() public view override(BaseVault, IERC4626) returns (address assetTokenAddress) {
+        return address(_asset);
+    }
+
+    function totalAssets() public view returns (uint256 totalManagedAssets) {
+        return vaultTVL() - lockedProfit() + L1TotalLockedValue;
+    }
+
+    function maxDeposit(address receiver) public view returns (uint256 maxAssets) {
+        receiver;
+        maxAssets = type(uint256).max;
+    }
+
+    function maxMint(address receiver) public view returns (uint256 maxShares) {
+        receiver;
+        maxShares = type(uint256).max;
+    }
+
+    function maxRedeem(address owner) public view returns (uint256 maxShares) {
+        maxShares = balanceOf(owner);
+    }
+
+    function maxWithdraw(address owner) public view returns (uint256 maxAssets) {
+        maxAssets = convertToAssets(balanceOf(owner));
     }
 
     /** DEPOSIT
      **************************************************************************/
-    event Deposit(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
+    function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
+        shares = convertToShares(assets);
+        address caller = _msgSender();
 
-    function deposit(uint256 amountToken) external whenNotPaused {
-        _deposit(_msgSender(), amountToken);
-    }
+        _asset.safeTransferFrom(caller, address(this), assets);
+        _mint(receiver, shares);
+        emit Deposit(caller, receiver, assets, shares);
 
-    function _deposit(address user, uint256 amountToken) internal {
-        uint256 numShares = sharesFromTokens(amountToken);
-        _mint(user, numShares);
-
-        emit Deposit(user, amountToken, numShares);
-        // interaction -> will fail if user does not have correct amount
-        token.safeTransferFrom(user, address(this), amountToken);
-
-        // deposit entire balance of `token` into strategies
+        // deposit entire balance of `_asset` into strategies
         depositIntoStrategies();
     }
 
-    function sharesFromTokens(uint256 amountToken) public view returns (uint256) {
-        // Amount of shares you get for a given amount of tokens
-        uint256 numShares;
+    function convertToShares(uint256 assets) public view returns (uint256 shares) {
         uint256 totalShares = totalSupply();
         if (totalShares == 0) {
-            numShares = amountToken;
+            shares = assets;
         } else {
-            numShares = (amountToken * totalShares) / globalTVL();
+            shares = (assets * totalShares) / totalAssets();
         }
-        return numShares;
     }
 
-    // TVL is denominated in `token`.
-    function globalTVL() public view returns (uint256) {
-        return vaultTVL() - lockedProfit() + L1TotalLockedValue;
+    function previewDeposit(uint256 assets) public view returns (uint256 shares) {
+        return convertToShares(assets);
+    }
+
+    function mint(uint256 shares, address receiver) external whenNotPaused returns (uint256 assets) {
+        assets = previewMint(shares);
+        address caller = _msgSender();
+
+        _asset.safeTransferFrom(caller, address(this), assets);
+        _mint(receiver, shares);
+        emit Deposit(caller, receiver, assets, shares);
+
+        depositIntoStrategies();
+    }
+
+    function previewMint(uint256 shares) public view returns (uint256 assets) {
+        // TODO: round up
+        assets = convertToAssets(shares);
     }
 
     /** WITHDRAW / REDEEM
      **************************************************************************/
 
-    event Withdraw(address indexed owner, uint256 tokenAmount, uint256 shareAmount);
-
-    function _redeem(address user, uint256 shares) internal {
-        uint256 valueOfShares = tokensFromShares(shares);
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) external whenNotPaused returns (uint256 assets) {
+        (uint256 assetsToUser, uint256 assetsFee) = _previewRedeem(shares);
+        assets = assetsToUser;
 
         // TODO: handle case where the user is trying to withdraw more value than actually exists in the vault
-        if (valueOfShares > token.balanceOf(address(this))) {}
+        if (assets > _asset.balanceOf(address(this))) {}
 
-        // burn
-        _burn(user, shares);
+        address caller = _msgSender();
+        if (caller != owner) _spendAllowance(owner, caller, shares);
 
-        uint256 userTokens = _applyWithdrawalFee(valueOfShares);
+        // Burn shares and give user equivalent value in `_asset` (minus withdrawal fees)
+        _burn(owner, shares);
 
-        emit Withdraw(user, userTokens, shares);
-        // transfer usdc out
-        token.safeTransfer(user, userTokens);
+        emit Withdraw(caller, receiver, owner, assets, shares);
+
+        _asset.safeTransfer(receiver, assets);
+        _asset.safeTransfer(governance, assetsFee);
     }
 
-    function redeem(uint256 shares) external whenNotPaused {
-        _redeem(_msgSender(), shares);
+    function previewRedeem(uint256 shares) public view returns (uint256 assets) {
+        (assets, ) = _previewRedeem(shares);
     }
 
-    function withdraw(uint256 amountToken) external whenNotPaused {
-        _withdraw(_msgSender(), amountToken);
+    function _previewRedeem(uint256 shares) internal view returns (uint256 assets, uint256 assetsFee) {
+        uint256 rawAssets = convertToAssets(shares);
+        assetsFee = getWithdrawalFee(rawAssets);
+        assets = rawAssets - assetsFee;
     }
 
-    function _withdraw(address user, uint256 amountToken) internal {
-        // If user does not have the correct amount of shares, we revert
-        uint256 numShares = sharesFromTokens(amountToken);
-        _burn(user, numShares);
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) external whenNotPaused returns (uint256 shares) {
+        (uint256 sharesToBurn, uint256 assetsFee) = _previewWithdraw(assets);
+        shares = sharesToBurn;
 
-        // Deduct withdrawal fee from amountToken
-        uint256 userTokens = _applyWithdrawalFee(amountToken);
-        emit Withdraw(user, amountToken, numShares);
-        token.transfer(user, userTokens);
+        // If the owner does not have enough shares, we revert
+        address caller = _msgSender();
+        if (caller != owner) _spendAllowance(owner, caller, shares);
+        _burn(owner, shares);
+
+        emit Withdraw(caller, receiver, owner, assets, shares);
+        _asset.safeTransfer(receiver, assets);
+        _asset.safeTransfer(governance, assetsFee);
     }
 
-    function tokensFromShares(uint256 shares) public view returns (uint256) {
-        // Amount of tokens you get for the given amount of shares.
+    function previewWithdraw(uint256 assets) public view returns (uint256 shares) {
+        // TODO: make sure to round up when doing this conversion
+        (shares, ) = _previewWithdraw(assets);
+    }
+
+    function _previewWithdraw(uint256 assets) public view returns (uint256 shares, uint256 assetsFee) {
+        assetsFee = getWithdrawalFee(assets);
+        shares = convertToShares(assets + assetsFee);
+    }
+
+    function convertToAssets(uint256 shares) public view returns (uint256 assets) {
         uint256 totalShares = totalSupply();
         if (totalShares == 0) {
-            return 0;
+            assets = 0;
         } else {
-            return shares * (globalTVL() / totalShares);
+            assets = shares * (totalAssets() / totalShares);
         }
     }
 
     // Return number of tokens to be given to user after applying withdrawal fee
-    function _applyWithdrawalFee(uint256 tokenAmount) internal returns (uint256) {
+    function getWithdrawalFee(uint256 tokenAmount) public view returns (uint256) {
+        // TODO: round up here
         uint256 feeAmount = (tokenAmount * withdrawalFee) / MAX_BPS;
-        token.transfer(governance, feeAmount);
-        return tokenAmount - feeAmount;
+        return feeAmount;
     }
 
     function _assessFees() internal override {
@@ -259,7 +318,7 @@ contract L2Vault is
 
     function _computeRebalance() internal view returns (bool, uint256) {
         uint256 numSlices = layerRatios.layer1 + layerRatios.layer2;
-        uint256 L1IdealAmount = (layerRatios.layer1 * globalTVL()) / numSlices;
+        uint256 L1IdealAmount = (layerRatios.layer1 * totalAssets()) / numSlices;
 
         bool invest;
         uint256 delta;
@@ -277,7 +336,7 @@ contract L2Vault is
             // Increase balance of `token` to `delta` by withdrawing from strategies.
             // Then transfer `amount` of `token` to L1.
             _liquidate(amount);
-            uint256 amountToSend = Math.min(token.balanceOf(address(this)), amount);
+            uint256 amountToSend = Math.min(_asset.balanceOf(address(this)), amount);
             _transferToL1(amountToSend);
         } else {
             // Send message to L1 telling us how much should be transferred to this vault
@@ -285,15 +344,14 @@ contract L2Vault is
         }
     }
 
-    // TODO: liquidate properly
     function _transferToL1(uint256 amount) internal {
         // Send token
-        token.safeTransfer(address(bridgeEscrow), amount);
+        _asset.safeTransfer(address(bridgeEscrow), amount);
         bridgeEscrow.l2Withdraw(amount);
         emit SendToL1(amount);
 
         // Update bridge state and L1 TVL
-        // It's important to update this number now so that globalTVL() returns a smaller number
+        // It's important to update this number now so that totalAssets() returns a smaller number
         canTransferToL1 = false;
         L1TotalLockedValue += amount;
 
@@ -319,11 +377,11 @@ contract L2Vault is
 
     /// @dev The vault has as many decimals as the input token does
     function detailedTVL() external view override returns (Number memory tvl) {
-        tvl = Number({ num: globalTVL(), decimals: decimals() });
+        tvl = Number({ num: totalAssets(), decimals: decimals() });
     }
 
     function detailedPrice() external view override returns (Number memory price) {
-        price = Number({ num: (globalTVL() * 10**decimals()) / totalSupply(), decimals: decimals() });
+        price = Number({ num: (totalAssets() * 10**decimals()) / totalSupply(), decimals: decimals() });
     }
 
     function detailedTotalSupply() external view override returns (Number memory supply) {
