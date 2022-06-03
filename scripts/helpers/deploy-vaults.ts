@@ -69,7 +69,6 @@ export async function deployVaults(
   let bridgeEscrow = BridgeEscrow__factory.connect(bridgeEscrowAddr, deployerSigner);
   let bridgeEscrowInitTx = await bridgeEscrow.initialize(
     await getContractAddress(l1Vault),
-    config.l1worm,
     wormholeRouters.l1WormholeRouter.address,
     config.l1USDC,
     config.l1ChainManager,
@@ -113,7 +112,6 @@ export async function deployVaults(
   bridgeEscrow = BridgeEscrow__factory.connect(bridgeEscrowAddr, deployerSigner);
   bridgeEscrowInitTx = await bridgeEscrow.initialize(
     await getContractAddress(l2Vault),
-    config.l2worm,
     wormholeRouters.l2WormholeRouter.address,
     config.l2USDC,
     ethers.constants.AddressZero, // there is no root chain manager in polygon
