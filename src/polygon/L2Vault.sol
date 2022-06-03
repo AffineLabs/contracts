@@ -210,9 +210,8 @@ contract L2Vault is
         address receiver,
         address owner
     ) external whenNotPaused returns (uint256 assets) {
-        uint256 rawAssets = previewRedeem(shares);
-        uint256 assetsFee = getWithdrawalFee(rawAssets);
-        assets = rawAssets - assetsFee;
+        (uint256 assetsToUser, uint256 assetsFee) = _previewRedeem(shares);
+        assets = assetsToUser;
 
         // TODO: handle case where the user is trying to withdraw more value than actually exists in the vault
         if (assets > _asset.balanceOf(address(this))) {}
@@ -230,7 +229,13 @@ contract L2Vault is
     }
 
     function previewRedeem(uint256 shares) public view returns (uint256 assets) {
-        assets = convertToAssets(shares);
+        (assets, ) = _previewRedeem(shares);
+    }
+
+    function _previewRedeem(uint256 shares) internal view returns (uint256 assets, uint256 assetsFee) {
+        uint256 rawAssets = convertToAssets(shares);
+        assetsFee = getWithdrawalFee(rawAssets);
+        assets = rawAssets - assetsFee;
     }
 
     function withdraw(
@@ -238,10 +243,10 @@ contract L2Vault is
         address receiver,
         address owner
     ) external whenNotPaused returns (uint256 shares) {
-        // If the owner does not have enough shares, we revert
-        uint256 assetsFee = getWithdrawalFee(assets);
-        shares = previewWithdraw(assets + assetsFee);
+        (uint256 sharesToBurn, uint256 assetsFee) = _previewWithdraw(assets);
+        shares = sharesToBurn;
 
+        // If the owner does not have enough shares, we revert
         address caller = _msgSender();
         if (caller != owner) _spendAllowance(owner, caller, shares);
         _burn(owner, shares);
@@ -251,6 +256,16 @@ contract L2Vault is
         _asset.safeTransfer(governance, assetsFee);
     }
 
+    function previewWithdraw(uint256 assets) public view returns (uint256 shares) {
+        // TODO: make sure to round up when doing this conversion
+        (shares, ) = _previewWithdraw(assets);
+    }
+
+    function _previewWithdraw(uint256 assets) public view returns (uint256 shares, uint256 assetsFee) {
+        assetsFee = getWithdrawalFee(assets);
+        shares = convertToShares(assets + assetsFee);
+    }
+
     function convertToAssets(uint256 shares) public view returns (uint256 assets) {
         uint256 totalShares = totalSupply();
         if (totalShares == 0) {
@@ -258,12 +273,6 @@ contract L2Vault is
         } else {
             assets = shares * (totalAssets() / totalShares);
         }
-    }
-
-    function previewWithdraw(uint256 assets) public view returns (uint256 shares) {
-        // TODO: make sure to round up when doing this conversion
-        // Deduct withdrawal fee from `assets`
-        shares = convertToShares(assets);
     }
 
     // Return number of tokens to be given to user after applying withdrawal fee
