@@ -32,30 +32,10 @@ contract L2Vault is
 {
     using SafeTransferLib for ERC20;
 
-    // Wormhole Router
-    L2WormholeRouter public wormholeRouter;
-
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
     uint256 public L1TotalLockedValue;
 
-    /////// Cross chain rebalancing
-
-    // Represents the amount of tvl (in `token`) that should exist on L1 and L2
-    // E.g. if layer1 == 1 and layer2 == 2 then 1/3 of the TVL should be on L1
-    struct LayerBalanceRatios {
-        uint256 layer1;
-        uint256 layer2;
-    }
-    LayerBalanceRatios public layerRatios;
-
-    // Whether we can send or receive money from L1
-    bool public canTransferToL1;
-    bool public canRequestFromL1;
-
-    event SendToL1(uint256 amount);
-    event ReceiveFromL1(uint256 amount);
-
-    /** Fees
+    /** FEES
      **************************************************************************/
 
     // Fee charged to vault over a year, number is in bps
@@ -70,6 +50,20 @@ contract L2Vault is
     function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
         withdrawalFee = feeBps;
     }
+
+    function _assessFees() internal override {
+        // duration / SECS_PER_YEAR * feebps / MAX_BPS * totalSupply
+        uint256 duration = block.timestamp - lastHarvest;
+
+        uint256 feesBps = (duration * managementFee) / SECS_PER_YEAR;
+        uint256 numSharesToMint = (feesBps * totalSupply()) / MAX_BPS;
+
+        if (numSharesToMint == 0) return;
+        _mint(governance, numSharesToMint);
+    }
+
+    /** INITIALIZATION
+     **************************************************************************/
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {}
@@ -102,6 +96,8 @@ contract L2Vault is
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
+    /** META-TRANSACTION SUPPORT
+     **************************************************************************/
     function _msgSender() internal view override(Context, ContextUpgradeable, BaseRelayRecipient) returns (address) {
         return BaseRelayRecipient._msgSender();
     }
@@ -127,36 +123,14 @@ contract L2Vault is
         }
     }
 
-    function decimals() public view override returns (uint8) {
-        return _asset.decimals();
-    }
-
-    /** ERC4626
+    /** ERC4626 / ERC20 BASICS
      **************************************************************************/
     function asset() public view override(BaseVault, IERC4626) returns (address assetTokenAddress) {
         return address(_asset);
     }
 
-    function totalAssets() public view returns (uint256 totalManagedAssets) {
-        return vaultTVL() - lockedProfit() + L1TotalLockedValue;
-    }
-
-    function maxDeposit(address receiver) public view returns (uint256 maxAssets) {
-        receiver;
-        maxAssets = type(uint256).max;
-    }
-
-    function maxMint(address receiver) public view returns (uint256 maxShares) {
-        receiver;
-        maxShares = type(uint256).max;
-    }
-
-    function maxRedeem(address owner) public view returns (uint256 maxShares) {
-        maxShares = balanceOf(owner);
-    }
-
-    function maxWithdraw(address owner) public view returns (uint256 maxAssets) {
-        maxAssets = convertToAssets(balanceOf(owner));
+    function decimals() public view override returns (uint8) {
+        return _asset.decimals();
     }
 
     /** DEPOSIT
@@ -173,19 +147,6 @@ contract L2Vault is
         depositIntoStrategies();
     }
 
-    function convertToShares(uint256 assets) public view returns (uint256 shares) {
-        uint256 totalShares = totalSupply();
-        if (totalShares == 0) {
-            shares = assets;
-        } else {
-            shares = (assets * totalShares) / totalAssets();
-        }
-    }
-
-    function previewDeposit(uint256 assets) public view returns (uint256 shares) {
-        return convertToShares(assets);
-    }
-
     function mint(uint256 shares, address receiver) external whenNotPaused returns (uint256 assets) {
         assets = previewMint(shares);
         address caller = _msgSender();
@@ -195,11 +156,6 @@ contract L2Vault is
         emit Deposit(caller, receiver, assets, shares);
 
         depositIntoStrategies();
-    }
-
-    function previewMint(uint256 shares) public view returns (uint256 assets) {
-        // TODO: round up
-        assets = convertToAssets(shares);
     }
 
     /** WITHDRAW / REDEEM
@@ -228,16 +184,6 @@ contract L2Vault is
         _asset.safeTransfer(governance, assetsFee);
     }
 
-    function previewRedeem(uint256 shares) public view returns (uint256 assets) {
-        (assets, ) = _previewRedeem(shares);
-    }
-
-    function _previewRedeem(uint256 shares) internal view returns (uint256 assets, uint256 assetsFee) {
-        uint256 rawAssets = convertToAssets(shares);
-        assetsFee = getWithdrawalFee(rawAssets);
-        assets = rawAssets - assetsFee;
-    }
-
     function withdraw(
         uint256 assets,
         address receiver,
@@ -256,14 +202,20 @@ contract L2Vault is
         _asset.safeTransfer(governance, assetsFee);
     }
 
-    function previewWithdraw(uint256 assets) public view returns (uint256 shares) {
-        // TODO: make sure to round up when doing this conversion
-        (shares, ) = _previewWithdraw(assets);
+    /** EXCHANGE RATES
+     **************************************************************************/
+
+    function totalAssets() public view returns (uint256 totalManagedAssets) {
+        return vaultTVL() - lockedProfit() + L1TotalLockedValue;
     }
 
-    function _previewWithdraw(uint256 assets) public view returns (uint256 shares, uint256 assetsFee) {
-        assetsFee = getWithdrawalFee(assets);
-        shares = convertToShares(assets + assetsFee);
+    function convertToShares(uint256 assets) public view returns (uint256 shares) {
+        uint256 totalShares = totalSupply();
+        if (totalShares == 0) {
+            shares = assets;
+        } else {
+            shares = (assets * totalShares) / totalAssets();
+        }
     }
 
     function convertToAssets(uint256 shares) public view returns (uint256 assets) {
@@ -275,6 +227,35 @@ contract L2Vault is
         }
     }
 
+    function previewDeposit(uint256 assets) public view returns (uint256 shares) {
+        return convertToShares(assets);
+    }
+
+    function previewMint(uint256 shares) public view returns (uint256 assets) {
+        // TODO: round up
+        assets = convertToAssets(shares);
+    }
+
+    function previewWithdraw(uint256 assets) public view returns (uint256 shares) {
+        // TODO: make sure to round up when doing this conversion
+        (shares, ) = _previewWithdraw(assets);
+    }
+
+    function _previewWithdraw(uint256 assets) public view returns (uint256 shares, uint256 assetsFee) {
+        assetsFee = getWithdrawalFee(assets);
+        shares = convertToShares(assets + assetsFee);
+    }
+
+    function previewRedeem(uint256 shares) public view returns (uint256 assets) {
+        (assets, ) = _previewRedeem(shares);
+    }
+
+    function _previewRedeem(uint256 shares) internal view returns (uint256 assets, uint256 assetsFee) {
+        uint256 rawAssets = convertToAssets(shares);
+        assetsFee = getWithdrawalFee(rawAssets);
+        assets = rawAssets - assetsFee;
+    }
+
     // Return number of tokens to be given to user after applying withdrawal fee
     function getWithdrawalFee(uint256 tokenAmount) public view returns (uint256) {
         // TODO: round up here
@@ -282,16 +263,47 @@ contract L2Vault is
         return feeAmount;
     }
 
-    function _assessFees() internal override {
-        // duration / SECS_PER_YEAR * feebps / MAX_BPS * totalSupply
-        uint256 duration = block.timestamp - lastHarvest;
+    /** DEPOSIT/WITHDRAWAL LIMITS
+     **************************************************************************/
 
-        uint256 feesBps = (duration * managementFee) / SECS_PER_YEAR;
-        uint256 numSharesToMint = (feesBps * totalSupply()) / MAX_BPS;
-
-        if (numSharesToMint == 0) return;
-        _mint(governance, numSharesToMint);
+    function maxDeposit(address receiver) public view returns (uint256 maxAssets) {
+        receiver;
+        maxAssets = type(uint256).max;
     }
+
+    function maxMint(address receiver) public view returns (uint256 maxShares) {
+        receiver;
+        maxShares = type(uint256).max;
+    }
+
+    function maxRedeem(address owner) public view returns (uint256 maxShares) {
+        maxShares = balanceOf(owner);
+    }
+
+    function maxWithdraw(address owner) public view returns (uint256 maxAssets) {
+        maxAssets = convertToAssets(balanceOf(owner));
+    }
+
+    /** CROSS-CHAIN REBALANCING
+     **************************************************************************/
+
+    // Wormhole Router
+    L2WormholeRouter public wormholeRouter;
+
+    // Represents the amount of tvl (in `token`) that should exist on L1 and L2
+    // E.g. if layer1 == 1 and layer2 == 2 then 1/3 of the TVL should be on L1
+    struct LayerBalanceRatios {
+        uint256 layer1;
+        uint256 layer2;
+    }
+    LayerBalanceRatios public layerRatios;
+
+    // Whether we can send or receive money from L1
+    bool public canTransferToL1;
+    bool public canRequestFromL1;
+
+    event SendToL1(uint256 amount);
+    event ReceiveFromL1(uint256 amount);
 
     function receiveTVL(uint256 tvl, bool received) external {
         require(msg.sender == address(wormholeRouter), "Only wormhole router");
