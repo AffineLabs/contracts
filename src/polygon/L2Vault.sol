@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
+import { FixedPointMathLib } from "solmate/src/utils/FixedPointMathLib.sol";
 
 import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -36,6 +37,7 @@ contract L2Vault is
     IERC4626
 {
     using SafeTransferLib for ERC20;
+    using FixedPointMathLib for uint256;
 
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
     uint256 public L1TotalLockedValue;
@@ -214,6 +216,11 @@ contract L2Vault is
 
     /** EXCHANGE RATES
      **************************************************************************/
+    enum Rounding {
+        Down, // Toward negative infinity
+        Up, // Toward infinity
+        Zero // Toward zero
+    }
 
     /// @notice See {IERC4262-totalAssets}
     function totalAssets() public view returns (uint256 totalManagedAssets) {
@@ -222,45 +229,61 @@ contract L2Vault is
 
     /// @notice See {IERC4262-convertToShares}
     function convertToShares(uint256 assets) public view returns (uint256 shares) {
+        shares = _convertToShares(assets, Rounding.Down);
+    }
+
+    /// @dev In previewDeposit we want to round down, but in previewWithdraw we want to round up
+    function _convertToShares(uint256 assets, Rounding roundingDirection) internal view returns (uint256 shares) {
         uint256 totalShares = totalSupply();
         if (totalShares == 0) {
             shares = assets;
         } else {
-            shares = (assets * totalShares) / totalAssets();
+            if (roundingDirection == Rounding.Up) {
+                shares = assets.mulDivUp(totalShares, totalAssets());
+            } else {
+                shares = assets.mulDivDown(totalShares, totalAssets());
+            }
         }
     }
 
     /// @notice See {IERC4262-convertToAssets}
     function convertToAssets(uint256 shares) public view returns (uint256 assets) {
+        assets = _convertToAssets(shares, Rounding.Down);
+    }
+
+    /// @dev In previewMint, we want to round up, but in previewRedeem we want to round down
+    function _convertToAssets(uint256 shares, Rounding roundingDirection) internal view returns (uint256 assets) {
         uint256 totalShares = totalSupply();
         if (totalShares == 0) {
             assets = 0;
         } else {
-            assets = shares * (totalAssets() / totalShares);
+            if (roundingDirection == Rounding.Up) {
+                assets = shares.mulDivUp(totalAssets(), totalShares);
+            } else {
+                assets = shares.mulDivDown(totalAssets(), totalShares);
+            }
         }
     }
 
     /// @notice See {IERC4262-previewDeposit}
     function previewDeposit(uint256 assets) public view returns (uint256 shares) {
-        return convertToShares(assets);
+        return _convertToShares(assets, Rounding.Down);
     }
 
     /// @notice See {IERC4262-previewMint}
     function previewMint(uint256 shares) public view returns (uint256 assets) {
-        // TODO: round up
-        assets = convertToAssets(shares);
+        assets = _convertToAssets(shares, Rounding.Up);
     }
 
     /// @notice See {IERC4262-previewWithdraw}
     function previewWithdraw(uint256 assets) public view returns (uint256 shares) {
-        // TODO: make sure to round up when doing this conversion
         (shares, ) = _previewWithdraw(assets);
     }
 
     /// @dev A little helper that gets us the amount of shares to burn and the amount of assets to send to governance
     function _previewWithdraw(uint256 assets) internal view returns (uint256 shares, uint256 assetsFee) {
         assetsFee = getWithdrawalFee(assets);
-        shares = convertToShares(assets + assetsFee);
+        shares = _convertToShares(assets + assetsFee, Rounding.Up);
     }
 
     /// @notice See {IERC4262-previewRedeem}
@@ -270,15 +293,14 @@ contract L2Vault is
 
     /// @dev See `_previewWithdraw`.
     function _previewRedeem(uint256 shares) internal view returns (uint256 assets, uint256 assetsFee) {
-        uint256 rawAssets = convertToAssets(shares);
+        uint256 rawAssets = _convertToAssets(shares, Rounding.Down);
         assetsFee = getWithdrawalFee(rawAssets);
         assets = rawAssets - assetsFee;
     }
 
     /// @dev  Return amount of `asset` to be given to user after applying withdrawal fee
     function getWithdrawalFee(uint256 tokenAmount) internal view returns (uint256) {
-        // TODO: round up here
-        uint256 feeAmount = (tokenAmount * withdrawalFee) / MAX_BPS;
+        uint256 feeAmount = tokenAmount.mulDivUp(withdrawalFee, MAX_BPS);
         return feeAmount;
     }
 
