@@ -21,6 +21,10 @@ import { DetailedShare } from "./Detailed.sol";
 import { L2WormholeRouter } from "./L2WormholeRouter.sol";
 import { IERC4626 } from "../interfaces/IERC4626.sol";
 
+/**
+ * @notice An L2 vault. This is a cross-chain vault, i.e. some funds deposited here will be moved to L1 for investment.
+ * @dev This vault is ERC4626 compliant. See the EIP description here: https://eips.ethereum.org/EIPS/eip-4626.
+ */
 contract L2Vault is
     ERC20Upgradeable,
     UUPSUpgradeable,
@@ -125,6 +129,8 @@ contract L2Vault is
 
     /** ERC4626 / ERC20 BASICS
      **************************************************************************/
+
+    /// @notice See {IERC4262-asset}
     function asset() public view override(BaseVault, IERC4626) returns (address assetTokenAddress) {
         return address(_asset);
     }
@@ -135,6 +141,7 @@ contract L2Vault is
 
     /** DEPOSIT
      **************************************************************************/
+    /// @notice See {IERC4262-deposit}
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
         shares = convertToShares(assets);
         address caller = _msgSender();
@@ -147,6 +154,7 @@ contract L2Vault is
         depositIntoStrategies();
     }
 
+    /// @notice See {IERC4262-mint}
     function mint(uint256 shares, address receiver) external whenNotPaused returns (uint256 assets) {
         assets = previewMint(shares);
         address caller = _msgSender();
@@ -160,7 +168,7 @@ contract L2Vault is
 
     /** WITHDRAW / REDEEM
      **************************************************************************/
-
+    /// @notice See {IERC4262-redeem}
     function redeem(
         uint256 shares,
         address receiver,
@@ -184,6 +192,7 @@ contract L2Vault is
         _asset.safeTransfer(governance, assetsFee);
     }
 
+    /// @notice See {IERC4262-withdraw}
     function withdraw(
         uint256 assets,
         address receiver,
@@ -205,10 +214,12 @@ contract L2Vault is
     /** EXCHANGE RATES
      **************************************************************************/
 
+    /// @notice See {IERC4262-totalAssets}
     function totalAssets() public view returns (uint256 totalManagedAssets) {
         return vaultTVL() - lockedProfit() + L1TotalLockedValue;
     }
 
+    /// @notice See {IERC4262-convertToShares}
     function convertToShares(uint256 assets) public view returns (uint256 shares) {
         uint256 totalShares = totalSupply();
         if (totalShares == 0) {
@@ -218,6 +229,7 @@ contract L2Vault is
         }
     }
 
+    /// @notice See {IERC4262-convertToAssets}
     function convertToAssets(uint256 shares) public view returns (uint256 assets) {
         uint256 totalShares = totalSupply();
         if (totalShares == 0) {
@@ -227,37 +239,43 @@ contract L2Vault is
         }
     }
 
+    /// @notice See {IERC4262-previewDeposit}
     function previewDeposit(uint256 assets) public view returns (uint256 shares) {
         return convertToShares(assets);
     }
 
+    /// @notice See {IERC4262-previewMint}
     function previewMint(uint256 shares) public view returns (uint256 assets) {
         // TODO: round up
         assets = convertToAssets(shares);
     }
 
+    /// @notice See {IERC4262-previewWithdraw}
     function previewWithdraw(uint256 assets) public view returns (uint256 shares) {
         // TODO: make sure to round up when doing this conversion
         (shares, ) = _previewWithdraw(assets);
     }
 
+    /// @dev A little helper that gets us the amount of shares to burn and the amount of assets to send to governance
     function _previewWithdraw(uint256 assets) internal view returns (uint256 shares, uint256 assetsFee) {
         assetsFee = getWithdrawalFee(assets);
         shares = convertToShares(assets + assetsFee);
     }
 
+    /// @notice See {IERC4262-previewRedeem}
     function previewRedeem(uint256 shares) public view returns (uint256 assets) {
         (assets, ) = _previewRedeem(shares);
     }
 
+    /// @dev See `_previewWithdraw`.
     function _previewRedeem(uint256 shares) internal view returns (uint256 assets, uint256 assetsFee) {
         uint256 rawAssets = convertToAssets(shares);
         assetsFee = getWithdrawalFee(rawAssets);
         assets = rawAssets - assetsFee;
     }
 
-    // Return number of tokens to be given to user after applying withdrawal fee
-    function getWithdrawalFee(uint256 tokenAmount) public view returns (uint256) {
+    /// @dev  Return amount of `asset` to be given to user after applying withdrawal fee
+    function getWithdrawalFee(uint256 tokenAmount) internal view returns (uint256) {
         // TODO: round up here
         uint256 feeAmount = (tokenAmount * withdrawalFee) / MAX_BPS;
         return feeAmount;
@@ -265,21 +283,24 @@ contract L2Vault is
 
     /** DEPOSIT/WITHDRAWAL LIMITS
      **************************************************************************/
-
+    /// @notice See {IERC4262-maxDeposit}
     function maxDeposit(address receiver) public view returns (uint256 maxAssets) {
         receiver;
         maxAssets = type(uint256).max;
     }
 
+    /// @notice See {IERC4262-maxMint}
     function maxMint(address receiver) public view returns (uint256 maxShares) {
         receiver;
         maxShares = type(uint256).max;
     }
 
+    /// @notice See {IERC4262-maxRedeem}
     function maxRedeem(address owner) public view returns (uint256 maxShares) {
         maxShares = balanceOf(owner);
     }
 
+    /// @notice See {IERC4262-maxWithdraw}
     function maxWithdraw(address owner) public view returns (uint256 maxAssets) {
         maxAssets = convertToAssets(balanceOf(owner));
     }
