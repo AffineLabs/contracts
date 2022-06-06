@@ -241,7 +241,7 @@ contract L2Vault is
         (shares, ) = _previewWithdraw(assets);
     }
 
-    function _previewWithdraw(uint256 assets) public view returns (uint256 shares, uint256 assetsFee) {
+    function _previewWithdraw(uint256 assets) internal view returns (uint256 shares, uint256 assetsFee) {
         assetsFee = getWithdrawalFee(assets);
         shares = convertToShares(assets + assetsFee);
     }
