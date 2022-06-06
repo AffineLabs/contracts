@@ -24,6 +24,7 @@ import { IERC4626 } from "../interfaces/IERC4626.sol";
 /**
  * @notice An L2 vault. This is a cross-chain vault, i.e. some funds deposited here will be moved to L1 for investment.
  * @dev This vault is ERC4626 compliant. See the EIP description here: https://eips.ethereum.org/EIPS/eip-4626.
+ * @author Alpine Devs. Inspired by OpenZeppelin and Rari-Capital.
  */
 contract L2Vault is
     ERC20Upgradeable,
