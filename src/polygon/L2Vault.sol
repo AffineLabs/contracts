@@ -325,7 +325,7 @@ contract L2Vault is
 
     /// @notice See {IERC4262-maxWithdraw}
     function maxWithdraw(address owner) public view returns (uint256 maxAssets) {
-        maxAssets = convertToAssets(balanceOf(owner));
+        maxAssets = _convertToAssets(balanceOf(owner), Rounding.Down);
     }
 
     /** CROSS-CHAIN REBALANCING
