@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
+import { FixedPointMathLib } from "solmate/src/utils/FixedPointMathLib.sol";
 
 import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -21,6 +22,11 @@ import { DetailedShare } from "./Detailed.sol";
 import { L2WormholeRouter } from "./L2WormholeRouter.sol";
 import { IERC4626 } from "../interfaces/IERC4626.sol";
 
+/**
+ * @notice An L2 vault. This is a cross-chain vault, i.e. some funds deposited here will be moved to L1 for investment.
+ * @dev This vault is ERC4626 compliant. See the EIP description here: https://eips.ethereum.org/EIPS/eip-4626.
+ * @author Alpine Devs. Inspired by OpenZeppelin and Rari-Capital.
+ */
 contract L2Vault is
     ERC20Upgradeable,
     UUPSUpgradeable,
@@ -31,31 +37,12 @@ contract L2Vault is
     IERC4626
 {
     using SafeTransferLib for ERC20;
-
-    // Wormhole Router
-    L2WormholeRouter public wormholeRouter;
+    using FixedPointMathLib for uint256;
 
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
     uint256 public L1TotalLockedValue;
 
-    /////// Cross chain rebalancing
-
-    // Represents the amount of tvl (in `token`) that should exist on L1 and L2
-    // E.g. if layer1 == 1 and layer2 == 2 then 1/3 of the TVL should be on L1
-    struct LayerBalanceRatios {
-        uint256 layer1;
-        uint256 layer2;
-    }
-    LayerBalanceRatios public layerRatios;
-
-    // Whether we can send or receive money from L1
-    bool public canTransferToL1;
-    bool public canRequestFromL1;
-
-    event SendToL1(uint256 amount);
-    event ReceiveFromL1(uint256 amount);
-
-    /** Fees
+    /** FEES
      **************************************************************************/
 
     // Fee charged to vault over a year, number is in bps
@@ -70,6 +57,20 @@ contract L2Vault is
     function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
         withdrawalFee = feeBps;
     }
+
+    function _assessFees() internal override {
+        // duration / SECS_PER_YEAR * feebps / MAX_BPS * totalSupply
+        uint256 duration = block.timestamp - lastHarvest;
+
+        uint256 feesBps = (duration * managementFee) / SECS_PER_YEAR;
+        uint256 numSharesToMint = (feesBps * totalSupply()) / MAX_BPS;
+
+        if (numSharesToMint == 0) return;
+        _mint(governance, numSharesToMint);
+    }
+
+    /** INITIALIZATION
+     **************************************************************************/
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {}
@@ -102,6 +103,8 @@ contract L2Vault is
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
+    /** META-TRANSACTION SUPPORT
+     **************************************************************************/
     function _msgSender() internal view override(Context, ContextUpgradeable, BaseRelayRecipient) returns (address) {
         return BaseRelayRecipient._msgSender();
     }
@@ -127,40 +130,21 @@ contract L2Vault is
         }
     }
 
-    function decimals() public view override returns (uint8) {
-        return _asset.decimals();
-    }
-
-    /** ERC4626
+    /** ERC4626 / ERC20 BASICS
      **************************************************************************/
+
+    /// @notice See {IERC4262-asset}
     function asset() public view override(BaseVault, IERC4626) returns (address assetTokenAddress) {
         return address(_asset);
     }
 
-    function totalAssets() public view returns (uint256 totalManagedAssets) {
-        return vaultTVL() - lockedProfit() + L1TotalLockedValue;
-    }
-
-    function maxDeposit(address receiver) public view returns (uint256 maxAssets) {
-        receiver;
-        maxAssets = type(uint256).max;
-    }
-
-    function maxMint(address receiver) public view returns (uint256 maxShares) {
-        receiver;
-        maxShares = type(uint256).max;
-    }
-
-    function maxRedeem(address owner) public view returns (uint256 maxShares) {
-        maxShares = balanceOf(owner);
-    }
-
-    function maxWithdraw(address owner) public view returns (uint256 maxAssets) {
-        maxAssets = convertToAssets(balanceOf(owner));
+    function decimals() public view override returns (uint8) {
+        return _asset.decimals();
     }
 
     /** DEPOSIT
      **************************************************************************/
+    /// @notice See {IERC4262-deposit}
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
         shares = convertToShares(assets);
         address caller = _msgSender();
@@ -173,19 +157,7 @@ contract L2Vault is
         depositIntoStrategies();
     }
 
-    function convertToShares(uint256 assets) public view returns (uint256 shares) {
-        uint256 totalShares = totalSupply();
-        if (totalShares == 0) {
-            shares = assets;
-        } else {
-            shares = (assets * totalShares) / totalAssets();
-        }
-    }
-
-    function previewDeposit(uint256 assets) public view returns (uint256 shares) {
-        return convertToShares(assets);
-    }
-
+    /// @notice See {IERC4262-mint}
     function mint(uint256 shares, address receiver) external whenNotPaused returns (uint256 assets) {
         assets = previewMint(shares);
         address caller = _msgSender();
@@ -197,14 +169,9 @@ contract L2Vault is
         depositIntoStrategies();
     }
 
-    function previewMint(uint256 shares) public view returns (uint256 assets) {
-        // TODO: round up
-        assets = convertToAssets(shares);
-    }
-
     /** WITHDRAW / REDEEM
      **************************************************************************/
-
+    /// @notice See {IERC4262-redeem}
     function redeem(
         uint256 shares,
         address receiver,
@@ -228,16 +195,7 @@ contract L2Vault is
         _asset.safeTransfer(governance, assetsFee);
     }
 
-    function previewRedeem(uint256 shares) public view returns (uint256 assets) {
-        (assets, ) = _previewRedeem(shares);
-    }
-
-    function _previewRedeem(uint256 shares) internal view returns (uint256 assets, uint256 assetsFee) {
-        uint256 rawAssets = convertToAssets(shares);
-        assetsFee = getWithdrawalFee(rawAssets);
-        assets = rawAssets - assetsFee;
-    }
-
+    /// @notice See {IERC4262-withdraw}
     function withdraw(
         uint256 assets,
         address receiver,
@@ -256,42 +214,140 @@ contract L2Vault is
         _asset.safeTransfer(governance, assetsFee);
     }
 
-    function previewWithdraw(uint256 assets) public view returns (uint256 shares) {
-        // TODO: make sure to round up when doing this conversion
-        (shares, ) = _previewWithdraw(assets);
+    /** EXCHANGE RATES
+     **************************************************************************/
+    enum Rounding {
+        Down, // Toward negative infinity
+        Up, // Toward infinity
+        Zero // Toward zero
     }
 
-    function _previewWithdraw(uint256 assets) public view returns (uint256 shares, uint256 assetsFee) {
-        assetsFee = getWithdrawalFee(assets);
-        shares = convertToShares(assets + assetsFee);
+    /// @notice See {IERC4262-totalAssets}
+    function totalAssets() public view returns (uint256 totalManagedAssets) {
+        return vaultTVL() - lockedProfit() + L1TotalLockedValue;
     }
 
+    /// @notice See {IERC4262-convertToShares}
+    function convertToShares(uint256 assets) public view returns (uint256 shares) {
+        shares = _convertToShares(assets, Rounding.Down);
+    }
+
+    /// @dev In previewDeposit we want to round down, but in previewWithdraw we want to round up
+    function _convertToShares(uint256 assets, Rounding roundingDirection) internal view returns (uint256 shares) {
+        uint256 totalShares = totalSupply();
+        if (totalShares == 0) {
+            shares = assets;
+        } else {
+            if (roundingDirection == Rounding.Up) {
+                shares = assets.mulDivUp(totalShares, totalAssets());
+            } else {
+                shares = assets.mulDivDown(totalShares, totalAssets());
+            }
+        }
+    }
+
+    /// @notice See {IERC4262-convertToAssets}
     function convertToAssets(uint256 shares) public view returns (uint256 assets) {
+        assets = _convertToAssets(shares, Rounding.Down);
+    }
+
+    /// @dev In previewMint, we want to round up, but in previewRedeem we want to round down
+    function _convertToAssets(uint256 shares, Rounding roundingDirection) internal view returns (uint256 assets) {
         uint256 totalShares = totalSupply();
         if (totalShares == 0) {
             assets = 0;
         } else {
-            assets = shares * (totalAssets() / totalShares);
+            if (roundingDirection == Rounding.Up) {
+                assets = shares.mulDivUp(totalAssets(), totalShares);
+            } else {
+                assets = shares.mulDivDown(totalAssets(), totalShares);
+            }
         }
     }
 
-    // Return number of tokens to be given to user after applying withdrawal fee
-    function getWithdrawalFee(uint256 tokenAmount) public view returns (uint256) {
-        // TODO: round up here
-        uint256 feeAmount = (tokenAmount * withdrawalFee) / MAX_BPS;
+    /// @notice See {IERC4262-previewDeposit}
+    function previewDeposit(uint256 assets) public view returns (uint256 shares) {
+        return _convertToShares(assets, Rounding.Down);
+    }
+
+    /// @notice See {IERC4262-previewMint}
+    function previewMint(uint256 shares) public view returns (uint256 assets) {
+        assets = _convertToAssets(shares, Rounding.Up);
+    }
+
+    /// @notice See {IERC4262-previewWithdraw}
+    function previewWithdraw(uint256 assets) public view returns (uint256 shares) {
+        (shares, ) = _previewWithdraw(assets);
+    }
+
+    /// @dev A little helper that gets us the amount of shares to burn and the amount of assets to send to governance
+    function _previewWithdraw(uint256 assets) internal view returns (uint256 shares, uint256 assetsFee) {
+        assetsFee = getWithdrawalFee(assets);
+        shares = _convertToShares(assets + assetsFee, Rounding.Up);
+    }
+
+    /// @notice See {IERC4262-previewRedeem}
+    function previewRedeem(uint256 shares) public view returns (uint256 assets) {
+        (assets, ) = _previewRedeem(shares);
+    }
+
+    /// @dev See `_previewWithdraw`.
+    function _previewRedeem(uint256 shares) internal view returns (uint256 assets, uint256 assetsFee) {
+        uint256 rawAssets = _convertToAssets(shares, Rounding.Down);
+        assetsFee = getWithdrawalFee(rawAssets);
+        assets = rawAssets - assetsFee;
+    }
+
+    /// @dev  Return amount of `asset` to be given to user after applying withdrawal fee
+    function getWithdrawalFee(uint256 tokenAmount) internal view returns (uint256) {
+        uint256 feeAmount = tokenAmount.mulDivUp(withdrawalFee, MAX_BPS);
         return feeAmount;
     }
 
-    function _assessFees() internal override {
-        // duration / SECS_PER_YEAR * feebps / MAX_BPS * totalSupply
-        uint256 duration = block.timestamp - lastHarvest;
-
-        uint256 feesBps = (duration * managementFee) / SECS_PER_YEAR;
-        uint256 numSharesToMint = (feesBps * totalSupply()) / MAX_BPS;
-
-        if (numSharesToMint == 0) return;
-        _mint(governance, numSharesToMint);
+    /** DEPOSIT/WITHDRAWAL LIMITS
+     **************************************************************************/
+    /// @notice See {IERC4262-maxDeposit}
+    function maxDeposit(address receiver) public view returns (uint256 maxAssets) {
+        receiver;
+        maxAssets = type(uint256).max;
     }
+
+    /// @notice See {IERC4262-maxMint}
+    function maxMint(address receiver) public view returns (uint256 maxShares) {
+        receiver;
+        maxShares = type(uint256).max;
+    }
+
+    /// @notice See {IERC4262-maxRedeem}
+    function maxRedeem(address owner) public view returns (uint256 maxShares) {
+        maxShares = balanceOf(owner);
+    }
+
+    /// @notice See {IERC4262-maxWithdraw}
+    function maxWithdraw(address owner) public view returns (uint256 maxAssets) {
+        maxAssets = _convertToAssets(balanceOf(owner), Rounding.Down);
+    }
+
+    /** CROSS-CHAIN REBALANCING
+     **************************************************************************/
+
+    // Wormhole Router
+    L2WormholeRouter public wormholeRouter;
+
+    // Represents the amount of tvl (in `token`) that should exist on L1 and L2
+    // E.g. if layer1 == 1 and layer2 == 2 then 1/3 of the TVL should be on L1
+    struct LayerBalanceRatios {
+        uint256 layer1;
+        uint256 layer2;
+    }
+    LayerBalanceRatios public layerRatios;
+
+    // Whether we can send or receive money from L1
+    bool public canTransferToL1;
+    bool public canRequestFromL1;
+
+    event SendToL1(uint256 amount);
+    event ReceiveFromL1(uint256 amount);
 
     function receiveTVL(uint256 tvl, bool received) external {
         require(msg.sender == address(wormholeRouter), "Only wormhole router");
