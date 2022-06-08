@@ -7,6 +7,7 @@ import { BlockchainInfo } from "./constants/types";
 import defenderClient from "./defender-client";
 import { Contract as DefenderContract } from "defender-admin-client";
 import { Network as DefenderNetwork } from "defender-base-client";
+import axios from "axios";
 
 // Wayaround for https://github.com/nomiclabs/hardhat/issues/2162
 export async function getContractAddress(contract: Contract): Promise<string> {
@@ -71,5 +72,13 @@ export async function addToAddressBookAndDefender(
   addressBook[contractTicker] = entry;
 
   await outputJSON(addressBookPath, addressBook, { spaces: 2 });
-  await addContractToDefender(blockchainInfo, contractTicker, contractAddr, abi, version);
+  return addContractToDefender(blockchainInfo, contractTicker, contractAddr, abi, version);
+}
+
+export async function readAddressBook(contractVersion: string = "stable") {
+  const { data: addressBook } = await axios.get(
+    `https://sc-abis.s3.us-east-2.amazonaws.com/${contractVersion}/addressbook.json`,
+  );
+  console.log({ addressBook });
+  return addressBook;
 }
