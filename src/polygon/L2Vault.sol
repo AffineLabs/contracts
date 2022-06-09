@@ -307,13 +307,13 @@ contract L2Vault is
     /** DEPOSIT/WITHDRAWAL LIMITS
      **************************************************************************/
     /// @notice See {IERC4262-maxDeposit}
-    function maxDeposit(address receiver) public view returns (uint256 maxAssets) {
+    function maxDeposit(address receiver) public pure returns (uint256 maxAssets) {
         receiver;
         maxAssets = type(uint256).max;
     }
 
     /// @notice See {IERC4262-maxMint}
-    function maxMint(address receiver) public view returns (uint256 maxShares) {
+    function maxMint(address receiver) public pure returns (uint256 maxShares) {
         receiver;
         maxShares = type(uint256).max;
     }
