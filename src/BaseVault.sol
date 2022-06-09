@@ -44,6 +44,9 @@ contract BaseVault is AccessControl {
         _asset = vaultAsset;
         wormhole = _wormhole;
 
+        // All roles use the default admin role
+        // governance has the admin role and can grant/remove a role to any account
+        _grantRole(DEFAULT_ADMIN_ROLE, governance);
         _grantRole(harvesterRole, governance);
         _grantRole(queueOperatorRole, governance);
 

@@ -16,8 +16,7 @@ async function mintUSDC() {
   const strategy = MintableStrategy__factory.connect(strategyAddr, signer);
   // Figure out how much tvl the vault has
   const l2Vault = L2Vault__factory.connect(await strategy.vault(), signer);
-  // TODO: run a release and change this to `totalAssets`
-  const vaultTVL = await l2Vault.vaultTVL();
+  const vaultTVL = await l2Vault.totalAssets();
 
   console.log({ vaultTVL });
 
