@@ -16,7 +16,6 @@ contract BridgeEscrow {
 
     // Number of transactions sent by opposite vault to wormhole contract on opposite chain
     int32 public vaultNonce = -1;
-    IWormhole public wormhole;
     address public vault;
     ERC20 public token;
     IRootChainManager public rootChainManager;
@@ -31,7 +30,6 @@ contract BridgeEscrow {
 
     function initialize(
         address _vault,
-        IWormhole _wormhole,
         address _wormholerRouter,
         ERC20 _token,
         IRootChainManager manager
@@ -39,7 +37,6 @@ contract BridgeEscrow {
         require(msg.sender == owner, "ONLY_OWNER");
         require(!initialized, "INIT_DONE");
         vault = _vault;
-        wormhole = _wormhole;
         wormholeRouter = _wormholerRouter;
         token = _token;
         rootChainManager = manager;

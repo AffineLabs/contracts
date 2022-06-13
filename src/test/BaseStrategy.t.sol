@@ -14,7 +14,7 @@ import { BaseVault } from "../BaseVault.sol";
 contract MockStrategy is BaseStrategy {
     constructor(BaseVault _vault) {
         vault = _vault;
-        token = vault.token();
+        token = ERC20(vault.asset());
     }
 
     function invest(uint256 amount) external override {}
@@ -49,7 +49,7 @@ contract BaseStrategyTest is TestPlus {
         strategy.sweep(rewardToken);
 
         // Will revert if trying to sell `token` of BaseStrategy
-        ERC20 assetToken = strategy.vault().token();
+        ERC20 assetToken = ERC20(strategy.vault().asset());
         vm.expectRevert(bytes("!token"));
         strategy.sweep(assetToken);
 

@@ -114,7 +114,7 @@ const config: HardhatUserConfig = {
     target: "ethers-v5",
   },
   mocha: {
-    timeout: 3600000,
+    timeout: 7200000,
   },
   abiExporter: {
     runOnCompile: true,

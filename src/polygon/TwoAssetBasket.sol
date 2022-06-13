@@ -86,7 +86,14 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
 
     /** DEPOSIT / WITHDRAW
      **************************************************************************/
-    event Deposit(address indexed caller, address indexed owner, uint256 tokenAmount, uint256 shareAmount);
+    event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
+    event Withdraw(
+        address indexed caller,
+        address indexed receiver,
+        address indexed owner,
+        uint256 assets,
+        uint256 shares
+    );
 
     function deposit(uint256 amountInput, address receiver) external whenNotPaused returns (uint256 shares) {
         // Get current amounts of btc/eth (in dollars) => 8 decimals
@@ -209,7 +216,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
         // TODO: fix approvals, anyone can burn a user's shares now
         _burn(owner, numShares);
 
-        emit Withdraw(_msgSender(), receiver, amountInput, numShares);
+        emit Withdraw(_msgSender(), receiver, owner, amountInput, numShares);
         inputToken.transfer(receiver, inputReceived);
     }
 

@@ -27,19 +27,26 @@ contract BaseVault is AccessControl {
      **************************************************************************/
 
     /// @notice The token that the vault takes in and gives to strategies, e.g. USDC
-    ERC20 public token;
+    ERC20 internal _asset;
+
+    function asset() public view virtual returns (address) {
+        return address(_asset);
+    }
 
     // TODO: handle access control in a better way
     function init(
         address _governance,
-        ERC20 _token,
+        ERC20 vaultAsset,
         IWormhole _wormhole,
         BridgeEscrow _bridgeEscrow
     ) public {
         governance = _governance;
-        token = _token;
+        _asset = vaultAsset;
         wormhole = _wormhole;
 
+        // All roles use the default admin role
+        // governance has the admin role and can grant/remove a role to any account
+        _grantRole(DEFAULT_ADMIN_ROLE, governance);
         _grantRole(harvesterRole, governance);
         _grantRole(queueOperatorRole, governance);
 
@@ -259,7 +266,7 @@ contract BaseVault is AccessControl {
         }
 
         // Approve tokenAmount to the strategy so we can deposit.
-        token.safeApprove(address(strategy), tokenAmount);
+        _asset.safeApprove(address(strategy), tokenAmount);
 
         // Deposit into the strategy, will revert upon failure
         strategy.invest(tokenAmount);
@@ -268,7 +275,7 @@ contract BaseVault is AccessControl {
 
     /// @notice Deposit entire balance of `token` into strategies according to each strategies' `tvlBps`.
     function depositIntoStrategies() internal {
-        uint256 totalBal = token.balanceOf(address(this));
+        uint256 totalBal = _asset.balanceOf(address(this));
         // All non-zero strategies are active
         uint256 length = withdrawalQueue.length;
         for (uint256 i = 0; i < length; i++) {
@@ -393,7 +400,7 @@ contract BaseVault is AccessControl {
 
     /// @notice The total amount of the underlying asset the vault has.
     function vaultTVL() public view returns (uint256) {
-        return token.balanceOf(address(this)) + totalStrategyHoldings;
+        return _asset.balanceOf(address(this)) + totalStrategyHoldings;
     }
 
     /**
@@ -417,7 +424,7 @@ contract BaseVault is AccessControl {
             Strategy strategy = withdrawalQueue[i];
             if (address(strategy) == address(0)) break;
 
-            uint256 balance = token.balanceOf(address(this));
+            uint256 balance = _asset.balanceOf(address(this));
             if (balance >= amount) break;
 
             // NOTE: Don't withdraw more than the debt so that Strategy can still

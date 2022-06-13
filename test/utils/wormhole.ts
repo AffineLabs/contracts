@@ -2,13 +2,13 @@ import { getSignedVAA, getEmitterAddressEth, ChainId } from "@certusone/wormhole
 import { NodeHttpTransport } from "@improbable-eng/grpc-web-node-http-transport";
 import { sleep } from "./wait-utils";
 
-export async function getVAA(emitter: string, sequence: string, emitterChain: number, maxAttempts = 60) {
+export async function getVAA(emitter: string, sequence: string, emitterChain: number, maxAttempts = 64) {
   let result;
   let attempts = 0;
   while (!result) {
     console.log("waiting for VAA");
     attempts += 1;
-    await sleep(5000);
+    await sleep(60000);
 
     try {
       result = await getSignedVAA(

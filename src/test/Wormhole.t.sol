@@ -78,7 +78,7 @@ contract WormholeTest is TestPlus {
         bytes memory publishMessageData = abi.encodeWithSelector(
             IWormhole.publishMessage.selector,
             uint32(0),
-            abi.encodePacked(Constants.L1_TVL, uint256(0), false),
+            abi.encode(Constants.L1_TVL, uint256(0), false),
             4
         );
         vm.expectCall(address(wormholeRouter.wormhole()), publishMessageData);
