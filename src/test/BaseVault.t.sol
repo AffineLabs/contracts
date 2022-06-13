@@ -5,7 +5,8 @@ import { TestPlus } from "./TestPlus.sol";
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
 import { MockERC20 } from "./MockERC20.sol";
-
+import { BridgeEscrow } from "../BridgeEscrow.sol";
+import { IWormhole } from "../interfaces/IWormhole.sol";
 import { BaseStrategy } from "../BaseStrategy.sol";
 import { BaseVault } from "../BaseVault.sol";
 
@@ -16,28 +17,41 @@ contract TestStrategy is BaseStrategy {
     }
 
     function balanceOfToken() public view override returns (uint256) {
-        return 0;
+        return token.balanceOf(address(this));
     }
 
     function invest(uint256 amount) public override {}
 
     function divest(uint256 amount) public override returns (uint256) {
-        return 0;
+        token.transfer(address(vault), amount);
+        return amount;
     }
 
     function totalLockedValue() public override returns (uint256) {
-        return 0;
+        return balanceOfToken();
+    }
+}
+
+contract BaseVaultLiquidate is BaseVault {
+    function liquidate(uint256 amount) public returns (uint256) {
+        return _liquidate(amount);
     }
 }
 
 contract VaultTest is TestPlus {
-    BaseVault vault;
     MockERC20 token;
+    BaseVaultLiquidate vault;
     uint8 constant MAX_STRATEGIES = 20;
 
     function setUp() public {
-        vault = Deploy.deployBaseVault();
-        token = MockERC20(address(vault.token()));
+        token = new MockERC20("Mock", "MT", 18);
+        vault = new BaseVaultLiquidate();
+        vault.init(
+            address(this), // governance
+            token, // token
+            IWormhole(address(0)), // wormhole
+            BridgeEscrow(address(0))
+        );
     }
 
     function testHarvest() public {
@@ -98,5 +112,18 @@ contract VaultTest is TestPlus {
         vault.swapWithdrawalQueueIndexes(0, 1);
         assertTrue(newStrategy1 == vault.withdrawalQueue(1));
         assertTrue(newStrategy2 == vault.withdrawalQueue(0));
+    }
+
+    function testLiquidate() public {
+        BaseStrategy newStrategy1 = new TestStrategy(token, vault);
+        token.mint(address(newStrategy1), 10);
+        vault.addStrategy(newStrategy1, 10);
+        BaseStrategy[] memory strategies = new BaseStrategy[](1);
+        strategies[0] = newStrategy1;
+        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        vault.harvest(strategies);
+        vault.liquidate(10);
+        assertTrue(token.balanceOf(address(vault)) == 10);
+        assertTrue(newStrategy1.balanceOfToken() == 0);
     }
 }
