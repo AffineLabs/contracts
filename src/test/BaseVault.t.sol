@@ -76,6 +76,9 @@ contract VaultTest is TestPlus {
     }
 
     function testGetWithdrawalQueue() public {
+        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
+            vault.addStrategy(new TestStrategy(token, vault), 10);
+        }
         for (uint256 i = 0; i < vault.MAX_STRATEGIES(); i++) {
             assertTrue(vault.getWithdrawalQueue()[i] == vault.withdrawalQueue(i));
         }
