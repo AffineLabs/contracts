@@ -44,8 +44,14 @@ contract VaultTest is TestPlus {
     uint8 constant MAX_STRATEGIES = 20;
 
     function setUp() public {
-        vault = Deploy.deployBaseVault();
-        token = MockERC20(address(vault.asset()));
+        token = new MockERC20("Mock", "MT", 18);
+        vault = new BaseVaultLiquidate();
+        vault.init(
+            address(this), // governance
+            token, // token
+            IWormhole(address(0)), // wormhole
+            BridgeEscrow(address(0))
+        );
     }
 
     function testHarvest() public {
