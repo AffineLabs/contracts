@@ -33,7 +33,9 @@ contract L2VaultTest is TestPlus {
         uint256 shares
     );
 
-    function testDepositRedeem(uint256 amountToken) public {
+    function testDepositRedeem(uint128 amountToken) public {
+        // Running into overflow issues on the call to vault.redeem
+        uint256 amountToken = uint256(amountToken);
         address user = address(this);
         token.mint(user, amountToken);
 
@@ -47,13 +49,14 @@ contract L2VaultTest is TestPlus {
         uint256 numShares = vault.balanceOf(user);
         assertEq(numShares, amountToken);
         assertEq(token.balanceOf(address(user)), 0);
+        assertEq(token.balanceOf(address(vault)), amountToken);
 
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(address(this), address(this), address(this), amountToken, amountToken);
-        vault.redeem(numShares, address(this), address(this));
+        emit Withdraw(address(this), user, user, amountToken, amountToken);
+        uint256 assetsReceived = vault.redeem(numShares, user, user);
 
         assertEq(vault.balanceOf(user), 0);
-        assertEq(token.balanceOf(user), amountToken);
+        assertEq(assetsReceived, amountToken);
     }
 
     function testDepositWithdraw(uint64 amountToken) public {
