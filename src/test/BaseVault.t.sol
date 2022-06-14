@@ -65,6 +65,7 @@ contract VaultTest is TestPlus {
         vault.harvest(strategies);
         vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
         assert(vault.vaultTVL() == 1000);
+        assert(vault.lockedProfit() == 0);
     }
 
     function testStrategyAddition() public {
