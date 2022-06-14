@@ -10,6 +10,8 @@ import { IWormhole } from "../interfaces/IWormhole.sol";
 import { BaseStrategy } from "../BaseStrategy.sol";
 import { BaseVault } from "../BaseVault.sol";
 
+import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+
 contract TestStrategy is BaseStrategy {
     constructor(MockERC20 _token, BaseVault _vault) {
         token = _token;
@@ -36,9 +38,35 @@ contract BaseVaultLiquidate is BaseVault {
     function liquidate(uint256 amount) public returns (uint256) {
         return _liquidate(amount);
     }
+
+    // We override this function and remove the "onlyInitializing" modifier so
+    // we can directly call it in `setUp`
+
+    // NOTE: If foundry made it easy to mock modifiers or write to packed storage slots
+    // (we would like to set `_initializing` to true => see Initializable.sol)
+    // then we wouldn't need to do this
+    function baseInitialize(
+        address _governance,
+        ERC20 vaultAsset,
+        IWormhole _wormhole,
+        BridgeEscrow _bridgeEscrow
+    ) public override {
+        governance = _governance;
+        _asset = vaultAsset;
+        wormhole = _wormhole;
+
+        // All roles use the default admin role
+        // governance has the admin role and can grant/remove a role to any account
+        _grantRole(DEFAULT_ADMIN_ROLE, governance);
+        _grantRole(harvesterRole, governance);
+        _grantRole(queueOperatorRole, governance);
+
+        bridgeEscrow = _bridgeEscrow;
+    }
 }
 
-contract VaultTest is TestPlus {
+contract BaseVaultTest is TestPlus {
+    using stdStorage for StdStorage;
     MockERC20 token;
     BaseVaultLiquidate vault;
     uint8 constant MAX_STRATEGIES = 20;
@@ -46,7 +74,10 @@ contract VaultTest is TestPlus {
     function setUp() public {
         token = new MockERC20("Mock", "MT", 18);
         vault = new BaseVaultLiquidate();
-        vault.init(
+
+        // emit log_named_bytes32("newValue", vm.load(address(vault), bytes32(0)));
+
+        vault.baseInitialize(
             address(this), // governance
             token, // token
             IWormhole(address(0)), // wormhole

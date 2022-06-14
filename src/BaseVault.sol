@@ -20,7 +20,7 @@ import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
  * strategy liquidation.
  * @dev If forking this code, do not deploy this. The contract is only non-abstract for easy testing.
  */
-contract BaseVault is AccessControl {
+contract BaseVault is Initializable, AccessControl {
     using SafeTransferLib for ERC20;
 
     /** UNDERLYING ASSET AND INITIALIZATION
@@ -33,13 +33,12 @@ contract BaseVault is AccessControl {
         return address(_asset);
     }
 
-    // TODO: handle access control in a better way
-    function init(
+    function baseInitialize(
         address _governance,
         ERC20 vaultAsset,
         IWormhole _wormhole,
         BridgeEscrow _bridgeEscrow
-    ) public {
+    ) public virtual onlyInitializing {
         governance = _governance;
         _asset = vaultAsset;
         wormhole = _wormhole;
