@@ -63,9 +63,8 @@ contract VaultTest is TestPlus {
         strategies[0] = newStrategy1;
         vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
         vault.harvest(strategies);
-        vault.liquidate(1000);
-        assert(token.balanceOf(address(vault)) == 1000);
-        assert(newStrategy1.balanceOfToken() == 0);
+        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        assert(vault.vaultTVL() == 1000);
     }
 
     function testStrategyAddition() public {
