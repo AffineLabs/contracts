@@ -4,6 +4,6 @@ namespace: production
 images:
 - name: rebalancer
   newName: 959984261658.dkr.ecr.us-east-2.amazonaws.com/rebalancer
-  newTag: 986cf252171e14a8e94e55260fdfe2cbe7308347
+  newTag: 1f61fa21e1c69dbb98375ff80933c82c7912b1e5
 resources:
 - ../../base
