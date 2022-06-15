@@ -47,17 +47,6 @@ library Deploy {
         );
     }
 
-    function deployBaseVault() internal returns (BaseVault vault) {
-        MockERC20 token = new MockERC20("Mock", "MT", 18);
-        vault = new BaseVault();
-        vault.init(
-            address(this), // governance
-            token, // token
-            IWormhole(address(0)), // wormhole
-            BridgeEscrow(address(0))
-        );
-    }
-
     function deployTwoAssetBasket(ERC20 usdc) internal returns (TwoAssetBasket basket) {
         MockERC20 btc = new MockERC20("Mock BTC", "mBTC", 18);
         MockERC20 weth = new MockERC20("Mock WETH", "mWETH", 18);

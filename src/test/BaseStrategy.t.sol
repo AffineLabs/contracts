@@ -20,6 +20,7 @@ contract MockStrategy is BaseStrategy {
     function invest(uint256 amount) external override {}
 
     function divest(uint256 amount) public pure override returns (uint256) {
+        amount;
         return 0;
     }
 
@@ -38,7 +39,7 @@ contract BaseStrategyTest is TestPlus {
 
     function setUp() public {
         rewardToken = new MockERC20("Mock Token", "MT", 18);
-        BaseVault vault = Deploy.deployBaseVault();
+        BaseVault vault = Deploy.deployL2Vault();
         strategy = new MockStrategy(vault);
     }
 

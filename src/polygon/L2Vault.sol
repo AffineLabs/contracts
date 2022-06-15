@@ -89,7 +89,7 @@ contract L2Vault is
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
         __Pausable_init();
-        BaseVault.init(_governance, _token, _wormhole, _BridgeEscrow);
+        BaseVault.baseInitialize(_governance, _token, _wormhole, _BridgeEscrow);
         wormholeRouter = _wormholeRouter;
         layerRatios = LayerBalanceRatios({ layer1: L1Ratio, layer2: L2Ratio });
         canTransferToL1 = true;
