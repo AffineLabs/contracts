@@ -22,9 +22,9 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
     }
 
     // The token which we take in to buy token1 and token2, e.g. USDC
-    // NOTE: Assuming that inputToken is $1 for now
+    // NOTE: Assuming that asset is $1 for now
     // TODO: allow component tokens to be bought using any token that has a USD price oracle
-    ERC20 public inputToken;
+    ERC20 public asset;
     ERC20 public token1;
     ERC20 public token2;
 
@@ -53,13 +53,13 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
         rebalanceDelta = _rebalanceDelta;
         blockSize = _blockSize;
         (token1, token2) = (_tokens[0], _tokens[1]);
-        inputToken = _input;
+        asset = _input;
         ratios = _ratios;
         uniRouter = _uniRouter;
         (priceFeed1, priceFeed2) = (_priceFeeds[0], _priceFeeds[1]);
 
         // Allow uniRouter to spend all tokens that we may swap
-        inputToken.safeApprove(address(uniRouter), type(uint256).max);
+        asset.safeApprove(address(uniRouter), type(uint256).max);
         token1.safeApprove(address(uniRouter), type(uint256).max);
         token2.safeApprove(address(uniRouter), type(uint256).max);
     }
@@ -105,13 +105,13 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
         // Get dollar amounts of btc and eth to buy
         (uint256 amountInputToBtc, uint256 amountInputToEth) = _getBuySplits(amountInput);
 
-        inputToken.transferFrom(_msgSender(), address(this), amountInput);
+        asset.transferFrom(_msgSender(), address(this), amountInput);
         address[] memory pathBtc = new address[](2);
-        pathBtc[0] = address(inputToken);
+        pathBtc[0] = address(asset);
         pathBtc[1] = address(token1);
 
         address[] memory pathEth = new address[](2);
-        pathEth[0] = address(inputToken);
+        pathEth[0] = address(asset);
         pathEth[1] = address(token2);
 
         uint256 btcReceived;
@@ -160,26 +160,26 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
         address receiver,
         address owner
     ) external whenNotPaused returns (uint256 inputReceived) {
-        // Try to get `amountInput` of `inputToken` out of vault
+        // Try to get `amountInput` of `asset` out of vault
         Dollar rawVaultDollars = valueOfVault();
         uint256 vaultDollars = Dollar.unwrap(rawVaultDollars);
 
         // Get dollar amounts of btc and eth to sell
         (uint256 amountInputFromBtc, uint256 amountInputFromEth) = _getSellSplits(amountInput);
 
-        // Get desired amount of inputToken from eth and btc reserves
+        // Get desired amount of asset from eth and btc reserves
         address[] memory pathBtc = new address[](2);
         pathBtc[0] = address(token1);
-        pathBtc[1] = address(inputToken);
+        pathBtc[1] = address(asset);
 
         address[] memory pathEth = new address[](2);
         pathEth[0] = address(token2);
-        pathEth[1] = address(inputToken);
+        pathEth[1] = address(asset);
 
         if (amountInputFromBtc > 0) {
             uint256[] memory btcAmounts = uniRouter.swapExactTokensForTokens(
                 // input token => dollars => btc conversion
-                _tokensFromDollars(token1, _valueOfToken(inputToken, amountInputFromBtc)),
+                _tokensFromDollars(token1, _valueOfToken(asset, amountInputFromBtc)),
                 0,
                 pathBtc,
                 address(this),
@@ -191,7 +191,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
         if (amountInputFromEth > 0) {
             uint256[] memory ethAmounts = uniRouter.swapExactTokensForTokens(
                 // input token => dollars => eth conversion
-                _tokensFromDollars(token2, _valueOfToken(inputToken, amountInputFromEth)),
+                _tokensFromDollars(token2, _valueOfToken(asset, amountInputFromEth)),
                 0,
                 pathEth,
                 address(this),
@@ -210,14 +210,14 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
         // burn $amountInputDollars worth of shares
 
         // Convert from Dollar for easy calculations
-        uint256 amountInputDollars = Dollar.unwrap(_valueOfToken(inputToken, amountInput));
+        uint256 amountInputDollars = Dollar.unwrap(_valueOfToken(asset, amountInput));
         uint256 numShares = (amountInputDollars * totalSupply) / vaultDollars;
 
         // TODO: fix approvals, anyone can burn a user's shares now
         _burn(owner, numShares);
 
         emit Withdraw(_msgSender(), receiver, owner, amountInput, numShares);
-        inputToken.transfer(receiver, inputReceived);
+        asset.transfer(receiver, inputReceived);
     }
 
     /** EXCHANGE RATES
@@ -231,7 +231,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
         // we receive the price of 1 ether (1e18 wei). The price also comes with its own decimals. E.g. a price
         // of $1 with 8 decimals is given as 1e8.
 
-        if (token == inputToken) {
+        if (token == asset) {
             return Dollar.wrap(uint256(1e8));
         }
 
@@ -274,7 +274,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
 
     /// @notice   When depositing, determine amount of input token that should be used to buy BTC and ETH respectively
     function _getBuySplits(uint256 amountInput) internal view returns (uint256 btcAmount, uint256 ethAmount) {
-        Dollar rawInputDollars = _valueOfToken(inputToken, amountInput);
+        Dollar rawInputDollars = _valueOfToken(asset, amountInput);
         uint256 inputDollars = Dollar.unwrap(rawInputDollars);
 
         // We don't care about decimals here, so we can simply treat these as integers
@@ -294,7 +294,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
             ethAmount = amountInput;
         } else if (a - b > inputDollars) {
             // Case 2:
-            // We want to buy btc with more of inputToken than we have. Cap the dollars going to btc
+            // We want to buy btc with more of asset than we have. Cap the dollars going to btc
             btcAmount = amountInput;
             ethAmount = 0;
         } else {
@@ -307,7 +307,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
     }
 
     function _getSellSplits(uint256 amountInput) internal view returns (uint256 btcAmount, uint256 ethAmount) {
-        Dollar rawInputDollars = _valueOfToken(inputToken, amountInput);
+        Dollar rawInputDollars = _valueOfToken(asset, amountInput);
         uint256 inputDollars = Dollar.unwrap(rawInputDollars);
 
         // We don't care about decimals here, so we can simply treat these as integers
