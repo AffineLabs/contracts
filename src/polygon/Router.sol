@@ -16,7 +16,7 @@ contract Router {
         uint256 amount,
         uint256 minSharesOut
     ) external returns (uint256 shares) {
-        basket.inputToken().safeTransferFrom(msg.sender, address(this), amount);
+        basket.asset().safeTransferFrom(msg.sender, address(this), amount);
         shares = basket.deposit(amount, to);
         require(shares >= minSharesOut, "MIN_SHARES_DEP");
     }
