@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import { MockERC20 } from "./MockERC20.sol";
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
 import { BaseVault } from "../BaseVault.sol";
@@ -48,8 +48,8 @@ library Deploy {
     }
 
     function deployTwoAssetBasket(ERC20 usdc) internal returns (TwoAssetBasket basket) {
-        MockERC20 btc = new MockERC20("Mock BTC", "mBTC", 18);
-        MockERC20 weth = new MockERC20("Mock WETH", "mWETH", 18);
+        ERC20 btc = ERC20(0xc8BA1fdaf17c1f16C68778fde5f78F3D37cD1509);
+        ERC20 weth = ERC20(0x3dd7F3CF122e0460Dba8A75d191b3486752B6A61);
         basket = new TwoAssetBasket(
             address(this), // governance,
             address(0), // forwarder
@@ -58,7 +58,7 @@ library Deploy {
             IUniLikeSwapRouter(address(0)), // sushiswap router
             usdc, // mintable usdc
             // WBTC AND WETH
-            [ERC20(btc), ERC20(weth)],
+            [btc, weth],
             [uint256(1), uint256(1)], // ratios (basket should contain an equal amount of btc/eth)
             // Price feeds (BTC/USD and ETH/USD)
             [

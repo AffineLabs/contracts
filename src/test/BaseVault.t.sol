@@ -10,7 +10,7 @@ import { IWormhole } from "../interfaces/IWormhole.sol";
 import { BaseStrategy } from "../BaseStrategy.sol";
 import { BaseVault } from "../BaseVault.sol";
 
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
 
 contract TestStrategy is BaseStrategy {
     constructor(MockERC20 _token, BaseVault _vault) {

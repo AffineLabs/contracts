@@ -7,9 +7,10 @@ remappings = [
     '@opengsn/=node_modules/@opengsn/',
     '@openzeppelin/=node_modules/@openzeppelin/',
     '@uniswap/=node_modules/@uniswap/',
-    'solmate/=node_modules/solmate/',
+    'solmate/=node_modules/solmate/src/',
     'forge-std/=node_modules/forge-std/src/',
-    'ds-test/=node_modules/ds-test/src/'
+    'ds-test/=node_modules/ds-test/src/',
+    'ERC4626/=node_modules/ERC4626/src/'
 ]
 libraries = []
 cache = true
