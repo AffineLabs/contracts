@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { L2Vault } from "./L2Vault.sol";
-import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
+import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Constants } from "../Constants.sol";
 

@@ -1,7 +1,7 @@
 pragma solidity ^0.8.13;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
+import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { IERC4626 } from "../interfaces/IERC4626.sol";
 import { Multicall } from "../external/Multicall.sol";
 

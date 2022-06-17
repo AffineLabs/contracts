@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
 import { TestPlus } from "./TestPlus.sol";
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
@@ -13,6 +13,7 @@ import { Dollar } from "../DollarMath.sol";
 import { TwoAssetBasket } from "../polygon/TwoAssetBasket.sol";
 import { Router } from "../polygon/Router.sol";
 import { IERC4626 } from "../interfaces/IERC4626.sol";
+import { ERC4626RouterBase } from "../polygon/ERC4626RouterBase.sol";
 
 contract L2BtcEthBasketTestFork is TestPlus {
     TwoAssetBasket basket;
@@ -80,8 +81,8 @@ contract L2BtcEthBasketTestFork is TestPlus {
         // Since we can't mock the call to basket.deposit, router will actually have to call basket.deposit
         vm.prank(address(router));
         usdc.approve(address(basket), type(uint256).max);
-
-        vm.expectRevert(bytes("MIN_SHARES_DEP"));
+        usdc.transfer(address(router), 1e6);
+        vm.expectRevert(ERC4626RouterBase.MinSharesError.selector);
         router.deposit(IERC4626(address(basket)), address(this), 1e6, minShares);
 
         // TODO: add test for withdrawal check once this mocking works again
