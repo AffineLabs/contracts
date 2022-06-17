@@ -5,6 +5,7 @@ import { solidity } from "ethereum-waffle";
 import { deployVaults } from "../scripts/helpers/deploy-vaults";
 import { deployWormholeRouters } from "../scripts/helpers/deploy-wormhole-router";
 import { config } from "../scripts/utils/config";
+import { deployBasket } from "../scripts/helpers/deploy-btc-eth";
 
 chai.use(solidity);
 const { expect } = chai;
@@ -46,3 +47,10 @@ it("Deploy Vaults", async () => {
 });
 
 // TODO: check that we can upgrade proxies successfully
+
+it("Deploy TwoAssetBasket", async () => {
+  const basket = await deployBasket(config);
+  expect(await basket.asset()).to.equal(config.l2USDC);
+  expect(await basket.token1()).to.equal(config.wbtc);
+  expect(await basket.token2()).to.equal(config.weth);
+});
