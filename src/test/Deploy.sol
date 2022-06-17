@@ -47,17 +47,6 @@ library Deploy {
         );
     }
 
-    function deployBaseVault() internal returns (BaseVault vault) {
-        MockERC20 token = new MockERC20("Mock", "MT", 18);
-        vault = new BaseVault();
-        vault.init(
-            address(this), // governance
-            token, // token
-            IWormhole(address(0)), // wormhole
-            BridgeEscrow(address(0))
-        );
-    }
-
     function deployTwoAssetBasket(ERC20 usdc) internal returns (TwoAssetBasket basket) {
         MockERC20 btc = new MockERC20("Mock BTC", "mBTC", 18);
         MockERC20 weth = new MockERC20("Mock WETH", "mWETH", 18);
@@ -73,6 +62,7 @@ library Deploy {
             [uint256(1), uint256(1)], // ratios (basket should contain an equal amount of btc/eth)
             // Price feeds (BTC/USD and ETH/USD)
             [
+                AggregatorV3Interface(0x572dDec9087154dC5dfBB1546Bb62713147e0Ab0),
                 AggregatorV3Interface(0x007A22900a3B98143368Bd5906f8E17e9867581b),
                 AggregatorV3Interface(0x0715A7794a1dc8e42615F059dD6e406A6594651A)
             ]

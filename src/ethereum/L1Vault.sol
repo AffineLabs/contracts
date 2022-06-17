@@ -45,7 +45,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     ) public initializer {
         __UUPSUpgradeable_init();
         __Pausable_init();
-        BaseVault.init(_governance, _token, _wormhole, _bridgeEscrow);
+        BaseVault.baseInitialize(_governance, _token, _wormhole, _bridgeEscrow);
         wormholeRouter = _wormholeRouter;
         chainManager = _chainManager;
         predicate = _predicate;
