@@ -86,7 +86,17 @@ contract BaseVaultTest is TestPlus {
     }
 
     function testHarvest() public {
-        assertTrue(1 == 1);
+        BaseStrategy newStrategy1 = new TestStrategy(token, vault);
+        vault.addStrategy(newStrategy1, 1000);
+        token.mint(address(newStrategy1), 1000);
+        assertTrue(newStrategy1.balanceOfToken() != 0);
+        BaseStrategy[] memory strategies = new BaseStrategy[](1);
+        strategies[0] = newStrategy1;
+        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        vault.harvest(strategies);
+        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        assert(vault.vaultTVL() == 1000);
+        assert(vault.lockedProfit() == 0);
     }
 
     function testStrategyAddition() public {

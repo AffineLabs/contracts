@@ -1,6 +1,6 @@
 BaseStrategyTest:testSweep() (gas: 99521)
 BaseVaultTest:testGetWithdrawalQueue() (gas: 9071312)
-BaseVaultTest:testHarvest() (gas: 280)
+BaseVaultTest:testHarvest() (gas: 670059)
 BaseVaultTest:testLiquidate() (gas: 637054)
 BaseVaultTest:testSetWithdrawalQueue() (gas: 7627860)
 BaseVaultTest:testStrategyAddition() (gas: 512647)
