@@ -33,8 +33,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
     IUniLikeSwapRouter public uniRouter;
 
     // These must be USD price feeds for token1 and token2
-    AggregatorV3Interface public priceFeed1;
-    AggregatorV3Interface public priceFeed2;
+    mapping(ERC20 => AggregatorV3Interface) public tokenToOracle;
 
     constructor(
         address _governance,
@@ -45,7 +44,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
         ERC20 _input,
         ERC20[2] memory _tokens,
         uint256[2] memory _ratios,
-        AggregatorV3Interface[2] memory _priceFeeds
+        AggregatorV3Interface[3] memory _priceFeeds
     ) ERC20("Alpine Large Vault Token", "alpLarge", _tokens[0].decimals()) {
         require(_rebalanceDelta >= _blockSize, "DELTA_TOO_SMALL");
         governance = _governance;
@@ -56,7 +55,10 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
         asset = _input;
         ratios = _ratios;
         uniRouter = _uniRouter;
-        (priceFeed1, priceFeed2) = (_priceFeeds[0], _priceFeeds[1]);
+
+        tokenToOracle[asset] = _priceFeeds[0];
+        tokenToOracle[token1] = _priceFeeds[1];
+        tokenToOracle[token2] = _priceFeeds[2];
 
         // Allow uniRouter to spend all tokens that we may swap
         asset.safeApprove(address(uniRouter), type(uint256).max);
@@ -231,16 +233,8 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
         // we receive the price of 1 ether (1e18 wei). The price also comes with its own decimals. E.g. a price
         // of $1 with 8 decimals is given as 1e8.
 
-        if (token == asset) {
-            return Dollar.wrap(uint256(1e8));
-        }
+        AggregatorV3Interface feed = tokenToOracle[token];
 
-        AggregatorV3Interface feed;
-        if (token == token1) {
-            feed = priceFeed1;
-        } else {
-            feed = priceFeed2;
-        }
         (uint80 roundId, int256 price, , uint256 timestamp, uint80 answeredInRound) = feed.latestRoundData();
         require(price > 0, "Chainlink price <= 0");
         require(answeredInRound >= roundId, "Chainlink stale data");

@@ -17,7 +17,11 @@ export async function deployBasket(config: Config): Promise<TwoAssetBasket> {
     config.l2USDC,
     [config.wbtc, config.weth],
     [100, 100],
-    ["0x007A22900a3B98143368Bd5906f8E17e9867581b", "0x0715A7794a1dc8e42615F059dD6e406A6594651A"], // btc/eth price feeds
+    [
+      "0x572dDec9087154dC5dfBB1546Bb62713147e0Ab0",
+      "0x007A22900a3B98143368Bd5906f8E17e9867581b",
+      "0x0715A7794a1dc8e42615F059dD6e406A6594651A",
+    ], // btc/eth price feeds
   );
   console.log("basket at: ", basket.address);
   await basket.deployed();
