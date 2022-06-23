@@ -48,17 +48,17 @@ library Deploy {
     }
 
     function deployTwoAssetBasket(ERC20 usdc) internal returns (TwoAssetBasket basket) {
-        MockERC20 btc = new MockERC20("Mock BTC", "mBTC", 18);
-        MockERC20 weth = new MockERC20("Mock WETH", "mWETH", 18);
+        ERC20 btc = ERC20(0xc8BA1fdaf17c1f16C68778fde5f78F3D37cD1509);
+        ERC20 weth = ERC20(0x3dd7F3CF122e0460Dba8A75d191b3486752B6A61);
         basket = new TwoAssetBasket(
             address(this), // governance,
             address(0), // forwarder
             10_000 * 1e6, // once the vault is $10,000 out of balance then we can rebalance
             5_000 * 1e6, // selling in $5,000 blocks
-            IUniLikeSwapRouter(address(0)), // sushiswap router
+            IUniLikeSwapRouter(address(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506)), // sushiswap router
             usdc, // mintable usdc
             // WBTC AND WETH
-            [ERC20(btc), ERC20(weth)],
+            [btc, weth],
             [uint256(1), uint256(1)], // ratios (basket should contain an equal amount of btc/eth)
             // Price feeds (BTC/USD and ETH/USD)
             [
