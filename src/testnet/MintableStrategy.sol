@@ -24,7 +24,7 @@ contract MintableStrategy is BaseStrategy {
     }
 
     function balanceOfToken() public view override returns (uint256) {
-        return token.balanceOf(address(this));
+        return asset.balanceOf(address(this));
     }
 
     function invest(uint256 amount) external pure override {
