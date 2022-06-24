@@ -155,8 +155,6 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
         _mint(receiver, shares);
     }
 
-    event Withdraw(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
-
     function withdraw(
         uint256 amountInput,
         address receiver,
