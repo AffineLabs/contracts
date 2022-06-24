@@ -26,17 +26,17 @@ contract L2AAVEStrategy is BaseStrategy {
     IAaveIncentivesController public immutable incentivesController;
     ILendingPool public immutable lendingPool;
 
-    // USDC pool reward token is WMATIC
+    // USDC pool reward asset is WMATIC
     address public immutable rewardToken;
     address public immutable wrappedNative;
 
-    // Corresponding AAVE token (USDC -> aUSDC)
+    // Corresponding AAVE asset (USDC -> aUSDC)
     IAToken public immutable aToken;
 
-    // Router for swapping reward tokens to `token`
+    // Router for swapping reward tokens to `asset`
     IUniLikeSwapRouter public immutable router;
 
-    // The mininum amount of token token to trigger position adjustment
+    // The mininum amount of asset asset to trigger position adjustment
     uint256 public minWant = 100;
     uint256 public minRewardToSell = 1e15;
 
@@ -52,12 +52,12 @@ contract L2AAVEStrategy is BaseStrategy {
         address _wrappedNative
     ) {
         vault = _vault;
-        token = ERC20(vault.asset());
+        asset = ERC20(vault.asset());
         address[] memory providers = ILendingPoolAddressesProviderRegistry(_registry).getAddressesProvidersList();
         address pool = ILendingPoolAddressesProvider(providers[providers.length - 1]).getLendingPool();
         lendingPool = ILendingPool(pool);
 
-        address _aToken = lendingPool.getReserveData(address(token)).aTokenAddress;
+        address _aToken = lendingPool.getReserveData(address(asset)).aTokenAddress;
         aToken = IAToken(_aToken);
 
         incentivesController = IAaveIncentivesController(_incentives);
@@ -68,15 +68,15 @@ contract L2AAVEStrategy is BaseStrategy {
 
         // approve
         ERC20(_aToken).safeApprove(pool, type(uint256).max);
-        token.safeApprove(pool, type(uint256).max);
+        asset.safeApprove(pool, type(uint256).max);
         ERC20(rewardToken).safeApprove(_router, type(uint256).max);
     }
 
     /** BALANCES
      **************************************************************************/
 
-    function balanceOfToken() public view override returns (uint256) {
-        return token.balanceOf(address(this));
+    function balanceOfAsset() public view override returns (uint256) {
+        return asset.balanceOf(address(this));
     }
 
     function balanceOfRewardToken() public view returns (uint256) {
@@ -90,13 +90,13 @@ contract L2AAVEStrategy is BaseStrategy {
     /** INVESTMENT
      **************************************************************************/
     function invest(uint256 amount) external override {
-        token.transferFrom(msg.sender, address(this), amount);
+        asset.transferFrom(msg.sender, address(this), amount);
         _depositWant(amount);
     }
 
     function _depositWant(uint256 amount) internal returns (uint256) {
         if (amount == 0) return 0;
-        lendingPool.deposit(address(token), amount, address(this), 0);
+        lendingPool.deposit(address(asset), amount, address(this), 0);
         return amount;
     }
 
@@ -109,20 +109,20 @@ contract L2AAVEStrategy is BaseStrategy {
         uint256 withdrawAmount = Math.min(amount, aTokenAmount);
 
         uint256 withdrawnAmount = _withdrawWant(withdrawAmount);
-        token.transfer(address(vault), withdrawnAmount);
+        asset.transfer(address(vault), withdrawnAmount);
         return withdrawnAmount;
     }
 
     function _withdrawWant(uint256 amount) internal returns (uint256) {
         if (amount == 0) return 0;
-        lendingPool.withdraw(address(token), amount, address(this));
+        lendingPool.withdraw(address(asset), amount, address(this));
         return amount;
     }
 
     function _claimAndSellRewards() internal {
         incentivesController.claimRewards(getAaveAssets(), type(uint256).max, address(this));
 
-        if (rewardToken != address(token)) {
+        if (rewardToken != address(asset)) {
             uint256 rewardTokenBalance = balanceOfRewardToken();
             if (rewardTokenBalance >= minRewardToSell) {
                 _sellRewardTokenForWant(rewardTokenBalance, 0);
@@ -136,7 +136,7 @@ contract L2AAVEStrategy is BaseStrategy {
         router.swapExactTokensForTokens(
             amountIn,
             minOut,
-            getTokenOutPathV2(address(rewardToken), address(token)),
+            getTokenOutPathV2(address(rewardToken), address(asset)),
             address(this),
             block.timestamp
         );
@@ -145,7 +145,7 @@ contract L2AAVEStrategy is BaseStrategy {
     /** TVL ESTIMATION
      **************************************************************************/
     function totalLockedValue() public view override returns (uint256) {
-        uint256 balanceExcludingRewards = balanceOfToken() + balanceOfAToken();
+        uint256 balanceExcludingRewards = balanceOfAsset() + balanceOfAToken();
 
         // if we don't have a position, don't worry about rewards
         if (balanceExcludingRewards < minWant) {
@@ -162,19 +162,19 @@ contract L2AAVEStrategy is BaseStrategy {
 
         uint256 pendingRewards = incentivesController.getRewardsBalance(getAaveAssets(), address(this));
 
-        if (rewardToken == address(token)) {
+        if (rewardToken == address(asset)) {
             return pendingRewards;
         } else {
-            return assetToToken(rewardToken, rewardTokenBalance + pendingRewards);
+            return tokenToAsset(rewardToken, rewardTokenBalance + pendingRewards);
         }
     }
 
-    function assetToToken(address asset, uint256 amountAsset) internal view returns (uint256) {
-        if (amountAsset == 0 || address(asset) == address(token)) {
-            return amountAsset;
+    function tokenToAsset(address token, uint256 amountToken) internal view returns (uint256) {
+        if (amountToken == 0 || address(token) == address(asset)) {
+            return amountToken;
         }
 
-        uint256[] memory amounts = router.getAmountsOut(amountAsset, getTokenOutPathV2(asset, address(token)));
+        uint256[] memory amounts = router.getAmountsOut(amountToken, getTokenOutPathV2(token, address(asset)));
 
         return amounts[amounts.length - 1];
     }
