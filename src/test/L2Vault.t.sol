@@ -93,8 +93,8 @@ contract L2VaultTest is TestPlus {
         BaseStrategy myStrat = BaseStrategy(address(this));
         vault.addStrategy(myStrat, 10_000);
 
-        // call to balanceOfToken in harvest() will return 1e18
-        vm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfToken.selector), abi.encode(1e18));
+        // call to balanceOfAsset in harvest() will return 1e18
+        vm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfAsset.selector), abi.encode(1e18));
         // block.timestap must be >= lastHarvest + lockInterval when harvesting
         vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
 
@@ -120,8 +120,8 @@ contract L2VaultTest is TestPlus {
         BaseStrategy myStrat = BaseStrategy(address(this));
         vault.addStrategy(myStrat, 10_000);
 
-        // call to balanceOfToken in harvest() will return 1e18
-        vm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfToken.selector), abi.encode(1e18));
+        // call to balanceOfAsset in harvest() will return 1e18
+        vm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfAsset.selector), abi.encode(1e18));
         // block.timestap must be >= lastHarvest + lockInterval when harvesting
         vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
 

@@ -14,23 +14,23 @@ import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
 contract TestStrategy is BaseStrategy {
     constructor(MockERC20 _token, BaseVault _vault) {
-        token = _token;
+        asset = _token;
         vault = _vault;
     }
 
-    function balanceOfToken() public view override returns (uint256) {
-        return token.balanceOf(address(this));
+    function balanceOfAsset() public view override returns (uint256) {
+        return asset.balanceOf(address(this));
     }
 
     function invest(uint256 amount) public override {}
 
     function divest(uint256 amount) public override returns (uint256) {
-        token.transfer(address(vault), amount);
+        asset.transfer(address(vault), amount);
         return amount;
     }
 
     function totalLockedValue() public override returns (uint256) {
-        return balanceOfToken();
+        return balanceOfAsset();
     }
 }
 
@@ -89,7 +89,7 @@ contract BaseVaultTest is TestPlus {
         BaseStrategy newStrategy1 = new TestStrategy(token, vault);
         vault.addStrategy(newStrategy1, 1000);
         token.mint(address(newStrategy1), 1000);
-        assertTrue(newStrategy1.balanceOfToken() != 0);
+        assertTrue(newStrategy1.balanceOfAsset() != 0);
         BaseStrategy[] memory strategies = new BaseStrategy[](1);
         strategies[0] = newStrategy1;
         vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
@@ -168,6 +168,6 @@ contract BaseVaultTest is TestPlus {
         vault.harvest(strategies);
         vault.liquidate(10);
         assertTrue(token.balanceOf(address(vault)) == 10);
-        assertTrue(newStrategy1.balanceOfToken() == 0);
+        assertTrue(newStrategy1.balanceOfAsset() == 0);
     }
 }
