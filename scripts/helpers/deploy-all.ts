@@ -37,7 +37,7 @@ export async function deployAll(
     wormholeRouters,
   );
   const strategies = await deployStrategies(ethNetworkName, polygonNetworkName, vaults);
-  const router = await deployRouter();
+  const router = await deployRouter(polygonNetworkName);
   // TODO: Consider strategies. We can't add strategies anymore since the timelock address is the governance address
   // In tests we can simply use hardhat's mocking abilities.
 
