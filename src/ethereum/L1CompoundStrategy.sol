@@ -137,7 +137,7 @@ contract L1CompoundStrategy is BaseStrategy {
     /** TVL ESTIMATION
      **************************************************************************/
     function totalLockedValue() public override returns (uint256) {
-        uint256 balanceExcludingRewards = balanceOfCToken() + underlyingBalanceOfCToken();
+        uint256 balanceExcludingRewards = underlyingBalanceOfCToken();
 
         // if we don't have a position, don't worry about rewards
         if (balanceExcludingRewards < minWant) {
