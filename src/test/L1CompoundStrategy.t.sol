@@ -42,7 +42,7 @@ contract L1CompoundStratTestForkMainnet is TestPlus {
             vault,
             ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563), // cToken
             IComptroller(comptrollerAddr), // Comptroller
-            IUniLikeSwapRouter(uniLikeSwapRouterAddr), // sushiswap router
+            IUniLikeSwapRouter(uniLikeSwapRouterAddr), // sushiswap router in eth mainnet
             0xc00e94Cb662C3520282E6f5717214004A7f26888, // reward token -> comp token
             0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 // wrapped eth address
         );

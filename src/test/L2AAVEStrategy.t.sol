@@ -30,7 +30,7 @@ contract L2AAVEStratTestForkMumbai is TestPlus {
             vault,
             0xE6ef11C967898F9525D550014FDEdCFAB63536B5, // aave adress provider registry
             0x0a1AB7aea4314477D40907412554d10d30A0503F, // dummy incentives controller
-            0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff, // uniswap router on mumbai
+            0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff, // quickswap router on mumbai
             0x5B67676a984807a212b1c59eBFc9B3568a474F0a, // reward token -> wrapped matic
             0x5B67676a984807a212b1c59eBFc9B3568a474F0a // wrapped matic address
         );
