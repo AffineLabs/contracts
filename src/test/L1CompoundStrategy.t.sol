@@ -48,27 +48,28 @@ contract L1CompoundStratTestForkMainnet is TestPlus {
         );
     }
 
-    function testStrategyInvest() public {
+    function depositOneUSDCToVault() internal {
         // Give the Vault 1 usdc
         uint256 slot = stdstore.target(address(usdc)).sig(usdc.balanceOf.selector).with_key(address(vault)).find();
         vm.store(address(usdc), bytes32(slot), bytes32(uint256(oneUSDC)));
+    }
 
+    function investHalfOfVaultAssetInCompund() internal {
         vault.addStrategy(strategy, 5_000);
         vm.prank(address(0)); // BridgeEscrow address is 0 in the default vault
         vault.afterReceive();
+    }
+    function testStrategyInvest() public {
+        depositOneUSDCToVault();
+        investHalfOfVaultAssetInCompund();
 
         // Strategy deposits all of usdc into Compound
         assertInRange(strategy.totalLockedValue(), halfUSDC - 1, halfUSDC);
     }
 
     function testStrategyMakesMoneyWithCOMPToken() public {
-        // Give the Vault 1 usdc
-        uint256 slot = stdstore.target(address(usdc)).sig(usdc.balanceOf.selector).with_key(address(vault)).find();
-        vm.store(address(usdc), bytes32(slot), bytes32(uint256(oneUSDC)));
-
-        vault.addStrategy(strategy, 5_000);
-        vm.prank(address(0)); // BridgeEscrow address is 0 in the default vault
-        vault.afterReceive();
+        depositOneUSDCToVault();
+        investHalfOfVaultAssetInCompund();
 
         // Simulate some accured COMP token.
         vm.mockCall(comptrollerAddr, abi.encodeWithSelector(IComptroller.compAccrued.selector), abi.encode(oneCOMP));
@@ -77,13 +78,8 @@ contract L1CompoundStratTestForkMainnet is TestPlus {
     }
 
     function testStrategyMakesMoneyWithCToken() public {
-        // Give the Vault 1 usdc
-        uint256 slot = stdstore.target(address(usdc)).sig(usdc.balanceOf.selector).with_key(address(vault)).find();
-        vm.store(address(usdc), bytes32(slot), bytes32(uint256(oneUSDC)));
-
-        vault.addStrategy(strategy, 5_000);
-        vm.prank(address(0)); // BridgeEscrow address is 0 in the default vault
-        vault.afterReceive();
+        depositOneUSDCToVault();
+        investHalfOfVaultAssetInCompund();
 
         uint256 curretActualBalanceOfUnderlying = strategy.cToken().balanceOfUnderlying(address(strategy));
         // Simulate increase in cUSDC price.
@@ -97,13 +93,8 @@ contract L1CompoundStratTestForkMainnet is TestPlus {
     }
 
     function testStrategyLosesMoneyWithCToken() public {
-        // Give the Vault 1 usdc
-        uint256 slot = stdstore.target(address(usdc)).sig(usdc.balanceOf.selector).with_key(address(vault)).find();
-        vm.store(address(usdc), bytes32(slot), bytes32(uint256(oneUSDC)));
-
-        vault.addStrategy(strategy, 5_000);
-        vm.prank(address(0)); // BridgeEscrow address is 0 in the default vault
-        vault.afterReceive();
+        depositOneUSDCToVault();
+        investHalfOfVaultAssetInCompund();
 
         uint256 curretActualBalanceOfUnderlying = strategy.cToken().balanceOfUnderlying(address(strategy));
         // Simulate decrese in cUSDC price.
@@ -117,13 +108,8 @@ contract L1CompoundStratTestForkMainnet is TestPlus {
     }
 
     function testDivestFromStrategy() public {
-        // Give the Vault 1 usdc
-        uint256 slot = stdstore.target(address(usdc)).sig(usdc.balanceOf.selector).with_key(address(vault)).find();
-        vm.store(address(usdc), bytes32(slot), bytes32(uint256(oneUSDC)));
-
-        vault.addStrategy(strategy, 5_000);
-        vm.prank(address(0)); // BridgeEscrow address is 0 in the default vault
-        vault.afterReceive();
+        depositOneUSDCToVault();
+        investHalfOfVaultAssetInCompund();
 
         uint256 tvl = strategy.totalLockedValue();
         vm.prank(address(vault));
