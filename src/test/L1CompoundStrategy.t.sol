@@ -58,7 +58,7 @@ contract L1CompoundStratTestForkMainnet is TestPlus {
         vault.afterReceive();
 
         // Strategy deposits all of usdc into Compound
-        assertInRange(strategy.cToken().balanceOfUnderlying(address(strategy)), halfUSDC - 1, halfUSDC);
+        assertInRange(strategy.totalLockedValue(), halfUSDC - 1, halfUSDC);
     }
 
     function testStrategyMakesMoneyWithCOMPToken() public {
@@ -106,13 +106,29 @@ contract L1CompoundStratTestForkMainnet is TestPlus {
         vault.afterReceive();
 
         uint256 curretActualBalanceOfUnderlying = strategy.cToken().balanceOfUnderlying(address(strategy));
-        // Simulate increase in cUSDC price.
+        // Simulate decrese in cUSDC price.
         vm.mockCall(
             cTokenAddr,
             abi.encodeWithSelector(ICToken.balanceOfUnderlying.selector),
             abi.encode(curretActualBalanceOfUnderlying / 2)
         );
         assertLt(strategy.totalLockedValue(), halfUSDC);
+        vm.clearMockedCalls();
+    }
+
+    function testDivestFromStrategy() public {
+        // Give the Vault 1 usdc
+        uint256 slot = stdstore.target(address(usdc)).sig(usdc.balanceOf.selector).with_key(address(vault)).find();
+        vm.store(address(usdc), bytes32(slot), bytes32(uint256(oneUSDC)));
+
+        vault.addStrategy(strategy, 5_000);
+        vm.prank(address(0)); // BridgeEscrow address is 0 in the default vault
+        vault.afterReceive();
+
+        uint256 tvl = strategy.totalLockedValue();
+        vm.prank(address(vault));
+        strategy.divest(tvl);
+        assertInRange(usdc.balanceOf(address(vault)), oneUSDC - 1, oneUSDC);
         vm.clearMockedCalls();
     }
 }

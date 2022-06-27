@@ -91,22 +91,26 @@ contract L1CompoundStrategy is BaseStrategy {
     function divest(uint256 amount) external override onlyVault returns (uint256) {
         // TODO: take current balance into consideration and only withdraw the amount that you need to
         _claimAndSellRewards();
-        uint256 cTokenAmount = balanceOfCToken();
-        uint256 withdrawAmount = Math.min(amount, cTokenAmount);
-
-        uint256 withdrawnAmount = _withdrawWant(withdrawAmount);
-        asset.transfer(address(vault), withdrawnAmount);
-        return withdrawnAmount;
+        // We now have some USDC idle in the contract
+        uint256 amountInWantToWithdraw = amount - asset.balanceOf(address(this));
+        _withdrawWant(amountInWantToWithdraw);
+        uint256 assetBalancePostWithdraw = asset.balanceOf(address(this));
+        uint256 assetAmountToTransferToVault = amount;
+        if (assetBalancePostWithdraw < assetAmountToTransferToVault) {
+            assetAmountToTransferToVault = assetBalancePostWithdraw;
+        }
+        asset.transfer(address(vault), assetAmountToTransferToVault);
+        return assetAmountToTransferToVault;
     }
 
     function _withdrawWant(uint256 amount) internal returns (uint256) {
         if (amount == 0) return 0;
         uint256 balanceOfUnderlying = underlyingBalanceOfCToken();
-        if (amount > balanceOfUnderlying) {
-            amount = balanceOfUnderlying;
+        uint256 amountToRedeem = amount;
+        if (amountToRedeem > balanceOfUnderlying) {
+            amountToRedeem = balanceOfUnderlying;
         }
-        cToken.redeemUnderlying(amount);
-        return amount;
+        return cToken.redeemUnderlying(amountToRedeem);
     }
 
     function _claimAndSellRewards() internal {
