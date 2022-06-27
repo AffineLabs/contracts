@@ -16,32 +16,32 @@ abstract contract BaseStrategy {
         _;
     }
 
-    /// @notice Returns the underlying ERC20 token the strategy accepts.
-    ERC20 public token;
+    /// @notice Returns the underlying ERC20 asset the strategy accepts.
+    ERC20 public asset;
 
-    /// @notice Strategy's balance of underlying token.
+    /// @notice Strategy's balance of underlying asset.
     /// @return Strategy's balance.
-    function balanceOfToken() external view virtual returns (uint256);
+    function balanceOfAsset() external view virtual returns (uint256);
 
-    /// @notice Deposit vault's underlying token into strategy.
+    /// @notice Deposit vault's underlying asset into strategy.
     /// @param amount The amount to invest.
     /// @dev This function must revert if investment fails.
     function invest(uint256 amount) external virtual;
 
-    /// @notice Withdraw vault's underlying token from strategy.
+    /// @notice Withdraw vault's underlying asset from strategy.
     /// @param amount The amount to withdraw.
     /// @dev This function will not revert if we get less than `amount` out of the strategy
-    /// @return The amount of `token` divested from the strategy
+    /// @return The amount of `asset` divested from the strategy
     function divest(uint256 amount) external virtual returns (uint256);
 
-    /// @notice The total amount of `token` that the strategy is managing
+    /// @notice The total amount of `asset` that the strategy is managing
     /// @dev This should not overestimate, and should account for slippage during divestment
     /// @return The strategy tvl
     function totalLockedValue() external virtual returns (uint256);
 
     function sweep(ERC20 rewardToken) external {
         require(msg.sender == vault.governance(), "ONLY_GOVERNANCE");
-        require(rewardToken != token, "!token");
+        require(rewardToken != asset, "!asset");
         rewardToken.safeTransfer(vault.governance(), rewardToken.balanceOf(address(this)));
     }
 }

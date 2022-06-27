@@ -16,18 +16,18 @@ contract L1CompoundStrategy is BaseStrategy {
     using SafeTransferLib for ERC20;
     // Compund protocol contracts
     IComptroller public immutable comptroller;
-    // Corresponding Compund token (USDC -> cUSDC)
+    // Corresponding Compund asset (USDC -> cUSDC)
     ICToken public immutable cToken;
 
-    // Comp token
+    // Comp asset
     address public immutable rewardToken;
     // WETH
     address public immutable wrappedNative;
 
-    // Router for swapping reward tokens to `token`
+    // Router for swapping reward tokens to `asset`
     IUniLikeSwapRouter public immutable router;
 
-    // The mininum amount of token token to trigger position adjustment
+    // The mininum amount of asset asset to trigger position adjustment
     uint256 public minWant = 100;
     uint256 public minRewardToSell = 1e15;
 
@@ -43,7 +43,7 @@ contract L1CompoundStrategy is BaseStrategy {
         address _wrappedNative
     ) {
         vault = _vault;
-        token = ERC20(vault.asset());
+        asset = ERC20(vault.asset());
         cToken = _cToken;
         comptroller = _comptroller;
 
@@ -51,14 +51,14 @@ contract L1CompoundStrategy is BaseStrategy {
         rewardToken = _rewardToken;
         wrappedNative = _wrappedNative;
         // Approve transfer on the cToken contract
-        token.safeApprove(address(cToken), type(uint256).max);
+        asset.safeApprove(address(cToken), type(uint256).max);
     }
 
     /** BALANCES
      **************************************************************************/
 
-    function balanceOfToken() public view override returns (uint256) {
-        return token.balanceOf(address(this));
+    function balanceOfAsset() public view override returns (uint256) {
+        return asset.balanceOf(address(this));
     }
 
     function balanceOfRewardToken() public view returns (uint256) {
@@ -72,7 +72,7 @@ contract L1CompoundStrategy is BaseStrategy {
     /** INVESTMENT
      **************************************************************************/
     function invest(uint256 amount) external override {
-        token.transferFrom(msg.sender, address(this), amount);
+        asset.transferFrom(msg.sender, address(this), amount);
         _depositWant(amount);
     }
 
@@ -91,7 +91,7 @@ contract L1CompoundStrategy is BaseStrategy {
         uint256 withdrawAmount = Math.min(amount, cTokenAmount);
 
         uint256 withdrawnAmount = _withdrawWant(withdrawAmount);
-        token.transfer(address(vault), withdrawnAmount);
+        asset.transfer(address(vault), withdrawnAmount);
         return withdrawnAmount;
     }
 
@@ -108,7 +108,7 @@ contract L1CompoundStrategy is BaseStrategy {
     function _claimAndSellRewards() internal {
         // TODO: Check why claming comp fails in unit tests.
         // comptroller.claimComp(address(this));
-        if (rewardToken != address(token)) {
+        if (rewardToken != address(asset)) {
             uint256 rewardTokenBalance = balanceOfRewardToken();
             if (rewardTokenBalance >= minRewardToSell) {
                 _sellRewardTokenForWant(rewardTokenBalance, 0);
@@ -125,7 +125,7 @@ contract L1CompoundStrategy is BaseStrategy {
         router.swapExactTokensForTokens(
             amountIn,
             minOut,
-            getTokenOutPathV2(address(rewardToken), address(token)),
+            getTokenOutPathV2(address(rewardToken), address(asset)),
             address(this),
             block.timestamp
         );
@@ -134,7 +134,7 @@ contract L1CompoundStrategy is BaseStrategy {
     /** TVL ESTIMATION
      **************************************************************************/
     function totalLockedValue() public view override returns (uint256) {
-        uint256 balanceExcludingRewards = balanceOfToken() + balanceOfCToken();
+        uint256 balanceExcludingRewards = balanceOfAsset() + balanceOfCToken();
 
         // if we don't have a position, don't worry about rewards
         if (balanceExcludingRewards < minWant) {
@@ -151,19 +151,19 @@ contract L1CompoundStrategy is BaseStrategy {
 
         uint256 pendingRewards = comptroller.compAccrued(address(this));
 
-        if (rewardToken == address(token)) {
+        if (rewardToken == address(asset)) {
             return rewardTokenBalance + pendingRewards;
         } else {
-            return assetToToken(rewardToken, rewardTokenBalance + pendingRewards);
+            return tokenToAsset(rewardToken, rewardTokenBalance + pendingRewards);
         }
     }
 
-    function assetToToken(address asset, uint256 amountAsset) internal view returns (uint256) {
-        if (amountAsset == 0 || address(asset) == address(token)) {
-            return amountAsset;
+    function tokenToAsset(address token, uint256 amountToken) internal view returns (uint256) {
+        if (amountToken == 0 || address(token) == address(asset)) {
+            return amountToken;
         }
 
-        uint256[] memory amounts = router.getAmountsOut(amountAsset, getTokenOutPathV2(asset, address(token)));
+        uint256[] memory amounts = router.getAmountsOut(amountToken, getTokenOutPathV2(token, address(asset)));
 
         return amounts[amounts.length - 1];
     }

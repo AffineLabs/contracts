@@ -8,7 +8,6 @@ import { ethers } from "hardhat";
 import hre from "hardhat";
 import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
 import { POLYGON_MUMBAI } from "../utils/constants/blockchain";
-import { sign } from "crypto";
 import { deployWormholeRouters, WormholeRouterContracts } from "./deploy-wormhole-router";
 import { deployRouter } from "./deploy-router";
 import { Router } from "typechain/src/polygon";

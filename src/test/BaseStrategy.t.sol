@@ -14,7 +14,7 @@ import { BaseVault } from "../BaseVault.sol";
 contract MockStrategy is BaseStrategy {
     constructor(BaseVault _vault) {
         vault = _vault;
-        token = ERC20(vault.asset());
+        asset = ERC20(vault.asset());
     }
 
     function invest(uint256 amount) external override {}
@@ -24,8 +24,8 @@ contract MockStrategy is BaseStrategy {
         return 0;
     }
 
-    function balanceOfToken() external view override returns (uint256) {
-        return token.balanceOf(address(this));
+    function balanceOfAsset() external view override returns (uint256) {
+        return asset.balanceOf(address(this));
     }
 
     function totalLockedValue() public pure override returns (uint256) {
@@ -51,7 +51,7 @@ contract BaseStrategyTest is TestPlus {
 
         // Will revert if trying to sell `token` of BaseStrategy
         ERC20 assetToken = ERC20(strategy.vault().asset());
-        vm.expectRevert(bytes("!token"));
+        vm.expectRevert(bytes("!asset"));
         strategy.sweep(assetToken);
 
         // award the strategy some tokens
