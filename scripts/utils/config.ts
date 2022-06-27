@@ -70,11 +70,11 @@ export interface RebalanceConfig {
   l2VaultAddr: address;
 }
 
-const ethAlchemyURL = process.env.ALCHEMY_ETH_KEY
-  ? `https://eth-goerli.alchemyapi.io/v2/${process.env.ALCHEMY_ETH_KEY}`
+const ethAlchemyURL = process.env.ALCHEMY_ETH_GOERLI_KEY
+  ? `https://eth-goerli.alchemyapi.io/v2/${process.env.ALCHEMY_ETH_GOERLI_KEY}`
   : "";
-const polygonAlchemyURL = process.env.ALCHEMY_POLYGON_KEY
-  ? `https://polygon-mumbai.g.alchemy.com/v2/${process.env.ALCHEMY_POLYGON_KEY}`
+const polygonAlchemyURL = process.env.ALCHEMY_POLYGON_MUMBAI_KEY
+  ? `https://polygon-mumbai.g.alchemy.com/v2/${process.env.ALCHEMY_POLYGON_MUMBAI_KEY}`
   : "";
 const mnemonic = process.env.MNEMONIC || "";
 

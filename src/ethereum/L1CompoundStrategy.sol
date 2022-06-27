@@ -14,9 +14,9 @@ import { BaseStrategy } from "../BaseStrategy.sol";
 
 contract L1CompoundStrategy is BaseStrategy {
     using SafeTransferLib for ERC20;
-    // Compund protocol contracts
+    // Compound protocol contracts
     IComptroller public immutable comptroller;
-    // Corresponding Compund token (USDC -> cUSDC)
+    // Corresponding Compound token (USDC -> cUSDC)
     ICToken public immutable cToken;
 
     // Comp token
@@ -69,6 +69,10 @@ contract L1CompoundStrategy is BaseStrategy {
         return cToken.balanceOf(address(this));
     }
 
+    function underlyingBalanceOfCToken() public returns (uint256) {
+        return cToken.balanceOfUnderlying(address(this));
+    }
+
     /** INVESTMENT
      **************************************************************************/
     function invest(uint256 amount) external override {
@@ -97,7 +101,7 @@ contract L1CompoundStrategy is BaseStrategy {
 
     function _withdrawWant(uint256 amount) internal returns (uint256) {
         if (amount == 0) return 0;
-        uint256 balanceOfUnderlying = cToken.balanceOfUnderlying(address(this));
+        uint256 balanceOfUnderlying = underlyingBalanceOfCToken();
         if (amount > balanceOfUnderlying) {
             amount = balanceOfUnderlying;
         }
@@ -106,8 +110,7 @@ contract L1CompoundStrategy is BaseStrategy {
     }
 
     function _claimAndSellRewards() internal {
-        // TODO: Check why claming comp fails in unit tests.
-        // comptroller.claimComp(address(this));
+        comptroller.claimComp(address(this));
         if (rewardToken != address(token)) {
             uint256 rewardTokenBalance = balanceOfRewardToken();
             if (rewardTokenBalance >= minRewardToSell) {
@@ -133,8 +136,8 @@ contract L1CompoundStrategy is BaseStrategy {
 
     /** TVL ESTIMATION
      **************************************************************************/
-    function totalLockedValue() public view override returns (uint256) {
-        uint256 balanceExcludingRewards = balanceOfToken() + balanceOfCToken();
+    function totalLockedValue() public override returns (uint256) {
+        uint256 balanceExcludingRewards = balanceOfToken() + underlyingBalanceOfCToken();
 
         // if we don't have a position, don't worry about rewards
         if (balanceExcludingRewards < minWant) {
@@ -148,7 +151,6 @@ contract L1CompoundStrategy is BaseStrategy {
 
     function estimatedRewardsInWant() public view returns (uint256) {
         uint256 rewardTokenBalance = balanceOfRewardToken();
-
         uint256 pendingRewards = comptroller.compAccrued(address(this));
 
         if (rewardToken == address(token)) {
@@ -168,7 +170,7 @@ contract L1CompoundStrategy is BaseStrategy {
         return amounts[amounts.length - 1];
     }
 
-    function getCompundAssets() internal view returns (ICToken[] memory assets) {
+    function getCompoundAssets() internal view returns (ICToken[] memory assets) {
         assets = new ICToken[](1);
         assets[0] = cToken;
     }

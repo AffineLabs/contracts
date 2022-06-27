@@ -1,0 +1,3 @@
+L1CompoundStratTestForkMainnet:testStrategyInvest() (gas: 578173)
+L1CompoundStratTestForkMainnet:testStrategyMakesMoneyWithCOMPToken() (gas: 615002)
+L1CompoundStratTestForkMainnet:testStrategyMakesMoneyWithCToken() (gas: 594514)

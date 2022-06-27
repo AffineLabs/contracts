@@ -35,8 +35,8 @@ subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(async (_, __, runSuper
 const MNEMONIC = process.env.MNEMONIC || "";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 const POLYGONSCAN_API_KEY = process.env.POLYGONSCAN_API_KEY || "";
-const ALCHEMY_ETH_KEY = process.env.ALCHEMY_ETH_KEY || "";
-const ALCHEMY_POLYGON_KEY = process.env.ALCHEMY_POLYGON_KEY || "";
+const ALCHEMY_ETH_GOERLI_KEY = process.env.ALCHEMY_ETH_GOERLI_KEY || "";
+const ALCHEMY_POLYGON_MUMBAI_KEY = process.env.ALCHEMY_POLYGON_MUMBAI_KEY || "";
 
 interface ethNetworkConfig {
   [key: string]: NetworkUserConfig;
@@ -44,8 +44,8 @@ interface ethNetworkConfig {
 function createNetworkConfig(network: ethNetwork | polygonNetwork, type: "eth" | "polygon" = "eth"): ethNetworkConfig {
   const isEth = type === "eth";
   const url: string = isEth
-    ? `https://eth-${network}.alchemyapi.io/v2/${ALCHEMY_ETH_KEY}`
-    : `https://polygon-${network}.g.alchemy.com/v2/${ALCHEMY_POLYGON_KEY}`;
+    ? `https://eth-${network}.alchemyapi.io/v2/${ALCHEMY_ETH_GOERLI_KEY}`
+    : `https://polygon-${network}.g.alchemy.com/v2/${ALCHEMY_POLYGON_MUMBAI_KEY}`;
 
   const networkConfig: NetworkUserConfig = {
     accounts: {

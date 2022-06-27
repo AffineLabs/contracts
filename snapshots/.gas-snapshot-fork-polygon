@@ -1,8 +1,0 @@
-L2ForwardTestFork:testDoubleDeposit() (gas: 221636)
-L2ForwardTestFork:testTransactVaultAndBasket() (gas: 309511)
-L2AAVEStratTestFork:testStrategyMakesMoney() (gas: 677621)
-L2RouterTestFork:testMultipleDeposits() (gas: 599671)
-L2BtcEthBasketTestFork:testAuction() (gas: 209)
-L2BtcEthBasketTestFork:testDepositWithdraw() (gas: 620516)
-L2BtcEthBasketTestFork:testSlippageCheck() (gas: 535676)
-L2BtcEthBasketTestFork:testVaultPause() (gas: 633547)

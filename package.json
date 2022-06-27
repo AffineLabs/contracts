@@ -5,9 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "ts-node scripts/forge.ts test",
-    "test-all": "yarn test --l1 --l2",
+    "test-all": "yarn test --eth-goerli --polygon-mumbai --eth-mainnet --polygon-mainnet",
     "snap": "ts-node scripts/forge.ts snapshot",
-    "snap-all": "yarn snap --l1 --l2",
+    "snap-all": "yarn snap --eth-goerli --polygon-mumbai --eth-mainnet --polygon-mainnet",
     "test-hh": "ts-node scripts/fork.ts test",
     "clean": "forge clean",
     "script": "ts-node scripts/fork.ts script",

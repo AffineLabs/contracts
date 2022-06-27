@@ -13,11 +13,14 @@ import { IComptroller } from "../interfaces/compound/IComptroller.sol";
 import { L1CompoundStrategy } from "../ethereum/L1CompoundStrategy.sol";
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 
-contract L1CompoundStratTestFork is TestPlus {
+// Contracts matching ^L1.*ForkMainnet$ pattern will run against 
+// Eth Mainnet fork.
+contract L1CompoundStratTestForkMainnet is TestPlus {
     using stdStorage for StdStorage;
-
-    ERC20 usdc = ERC20(0xD87Ba7A50B2E7E660f678A895E4B72E7CB4CCd9C);
-
+    ERC20 usdc = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+    address uniLikeSwapRouterAddr = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    address comptrollerAddr = 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B;
+    address cTokenAddr = 0x39AA39c021dfbaE8faC545936693aC917d5E7563;
     L1Vault vault;
     L1CompoundStrategy strategy;
 
@@ -25,35 +28,70 @@ contract L1CompoundStratTestFork is TestPlus {
     uint256 usdcBalancesStorageSlot = 0;
     uint256 oneUSDC = 1e6;
     uint256 halfUSDC = oneUSDC / 2;
+    uint256 oneCOMP = 1e18;
 
     function setUp() public {
         vault = Deploy.deployL1Vault();
 
-        // make vault token equal to the L1 (Goerli) usdc address
+        // make vault token equal to the L1 usdc address
         uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
         vm.store(address(vault), bytes32(slot), tokenAddr);
 
         strategy = new L1CompoundStrategy(
             vault,
-            ICToken(0xCEC4a43eBB02f9B80916F1c718338169d6d5C1F0), // cToken
-            IComptroller(0x627EA49279FD0dE89186A58b8758aD02B6Be2867), // Comptroller
-            IUniLikeSwapRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D), // sushiswap router on goerli
-            0xe16C7165C8FeA64069802aE4c4c9C320783f2b6e, // reward token -> comp token
-            0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6 // wrapped eth address
+            ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563), // cToken
+            IComptroller(comptrollerAddr), // Comptroller
+            IUniLikeSwapRouter(uniLikeSwapRouterAddr), // sushiswap router
+            0xc00e94Cb662C3520282E6f5717214004A7f26888, // reward token -> comp token
+            0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 // wrapped eth address
         );
     }
 
     function testStrategyInvest() public {
         // Give the Vault 1 usdc
         uint256 slot = stdstore.target(address(usdc)).sig(usdc.balanceOf.selector).with_key(address(vault)).find();
-        vm.store(address(usdc), bytes32(slot), bytes32(uint256(1e6)));
+        vm.store(address(usdc), bytes32(slot), bytes32(uint256(oneUSDC)));
 
-        vault.addStrategy(strategy, 5000);
+        vault.addStrategy(strategy, 5_000);
         vm.prank(address(0)); // BridgeEscrow address is 0 in the default vault
         vault.afterReceive();
 
         // Strategy deposits all of usdc into Compound
         assertInRange(strategy.cToken().balanceOfUnderlying(address(strategy)), halfUSDC - 1, halfUSDC);
+    }
+
+    function testStrategyMakesMoneyWithCOMPToken() public {
+        // Give the Vault 1 usdc
+        uint256 slot = stdstore.target(address(usdc)).sig(usdc.balanceOf.selector).with_key(address(vault)).find();
+        vm.store(address(usdc), bytes32(slot), bytes32(uint256(oneUSDC)));
+
+        vault.addStrategy(strategy, 5_000);
+        vm.prank(address(0)); // BridgeEscrow address is 0 in the default vault
+        vault.afterReceive();
+
+        // Simulate some accured COMP token.
+        vm.mockCall(comptrollerAddr, abi.encodeWithSelector(IComptroller.compAccrued.selector), abi.encode(oneCOMP));
+
+        assertGt(strategy.totalLockedValue(), halfUSDC);
+    }
+
+    function testStrategyMakesMoneyWithCToken() public {
+        // Give the Vault 1 usdc
+        uint256 slot = stdstore.target(address(usdc)).sig(usdc.balanceOf.selector).with_key(address(vault)).find();
+        vm.store(address(usdc), bytes32(slot), bytes32(uint256(oneUSDC)));
+
+        vault.addStrategy(strategy, 5_000);
+        vm.prank(address(0)); // BridgeEscrow address is 0 in the default vault
+        vault.afterReceive();
+
+        uint256 curretActualBalanceOfUnderlying = strategy.cToken().balanceOfUnderlying(address(strategy));
+        // Simulate some accured COMP token.
+        vm.mockCall(
+            cTokenAddr, 
+            abi.encodeWithSelector(ICToken.balanceOfUnderlying.selector), 
+            abi.encode(curretActualBalanceOfUnderlying * 2)
+        );
+        assertGt(strategy.totalLockedValue(), halfUSDC);
     }
 }
