@@ -14,13 +14,13 @@ const ALCHEMY_POLYGON_MAINNET_KEY = process.env.ALCHEMY_POLYGON_MAINNET_KEY || "
 const args = {
   eth: {
     goerli: `--match-contract "^L1.*ForkGoerli$" --fork-url https://eth-goerli.alchemyapi.io/v2/${ALCHEMY_ETH_GOERLI_KEY} --fork-block-number 6267635`,
-    mainnet: `--match-contract "^L1.*ForkMainnet$" --fork-url https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_ETH_MAINNET_KEY} --fork-block-number 14971385`
+    mainnet: `--match-contract "^L1.*ForkMainnet$" --fork-url https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_ETH_MAINNET_KEY} --fork-block-number 14971385`,
   },
   polygon: {
     mumbai: `--match-contract "^L2.*ForkMumbai$" --fork-url https://polygon-mumbai.g.alchemy.com/v2/${ALCHEMY_POLYGON_MUMBAI_KEY} --fork-block-number 25804436`,
     mainnet: `--match-contract "^L2.*ForkMainnet$" --fork-url https://polygon-mainnet.g.alchemy.com/v2/${ALCHEMY_POLYGON_MAINNET_KEY} --fork-block-number 29555548`,
-  }
-}
+  },
+};
 
 program
   .command("test")
@@ -53,10 +53,22 @@ program
       stdio: "inherit",
     });
 
-    if (options.ethGoerli) execSync(`forge snapshot ${args.eth.goerli} --snap snapshots/.gas-snapshot-fork-eth-goerli ${check}`, { stdio: "inherit" });
-    if (options.ethMainnet) execSync(`forge snapshot ${args.eth.mainnet} --snap snapshots/.gas-snapshot-fork-eth-mainnet ${check}`, { stdio: "inherit" });
-    if (options.polygonMumbai) execSync(`forge snapshot ${args.polygon.mumbai} --snap snapshots/.gas-snapshot-fork-polygon-mumbai ${check}`, { stdio: "inherit" });
-    if (options.polygonMainnet) execSync(`forge snapshot ${args.polygon.mainnet} --snap snapshots/.gas-snapshot-fork-polygon-mainnet ${check}`, { stdio: "inherit" });
+    if (options.ethGoerli)
+      execSync(`forge snapshot ${args.eth.goerli} --snap snapshots/.gas-snapshot-fork-eth-goerli ${check}`, {
+        stdio: "inherit",
+      });
+    if (options.ethMainnet)
+      execSync(`forge snapshot ${args.eth.mainnet} --snap snapshots/.gas-snapshot-fork-eth-mainnet ${check}`, {
+        stdio: "inherit",
+      });
+    if (options.polygonMumbai)
+      execSync(`forge snapshot ${args.polygon.mumbai} --snap snapshots/.gas-snapshot-fork-polygon-mumbai ${check}`, {
+        stdio: "inherit",
+      });
+    if (options.polygonMainnet)
+      execSync(`forge snapshot ${args.polygon.mainnet} --snap snapshots/.gas-snapshot-fork-polygon-mainnet ${check}`, {
+        stdio: "inherit",
+      });
   });
 
 program.parse();

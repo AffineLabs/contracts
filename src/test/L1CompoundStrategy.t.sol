@@ -13,7 +13,7 @@ import { IComptroller } from "../interfaces/compound/IComptroller.sol";
 import { L1CompoundStrategy } from "../ethereum/L1CompoundStrategy.sol";
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 
-// Contracts matching ^L1.*ForkMainnet$ pattern will run against 
+// Contracts matching ^L1.*ForkMainnet$ pattern will run against
 // Eth Mainnet fork.
 contract L1CompoundStratTestForkMainnet is TestPlus {
     using stdStorage for StdStorage;
@@ -88,8 +88,8 @@ contract L1CompoundStratTestForkMainnet is TestPlus {
         uint256 curretActualBalanceOfUnderlying = strategy.cToken().balanceOfUnderlying(address(strategy));
         // Simulate some accured COMP token.
         vm.mockCall(
-            cTokenAddr, 
-            abi.encodeWithSelector(ICToken.balanceOfUnderlying.selector), 
+            cTokenAddr,
+            abi.encodeWithSelector(ICToken.balanceOfUnderlying.selector),
             abi.encode(curretActualBalanceOfUnderlying * 2)
         );
         assertGt(strategy.totalLockedValue(), halfUSDC);

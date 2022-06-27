@@ -11,7 +11,7 @@ import { L2Vault } from "../polygon/L2Vault.sol";
 import { L2AAVEStrategy } from "../polygon/L2AAVEStrategy.sol";
 import { Deploy } from "./Deploy.sol";
 
-// Contracts matching ^L2.*ForkMumbai$ pattern will run against 
+// Contracts matching ^L2.*ForkMumbai$ pattern will run against
 // Polygon Mumbai fork.
 contract L2AAVEStratTestForkMumbai is TestPlus {
     using stdStorage for StdStorage;
