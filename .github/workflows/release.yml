@@ -55,6 +55,6 @@ jobs:
         if: ${{ env.VERSION }}
         uses: jakejarvis/s3-sync-action@master
         with:
-          args: --follow-symlinks --delete --exclude '*' --include 'addressbook.json' --include 'abi/*.json'
+          args: --follow-symlinks --delete --exclude '*' --include 'addressbook.json' --include 'abi/*.json' --include 'typechain/*'
         env:
           DEST_DIR: latest
