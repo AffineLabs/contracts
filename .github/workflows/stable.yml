@@ -22,8 +22,8 @@ jobs:
       VERSION: "stable"
       # Hardhat env variables
       MNEMONIC: ${{ secrets.MNEMONIC }}
-      ALCHEMY_ETH_KEY: ${{ secrets.ALCHEMY_ETH_KEY }}
-      ALCHEMY_POLYGON_KEY: ${{ secrets.ALCHEMY_POLYGON_KEY }}
+      ALCHEMY_ETH_GOERLI_KEY: ${{ secrets.ALCHEMY_ETH_GOERLI_KEY }}
+      ALCHEMY_POLYGON_MUMBAI_KEY: ${{ secrets.ALCHEMY_POLYGON_MUMBAI_KEY }}
       DEFENDER_API_KEY: ${{ secrets.DEFENDER_API_KEY }}
       DEFENDER_API_SECRET: ${{ secrets.DEFENDER_API_SECRET }}
     steps:

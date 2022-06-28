@@ -11,7 +11,9 @@ import { L2Vault } from "../polygon/L2Vault.sol";
 import { L2AAVEStrategy } from "../polygon/L2AAVEStrategy.sol";
 import { Deploy } from "./Deploy.sol";
 
-contract L2AAVEStratTestFork is TestPlus {
+// Contracts matching ^L2.*ForkMumbai$ pattern will run against
+// Polygon Mumbai fork.
+contract L2AAVEStratTestForkMumbai is TestPlus {
     using stdStorage for StdStorage;
     L2Vault vault;
     L2AAVEStrategy strategy;
@@ -28,7 +30,7 @@ contract L2AAVEStratTestFork is TestPlus {
             vault,
             0xE6ef11C967898F9525D550014FDEdCFAB63536B5, // aave adress provider registry
             0x0a1AB7aea4314477D40907412554d10d30A0503F, // dummy incentives controller
-            0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff, // sushiswap router on mumbai
+            0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff, // quickswap router on mumbai
             0x5B67676a984807a212b1c59eBFc9B3568a474F0a, // reward token -> wrapped matic
             0x5B67676a984807a212b1c59eBFc9B3568a474F0a // wrapped matic address
         );

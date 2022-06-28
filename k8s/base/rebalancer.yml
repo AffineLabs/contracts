@@ -16,16 +16,16 @@ spec:
           - name: rebalancer
             image:  rebalancer
             env:
-            - name: ALCHEMY_ETH_KEY
+            - name: ALCHEMY_ETH_GOERLI_KEY
               valueFrom:
                 secretKeyRef:
                   name: rebalancer-secrets
-                  key: ALCHEMY_ETH_KEY
-            - name: ALCHEMY_POLYGON_KEY 
+                  key: ALCHEMY_ETH_GOERLI_KEY
+            - name: ALCHEMY_POLYGON_MUMBAI_KEY 
               valueFrom:
                 secretKeyRef:
                   name: rebalancer-secrets
-                  key: ALCHEMY_POLYGON_KEY
+                  key: ALCHEMY_POLYGON_MUMBAI_KEY
             - name: MNEMONIC
               valueFrom:
                 secretKeyRef:

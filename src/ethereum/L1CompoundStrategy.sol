@@ -14,9 +14,9 @@ import { BaseStrategy } from "../BaseStrategy.sol";
 
 contract L1CompoundStrategy is BaseStrategy {
     using SafeTransferLib for ERC20;
-    // Compund protocol contracts
+    // Compound protocol contracts
     IComptroller public immutable comptroller;
-    // Corresponding Compund asset (USDC -> cUSDC)
+    // Corresponding Compound token (USDC -> cUSDC)
     ICToken public immutable cToken;
 
     // Comp asset
@@ -69,6 +69,10 @@ contract L1CompoundStrategy is BaseStrategy {
         return cToken.balanceOf(address(this));
     }
 
+    function underlyingBalanceOfCToken() public returns (uint256) {
+        return cToken.balanceOfUnderlying(address(this));
+    }
+
     /** INVESTMENT
      **************************************************************************/
     function invest(uint256 amount) external override {
@@ -87,28 +91,27 @@ contract L1CompoundStrategy is BaseStrategy {
     function divest(uint256 amount) external override onlyVault returns (uint256) {
         // TODO: take current balance into consideration and only withdraw the amount that you need to
         _claimAndSellRewards();
-        uint256 cTokenAmount = balanceOfCToken();
-        uint256 withdrawAmount = Math.min(amount, cTokenAmount);
-
-        uint256 withdrawnAmount = _withdrawWant(withdrawAmount);
-        asset.transfer(address(vault), withdrawnAmount);
-        return withdrawnAmount;
+        // We now have some USDC idle in the contract
+        uint256 amountToWithdraw = amount - asset.balanceOf(address(this));
+        _withdrawWant(amountToWithdraw);
+        uint256 amountToTrasnferToVault = Math.min(asset.balanceOf(address(this)), amount);
+        asset.transfer(address(vault), amountToTrasnferToVault);
+        return amountToTrasnferToVault;
     }
 
     function _withdrawWant(uint256 amount) internal returns (uint256) {
         if (amount == 0) return 0;
-        uint256 balanceOfUnderlying = cToken.balanceOfUnderlying(address(this));
-        if (amount > balanceOfUnderlying) {
-            amount = balanceOfUnderlying;
+        uint256 balanceOfUnderlying = underlyingBalanceOfCToken();
+        uint256 amountToRedeem = amount;
+        if (amountToRedeem > balanceOfUnderlying) {
+            amountToRedeem = balanceOfUnderlying;
         }
-        cToken.redeemUnderlying(amount);
-        return amount;
+        return cToken.redeemUnderlying(amountToRedeem);
     }
 
     function _claimAndSellRewards() internal {
-        // TODO: Check why claming comp fails in unit tests.
-        // comptroller.claimComp(address(this));
-        if (rewardToken != address(asset)) {
+        comptroller.claimComp(address(this));
+        if (rewardToken != address(cToken)) {
             uint256 rewardTokenBalance = balanceOfRewardToken();
             if (rewardTokenBalance >= minRewardToSell) {
                 _sellRewardTokenForWant(rewardTokenBalance, 0);
@@ -133,8 +136,8 @@ contract L1CompoundStrategy is BaseStrategy {
 
     /** TVL ESTIMATION
      **************************************************************************/
-    function totalLockedValue() public view override returns (uint256) {
-        uint256 balanceExcludingRewards = balanceOfAsset() + balanceOfCToken();
+    function totalLockedValue() public override returns (uint256) {
+        uint256 balanceExcludingRewards = underlyingBalanceOfCToken();
 
         // if we don't have a position, don't worry about rewards
         if (balanceExcludingRewards < minWant) {
@@ -148,7 +151,6 @@ contract L1CompoundStrategy is BaseStrategy {
 
     function estimatedRewardsInWant() public view returns (uint256) {
         uint256 rewardTokenBalance = balanceOfRewardToken();
-
         uint256 pendingRewards = comptroller.compAccrued(address(this));
 
         if (rewardToken == address(asset)) {
@@ -168,7 +170,7 @@ contract L1CompoundStrategy is BaseStrategy {
         return amounts[amounts.length - 1];
     }
 
-    function getCompundAssets() internal view returns (ICToken[] memory assets) {
+    function getCompoundAssets() internal view returns (ICToken[] memory assets) {
         assets = new ICToken[](1);
         assets[0] = cToken;
     }

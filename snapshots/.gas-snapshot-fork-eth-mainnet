@@ -1,0 +1,5 @@
+L1CompoundStratTestForkMainnet:testDivestFromStrategy() (gas: 2541796)
+L1CompoundStratTestForkMainnet:testStrategyInvest() (gas: 588088)
+L1CompoundStratTestForkMainnet:testStrategyLosesMoneyWithCToken() (gas: 592526)
+L1CompoundStratTestForkMainnet:testStrategyMakesMoneyWithCOMPToken() (gas: 613139)
+L1CompoundStratTestForkMainnet:testStrategyMakesMoneyWithCToken() (gas: 592646)
