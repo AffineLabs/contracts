@@ -58,12 +58,13 @@ contract L1CompoundStratTestForkMainnet is TestPlus {
         vault.addStrategy(strategy, 5_000);
         // BridgeEscrow address is 0 in the default vault
         vm.prank(address(0));
-        // This simulates an internal rebalance of vault assets among strategies of the 
+        // This simulates an internal rebalance of vault assets among strategies of the
         // vault. After calling this, 5,000 bips of vault assets will be invested
         // in the aforementioed strategy and the remaining 5,000 bips will stay in vault
         // as a pile of idle USDC.
         vault.afterReceive();
     }
+
     function testStrategyInvest() public {
         depositOneUSDCToVault();
         investHalfOfVaultAssetInCompund();
