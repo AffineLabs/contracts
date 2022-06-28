@@ -42,6 +42,7 @@ contract BaseVault is Initializable, AccessControl {
         governance = _governance;
         _asset = vaultAsset;
         wormhole = _wormhole;
+        bridgeEscrow = _bridgeEscrow;
 
         // All roles use the default admin role
         // governance has the admin role and can grant/remove a role to any account
@@ -49,7 +50,7 @@ contract BaseVault is Initializable, AccessControl {
         _grantRole(harvesterRole, governance);
         _grantRole(queueOperatorRole, governance);
 
-        bridgeEscrow = _bridgeEscrow;
+        lastHarvest = block.timestamp;
     }
 
     /** CROSS CHAIN MESSAGE PASSING AND REBALANCING
@@ -310,7 +311,11 @@ contract BaseVault is Initializable, AccessControl {
     /** HARVESTING
      **************************************************************************/
 
-    /// @notice A timestamp representing when the most recent harvest occurred.
+    /**
+     * @notice A timestamp representing when the most recent harvest occurred.
+     * @dev Since the time since the last harvest is used to calculate management fees, this is set
+     * to `block.timestamp` (instead of 0) during initialization.
+     */
     uint256 public lastHarvest;
     /// @notice The amount of profit *originally* locked after harvesting from a strategy
     uint256 public maxLockedProfit;
