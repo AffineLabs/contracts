@@ -1,4 +1,4 @@
-L2ForwardTestFork:testDoubleDeposit() (gas: 221636)
+L2ForwardTestFork:testDoubleDeposit() (gas: 224250)
 L2ForwardTestFork:testTransactVaultAndBasket() (gas: 309511)
 L2AAVEStratTestFork:testStrategyMakesMoney() (gas: 677643)
 L2RouterTestFork:testMultipleDeposits() (gas: 599671)
