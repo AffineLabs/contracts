@@ -23,7 +23,7 @@ export async function deployWormholeRouters(
   const l1WormholeRouterFactory = await ethers.getContractFactory("L1WormholeRouter");
   const l1WormholeRouter = (await l1WormholeRouterFactory.deploy()) as L1WormholeRouter;
   await l1WormholeRouter.deployed();
-  await addToAddressBookAndDefender(ETH_GOERLI, "EthWormholeRouter", "L1WormholeRouter", l1WormholeRouter);
+  await addToAddressBookAndDefender(ETH_GOERLI, "EthWormholeRouter", "L1WormholeRouter", l1WormholeRouter, [], false);
   logContractDeploymentInfo(ethNetworkName, "L1WormholeRouter", l1WormholeRouter);
 
   /**
@@ -34,7 +34,14 @@ export async function deployWormholeRouters(
   const l2WormholeRouterFactory = await ethers.getContractFactory("L2WormholeRouter");
   const l2WormholeRouter = (await l2WormholeRouterFactory.deploy()) as L2WormholeRouter;
   await l2WormholeRouter.deployed();
-  await addToAddressBookAndDefender(POLYGON_MUMBAI, "PolygonWormholeRouter", "L2WormholeRouter", l2WormholeRouter);
+  await addToAddressBookAndDefender(
+    POLYGON_MUMBAI,
+    "PolygonWormholeRouter",
+    "L2WormholeRouter",
+    l2WormholeRouter,
+    [],
+    false,
+  );
   logContractDeploymentInfo(polygonNetworkName, "L2WormholeRouter", l2WormholeRouter);
 
   return {
