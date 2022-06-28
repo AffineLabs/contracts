@@ -56,7 +56,12 @@ contract L1CompoundStratTestForkMainnet is TestPlus {
 
     function investHalfOfVaultAssetInCompund() internal {
         vault.addStrategy(strategy, 5_000);
-        vm.prank(address(0)); // BridgeEscrow address is 0 in the default vault
+        // BridgeEscrow address is 0 in the default vault
+        vm.prank(address(0));
+        // This simulates an internal rebalance of vault assets among strategies of the 
+        // vault. After calling this, 5,000 bips of vault assets will be invested
+        // in the aforementioed strategy and the remaining 5,000 bips will stay in vault
+        // as a pile of idle USDC.
         vault.afterReceive();
     }
     function testStrategyInvest() public {
@@ -74,7 +79,6 @@ contract L1CompoundStratTestForkMainnet is TestPlus {
         // Simulate some accured COMP token.
         vm.mockCall(comptrollerAddr, abi.encodeWithSelector(IComptroller.compAccrued.selector), abi.encode(oneCOMP));
         assertGt(strategy.totalLockedValue(), halfUSDC);
-        vm.clearMockedCalls();
     }
 
     function testStrategyMakesMoneyWithCToken() public {
@@ -89,7 +93,6 @@ contract L1CompoundStratTestForkMainnet is TestPlus {
             abi.encode(curretActualBalanceOfUnderlying * 2)
         );
         assertGt(strategy.totalLockedValue(), halfUSDC);
-        vm.clearMockedCalls();
     }
 
     function testStrategyLosesMoneyWithCToken() public {
@@ -104,7 +107,6 @@ contract L1CompoundStratTestForkMainnet is TestPlus {
             abi.encode(curretActualBalanceOfUnderlying / 2)
         );
         assertLt(strategy.totalLockedValue(), halfUSDC);
-        vm.clearMockedCalls();
     }
 
     function testDivestFromStrategy() public {
@@ -115,6 +117,5 @@ contract L1CompoundStratTestForkMainnet is TestPlus {
         vm.prank(address(vault));
         strategy.divest(tvl);
         assertInRange(usdc.balanceOf(address(vault)), oneUSDC - 1, oneUSDC);
-        vm.clearMockedCalls();
     }
 }
