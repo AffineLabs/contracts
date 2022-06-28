@@ -108,9 +108,17 @@ contract BaseVaultTest is TestPlus {
     }
 
     function testStrategyRemoval() public {
+        // Adding a strategy increases our totalBps
         TestStrategy strategy = new TestStrategy(token, vault);
+        vault.addStrategy(strategy, 1000);
+        assertEq(vault.totalBps(), 1000);
+
+        // Removing a strategy decreases our totalBps
         vault.removeStrategy(strategy);
+        assertTrue(vault.totalBps() == 0);
+
         (bool isActive, uint256 tvlBps, , , ) = vault.strategies(strategy);
+
         assertEq(tvlBps, 0);
         assertTrue(isActive == false);
         assertEq(address(vault.withdrawalQueue(0)), address(0));

@@ -224,7 +224,11 @@ contract BaseVault is Initializable, AccessControl {
         for (uint256 i = 0; i < length; i++) {
             if (strategy == withdrawalQueue[i]) {
                 strategies[strategy].isActive = false;
+
+                uint256 oldBps = strategies[strategy].tvlBps;
+                totalBps -= oldBps;
                 strategies[strategy].tvlBps = 0;
+
                 withdrawalQueue[i] = Strategy(address(0));
                 emit StrategyRemoved(strategy);
                 _organizeWithdrawalQueue();
