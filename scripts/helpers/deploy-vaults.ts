@@ -7,6 +7,7 @@ import { addToAddressBookAndDefender, getContractAddress } from "../utils/export
 import { ETH_GOERLI, POLYGON_MUMBAI } from "../utils/constants/blockchain";
 import { address } from "../utils/types";
 import { WormholeRouterContracts } from "./deploy-wormhole-router";
+import { CHAIN_ID_ETH, CHAIN_ID_POLYGON } from "@certusone/wormhole-sdk";
 
 export interface VaultContracts {
   l1Vault: L1Vault;
@@ -74,7 +75,6 @@ export async function deployVaults(
     config.l1ChainManager,
   );
   await bridgeEscrowInitTx.wait();
-  await wormholeRouters.l1WormholeRouter.initialize(config.l1worm, l1Vault.address);
 
   /**
    * Deploy vault in Polygon.
@@ -117,7 +117,10 @@ export async function deployVaults(
     ethers.constants.AddressZero, // there is no root chain manager in polygon
   );
   await bridgeEscrowInitTx.wait();
-  await wormholeRouters.l2WormholeRouter.initialize(config.l2worm, l2Vault.address);
+
+  // Initialize wormhole routers
+  await wormholeRouters.l1WormholeRouter.initialize(config.l1worm, l1Vault.address, wormholeRouters.l2WormholeRouter.address, CHAIN_ID_POLYGON);
+  await wormholeRouters.l2WormholeRouter.initialize(config.l2worm, l2Vault.address, wormholeRouters.l1WormholeRouter.address, CHAIN_ID_ETH);
 
   return {
     l1Vault,

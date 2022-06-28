@@ -11,13 +11,22 @@ contract L2WormholeRouter {
     IWormhole public wormhole;
     L2Vault public vault;
 
+    address l1WormholeRouterAddress;
+    uint16 l1WormholeChainID;
     uint256 nextVaildNonce;
 
     constructor() {}
 
-    function initialize(IWormhole _wormhole, L2Vault _vault) external {
+    function initialize(
+        IWormhole _wormhole, 
+        L2Vault _vault,
+        address _l1WormholeRouterAddress,
+        uint16 _l1WormholeChainID
+    ) external {
         wormhole = _wormhole;
         vault = _vault;
+        l1WormholeRouterAddress = _l1WormholeRouterAddress;
+        l1WormholeChainID = _l1WormholeChainID;
     }
 
     function reportTransferredFund(uint256 amount) external {
@@ -32,6 +41,11 @@ contract L2WormholeRouter {
         bytes memory payload = abi.encode(Constants.L2_FUND_REQUEST, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
         wormhole.publishMessage(uint32(sequence), payload, 4);
+    }
+
+    function validateWormholeMessageEmitter(IWormhole.VM memory vm) internal view {
+        require(vm.emitterAddress == bytes32(uint256(uint160(l1WormholeRouterAddress))), "Wrong emitter addres");
+        require(vm.emitterChainId == l1WormholeChainID, "Message emitted from wrong chain");
     }
 
     function receiveFunds(bytes calldata message) external {

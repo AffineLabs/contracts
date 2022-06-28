@@ -11,13 +11,22 @@ contract L1WormholeRouter {
     IWormhole public wormhole;
     L1Vault public vault;
 
+    address l2WormholeRouterAddress;
+    uint16 l2WormholeChainID;
     uint256 nextVaildNonce;
 
     constructor() {}
 
-    function initialize(IWormhole _wormhole, L1Vault _vault) external {
+    function initialize(
+        IWormhole _wormhole, 
+        L1Vault _vault,
+        address _l2WormholeRouterAddress,
+        uint16 _l2WormholeChainID
+    ) external {
         wormhole = _wormhole;
         vault = _vault;
+        l2WormholeRouterAddress = _l2WormholeRouterAddress;
+        l2WormholeChainID = _l2WormholeChainID;
     }
 
     function reportTVL(uint256 tvl, bool received) external {
@@ -42,9 +51,15 @@ contract L1WormholeRouter {
         wormhole.publishMessage(uint32(sequence), payload, 4);
     }
 
+    function validateWormholeMessageEmitter(IWormhole.VM memory vm) internal view {
+        require(vm.emitterAddress == bytes32(uint256(uint160(l2WormholeRouterAddress))), "Wrong emitter addres");
+        require(vm.emitterChainId == l2WormholeChainID, "Message emitted from wrong chain");
+    }
+
     function receiveFunds(bytes calldata message, bytes calldata data) external {
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
+        validateWormholeMessageEmitter(vm);
         require(vm.nonce >= nextVaildNonce, "Old transaction");
         nextVaildNonce = vm.nonce + 1;
         // TODO: check chain ID, emitter address
@@ -58,6 +73,7 @@ contract L1WormholeRouter {
     function receiveFundRequest(bytes calldata message) external {
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
+        validateWormholeMessageEmitter(vm);
         require(vm.nonce >= nextVaildNonce, "Old transaction");
         nextVaildNonce = vm.nonce + 1;
         // TODO: check chain ID, emitter address
