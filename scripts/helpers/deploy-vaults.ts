@@ -119,8 +119,18 @@ export async function deployVaults(
   await bridgeEscrowInitTx.wait();
 
   // Initialize wormhole routers
-  await wormholeRouters.l1WormholeRouter.initialize(config.l1worm, l1Vault.address, wormholeRouters.l2WormholeRouter.address, CHAIN_ID_POLYGON);
-  await wormholeRouters.l2WormholeRouter.initialize(config.l2worm, l2Vault.address, wormholeRouters.l1WormholeRouter.address, CHAIN_ID_ETH);
+  await wormholeRouters.l1WormholeRouter.initialize(
+    config.l1worm,
+    l1Vault.address,
+    wormholeRouters.l2WormholeRouter.address,
+    CHAIN_ID_POLYGON,
+  );
+  await wormholeRouters.l2WormholeRouter.initialize(
+    config.l2worm,
+    l2Vault.address,
+    wormholeRouters.l1WormholeRouter.address,
+    CHAIN_ID_ETH,
+  );
 
   return {
     l1Vault,

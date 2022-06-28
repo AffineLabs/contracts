@@ -18,7 +18,7 @@ contract L2WormholeRouter {
     constructor() {}
 
     function initialize(
-        IWormhole _wormhole, 
+        IWormhole _wormhole,
         L2Vault _vault,
         address _l1WormholeRouterAddress,
         uint16 _l1WormholeChainID
