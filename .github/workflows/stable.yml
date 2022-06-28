@@ -50,11 +50,3 @@ jobs:
           args: --follow-symlinks --delete --exclude '*' --include 'addressbook.json' --include 'abi/*.json' --include 'typechain/*'
         env:
           DEST_DIR: ${{ env.VERSION || 'test' }}
-
-      - name: Uploading addressbook to S3 bucket in `latest` subdirectory
-        if: ${{ env.VERSION }}
-        uses: jakejarvis/s3-sync-action@master
-        with:
-          args: --follow-symlinks --delete --exclude '*' --include 'addressbook.json' --include 'abi/*.json' --include 'typechain/*'
-        env:
-          DEST_DIR: latest
