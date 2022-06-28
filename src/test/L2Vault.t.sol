@@ -95,7 +95,7 @@ contract L2VaultTest is TestPlus {
 
         // call to balanceOfAsset in harvest() will return 1e18
         vm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfAsset.selector), abi.encode(1e18));
-        // block.timestap must be >= lastHarvest + lockInterval when harvesting
+        // block.timestamp must be >= lastHarvest + lockInterval when harvesting
         vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
 
         // Call harvest to update lastHarvest, note that no shares are minted here because
