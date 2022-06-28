@@ -92,15 +92,11 @@ contract L1CompoundStrategy is BaseStrategy {
         // TODO: take current balance into consideration and only withdraw the amount that you need to
         _claimAndSellRewards();
         // We now have some USDC idle in the contract
-        uint256 amountInWantToWithdraw = amount - asset.balanceOf(address(this));
-        _withdrawWant(amountInWantToWithdraw);
-        uint256 assetBalancePostWithdraw = asset.balanceOf(address(this));
-        uint256 assetAmountToTransferToVault = amount;
-        if (assetBalancePostWithdraw < assetAmountToTransferToVault) {
-            assetAmountToTransferToVault = assetBalancePostWithdraw;
-        }
-        asset.transfer(address(vault), assetAmountToTransferToVault);
-        return assetAmountToTransferToVault;
+        uint256 amountToWithdraw = amount - asset.balanceOf(address(this));
+        _withdrawWant(amountToWithdraw);
+        uint256 amountToTrasnferToVault = Math.min(asset.balanceOf(address(this)), amount);
+        asset.transfer(address(vault), amountToTrasnferToVault);
+        return amountToTrasnferToVault;
     }
 
     function _withdrawWant(uint256 amount) internal returns (uint256) {
