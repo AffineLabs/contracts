@@ -75,8 +75,8 @@ export async function deployAll(
   await tx.wait();
 
   // Add usdc to address book, TODO: handle the production version of this
-  await addToAddressBookAndDefender(POLYGON_MUMBAI, "PolygonUSDC", "MintableToken", usdc.address);
-  await addToAddressBookAndDefender(POLYGON_MUMBAI, "Forwarder", "Forwarder", config.forwarder);
+  await addToAddressBookAndDefender(POLYGON_MUMBAI, "PolygonUSDC", "MintableToken", usdc.address, [], false);
+  await addToAddressBookAndDefender(POLYGON_MUMBAI, "Forwarder", "Forwarder", config.forwarder, [], false);
 
   return {
     wormholeRouters,

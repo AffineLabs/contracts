@@ -39,6 +39,7 @@ export async function addToAddressBookAndDefender(
   contractType: string,
   contractOrAddress: Contract | address,
   events_to_watch: Array<string> = [],
+  addToDefender = true,
 ) {
   const contractAddr =
     typeof contractOrAddress === "string" ? contractOrAddress : await getContractAddress(contractOrAddress);
@@ -70,9 +71,9 @@ export async function addToAddressBookAndDefender(
   };
 
   addressBook[contractTicker] = entry;
-
   await outputJSON(addressBookPath, addressBook, { spaces: 2 });
-  return addContractToDefender(blockchainInfo, contractTicker, contractAddr, abi, version);
+
+  if (addToDefender) return addContractToDefender(blockchainInfo, contractTicker, contractAddr, abi, version);
 }
 
 export async function readAddressBook(contractVersion: string = "stable") {
