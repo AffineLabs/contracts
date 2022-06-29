@@ -45,8 +45,12 @@ it("Deploy Vaults", async () => {
   expect(await wormholeRouters.l1WormholeRouter.wormhole()).to.equal(config.l1worm);
   expect(await wormholeRouters.l2WormholeRouter.wormhole()).to.equal(config.l2worm);
 
-  expect(await wormholeRouters.l1WormholeRouter.l2WormholeRouterAddress()).to.equal(wormholeRouters.l2WormholeRouter.address);
-  expect(await wormholeRouters.l2WormholeRouter.l1WormholeRouterAddress()).to.equal(wormholeRouters.l1WormholeRouter.address);
+  expect(await wormholeRouters.l1WormholeRouter.l2WormholeRouterAddress()).to.equal(
+    wormholeRouters.l2WormholeRouter.address,
+  );
+  expect(await wormholeRouters.l2WormholeRouter.l1WormholeRouterAddress()).to.equal(
+    wormholeRouters.l1WormholeRouter.address,
+  );
 });
 
 // TODO: check that we can upgrade proxies successfully
