@@ -61,7 +61,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
-    function sendTVL() external {
+    function sendTVL() external onlyRole(rebalancerRole) {
         uint256 tvl = vaultTVL();
 
         // Report TVL to L2.

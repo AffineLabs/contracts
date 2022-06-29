@@ -81,6 +81,10 @@ contract WormholeTest is TestPlus {
             abi.encode(Constants.L1_TVL, uint256(0), false),
             4
         );
+
+        // Grant rebalancer role to this address
+        l1vault.grantRole(l1vault.rebalancerRole(), address(this));
+
         vm.expectCall(address(wormholeRouter.wormhole()), publishMessageData);
         l1vault.sendTVL();
         // TODO: assert that publish message was called wih certain arguments

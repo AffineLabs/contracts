@@ -43,6 +43,8 @@ contract L1WormholeRouter {
     }
 
     function receiveFunds(bytes calldata message, bytes calldata data) external {
+        require(vault.hasRole(vault.rebalancerRole(), msg.sender), "Only Rebalancer");
+
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
         require(vm.nonce >= nextVaildNonce, "Old transaction");
@@ -56,6 +58,8 @@ contract L1WormholeRouter {
     }
 
     function receiveFundRequest(bytes calldata message) external {
+        require(vault.hasRole(vault.rebalancerRole(), msg.sender), "Only Rebalancer");
+
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
         require(vm.nonce >= nextVaildNonce, "Old transaction");
