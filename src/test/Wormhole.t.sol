@@ -69,7 +69,7 @@ contract WormholeTest is TestPlus {
         bytes32 wormholeAddr = bytes32(uint256(uint160(address(wormhole))));
         vm.store(address(wormholeRouter), bytes32(wormholeSlot), wormholeAddr);
 
-        wormholeRouter.initialize(wormhole, l1vault);
+        wormholeRouter.initialize(wormhole, l1vault, address(0), 0);
 
         l2vault = Deploy.deployL2Vault();
     }
