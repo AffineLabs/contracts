@@ -8,18 +8,14 @@ import { Context } from "@openzeppelin/contracts/utils/Context.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { BaseRelayRecipient } from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
+import { AffineGovernable } from "../AffineGovernable.sol";
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
 import { Dollar, DollarMath } from "../DollarMath.sol";
 import { DetailedShare } from "./Detailed.sol";
 
-contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable {
+contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, AffineGovernable {
     using SafeTransferLib for ERC20;
-    address public governance;
-    modifier onlyGovernance() {
-        require(msg.sender == governance, "Only Governance.");
-        _;
-    }
 
     // The token which we take in to buy token1 and token2, e.g. USDC
     // NOTE: Assuming that asset is $1 for now

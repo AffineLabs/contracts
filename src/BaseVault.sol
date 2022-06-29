@@ -9,6 +9,8 @@ import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 
 import { BaseStrategy as Strategy } from "./BaseStrategy.sol";
+import { AffineGovernable } from "./AffineGovernable.sol";
+
 import { IWormhole } from "./interfaces/IWormhole.sol";
 import { IBridgeEscrow } from "./interfaces/IBridgeEscrow.sol";
 import { BridgeEscrow } from "./BridgeEscrow.sol";
@@ -20,7 +22,7 @@ import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
  * strategy liquidation.
  * @dev If forking this code, do not deploy this. The contract is only non-abstract for easy testing.
  */
-contract BaseVault is Initializable, AccessControl {
+contract BaseVault is Initializable, AccessControl, AffineGovernable {
     using SafeTransferLib for ERC20;
 
     /** UNDERLYING ASSET AND INITIALIZATION
@@ -63,13 +65,6 @@ contract BaseVault is Initializable, AccessControl {
 
     /** AUTHENTICATION
      **************************************************************************/
-
-    /// @notice The governance address
-    address public governance;
-    modifier onlyGovernance() {
-        require(msg.sender == governance, "Only Governance.");
-        _;
-    }
 
     /// @notice Role with authority to call "harvest", i.e. update this vault's tvl
     bytes32 public constant harvesterRole = keccak256("HARVESTER");
