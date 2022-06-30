@@ -50,6 +50,8 @@ contract L2WormholeRouter {
     }
 
     function receiveFunds(bytes calldata message) external {
+        require(vault.hasRole(vault.rebalancerRole(), msg.sender), "Only Rebalancer");
+
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
         validateWormholeMessageEmitter(vm);
@@ -61,6 +63,8 @@ contract L2WormholeRouter {
     }
 
     function receiveTVL(bytes calldata message) external {
+        require(vault.hasRole(vault.rebalancerRole(), msg.sender), "Only Rebalancer");
+
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
         validateWormholeMessageEmitter(vm);

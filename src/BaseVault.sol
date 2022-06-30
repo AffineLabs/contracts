@@ -71,6 +71,12 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
     /// @notice Role with authority to set mutate the withdrawal queue
     bytes32 public constant queueOperatorRole = keccak256("QUEUE_OPERATOR");
 
+    /**
+     * @notice Role with authority to call functions related to cross-chain rebalancing. Examples
+     * include sendTVL, receiveTVL, etc.
+     */
+    bytes32 public constant rebalancerRole = keccak256("REBALANCER");
+
     /** WITHDRAWAL QUEUE
      **************************************************************************/
 
