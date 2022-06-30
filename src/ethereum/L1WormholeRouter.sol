@@ -11,13 +11,22 @@ contract L1WormholeRouter {
     IWormhole public wormhole;
     L1Vault public vault;
 
+    address public l2WormholeRouterAddress;
+    uint16 public l2WormholeChainID;
     uint256 nextVaildNonce;
 
     constructor() {}
 
-    function initialize(IWormhole _wormhole, L1Vault _vault) external {
+    function initialize(
+        IWormhole _wormhole,
+        L1Vault _vault,
+        address _l2WormholeRouterAddress,
+        uint16 _l2WormholeChainID
+    ) external {
         wormhole = _wormhole;
         vault = _vault;
+        l2WormholeRouterAddress = _l2WormholeRouterAddress;
+        l2WormholeChainID = _l2WormholeChainID;
     }
 
     function reportTVL(uint256 tvl, bool received) external {
@@ -26,7 +35,6 @@ contract L1WormholeRouter {
         // NOTE: We use the current tx count (to wormhole) of this contract
         // as a nonce when publishing messages
         // This casting is fine so long as we send less than 2 ** 32 - 1 (~ 4 billion) messages
-
         // NOTE: 4 ETH blocks will take about 1 minute to propagate
         // TODO: make wormhole address, consistencyLevel configurable
         uint64 sequence = wormhole.nextSequence(address(this));
@@ -42,15 +50,19 @@ contract L1WormholeRouter {
         wormhole.publishMessage(uint32(sequence), payload, 4);
     }
 
+    function validateWormholeMessageEmitter(IWormhole.VM memory vm) internal view {
+        require(vm.emitterAddress == bytes32(uint256(uint160(l2WormholeRouterAddress))), "Wrong emitter address");
+        require(vm.emitterChainId == l2WormholeChainID, "Message emitted from wrong chain");
+    }
+
     function receiveFunds(bytes calldata message, bytes calldata data) external {
         require(vault.hasRole(vault.rebalancerRole(), msg.sender), "Only Rebalancer");
 
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
+        validateWormholeMessageEmitter(vm);
         require(vm.nonce >= nextVaildNonce, "Old transaction");
         nextVaildNonce = vm.nonce + 1;
-        // TODO: check chain ID, emitter address
-        // Get amount and nonce
         (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
         require(msgType == Constants.L2_FUND_TRANSFER_REPORT);
 
@@ -62,10 +74,9 @@ contract L1WormholeRouter {
 
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
+        validateWormholeMessageEmitter(vm);
         require(vm.nonce >= nextVaildNonce, "Old transaction");
         nextVaildNonce = vm.nonce + 1;
-        // TODO: check chain ID, emitter address
-        // Get amount and nonce
         (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
         require(msgType == Constants.L2_FUND_REQUEST);
 
