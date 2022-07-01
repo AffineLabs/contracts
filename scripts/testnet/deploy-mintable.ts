@@ -1,4 +1,4 @@
-import { IUniLikeSwapRouter__factory, MintableToken__factory } from "../../typechain";
+import { ERC20__factory, IUniLikeSwapRouter__factory, MintableToken__factory, Router__factory } from "../../typechain";
 import hre from "hardhat";
 import { ethers } from "hardhat";
 import { config } from "../utils/config";
@@ -6,6 +6,8 @@ import { getContractAddress } from "../utils/export";
 
 const ETH_NETWORK_NAME = process.env.ETH_NETWORK || "";
 const POLYGON_NETWORK_NAME = process.env.POLYGON_NETWORK || "";
+
+const MAX_UINT_256 = ethers.BigNumber.from(2).pow(256).sub(1);
 
 // Deploy Mintable USDC (ran once, don't need to run again)
 async function deployToken() {
@@ -67,6 +69,9 @@ async function deployBtcEth() {
 }
 
 async function addLiquidity() {
+  const btcPrice = 19.5e3;
+  const ethPrice = 1080;
+  const amountUSDC = ethers.BigNumber.from(100e6);
   hre.changeNetwork(POLYGON_NETWORK_NAME);
   let [signer] = await ethers.getSigners();
   const { wbtc: btcAddr, weth: ethAddr } = config;
@@ -77,9 +82,9 @@ async function addLiquidity() {
   const eth = MintableToken__factory.connect(ethAddr, signer);
 
   const oneToken = ethers.BigNumber.from(10).pow(18);
-  const oneHunderedMUsdc = ethers.BigNumber.from(100e6).mul(1e6); // 2500 BTC at a price of $40k, 33,333 at price of $3k
-  const oneHunderedMBtc = ethers.BigNumber.from(2500).mul(oneToken);
-  const oneHundredMEth = ethers.BigNumber.from(33_333).mul(oneToken);
+  const oneHunderedMUsdc = amountUSDC.mul(1e6);
+  const oneHunderedMBtc = amountUSDC.div(btcPrice).mul(oneToken);
+  const oneHundredMEth = amountUSDC.div(ethPrice).mul(oneToken);
 
   // Mint some tokens
   let tx = await usdc.mint(signer.address, oneHunderedMUsdc.mul(2));
@@ -87,7 +92,7 @@ async function addLiquidity() {
   tx = await btc.mint(signer.address, oneHunderedMBtc);
   await tx.wait();
   tx = await eth.mint(signer.address, oneHundredMEth);
-  await tx.wait;
+  await tx.wait();
 
   // Add liquidity
   const deadline = Math.floor(Date.now() / 1000) + 24 * 60 * 60; // unix timestamp in seconds plus 24 hours
@@ -102,7 +107,6 @@ async function addLiquidity() {
     0,
     signer.address,
     deadline,
-    { gasLimit: 10e6 },
   );
   await tx.wait();
 
@@ -116,13 +120,116 @@ async function addLiquidity() {
     0,
     signer.address,
     deadline,
-    { gasLimit: 10e6 },
   );
   await tx.wait();
   console.log("Liquidity added");
 }
 
-addLiquidity()
+async function removeLiquidity() {
+  hre.changeNetwork(POLYGON_NETWORK_NAME);
+  let [signer] = await ethers.getSigners();
+  const router = IUniLikeSwapRouter__factory.connect("0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506", signer);
+
+  // TODO: get pair addresses via uniswap sdk. Hardcoding for now
+  const btcUsdPool = ERC20__factory.connect("0x48a8E74730Fc1b00fE8a6F4Ef5FA489685c3F7a2", signer);
+  const ethUsdPool = ERC20__factory.connect("0xdF95317B41082eb8AFC1CE10eDfE9081CeD39caD", signer);
+
+  const approveBtc = await btcUsdPool.approve(router.address, MAX_UINT_256);
+  await approveBtc.wait();
+
+  const approveWeth = await ethUsdPool.approve(router.address, MAX_UINT_256);
+  await approveWeth.wait();
+  console.log("approvals done", approveWeth.hash);
+
+  console.log("removing BTC liquidity");
+  const removeBtcTx = await router.removeLiquidity(
+    config.wbtc,
+    config.l2USDC,
+    await btcUsdPool.balanceOf(await signer.getAddress()),
+    0,
+    0,
+    await signer.getAddress(),
+    Math.floor(Date.now() / 1000) + 24 * 60 * 60, // unix timestamp in seconds plus 24 hours
+  );
+  await removeBtcTx.wait();
+
+  console.log("removing ETH liquidity");
+
+  const removeEthTx = await router.removeLiquidity(
+    config.weth,
+    config.l2USDC,
+    await ethUsdPool.balanceOf(await signer.getAddress()),
+    0,
+    0,
+    await signer.getAddress(),
+    Math.floor(Date.now() / 1000) + 24 * 60 * 60, // unix timestamp in seconds plus 24 hours
+  );
+  await removeEthTx.wait();
+}
+
+async function useMainnetPrices() {
+  hre.changeNetwork(POLYGON_NETWORK_NAME);
+  let [signer] = await ethers.getSigners();
+  const btcUsdPool = ERC20__factory.connect("0x48a8E74730Fc1b00fE8a6F4Ef5FA489685c3F7a2", signer);
+  const usdc = MintableToken__factory.connect(config.l2USDC, signer);
+  const btc = MintableToken__factory.connect(config.wbtc, signer);
+  const eth = MintableToken__factory.connect(config.weth, signer);
+
+  const btcPrice = 19.5e3;
+  const ethPrice = 1080;
+  const oneToken = ethers.BigNumber.from(10).pow(18);
+
+  const btcBal = await btc.balanceOf(btcUsdPool.address);
+  const usdBal = await usdc.balanceOf(btcUsdPool.address);
+  console.log("usdcbal: ", usdBal.div(1e6).toString());
+
+  const numBtcNeeded = usdBal.div(1e6).div(btcPrice);
+  console.log("numBtcNeeded = ", numBtcNeeded.toString());
+
+  const numBtcToAdd = numBtcNeeded.sub(btcBal.div(oneToken));
+  console.log("to add: ", numBtcToAdd.toString());
+
+  // Add the btc via a swap
+  // Using fixed amounts to hit btc price of about $19.2k and eth prie of about $1127
+  // TODO: consider making the receiver the pool address. This would allow us to only add btc/eth to the pool without
+  // removing any usdc
+  const router = IUniLikeSwapRouter__factory.connect("0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506", signer);
+  const swap = await router.swapExactTokensForTokens(
+    ethers.BigNumber.from(1100).mul(oneToken),
+    0,
+    [config.wbtc, config.l2USDC],
+    await signer.getAddress(),
+    Math.floor(Date.now() / 1000) + 24 * 60 * 60, // unix timestamp in seconds plus 24 hours
+  );
+  await swap.wait();
+
+  const ethToSwap = ethers.BigNumber.from(21e3).mul(oneToken);
+  const tx = await eth.mint(signer.address, ethToSwap);
+  await tx.wait();
+  console.log("swapping eth");
+  const swapEth = await router.swapExactTokensForTokens(
+    ethToSwap,
+    0,
+    [config.weth, config.l2USDC],
+    await signer.getAddress(),
+    Math.floor(Date.now() / 1000) + 24 * 60 * 60, // unix timestamp in seconds plus 24 hours
+  );
+  await swapEth.wait();
+
+  // get quote
+  const quotePrice = await router.getAmountsOut(oneToken, [config.wbtc, config.l2USDC]);
+  console.log(
+    "btc quote-price: ",
+    quotePrice.map(num => num.toString()),
+  );
+  const quotePriceEth = await router.getAmountsOut(oneToken, [config.weth, config.l2USDC]);
+  console.log(
+    "eth quote-price: ",
+    quotePriceEth.map(num => num.toString()),
+  );
+}
+
+useMainnetPrices()
   .then(() => {
     process.exit(0);
   })
