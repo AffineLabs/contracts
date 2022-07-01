@@ -1,7 +1,6 @@
 import { config as dotenvConfig } from "dotenv";
 import { resolve } from "path";
 import { address } from "./types";
-import axios from "axios";
 
 dotenvConfig({ path: resolve(__dirname, "./.env") });
 
