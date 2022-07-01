@@ -8,8 +8,8 @@ export async function deployRouter(polygonNetworkName: string): Promise<Router> 
   hre.changeNetwork(polygonNetworkName);
   const [deployer] = await ethers.getSigners();
   const RouterFactory = await ethers.getContractFactory("Router");
-  const router = await RouterFactory.deploy(""); //Add more stuff?
+  const router = await RouterFactory.deploy("");
   await router.deployed();
-  await addToAddressBookAndDefender(POLYGON_MUMBAI, "ERC4626Router", "Router", router); //unsure what tag should be
+  await addToAddressBookAndDefender(POLYGON_MUMBAI, "ERC4626Router", "Router", router);
   return router;
 }
