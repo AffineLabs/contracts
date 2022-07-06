@@ -9,12 +9,15 @@ import hre from "hardhat";
 import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
 import { POLYGON_MUMBAI } from "../utils/constants/blockchain";
 import { deployWormholeRouters, WormholeRouterContracts } from "./deploy-wormhole-router";
+import { deployRouter } from "./deploy-router";
+import { Router } from "typechain/src/polygon";
 
 export interface AllContracts {
   wormholeRouters: WormholeRouterContracts;
   vaults: VaultContracts;
   strategies: StrategyContracts;
   basket: TwoAssetBasket;
+  router: Router;
 }
 
 export async function deployAll(
@@ -34,7 +37,7 @@ export async function deployAll(
     wormholeRouters,
   );
   const strategies = await deployStrategies(ethNetworkName, polygonNetworkName, vaults);
-
+  const router = await deployRouter(polygonNetworkName);
   // TODO: Consider strategies. We can't add strategies anymore since the timelock address is the governance address
   // In tests we can simply use hardhat's mocking abilities.
 
@@ -83,5 +86,6 @@ export async function deployAll(
     vaults,
     strategies,
     basket,
+    router,
   };
 }
