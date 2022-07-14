@@ -21,6 +21,7 @@ import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 import { DetailedShare } from "./Detailed.sol";
 import { L2WormholeRouter } from "./L2WormholeRouter.sol";
 import { IERC4626 } from "../interfaces/IERC4626.sol";
+import { EmergencyWithdrawalQueue } from "./EmergencyWithdrawalQueue.sol";
 
 /**
  * @notice An L2 vault. This is a cross-chain vault, i.e. some funds deposited here will be moved to L1 for investment.
@@ -172,6 +173,9 @@ contract L2Vault is
     /** WITHDRAW / REDEEM
      **************************************************************************/
     /// @notice See {IERC4262-redeem}
+
+    EmergencyWithdrawalQueue public emergencyWithdrawalQueue;
+
     function redeem(
         uint256 shares,
         address receiver,
@@ -224,7 +228,7 @@ contract L2Vault is
 
     /// @notice See {IERC4262-totalAssets}
     function totalAssets() public view returns (uint256 totalManagedAssets) {
-        return vaultTVL() - lockedProfit() + L1TotalLockedValue;
+        return vaultTVL() - lockedProfit() + L1TotalLockedValue - emergencyWithdrawalQueue.totalDebt();
     }
 
     /// @notice See {IERC4262-convertToShares}
