@@ -55,30 +55,8 @@ export async function deployAll(
   hre.changeNetwork(polygonNetworkName);
   const basket = await deployBasket(config);
 
-  // Add some transactions
-  // TODO: make sure this only runs when we are in testnet mode
-  const [signer] = await ethers.getSigners();
-  const usdc = MintableToken__factory.connect(config.l2USDC, signer);
-  const oneUsdc = ethers.BigNumber.from(10).pow(6);
-  const maxUint = ethers.BigNumber.from(2).pow(256).sub(1);
-  let tx = await usdc.approve(await getContractAddress(vaults.l2Vault), maxUint);
-  await tx.wait();
-  tx = await usdc.approve(await getContractAddress(basket), maxUint);
-  await tx.wait();
-
-  const signerAddr = await signer.getAddress();
-  tx = await vaults.l2Vault.deposit(oneUsdc.mul(2), signerAddr);
-  await tx.wait();
-  tx = await vaults.l2Vault.withdraw(oneUsdc, signerAddr, signerAddr);
-  await tx.wait();
-
-  tx = await basket.deposit(oneUsdc.mul(2), signerAddr);
-  await tx.wait();
-  tx = await basket.withdraw(oneUsdc.div(10), signerAddr, signerAddr);
-  await tx.wait();
-
   // Add usdc to address book, TODO: handle the production version of this
-  await addToAddressBookAndDefender(POLYGON_MUMBAI, "PolygonUSDC", "MintableToken", usdc.address, [], false);
+  await addToAddressBookAndDefender(POLYGON_MUMBAI, "PolygonUSDC", "MintableToken", config.l2USDC, [], false);
   await addToAddressBookAndDefender(POLYGON_MUMBAI, "Forwarder", "Forwarder", config.forwarder, [], false);
 
   return {
