@@ -102,10 +102,6 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         emergencyWithdrawalQueue.enqueue(user2, user1, 3000, EmergencyWithdrawalQueue.RequestType.Withdraw);
         vm.stopPrank();
 
-        vm.startPrank(address(vault));
-        vault.mint(2000, user1);
-        vault.mint(4000, user2);
-        vm.stopPrank();
         vm.startPrank(user2);
         vault.approve(address(emergencyWithdrawalQueue), 4000);
         vm.stopPrank();
@@ -113,19 +109,18 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         vault.approve(address(emergencyWithdrawalQueue), 2000);
         vm.stopPrank();
 
-        vm.expectEmit(false, false, false, false);
-        emit Transfer(address(emergencyWithdrawalQueue), user1, 1000);
+        vm.mockCall(
+            address(vault),
+            abi.encodeWithSelector(L2Vault.withdraw.selector),
+            abi.encode(1000)
+        );
         vm.expectEmit(false, false, false, false);
         emit EmergencyWithdrawalQueueDequeue(1, EmergencyWithdrawalQueue.RequestType.Withdraw, user2, user1, 1000);
         emergencyWithdrawalQueue.dequeue();
         assertEq(emergencyWithdrawalQueue.size(), 2);
 
         vm.expectEmit(false, false, false, false);
-        emit Transfer(address(emergencyWithdrawalQueue), user2, 2000);
-        vm.expectEmit(false, false, false, false);
         emit EmergencyWithdrawalQueueDequeue(2, EmergencyWithdrawalQueue.RequestType.Withdraw, user1, user2, 2000);
-        vm.expectEmit(false, false, false, false);
-        emit Transfer(address(emergencyWithdrawalQueue), user1, 3000);
         vm.expectEmit(false, false, false, false);
         emit EmergencyWithdrawalQueueDequeue(3, EmergencyWithdrawalQueue.RequestType.Withdraw, user2, user1, 3000);
         emergencyWithdrawalQueue.dequeueBatch(2);

@@ -174,11 +174,12 @@ contract L2Vault is
 
     /** WITHDRAW / REDEEM
      **************************************************************************/
-    /// @notice See {IERC4262-redeem}
 
     EmergencyWithdrawalQueue public emergencyWithdrawalQueue;
 
-    function _liquidationAmountForWithdrawalOf(uint256 assets) internal returns (uint256 liquidationAmount) {
+    /// @notice Returns the amount needed to be liquidated from strategies to facilitate
+    /// withdrawal of given amount of assets.
+    function _liquidationAmountForWithdrawalOf(uint256 assets) internal view returns (uint256 liquidationAmount) {
         uint256 assetDemand = assets + emergencyWithdrawalQueue.totalDebt();
         uint256 assetSupply = _asset.balanceOf(address(this));
         liquidationAmount = 0;
@@ -187,6 +188,7 @@ contract L2Vault is
         }
     }
 
+    /// @notice See {IERC4262-redeem}
     function redeem(
         uint256 shares,
         address receiver,
@@ -194,19 +196,25 @@ contract L2Vault is
     ) external whenNotPaused returns (uint256 assets) {
         (uint256 assetsToUser, uint256 assetsFee) = _previewRedeem(shares);
         assets = assetsToUser;
-        
-        uint256 liquidationAmount = _liquidationAmountForWithdrawalOf(assets);
-        uint256 liquidatedAmount;
-        if (liquidationAmount > 0) {
-            liquidatedAmount = _liquidate(liquidationAmount);
-        }
-        if (liquidatedAmount < liquidationAmount && _msgSender() != address(this.emergencyWithdrawalQueue())) {
-            emergencyWithdrawalQueue.enqueue(owner, receiver, shares, EmergencyWithdrawalQueue.RequestType.Redeem);
-            return 0;
-        }
 
         address caller = _msgSender();
-        if (caller != owner) _spendAllowance(owner, caller, shares);
+        // Determine how much asset needs to be liquidated from strategies.
+        uint256 liquidationAmount = _liquidationAmountForWithdrawalOf(assets);
+
+        if (liquidationAmount > 0) {
+            uint256 liquidatedAmount = _liquidate(liquidationAmount);
+            if (liquidatedAmount < liquidationAmount && caller != address(this.emergencyWithdrawalQueue())) {
+                if (caller != owner) _spendAllowance(owner, caller, shares);
+                emergencyWithdrawalQueue.enqueue(owner, receiver, shares, EmergencyWithdrawalQueue.RequestType.Redeem);
+                return 0;
+            }
+        }
+
+        // If the call is coming from emergency withdrawal queue, then the allowence has
+        // already been spent.
+        if (caller != owner && caller != address(this.emergencyWithdrawalQueue())) {
+            _spendAllowance(owner, caller, shares);
+        }
 
         // Burn shares and give user equivalent value in `_asset` (minus withdrawal fees)
         _burn(owner, shares);
@@ -223,22 +231,33 @@ contract L2Vault is
         address receiver,
         address owner
     ) external whenNotPaused returns (uint256 shares) {
+        address caller = _msgSender();
+        // Determine how much asset needs to be liquidated from strategies.
         uint256 liquidationAmount = _liquidationAmountForWithdrawalOf(assets);
-        uint256 liquidatedAmount;
-        if (liquidationAmount > 0) {
-            liquidatedAmount = _liquidate(liquidationAmount);
-        }
-        if (liquidatedAmount < liquidationAmount && _msgSender() != address(this.emergencyWithdrawalQueue())) {
-            emergencyWithdrawalQueue.enqueue(owner, receiver, assets, EmergencyWithdrawalQueue.RequestType.Withdraw);
-            return 0;
-        }
 
         (uint256 sharesToBurn, uint256 assetsFee) = _previewWithdraw(assets);
         shares = sharesToBurn;
 
-        // If the owner does not have enough shares, we revert
-        address caller = _msgSender();
-        if (caller != owner) _spendAllowance(owner, caller, shares);
+        if (liquidationAmount > 0) {
+            uint256 liquidatedAmount = _liquidate(liquidationAmount);
+            if (liquidatedAmount < liquidationAmount && caller != address(this.emergencyWithdrawalQueue())) {
+                if (caller != owner) _spendAllowance(owner, caller, shares);
+                emergencyWithdrawalQueue.enqueue(
+                    owner,
+                    receiver,
+                    assets,
+                    EmergencyWithdrawalQueue.RequestType.Withdraw
+                );
+                return 0;
+            }
+        }
+
+        // If the call is coming from emergency withdrawal queue, then the allowence has
+        // already been spent.
+        if (caller != owner && caller != address(this.emergencyWithdrawalQueue())) {
+            _spendAllowance(owner, caller, shares);
+        }
+
         _burn(owner, shares);
 
         emit Withdraw(caller, receiver, owner, assets, shares);
