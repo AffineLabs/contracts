@@ -109,11 +109,7 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         vault.approve(address(emergencyWithdrawalQueue), 2000);
         vm.stopPrank();
 
-        vm.mockCall(
-            address(vault),
-            abi.encodeWithSelector(L2Vault.withdraw.selector),
-            abi.encode(1000)
-        );
+        vm.mockCall(address(vault), abi.encodeWithSelector(L2Vault.withdraw.selector), abi.encode(1000));
         vm.expectEmit(false, false, false, false);
         emit EmergencyWithdrawalQueueDequeue(1, EmergencyWithdrawalQueue.RequestType.Withdraw, user2, user1, 1000);
         emergencyWithdrawalQueue.dequeue();
