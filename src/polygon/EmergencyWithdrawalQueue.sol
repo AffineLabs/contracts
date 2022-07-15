@@ -66,12 +66,10 @@ contract EmergencyWithdrawalQueue is AccessControl {
         address _governance,
         ERC20 _usdc
     ) {
-        _setRoleAdmin(GOVERNANCE_ROLE, GOVERNANCE_ROLE);
-        _setRoleAdmin(OPERATOR_ROLE, GOVERNANCE_ROLE);
+        _grantRole(DEFAULT_ADMIN_ROLE, _governance);
+        _grantRole(OPERATOR_ROLE, address(_vault));
 
-        _setupRole(GOVERNANCE_ROLE, _governance);
-        _setupRole(OPERATOR_ROLE, address(_vault));
-
+        vault = _vault;
         usdc = _usdc;
     }
 

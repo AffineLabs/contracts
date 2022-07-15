@@ -10,17 +10,17 @@ import { MockERC20 } from "./MockERC20.sol";
 import { ConvertLib } from "./ConvertLib.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
-import { EmergencyWithdrawalQueue } from "../polygon/emergencyWithdrawalQueue.sol";
+import { EmergencyWithdrawalQueue } from "../polygon/EmergencyWithdrawalQueue.sol";
 
 contract EmergencyWithdrawalQueueTest is TestPlus {
-    EmergencyWithdrawalQueue emergencyWithdrawalQueue;
+    using stdStorage for StdStorage;
+
     MockERC20 usdc;
+    EmergencyWithdrawalQueue emergencyWithdrawalQueue;
+    L2Vault vault;
 
-    L2Vault vault = Deploy.deployL2Vault();
-    address governance = address(uint160(uint256(keccak256("GOVERNANCE"))));
-
-    address user1 = address(uint160(block.timestamp));
-    address user2 = address(uint160(block.timestamp + 1));
+    address user1 = address(uint160(block.timestamp + 1));
+    address user2 = address(uint160(block.timestamp + 2));
 
     event Transfer(address indexed from, address indexed to, uint256 amount);
     event EmergencyWithdrawalQueueEnqueue(
@@ -39,9 +39,10 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
     );
 
     function setUp() public {
+        vault = Deploy.deployL2Vault();
         usdc = new MockERC20("Test USDC", "USDC", 6);
-        emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(vault, governance, usdc);
         usdc.mint(address(emergencyWithdrawalQueue), 10000);
+        emergencyWithdrawalQueue = vault.emergencyWithdrawalQueue();
     }
 
     function testEnqueueSuccess() external {
@@ -99,7 +100,17 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         emergencyWithdrawalQueue.enqueue(user2, user1, 1000, EmergencyWithdrawalQueue.RequestType.Withdraw);
         emergencyWithdrawalQueue.enqueue(user1, user2, 2000, EmergencyWithdrawalQueue.RequestType.Withdraw);
         emergencyWithdrawalQueue.enqueue(user2, user1, 3000, EmergencyWithdrawalQueue.RequestType.Withdraw);
+        vm.stopPrank();
 
+        vm.startPrank(address(vault));
+        vault.mint(2000, user1);
+        vault.mint(4000, user2);
+        vm.stopPrank();
+        vm.startPrank(user2);
+        vault.approve(address(emergencyWithdrawalQueue), 4000);
+        vm.stopPrank();
+        vm.startPrank(user1);
+        vault.approve(address(emergencyWithdrawalQueue), 2000);
         vm.stopPrank();
 
         vm.expectEmit(false, false, false, false);

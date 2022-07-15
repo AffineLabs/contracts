@@ -82,6 +82,7 @@ contract L2Vault is
         IWormhole _wormhole,
         L2WormholeRouter _wormholeRouter,
         BridgeEscrow _BridgeEscrow,
+        EmergencyWithdrawalQueue _emergencyWithdrawalQueue,
         address forwarder,
         uint256 L1Ratio,
         uint256 L2Ratio,
@@ -92,6 +93,7 @@ contract L2Vault is
         __Pausable_init();
         BaseVault.baseInitialize(_governance, _token, _wormhole, _BridgeEscrow);
         wormholeRouter = _wormholeRouter;
+        emergencyWithdrawalQueue = _emergencyWithdrawalQueue;
         layerRatios = LayerBalanceRatios({ layer1: L1Ratio, layer2: L2Ratio });
         canTransferToL1 = true;
         canRequestFromL1 = true;
@@ -176,6 +178,15 @@ contract L2Vault is
 
     EmergencyWithdrawalQueue public emergencyWithdrawalQueue;
 
+    function _liquidationAmountForWithdrawalOf(uint256 assets) internal returns (uint256 liquidationAmount) {
+        uint256 assetDemand = assets + emergencyWithdrawalQueue.totalDebt();
+        uint256 assetSupply = _asset.balanceOf(address(this));
+        liquidationAmount = 0;
+        if (assetDemand > assetSupply) {
+            liquidationAmount = assetDemand - assetSupply;
+        }
+    }
+
     function redeem(
         uint256 shares,
         address receiver,
@@ -183,9 +194,16 @@ contract L2Vault is
     ) external whenNotPaused returns (uint256 assets) {
         (uint256 assetsToUser, uint256 assetsFee) = _previewRedeem(shares);
         assets = assetsToUser;
-
-        // TODO: handle case where the user is trying to withdraw more value than actually exists in the vault
-        if (assets > _asset.balanceOf(address(this))) {}
+        
+        uint256 liquidationAmount = _liquidationAmountForWithdrawalOf(assets);
+        uint256 liquidatedAmount;
+        if (liquidationAmount > 0) {
+            liquidatedAmount = _liquidate(liquidationAmount);
+        }
+        if (liquidatedAmount < liquidationAmount && _msgSender() != address(this.emergencyWithdrawalQueue())) {
+            emergencyWithdrawalQueue.enqueue(owner, receiver, shares, EmergencyWithdrawalQueue.RequestType.Redeem);
+            return 0;
+        }
 
         address caller = _msgSender();
         if (caller != owner) _spendAllowance(owner, caller, shares);
@@ -205,6 +223,16 @@ contract L2Vault is
         address receiver,
         address owner
     ) external whenNotPaused returns (uint256 shares) {
+        uint256 liquidationAmount = _liquidationAmountForWithdrawalOf(assets);
+        uint256 liquidatedAmount;
+        if (liquidationAmount > 0) {
+            liquidatedAmount = _liquidate(liquidationAmount);
+        }
+        if (liquidatedAmount < liquidationAmount && _msgSender() != address(this.emergencyWithdrawalQueue())) {
+            emergencyWithdrawalQueue.enqueue(owner, receiver, assets, EmergencyWithdrawalQueue.RequestType.Withdraw);
+            return 0;
+        }
+
         (uint256 sharesToBurn, uint256 assetsFee) = _previewWithdraw(assets);
         shares = sharesToBurn;
 
@@ -228,7 +256,7 @@ contract L2Vault is
 
     /// @notice See {IERC4262-totalAssets}
     function totalAssets() public view returns (uint256 totalManagedAssets) {
-        return vaultTVL() - lockedProfit() + L1TotalLockedValue - emergencyWithdrawalQueue.totalDebt();
+        return vaultTVL() - lockedProfit() + L1TotalLockedValue;
     }
 
     /// @notice See {IERC4262-convertToShares}
