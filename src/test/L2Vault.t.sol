@@ -9,6 +9,7 @@ import { MockERC20 } from "./MockERC20.sol";
 import { L2Vault } from "../polygon/L2Vault.sol";
 import { BaseStrategy } from "../BaseStrategy.sol";
 import { Deploy } from "./Deploy.sol";
+import { EmergencyWithdrawalQueue } from "../polygon/EmergencyWithdrawalQueue.sol";
 
 contract L2VaultTest is TestPlus {
     L2Vault vault;
@@ -184,5 +185,34 @@ contract L2VaultTest is TestPlus {
 
         vault.togglePause();
         testDepositWithdraw(1e18);
+    }
+
+    event EmergencyWithdrawalQueueEnqueue(
+        uint256 indexed pos,
+        EmergencyWithdrawalQueue.RequestType requestType,
+        address indexed owner,
+        address indexed receiver,
+        uint256 amount
+    );
+
+    function testEmergencyWithdrawal(uint128 amountToken) public {
+        address user = address(this);
+        token.mint(user, amountToken);
+        token.approve(address(vault), type(uint256).max);
+        vault.deposit(amountToken, address(this));
+
+        // simulate vault assets being transferred to L1.
+        token.burn(address(vault), amountToken);
+        vm.startPrank(user);
+
+        vm.expectEmit(true, true, false, true);
+        emit EmergencyWithdrawalQueueEnqueue(1, EmergencyWithdrawalQueue.RequestType.Withdraw, user, user, 1000);
+        // Trigger emergency withdrawal as vault doesn't have any asset.
+        vault.withdraw(amountToken, user, user);
+        assertEq(token.balanceOf(user), 0);
+        // Simulate funds being bridged from L1 to L2 vault.
+        token.mint(address(vault), amountToken);
+        vault.emergencyWithdrawalQueue().dequeue();
+        assertEq(token.balanceOf(user), amountToken);
     }
 }
