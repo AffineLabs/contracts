@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import "../polygon/ERC4626RouterBase.sol";
 
 /// @title ERC4626Router contract
-abstract contract ERC4626Router is ERC4626RouterBase {
+contract ERC4626Router is ERC4626RouterBase {
     using SafeTransferLib for ERC20;
 
     constructor(string memory name) {}
@@ -76,4 +76,6 @@ abstract contract ERC4626Router is ERC4626RouterBase {
     ) public payable {
         token.safeApprove(to, amount);
     }
+
+    function versionRecipient() external view virtual override returns (string memory) {}
 }
