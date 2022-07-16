@@ -201,16 +201,19 @@ contract L2Vault is
         address receiver,
         address owner
     ) external whenNotPaused returns (uint256 shares) {
-        (uint256 sharesToBurn, uint256 assetsFee) = _previewWithdraw(assets);
-        shares = sharesToBurn;
+        shares = previewWithdraw(assets);
 
         // If the owner does not have enough shares, we revert
         address caller = _msgSender();
         if (caller != owner) _spendAllowance(owner, caller, shares);
         _burn(owner, shares);
 
-        emit Withdraw(caller, receiver, owner, assets, shares);
-        _asset.safeTransfer(receiver, assets);
+        // Calculate withdrawal fee
+        uint256 assetsFee = getWithdrawalFee(assets);
+        uint256 assetsToUser = assets - assetsFee;
+
+        emit Withdraw(caller, receiver, owner, assetsToUser, shares);
+        _asset.safeTransfer(receiver, assetsToUser);
         _asset.safeTransfer(governance, assetsFee);
     }
 
@@ -277,13 +280,7 @@ contract L2Vault is
 
     /// @notice See {IERC4262-previewWithdraw}
     function previewWithdraw(uint256 assets) public view returns (uint256 shares) {
-        (shares, ) = _previewWithdraw(assets);
-    }
-
-    /// @dev A little helper that gets us the amount of shares to burn and the amount of assets to send to governance
-    function _previewWithdraw(uint256 assets) internal view returns (uint256 shares, uint256 assetsFee) {
-        assetsFee = getWithdrawalFee(assets);
-        shares = _convertToShares(assets + assetsFee, Rounding.Up);
+        shares = _convertToShares(assets, Rounding.Up);
     }
 
     /// @notice See {IERC4262-previewRedeem}
@@ -291,7 +288,7 @@ contract L2Vault is
         (assets, ) = _previewRedeem(shares);
     }
 
-    /// @dev See `_previewWithdraw`.
+    /// @dev  A little helper that gets us the amount of assets to send to the user and governance
     function _previewRedeem(uint256 shares) internal view returns (uint256 assets, uint256 assetsFee) {
         uint256 rawAssets = _convertToAssets(shares, Rounding.Down);
         assetsFee = getWithdrawalFee(rawAssets);
