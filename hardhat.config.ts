@@ -20,6 +20,7 @@ import "@openzeppelin/hardhat-upgrades";
 import "@openzeppelin/hardhat-defender";
 
 import "./tasks/accounts";
+import "./tasks/unblock";
 import { ethChainIds, polygonChainIds, ethNetwork, polygonNetwork } from "./scripts/utils/constants/types";
 
 import { subtask } from "hardhat/config";
