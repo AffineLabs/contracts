@@ -22,14 +22,16 @@ contract TestStrategy is BaseStrategy {
         return asset.balanceOf(address(this));
     }
 
-    function invest(uint256 amount) public override {}
+    function invest(uint256 amount) public override {
+        asset.transferFrom(address(vault), address(this), amount);
+    }
 
     function divest(uint256 amount) public override returns (uint256) {
         asset.transfer(address(vault), amount);
         return amount;
     }
 
-    function totalLockedValue() public override returns (uint256) {
+    function totalLockedValue() public view override returns (uint256) {
         return balanceOfAsset();
     }
 }
@@ -74,8 +76,6 @@ contract BaseVaultTest is TestPlus {
     function setUp() public {
         token = new MockERC20("Mock", "MT", 18);
         vault = new BaseVaultLiquidate();
-
-        // emit log_named_bytes32("newValue", vm.load(address(vault), bytes32(0)));
 
         vault.baseInitialize(
             address(this), // governance
@@ -177,5 +177,27 @@ contract BaseVaultTest is TestPlus {
         vault.liquidate(10);
         assertTrue(token.balanceOf(address(vault)) == 10);
         assertTrue(newStrategy1.balanceOfAsset() == 0);
+    }
+
+    function testRebalance() public {
+        BaseStrategy strat1 = new TestStrategy(token, vault);
+        BaseStrategy strat2 = new TestStrategy(token, vault);
+
+        vault.addStrategy(strat1, 6000);
+        vault.addStrategy(strat2, 4000);
+
+        // strat1 should have 6000 and strat2 should have 4000. Since we switch the numbers, calling `rebalance`
+        // will move 2000 of `token` from strat2 to strat1
+        token.mint(address(strat1), 4000);
+        token.mint(address(strat2), 6000);
+
+        // Investing in strat1 requires approval since it calls `transferFrom`
+        vm.prank(address(vault));
+        token.approve(address(strat1), 2000);
+
+        vault.rebalance();
+
+        assertTrue(token.balanceOf(address(strat1)) == 6000);
+        assertTrue(token.balanceOf(address(strat2)) == 4000);
     }
 }

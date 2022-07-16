@@ -459,7 +459,51 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
      */
     function _assessFees() internal virtual {}
 
-    // TODO: implement this
-    /// @notice  Rebalance strategies according to new tvl bps
-    function rebalance() external onlyGovernance {}
+    function liveTVL() internal returns (uint256 tvl) {
+        uint256 totalStrategyTVL;
+
+        // Loop through withdrawal queue and add up totalLockedValue
+        uint256 length = withdrawalQueue.length;
+        for (uint256 i = 0; i < length; i++) {
+            Strategy strategy = withdrawalQueue[i];
+            if (address(strategy) == address(0)) break;
+            totalStrategyTVL += strategy.totalLockedValue();
+        }
+        tvl = _asset.balanceOf(address(this)) + totalStrategyTVL;
+    }
+
+    /// @notice  Rebalance strategies according to given tvl bps
+    function rebalance() external onlyRole(harvesterRole) {
+        uint256 tvl = liveTVL();
+
+        // Loop through all strategies, divesting from those whose tvl is too high, and putting those who are too low
+        // into an array
+        uint256 length = MAX_STRATEGIES;
+        // MAX_STRATEGIES is always equal to withdrawalQueue.length
+        Strategy[MAX_STRATEGIES] memory stratsToInvestIn;
+        uint256[MAX_STRATEGIES] memory amountsToInvest;
+
+        for (uint256 i = 0; i < length; i++) {
+            Strategy strategy = withdrawalQueue[i];
+            if (address(strategy) == address(0)) break;
+
+            uint256 idealStrategyTVL = (tvl * strategies[strategy].tvlBps) / MAX_BPS;
+            uint256 currStrategyTVL = strategy.totalLockedValue();
+            if (idealStrategyTVL < currStrategyTVL) {
+                strategy.divest(currStrategyTVL - idealStrategyTVL);
+            }
+            if (idealStrategyTVL > currStrategyTVL) {
+                stratsToInvestIn[i] = strategy;
+                amountsToInvest[i] = idealStrategyTVL - currStrategyTVL;
+            }
+        }
+
+        // Loop through the strategies to invest in, and invest in them
+        for (uint256 i = 0; i < length; i++) {
+            Strategy strategy = stratsToInvestIn[i];
+            if (address(strategy) == address(0)) continue;
+
+            strategy.invest(amountsToInvest[i]);
+        }
+    }
 }
