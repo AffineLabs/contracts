@@ -23,6 +23,8 @@ import { L2WormholeRouter } from "./L2WormholeRouter.sol";
 import { IERC4626 } from "../interfaces/IERC4626.sol";
 import { EmergencyWithdrawalQueue } from "./EmergencyWithdrawalQueue.sol";
 
+import { TestPlus } from "../test/TestPlus.sol";
+
 /**
  * @notice An L2 vault. This is a cross-chain vault, i.e. some funds deposited here will be moved to L1 for investment.
  * @dev This vault is ERC4626 compliant. See the EIP description here: https://eips.ethereum.org/EIPS/eip-4626.
@@ -35,7 +37,8 @@ contract L2Vault is
     BaseVault,
     BaseRelayRecipient,
     DetailedShare,
-    IERC4626
+    IERC4626,
+    TestPlus
 {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -179,8 +182,15 @@ contract L2Vault is
 
     /// @notice Returns the amount needed to be liquidated from strategies to facilitate
     /// withdrawal of given amount of assets.
-    function _liquidationAmountForWithdrawalOf(uint256 assets) internal view returns (uint256 liquidationAmount) {
-        uint256 assetDemand = assets + emergencyWithdrawalQueue.totalDebt();
+    function _liquidationAmountForWithdrawalOf(uint256 assets, bool considerWithdrawalQueueDebt)
+        internal
+        view
+        returns (uint256 liquidationAmount)
+    {
+        uint256 assetDemand = assets;
+        if (considerWithdrawalQueueDebt) {
+            assetDemand += emergencyWithdrawalQueue.totalDebt();
+        }
         uint256 assetSupply = _asset.balanceOf(address(this));
         liquidationAmount = 0;
         if (assetDemand > assetSupply) {
@@ -199,7 +209,12 @@ contract L2Vault is
 
         address caller = _msgSender();
         // Determine how much asset needs to be liquidated from strategies.
-        uint256 liquidationAmount = _liquidationAmountForWithdrawalOf(assets);
+        // When redeem is called by emergency withdrawal queue, no need to consider
+        // emergency withdrawal queue debt.
+        uint256 liquidationAmount = _liquidationAmountForWithdrawalOf(
+            assets,
+            caller != address(this.emergencyWithdrawalQueue())
+        );
 
         if (liquidationAmount > 0) {
             uint256 liquidatedAmount = _liquidate(liquidationAmount);
@@ -233,7 +248,12 @@ contract L2Vault is
     ) external whenNotPaused returns (uint256 shares) {
         address caller = _msgSender();
         // Determine how much asset needs to be liquidated from strategies.
-        uint256 liquidationAmount = _liquidationAmountForWithdrawalOf(assets);
+        // When withdraw is called by emergency withdrawal queue, no need to consider
+        // emergency withdrawal queue debt.
+        uint256 liquidationAmount = _liquidationAmountForWithdrawalOf(
+            assets,
+            caller != address(this.emergencyWithdrawalQueue())
+        );
         shares = previewWithdraw(assets);
 
         if (liquidationAmount > 0) {
@@ -255,7 +275,6 @@ contract L2Vault is
         if (caller != owner && caller != address(this.emergencyWithdrawalQueue())) {
             _spendAllowance(owner, caller, shares);
         }
-
         _burn(owner, shares);
 
         // Calculate withdrawal fee

@@ -277,5 +277,50 @@ contract L2VaultTest is TestPlus {
         assertEq(asset.balanceOf(user), amountAsset);
     }
 
-    function testEmergencyWithdrawalQueueNotStarved() public {}
+    function testEmergencyWithdrawalQueueNotStarved() public {
+        (address user1, address user2) = (address(1), address(2));
+        asset.mint(user1, halfUSDC);
+        asset.mint(user2, halfUSDC);
+
+        vm.startPrank(user1);
+        asset.approve(address(vault), type(uint256).max);
+        vault.deposit(halfUSDC, user1);
+
+        // simulate vault assets being transferred to L1.
+        asset.burn(address(vault), halfUSDC);
+        vm.store(
+            address(vault),
+            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(uint256(halfUSDC))
+        );
+
+        // This will trigger an emergency withdrawal queue enqueue as there is no asset in L2 vault.
+        vault.withdraw(halfUSDC, user1, user1);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        asset.approve(address(vault), type(uint256).max);
+        vault.deposit(halfUSDC, user2);
+
+        // Now the vault has half USDC, but if user2 wants to withdraw half USDC, it will
+        // again trigger an emergency withdrawal queue enqueue as this half USDC is reserved
+        // for withdrawals in the emergency withdrawal queue.
+        vault.withdraw(halfUSDC, user2, user2);
+
+        assertEq(vault.emergencyWithdrawalQueue().size(), 2);
+        vm.stopPrank();
+
+        vault.emergencyWithdrawalQueue().dequeue();
+        assertEq(asset.balanceOf(user1), halfUSDC);
+
+        asset.mint(address(vault), halfUSDC);
+        vm.store(
+            address(vault),
+            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(uint256(0))
+        );
+
+        vault.emergencyWithdrawalQueue().dequeue();
+        assertEq(asset.balanceOf(user2), halfUSDC);
+    }
 }
