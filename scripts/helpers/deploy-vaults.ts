@@ -2,7 +2,7 @@ import { ethers, upgrades } from "hardhat";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../utils/bc-explorer-links";
 import { Config } from "../utils/config";
-import { ICreate2Deployer__factory, L1Vault, L2Vault, BridgeEscrow__factory } from "../../typechain";
+import { ICreate2Deployer__factory, L1Vault, L2Vault, BridgeEscrow__factory, EmergencyWithdrawalQueue } from "../../typechain";
 import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
 import { ETH_GOERLI, POLYGON_MUMBAI } from "../utils/constants/blockchain";
 import { address } from "../utils/types";
@@ -12,6 +12,7 @@ import { CHAIN_ID_ETH, CHAIN_ID_POLYGON } from "@certusone/wormhole-sdk";
 export interface VaultContracts {
   l1Vault: L1Vault;
   l2Vault: L2Vault;
+  emergencyWithdrawalQueue: EmergencyWithdrawalQueue;
 }
 
 export async function deployVaults(
@@ -141,5 +142,6 @@ export async function deployVaults(
   return {
     l1Vault,
     l2Vault,
+    emergencyWithdrawalQueue
   };
 }
