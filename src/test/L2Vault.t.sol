@@ -40,7 +40,6 @@ contract L2VaultTest is TestPlus {
 
     function testDepositRedeem(uint128 amountAsset) public {
         // Running into overflow issues on the call to vault.redeem
-        uint256 amountAsset = uint256(amountAsset);
         address user = address(this);
         asset.mint(user, amountAsset);
 
@@ -64,7 +63,7 @@ contract L2VaultTest is TestPlus {
         assertEq(assetsReceived, amountAsset);
     }
 
-    function testDepositWithdraw(uint64 amountAsset) public {
+    function testDepositWithdraw(uint128 amountAsset) public {
         // Using a uint64 since we multiply totalSupply by amountAsset in sharesFromTokens
         // Using a uint64 makes sure the calculation will not overflow
         address user = address(this);
@@ -199,64 +198,84 @@ contract L2VaultTest is TestPlus {
         uint256 amount
     );
 
-    function testEmergencyWithdrawal() public {
-        uint256 amountAsset = oneUSDC;
+    function testEmergencyWithdrawal(uint128 amountAsset) public {
         address user = address(this);
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
         vault.deposit(amountAsset, address(this));
 
         // simulate vault assets being transferred to L1.
-        asset.burn(address(vault), halfUSDC);
+        asset.burn(address(vault), amountAsset);
         vm.store(
             address(vault),
             bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
-            bytes32(halfUSDC)
+            bytes32(uint256(amountAsset))
         );
 
         vm.startPrank(user);
 
-        vm.expectEmit(true, true, false, true);
-        emit EmergencyWithdrawalQueueEnqueue(1, EmergencyWithdrawalQueue.RequestType.Withdraw, user, user, amountAsset);
+        if (amountAsset > 0) {
+            vm.expectEmit(true, true, false, true);
+            emit EmergencyWithdrawalQueueEnqueue(
+                1,
+                EmergencyWithdrawalQueue.RequestType.Withdraw,
+                user,
+                user,
+                amountAsset
+            );
+        }
         // Trigger emergency withdrawal as vault doesn't have any asset.
         vault.withdraw(amountAsset, user, user);
         assertEq(asset.balanceOf(user), 0);
         // Simulate funds being bridged from L1 to L2 vault.
-        asset.mint(address(vault), halfUSDC);
-        vault.emergencyWithdrawalQueue().dequeue();
+        asset.mint(address(vault), amountAsset);
+        if (amountAsset > 0) {
+            vault.emergencyWithdrawalQueue().dequeue();
+        }
         assertEq(asset.balanceOf(user), amountAsset);
     }
 
-    function testEmergencyWithdrawalWithRedeem() public {
-        uint256 amountAsset = oneUSDC;
+    function testEmergencyWithdrawalWithRedeem(uint128 amountAsset) public {
         address user = address(this);
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
         vault.deposit(amountAsset, address(this));
 
         // simulate vault assets being transferred to L1.
-        asset.burn(address(vault), halfUSDC);
+        asset.burn(address(vault), amountAsset);
         vm.store(
             address(vault),
             bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
-            bytes32(halfUSDC)
+            bytes32(uint256(amountAsset))
         );
 
         vm.startPrank(user);
-
-        vm.expectEmit(true, true, false, true);
-        emit EmergencyWithdrawalQueueEnqueue(1, EmergencyWithdrawalQueue.RequestType.Redeem, user, user, amountAsset);
+        if (amountAsset > 0) {
+            vm.expectEmit(true, true, false, true);
+            emit EmergencyWithdrawalQueueEnqueue(
+                1,
+                EmergencyWithdrawalQueue.RequestType.Redeem,
+                user,
+                user,
+                amountAsset
+            );
+        }
         // Trigger emergency withdrawal as vault doesn't have any asset.
         vault.redeem(amountAsset, user, user);
         assertEq(asset.balanceOf(user), 0);
+
         // Simulate funds being bridged from L1 to L2 vault.
-        asset.mint(address(vault), halfUSDC);
+        asset.mint(address(vault), amountAsset);
         vm.store(
             address(vault),
             bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
             bytes32(uint256(0))
         );
-        vault.emergencyWithdrawalQueue().dequeue();
+        if (amountAsset > 0) {
+            vault.emergencyWithdrawalQueue().dequeue();
+        }
         assertEq(asset.balanceOf(user), amountAsset);
     }
+
+    function testEmergencyWithdrawalQueueNotStarved() public {}
 }
