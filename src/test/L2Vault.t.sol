@@ -37,7 +37,7 @@ contract L2VaultTest is TestPlus {
         uint256 assets,
         uint256 shares
     );
-    
+
     function testDepositRedeem(uint128 amountAsset) public {
         // Running into overflow issues on the call to vault.redeem
         uint256 amountAsset = uint256(amountAsset);

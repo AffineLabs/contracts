@@ -61,10 +61,7 @@ contract EmergencyWithdrawalQueue is AccessControl {
         uint256 amount
     );
 
-    constructor(
-        address _governance,
-        ERC20 _usdc
-    ) {
+    constructor(address _governance, ERC20 _usdc) {
         _grantRole(DEFAULT_ADMIN_ROLE, _governance);
         usdc = _usdc;
     }
