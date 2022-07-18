@@ -88,6 +88,9 @@ export async function deployVaults(
   stagindDeployTx = await create2.deploy(0, salt, bridgeEscrowCreationCode);
   await stagindDeployTx.wait();
 
+  const emergencyWithdrawalQueueFactory = await ethers.getContractFactory("EmergencyWithdrawalQueue");
+  const emergencyWithdrawalQueue = await emergencyWithdrawalQueueFactory.deploy(l2Governance, config.l2USDC);
+
   const l2VaultFactory = await ethers.getContractFactory("L2Vault");
   const l2Vault = (await upgrades.deployProxy(
     l2VaultFactory,
@@ -97,6 +100,7 @@ export async function deployVaults(
       config.l2worm,
       wormholeRouters.l2WormholeRouter.address,
       bridgeEscrowAddr,
+      emergencyWithdrawalQueue.address,
       config.forwarder,
       9,
       1,
@@ -105,6 +109,8 @@ export async function deployVaults(
     { kind: "uups" },
   )) as L2Vault;
   await l2Vault.deployed();
+
+  await emergencyWithdrawalQueue.linkVault(l2Vault.address);
   await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonAlpSave`, "L2Vault", l2Vault);
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
 

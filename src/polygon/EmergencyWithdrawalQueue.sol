@@ -62,15 +62,17 @@ contract EmergencyWithdrawalQueue is AccessControl {
     );
 
     constructor(
-        L2Vault _vault,
         address _governance,
         ERC20 _usdc
     ) {
         _grantRole(DEFAULT_ADMIN_ROLE, _governance);
-        _grantRole(OPERATOR_ROLE, address(_vault));
-
-        vault = _vault;
         usdc = _usdc;
+    }
+
+    function linkVault(L2Vault _vault) public {
+        require(_vault.emergencyWithdrawalQueue() == this);
+        _grantRole(OPERATOR_ROLE, address(_vault));
+        vault = _vault;
     }
 
     /// @notice current size of the queue

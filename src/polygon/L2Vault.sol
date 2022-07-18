@@ -234,7 +234,6 @@ contract L2Vault is
         address caller = _msgSender();
         // Determine how much asset needs to be liquidated from strategies.
         uint256 liquidationAmount = _liquidationAmountForWithdrawalOf(assets);
-        
         shares = previewWithdraw(assets);
 
         if (liquidationAmount > 0) {

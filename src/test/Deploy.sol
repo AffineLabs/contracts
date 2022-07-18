@@ -22,7 +22,7 @@ library Deploy {
         MockERC20 token = new MockERC20("Mock", "MT", 18);
         MockERC20 usdc = new MockERC20("Test USDC", "USDC", 6);
         vault = new L2Vault();
-        EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(vault, address(this), usdc);
+        EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(address(this), usdc);
         vault.initialize(
             address(this), // governance
             token, // token
@@ -35,6 +35,7 @@ library Deploy {
             1, // l2 ratio
             [uint256(0), uint256(200)] // withdrawal and AUM fees
         );
+        emergencyWithdrawalQueue.linkVault(vault);
     }
 
     function deployL1Vault() internal returns (L1Vault vault) {
