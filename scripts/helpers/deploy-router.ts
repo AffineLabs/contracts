@@ -3,7 +3,7 @@ import hre from "hardhat";
 import { Router } from "../../typechain";
 import { POLYGON_MUMBAI } from "../utils/constants/blockchain";
 import { addToAddressBookAndDefender } from "../utils/export";
-import { config } from "scripts/utils/config";
+import { config } from "../utils/config";
 
 export async function deployRouter(polygonNetworkName: string): Promise<Router> {
   hre.changeNetwork(polygonNetworkName);
