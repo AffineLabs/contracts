@@ -206,7 +206,7 @@ contract L2VaultTest is TestPlus {
         vm.startPrank(user);
 
         vm.expectEmit(true, true, false, true);
-        emit EmergencyWithdrawalQueueEnqueue(1, EmergencyWithdrawalQueue.RequestType.Withdraw, user, user, 1000);
+        emit EmergencyWithdrawalQueueEnqueue(1, EmergencyWithdrawalQueue.RequestType.Withdraw, user, user, amountToken);
         // Trigger emergency withdrawal as vault doesn't have any asset.
         vault.withdraw(amountToken, user, user);
         assertEq(token.balanceOf(user), 0);
