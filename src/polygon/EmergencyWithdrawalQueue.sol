@@ -61,7 +61,11 @@ contract EmergencyWithdrawalQueue is AccessControl {
     }
 
     function linkVault(L2Vault _vault) public {
-        require(address(vault) == address(0), "Vault is already linked");
+        // This will give the governance ability to link vault. Others won't
+        // be able to re-link vaults once it is set.
+        if (!hasRole(DEFAULT_ADMIN_ROLE, _msgSender())) {
+            require(address(vault) == address(0), "Vault is already linked");
+        }
         require(_vault.emergencyWithdrawalQueue() == this);
         _grantRole(OPERATOR_ROLE, address(_vault));
         vault = _vault;
