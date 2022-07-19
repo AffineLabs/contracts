@@ -6,7 +6,6 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
 import { L2Vault } from "./L2Vault.sol";
 
 contract EmergencyWithdrawalQueue is AccessControl {
-
     /// @notice Enum representing type of withdrawal requests.
     /// See {IERC4626-redeem} and {IERC4626-withdraw}
     enum RequestType {
@@ -123,7 +122,7 @@ contract EmergencyWithdrawalQueue is AccessControl {
     function dequeueBatch(uint256 batchSize) external {
         require(size() >= batchSize, "Batch size too big");
         uint256 batchTailPtr = headPtr + batchSize;
-        for (uint256 ptr = headPtr; ptr < batchTailPtr;) {
+        for (uint256 ptr = headPtr; ptr < batchTailPtr; ) {
             WithdrawalRequest memory withdrawalRequest = queue[ptr];
             delete queue[ptr];
             if (withdrawalRequest.requestType == RequestType.Withdraw) {
@@ -141,7 +140,9 @@ contract EmergencyWithdrawalQueue is AccessControl {
                 withdrawalRequest.receiver,
                 withdrawalRequest.amount
             );
-            unchecked { ptr++; }
+            unchecked {
+                ptr++;
+            }
         }
         headPtr += batchSize;
     }
