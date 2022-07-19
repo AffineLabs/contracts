@@ -21,7 +21,7 @@ library Deploy {
     function deployL2Vault() internal returns (L2Vault vault) {
         MockERC20 asset = new MockERC20("Mock", "MT", 6);
         vault = new L2Vault();
-        EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(address(this), asset);
+        EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(address(this));
         vault.initialize(
             address(this), // governance
             asset, // asset

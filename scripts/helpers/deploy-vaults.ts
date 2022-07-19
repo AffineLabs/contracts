@@ -96,7 +96,7 @@ export async function deployVaults(
   await stagindDeployTx.wait();
 
   const emergencyWithdrawalQueueFactory = await ethers.getContractFactory("EmergencyWithdrawalQueue");
-  const emergencyWithdrawalQueue = await emergencyWithdrawalQueueFactory.deploy(l2Governance, config.l2USDC);
+  const emergencyWithdrawalQueue = await emergencyWithdrawalQueueFactory.deploy(l2Governance);
 
   const l2VaultFactory = await ethers.getContractFactory("L2Vault");
   const l2Vault = (await upgrades.deployProxy(
