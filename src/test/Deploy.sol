@@ -19,13 +19,12 @@ import { EmergencyWithdrawalQueue } from "../polygon/EmergencyWithdrawalQueue.so
 
 library Deploy {
     function deployL2Vault() internal returns (L2Vault vault) {
-        MockERC20 token = new MockERC20("Mock", "MT", 18);
-        MockERC20 usdc = new MockERC20("Test USDC", "USDC", 6);
+        MockERC20 asset = new MockERC20("Mock", "MT", 6);
         vault = new L2Vault();
-        EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(address(this), usdc);
+        EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(address(this), asset);
         vault.initialize(
             address(this), // governance
-            token, // token
+            asset, // asset
             IWormhole(address(0)), // wormhole
             L2WormholeRouter(address(0)), // wormholer router
             BridgeEscrow(address(0)),
@@ -39,11 +38,11 @@ library Deploy {
     }
 
     function deployL1Vault() internal returns (L1Vault vault) {
-        MockERC20 token = new MockERC20("Mock", "MT", 18);
+        MockERC20 asset = new MockERC20("Mock", "MT", 6);
         vault = new L1Vault();
         vault.initialize(
             address(this), // governance
-            token, // token
+            asset, // asset
             IWormhole(address(0)), // wormhole,
             L1WormholeRouter(address(0)), // wormhole router
             BridgeEscrow(address(0)),

@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { L2Vault } from "./L2Vault.sol";
 
 contract EmergencyWithdrawalQueue is AccessControl {
-    using SafeTransferLib for ERC20;
 
     /// @notice Enum representing type of withdrawal requests.
     /// See {IERC4626-redeem} and {IERC4626-withdraw}
@@ -37,8 +35,6 @@ contract EmergencyWithdrawalQueue is AccessControl {
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE");
     /// @notice Address of Alpine vault.
     L2Vault public vault;
-    /// @notice Address of USDC token.
-    ERC20 public usdc;
 
     /// @notice Debt in shares from redeem requests
     uint256 public shareDebt;
@@ -61,12 +57,12 @@ contract EmergencyWithdrawalQueue is AccessControl {
         uint256 amount
     );
 
-    constructor(address _governance, ERC20 _usdc) {
+    constructor(address _governance) {
         _grantRole(DEFAULT_ADMIN_ROLE, _governance);
-        usdc = _usdc;
     }
 
     function linkVault(L2Vault _vault) public {
+        require(address(vault) == address(0), "Vault is already linked");
         require(_vault.emergencyWithdrawalQueue() == this);
         _grantRole(OPERATOR_ROLE, address(_vault));
         vault = _vault;
@@ -123,17 +119,11 @@ contract EmergencyWithdrawalQueue is AccessControl {
         headPtr += 1;
     }
 
-    function unchecked_inc(uint256 i) internal pure returns (uint256) {
-        unchecked {
-            return i + 1;
-        }
-    }
-
     /// @notice dequeue user withdrawal requests from the queue in batch.
     function dequeueBatch(uint256 batchSize) external {
         require(size() >= batchSize, "Batch size too big");
         uint256 batchTailPtr = headPtr + batchSize;
-        for (uint256 ptr = headPtr; ptr < batchTailPtr; ptr = unchecked_inc(ptr)) {
+        for (uint256 ptr = headPtr; ptr < batchTailPtr;) {
             WithdrawalRequest memory withdrawalRequest = queue[ptr];
             delete queue[ptr];
             if (withdrawalRequest.requestType == RequestType.Withdraw) {
@@ -151,6 +141,7 @@ contract EmergencyWithdrawalQueue is AccessControl {
                 withdrawalRequest.receiver,
                 withdrawalRequest.amount
             );
+            unchecked { ptr++; }
         }
         headPtr += batchSize;
     }

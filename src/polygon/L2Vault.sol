@@ -189,7 +189,6 @@ contract L2Vault is
             assetDemand += emergencyWithdrawalQueue.totalDebt();
         }
         uint256 assetSupply = _asset.balanceOf(address(this));
-        liquidationAmount = 0;
         if (assetDemand > assetSupply) {
             liquidationAmount = assetDemand - assetSupply;
         }
