@@ -13,7 +13,7 @@ import { Deploy } from "./Deploy.sol";
 
 // Contracts matching ^L2.*ForkMumbai$ pattern will run against
 // Polygon Mumbai fork.
-contract L2AAVEStratTestForkMumbai is TestPlus {
+contract AAVEStratTest is TestPlus {
     using stdStorage for StdStorage;
     L2Vault vault;
     L2AAVEStrategy strategy;
@@ -21,6 +21,7 @@ contract L2AAVEStratTestForkMumbai is TestPlus {
     ERC20 usdc = ERC20(0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e);
 
     function setUp() public {
+        vm.createSelectFork("mumbai", 25804436);
         vault = Deploy.deployL2Vault();
         uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
