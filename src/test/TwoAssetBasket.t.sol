@@ -42,7 +42,7 @@ contract L2BtcEthBasketTestFork is TestPlus {
                 AggregatorV3Interface(0x0715A7794a1dc8e42615F059dD6e406A6594651A)
             ]
         );
-        router = new Router("Alp");
+        router = new Router("Alp", 0x52c8e413Ed9E961565D8D1de67e805E81b26C01b);
     }
 
     function testDepositWithdraw() public {
