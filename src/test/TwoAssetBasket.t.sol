@@ -15,7 +15,7 @@ import { Router } from "../polygon/Router.sol";
 import { IERC4626 } from "../interfaces/IERC4626.sol";
 import { ERC4626RouterBase } from "../polygon/ERC4626RouterBase.sol";
 
-contract L2BtcEthBasketTestFork is TestPlus {
+contract BtcEthBasketTest is TestPlus {
     TwoAssetBasket basket;
     Router router;
     ERC20 usdc = ERC20(0x8f7116CA03AEB48547d0E2EdD3Faa73bfB232538);
@@ -24,6 +24,7 @@ contract L2BtcEthBasketTestFork is TestPlus {
 
     function setUp() public {
         // NOTE: using mumbai addresses
+        vm.createSelectFork("mumbai", 25804436);
 
         basket = new TwoAssetBasket(
             address(this), // governance

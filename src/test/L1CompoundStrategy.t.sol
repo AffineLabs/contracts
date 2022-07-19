@@ -13,9 +13,7 @@ import { IComptroller } from "../interfaces/compound/IComptroller.sol";
 import { L1CompoundStrategy } from "../ethereum/L1CompoundStrategy.sol";
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 
-// Contracts matching ^L1.*ForkMainnet$ pattern will run against
-// Eth Mainnet fork.
-contract L1CompoundStratTestForkMainnet is TestPlus {
+contract CompoundStratTest is TestPlus {
     using stdStorage for StdStorage;
     ERC20 usdc = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     address uniLikeSwapRouterAddr = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
@@ -31,6 +29,7 @@ contract L1CompoundStratTestForkMainnet is TestPlus {
     uint256 oneCOMP = 1e18;
 
     function setUp() public {
+        vm.createSelectFork("ethereum", 14971385);
         vault = Deploy.deployL1Vault();
 
         // make vault token equal to the L1 usdc address

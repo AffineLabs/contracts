@@ -14,7 +14,7 @@ import { MinimalForwarder } from "@openzeppelin/contracts/metatx/MinimalForwarde
 import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
 import { Deploy } from "./Deploy.sol";
 
-contract L2ForwardTestFork is TestPlus {
+contract ForwardTest is TestPlus {
     using stdStorage for StdStorage;
     L2Vault vault;
     TwoAssetBasket basket;
@@ -22,6 +22,7 @@ contract L2ForwardTestFork is TestPlus {
     Forwarder forwarder;
 
     function setUp() public {
+        vm.createSelectFork("mumbai", 25804436);
         vault = Deploy.deployL2Vault();
         token = MockERC20(address(vault.asset()));
         basket = Deploy.deployTwoAssetBasket(token);

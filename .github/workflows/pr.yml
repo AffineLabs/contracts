@@ -42,7 +42,7 @@ jobs:
         run: yarn --frozen-lockfile
 
       - name: Run forge tests and check gas snapshots.
-        run: yarn snap-all --check
+        run: forge snapshot --check
 
       - name: Run hardhat tests.
         run: yarn test-hh
