@@ -4,9 +4,8 @@
   "description": "Alpine Ethereum and Matic smart contracts",
   "main": "index.js",
   "scripts": {
-    "export-env": "eval $(cat .env)",
-    "test": "yarn export-env && forge test",
-    "snap": "yarn export-env && forge snapshot",
+    "test": "eval $(egrep -v '^#' .env) forge test",
+    "snap": "eval $(egrep -v '^#' .env) forge snapshot",
     "test-hh": "ts-node scripts/fork.ts test",
     "clean": "forge clean",
     "script": "ts-node scripts/fork.ts script",
