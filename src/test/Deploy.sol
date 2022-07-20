@@ -15,30 +15,34 @@ import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
 import { L1WormholeRouter } from "../ethereum/L1WormholeRouter.sol";
 import { L2WormholeRouter } from "../polygon/L2WormholeRouter.sol";
+import { EmergencyWithdrawalQueue } from "../polygon/EmergencyWithdrawalQueue.sol";
 
 library Deploy {
     function deployL2Vault() internal returns (L2Vault vault) {
-        MockERC20 token = new MockERC20("Mock", "MT", 18);
+        MockERC20 asset = new MockERC20("Mock", "MT", 6);
         vault = new L2Vault();
+        EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(address(this));
         vault.initialize(
             address(this), // governance
-            token, // token
+            asset, // asset
             IWormhole(address(0)), // wormhole
             L2WormholeRouter(address(0)), // wormholer router
             BridgeEscrow(address(0)),
+            emergencyWithdrawalQueue,
             address(0), // forwarder
             1, // l1 ratio
             1, // l2 ratio
             [uint256(0), uint256(200)] // withdrawal and AUM fees
         );
+        emergencyWithdrawalQueue.linkVault(vault);
     }
 
     function deployL1Vault() internal returns (L1Vault vault) {
-        MockERC20 token = new MockERC20("Mock", "MT", 18);
+        MockERC20 asset = new MockERC20("Mock", "MT", 6);
         vault = new L1Vault();
         vault.initialize(
             address(this), // governance
-            token, // token
+            asset, // asset
             IWormhole(address(0)), // wormhole,
             L1WormholeRouter(address(0)), // wormhole router
             BridgeEscrow(address(0)),

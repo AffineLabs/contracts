@@ -440,7 +440,12 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         uint256 shareDecimals = decimals;
 
         // Assuming that shareDecimals > 8. TODO: reconsider
-        _price = (vaultValue * (10**shareDecimals)) / totalSupply;
+        // Price is set to 1 if there are no shares in the vault
+        if (totalSupply > 0) {
+            _price = (vaultValue * (10**shareDecimals)) / totalSupply;
+        } else {
+            _price = 10**8;
+        }
 
         price = Number({ num: _price, decimals: 8 });
     }

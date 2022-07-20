@@ -170,51 +170,51 @@ async function removeLiquidity() {
 async function useMainnetPrices() {
   hre.changeNetwork(POLYGON_NETWORK_NAME);
   let [signer] = await ethers.getSigners();
+  const router = IUniLikeSwapRouter__factory.connect("0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506", signer);
   const btcUsdPool = ERC20__factory.connect("0x48a8E74730Fc1b00fE8a6F4Ef5FA489685c3F7a2", signer);
+  const ethUsdPool = ERC20__factory.connect("0xdF95317B41082eb8AFC1CE10eDfE9081CeD39caD", signer);
   const usdc = MintableToken__factory.connect(config.l2USDC, signer);
   const btc = MintableToken__factory.connect(config.wbtc, signer);
   const eth = MintableToken__factory.connect(config.weth, signer);
 
-  const btcPrice = 19.5e3;
-  const ethPrice = 1080;
+  const tokenToPrice = { btc: 23_306, eth: 1_350 };
+  const tokenToPool = { btc: btcUsdPool, eth: ethUsdPool };
+  const tokenToContract = { btc, eth };
+
+  const tokens: ["btc", "eth"] = ["btc", "eth"];
   const oneToken = ethers.BigNumber.from(10).pow(18);
+  for (const name of tokens) {
+    const token = tokenToContract[name];
+    const pool = tokenToPool[name];
+    const price = tokenToPrice[name];
+    const tokenBal = await token.balanceOf(pool.address);
 
-  const btcBal = await btc.balanceOf(btcUsdPool.address);
-  const usdBal = await usdc.balanceOf(btcUsdPool.address);
-  console.log("usdcbal: ", usdBal.div(1e6).toString());
+    const tokenDollars = await tokenBal.div(oneToken).mul(price);
+    const usdcDollars = (await usdc.balanceOf(pool.address)).div(1e6);
 
-  const numBtcNeeded = usdBal.div(1e6).div(btcPrice);
-  console.log("numBtcNeeded = ", numBtcNeeded.toString());
+    if (usdcDollars > tokenDollars) {
+      const numTokenNeeded = usdcDollars.sub(tokenDollars).div(price).mul(oneToken);
+      const tx = await token.mint(pool.address, numTokenNeeded);
+      await tx.wait();
+    }
 
-  const numBtcToAdd = numBtcNeeded.sub(btcBal.div(oneToken));
-  console.log("to add: ", numBtcToAdd.toString());
+    if (tokenDollars > usdcDollars) {
+      const numUsdcNeeded = tokenDollars.sub(usdcDollars).mul(1e6);
+      const tx = await usdc.mint(pool.address, numUsdcNeeded);
+      await tx.wait();
+    }
 
-  // Add the btc via a swap
-  // Using fixed amounts to hit btc price of about $19.2k and eth prie of about $1127
-  // TODO: consider making the receiver the pool address. This would allow us to only add btc/eth to the pool without
-  // removing any usdc
-  const router = IUniLikeSwapRouter__factory.connect("0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506", signer);
-  const swap = await router.swapExactTokensForTokens(
-    ethers.BigNumber.from(1100).mul(oneToken),
-    0,
-    [config.wbtc, config.l2USDC],
-    await signer.getAddress(),
-    Math.floor(Date.now() / 1000) + 24 * 60 * 60, // unix timestamp in seconds plus 24 hours
-  );
-  await swap.wait();
-
-  const ethToSwap = ethers.BigNumber.from(21e3).mul(oneToken);
-  const tx = await eth.mint(signer.address, ethToSwap);
-  await tx.wait();
-  console.log("swapping eth");
-  const swapEth = await router.swapExactTokensForTokens(
-    ethToSwap,
-    0,
-    [config.weth, config.l2USDC],
-    await signer.getAddress(),
-    Math.floor(Date.now() / 1000) + 24 * 60 * 60, // unix timestamp in seconds plus 24 hours
-  );
-  await swapEth.wait();
+    // We do this swap to update the pool reserves to account for the transferred tokens
+    // The next swap after this one will happen at the prices given above
+    const swap = await router.swapExactTokensForTokens(
+      1e6,
+      0,
+      [config.l2USDC, token.address],
+      await signer.getAddress(),
+      Math.floor(Date.now() / 1000) + 24 * 60 * 60, // unix timestamp in seconds plus 24 hours
+    );
+    await swap.wait();
+  }
 
   // get quote
   const quotePrice = await router.getAmountsOut(oneToken, [config.wbtc, config.l2USDC]);

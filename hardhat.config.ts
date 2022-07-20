@@ -20,6 +20,7 @@ import "@openzeppelin/hardhat-upgrades";
 import "@openzeppelin/hardhat-defender";
 
 import "./tasks/accounts";
+import "./tasks/unblock";
 import { ethChainIds, polygonChainIds, ethNetwork, polygonNetwork } from "./scripts/utils/constants/types";
 
 import { subtask } from "hardhat/config";
@@ -56,6 +57,7 @@ function createNetworkConfig(network: ethNetwork | polygonNetwork, type: "eth" |
     },
     chainId: isEth ? ethChainIds[network as ethNetwork] : polygonChainIds[network as polygonNetwork],
     url,
+    gasPrice: 50e9,
   };
   const forkPort = isEth ? 8545 : 8546;
   const forkConfig: NetworkUserConfig = {

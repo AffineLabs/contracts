@@ -4,10 +4,8 @@
   "description": "Alpine Ethereum and Matic smart contracts",
   "main": "index.js",
   "scripts": {
-    "test": "ts-node scripts/forge.ts test",
-    "test-all": "yarn test --eth-goerli --polygon-mumbai --eth-mainnet --polygon-mainnet",
-    "snap": "ts-node scripts/forge.ts snapshot",
-    "snap-all": "yarn snap --eth-goerli --polygon-mumbai --eth-mainnet --polygon-mainnet",
+    "test": "eval $(egrep -v '^#' .env) forge test",
+    "snap": "eval $(egrep -v '^#' .env) forge snapshot",
     "test-hh": "ts-node scripts/fork.ts test",
     "clean": "forge clean",
     "script": "ts-node scripts/fork.ts script",
@@ -68,7 +66,7 @@
     "@openzeppelin/contracts-upgradeable": "^4.4.2",
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "axios": "^0.26.1",
-    "forge-std": "https://github.com/foundry-rs/forge-std.git#ced2ef17510576e3527e5e5dfe72b7b235fd6c00",
+    "forge-std": "https://github.com/foundry-rs/forge-std.git#c19dfd2f2a88a461216b0dd1f4961e1a85dcad46",
     "ds-test": "https://github.com/dapphub/ds-test.git#2c7dbcc8586b33f358e3307a443e524490c17666",
     "solmate": "npm:@rari-capital/solmate@6.4.0"
   }

@@ -6,6 +6,7 @@ import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { TestPlus } from "./TestPlus.sol";
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
+import { MockERC20 } from "./MockERC20.sol";
 
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
@@ -15,7 +16,7 @@ import { Router } from "../polygon/Router.sol";
 import { IERC4626 } from "../interfaces/IERC4626.sol";
 import { ERC4626RouterBase } from "../polygon/ERC4626RouterBase.sol";
 
-contract L2BtcEthBasketTestFork is TestPlus {
+contract BtcEthBasketTest is TestPlus {
     TwoAssetBasket basket;
     Router router;
     ERC20 usdc = ERC20(0x8f7116CA03AEB48547d0E2EdD3Faa73bfB232538);
@@ -24,6 +25,7 @@ contract L2BtcEthBasketTestFork is TestPlus {
 
     function setUp() public {
         // NOTE: using mumbai addresses
+        vm.createSelectFork("mumbai", 25804436);
 
         basket = new TwoAssetBasket(
             address(this), // governance
@@ -103,4 +105,19 @@ contract L2BtcEthBasketTestFork is TestPlus {
     }
 
     function testAuction() public {}
+
+    function testDetailedPrice() public {
+        // This function should work even if there is nothing in the vault
+        TwoAssetBasket.Number memory price = basket.detailedPrice();
+        assertEq(price.num, 10**8);
+
+        address user = address(this);
+        MockERC20(address(usdc)).mint(user, 2e6);
+        usdc.approve(address(basket), type(uint256).max);
+
+        basket.deposit(1e6, user);
+        MockERC20(address(btc)).mint(address(basket), 1e18);
+        TwoAssetBasket.Number memory price2 = basket.detailedPrice();
+        assertGt(price2.num, 10**8);
+    }
 }
