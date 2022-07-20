@@ -323,4 +323,19 @@ contract L2VaultTest is TestPlus {
         vault.emergencyWithdrawalQueue().dequeue();
         assertEq(asset.balanceOf(user2), halfUSDC);
     }
+
+    function testDetailedPrice() public {
+        // This function should work even if there is nothing in the vault
+        L2Vault.Number memory price = vault.detailedPrice();
+        assertEq(price.num, 10**vault.decimals());
+
+        address user = address(this);
+        asset.mint(user, 2e18);
+        asset.approve(address(vault), type(uint256).max);
+
+        vault.deposit(1e18, user);
+        asset.transfer(address(vault), 1e18);
+        L2Vault.Number memory price2 = vault.detailedPrice();
+        assertEq(price2.num, 2 * 10**vault.decimals());
+    }
 }

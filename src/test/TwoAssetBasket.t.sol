@@ -6,6 +6,7 @@ import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { TestPlus } from "./TestPlus.sol";
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
+import { MockERC20 } from "./MockERC20.sol";
 
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
@@ -104,4 +105,19 @@ contract BtcEthBasketTest is TestPlus {
     }
 
     function testAuction() public {}
+
+    function testDetailedPrice() public {
+        // This function should work even if there is nothing in the vault
+        TwoAssetBasket.Number memory price = basket.detailedPrice();
+        assertEq(price.num, 10**8);
+
+        address user = address(this);
+        MockERC20(address(usdc)).mint(user, 2e6);
+        usdc.approve(address(basket), type(uint256).max);
+
+        basket.deposit(1e6, user);
+        MockERC20(address(btc)).mint(address(basket), 1e18);
+        TwoAssetBasket.Number memory price2 = basket.detailedPrice();
+        assertGt(price2.num, 10**8);
+    }
 }
