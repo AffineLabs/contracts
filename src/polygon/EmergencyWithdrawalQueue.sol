@@ -28,10 +28,8 @@ contract EmergencyWithdrawalQueue is AccessControl {
     /// @notice Pointer to tail of the queue.
     uint256 tailPtr = 0;
 
-    /// @notice Admin role.
+    /// @notice Queue Admin role.
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR");
-    /// @notice Governance role.
-    bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE");
     /// @notice Address of Alpine vault.
     L2Vault public vault;
 
@@ -105,12 +103,12 @@ contract EmergencyWithdrawalQueue is AccessControl {
         WithdrawalRequest memory withdrawalRequest = queue[headPtr];
         delete queue[headPtr];
         if (withdrawalRequest.requestType == RequestType.Withdraw) {
-            vault.withdraw(withdrawalRequest.amount, withdrawalRequest.receiver, withdrawalRequest.owner);
             assetDebt -= withdrawalRequest.amount;
+            vault.withdraw(withdrawalRequest.amount, withdrawalRequest.receiver, withdrawalRequest.owner);
         }
         if (withdrawalRequest.requestType == RequestType.Redeem) {
-            vault.redeem(withdrawalRequest.amount, withdrawalRequest.receiver, withdrawalRequest.owner);
             shareDebt -= withdrawalRequest.amount;
+            vault.redeem(withdrawalRequest.amount, withdrawalRequest.receiver, withdrawalRequest.owner);
         }
         emit EmergencyWithdrawalQueueDequeue(
             headPtr,
@@ -126,16 +124,18 @@ contract EmergencyWithdrawalQueue is AccessControl {
     function dequeueBatch(uint256 batchSize) external {
         require(size() >= batchSize, "Batch size too big");
         uint256 batchTailPtr = headPtr + batchSize;
+        uint256 assetDebtReduction;
+        uint256 shareDebtReduction;
         for (uint256 ptr = headPtr; ptr < batchTailPtr; ) {
             WithdrawalRequest memory withdrawalRequest = queue[ptr];
             delete queue[ptr];
             if (withdrawalRequest.requestType == RequestType.Withdraw) {
+                assetDebtReduction += withdrawalRequest.amount;
                 vault.withdraw(withdrawalRequest.amount, withdrawalRequest.receiver, withdrawalRequest.owner);
-                assetDebt -= withdrawalRequest.amount;
             }
             if (withdrawalRequest.requestType == RequestType.Redeem) {
+                shareDebtReduction += withdrawalRequest.amount;
                 vault.redeem(withdrawalRequest.amount, withdrawalRequest.receiver, withdrawalRequest.owner);
-                shareDebt -= withdrawalRequest.amount;
             }
             emit EmergencyWithdrawalQueueDequeue(
                 headPtr,
@@ -148,6 +148,8 @@ contract EmergencyWithdrawalQueue is AccessControl {
                 ptr++;
             }
         }
+        assetDebt -= assetDebtReduction;
+        shareDebt -= shareDebtReduction;
         headPtr += batchSize;
     }
 }

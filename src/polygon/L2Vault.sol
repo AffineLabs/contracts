@@ -214,8 +214,14 @@ contract L2Vault is
 
         if (liquidationAmount > 0) {
             uint256 liquidatedAmount = _liquidate(liquidationAmount);
-            if (liquidatedAmount < liquidationAmount && caller != address(this.emergencyWithdrawalQueue())) {
+            if (liquidatedAmount < liquidationAmount) {
+                require(caller != address(this.emergencyWithdrawalQueue()), "Not enough liquidity to emergency redeem");
+                // Before pushing a request to emergency withdrawal queue we make sure every request
+                // in the queue is valid, so that, when the emergency withdrawal queue calls `redeem` we skip
+                // all the checks and execute the burns and transfers.
                 if (caller != owner) _spendAllowance(owner, caller, shares);
+                // TODO(ALP-1572): Decide if we should transfer `liquidatedAmount` to user and add remaining
+                // amount to `emergencyWithdrawalQueue`.
                 emergencyWithdrawalQueue.enqueue(owner, receiver, shares, EmergencyWithdrawalQueue.RequestType.Redeem);
                 return 0;
             }
@@ -254,8 +260,17 @@ contract L2Vault is
 
         if (liquidationAmount > 0) {
             uint256 liquidatedAmount = _liquidate(liquidationAmount);
-            if (liquidatedAmount < liquidationAmount && caller != address(this.emergencyWithdrawalQueue())) {
+            if (liquidatedAmount < liquidationAmount) {
+                require(
+                    caller != address(this.emergencyWithdrawalQueue()),
+                    "Not enough liquidity to emergency withdraw"
+                );
+                // Before pushing a request to emergency withdrawal queue we make sure every request
+                // in the queue is valid, so that, when the emergency withdrawal queue calls `withdraw` we skip
+                // all the checks and execute the burns and transfers.
                 if (caller != owner) _spendAllowance(owner, caller, shares);
+                // TODO(ALP-1572): Decide if we should transfer `liquidatedAmount` to user and add remaining
+                // amount to `emergencyWithdrawalQueue`.
                 emergencyWithdrawalQueue.enqueue(
                     owner,
                     receiver,

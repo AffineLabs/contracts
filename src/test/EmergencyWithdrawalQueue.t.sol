@@ -45,6 +45,18 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         emergencyWithdrawalQueue = vault.emergencyWithdrawalQueue();
     }
 
+    function testOnlyGovernanceCanReLinkVault() external {
+        vm.startPrank(vault.governance());
+        // Governance can link vault.
+        emergencyWithdrawalQueue.linkVault(vault);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        // Anyone other than governance trying to re-link should throw error.
+        vm.expectRevert(bytes("Vault is already linked"));
+        emergencyWithdrawalQueue.linkVault(vault);
+    }
+
     function testEnqueueSuccess() external {
         vm.expectEmit(true, true, false, true);
         emit EmergencyWithdrawalQueueEnqueue(1, EmergencyWithdrawalQueue.RequestType.Withdraw, user2, user1, 1000);
@@ -84,7 +96,7 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         emergencyWithdrawalQueue.enqueue(user2, user1, 1000, EmergencyWithdrawalQueue.RequestType.Withdraw);
     }
 
-    function testEnqueueCorreclyEnqueuReturningUser() external {
+    function testCorreclyEnqueueReturningUser() external {
         // Impersonate vault
         vm.startPrank(address(vault));
 
