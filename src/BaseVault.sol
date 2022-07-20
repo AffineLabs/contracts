@@ -476,14 +476,13 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
     function rebalance() external onlyRole(harvesterRole) {
         uint256 tvl = liveTVL();
 
-        // Loop through all strategies, divesting from those whose tvl is too high, and putting those who are too low
-        // into an array
-        uint256 length = MAX_STRATEGIES;
+        // Loop through all strategies. Divesting from those whose tvl is too high,
+        // Invest in those whose tvl is too low
+
         // MAX_STRATEGIES is always equal to withdrawalQueue.length
-        Strategy[MAX_STRATEGIES] memory stratsToInvestIn;
         uint256[MAX_STRATEGIES] memory amountsToInvest;
 
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
             Strategy strategy = withdrawalQueue[i];
             if (address(strategy) == address(0)) break;
 
@@ -493,17 +492,19 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
                 strategy.divest(currStrategyTVL - idealStrategyTVL);
             }
             if (idealStrategyTVL > currStrategyTVL) {
-                stratsToInvestIn[i] = strategy;
                 amountsToInvest[i] = idealStrategyTVL - currStrategyTVL;
             }
         }
 
         // Loop through the strategies to invest in, and invest in them
-        for (uint256 i = 0; i < length; i++) {
-            Strategy strategy = stratsToInvestIn[i];
-            if (address(strategy) == address(0)) continue;
+        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
+            uint256 amountToInvest = amountsToInvest[i];
+            if (amountToInvest == 0) continue;
 
-            strategy.invest(amountsToInvest[i]);
+            Strategy strategy = withdrawalQueue[i];
+
+            _asset.safeApprove(address(strategy), amountToInvest);
+            strategy.invest(amountToInvest);
         }
     }
 }

@@ -191,10 +191,6 @@ contract BaseVaultTest is TestPlus {
         token.mint(address(strat1), 4000);
         token.mint(address(strat2), 6000);
 
-        // Investing in strat1 requires approval since it calls `transferFrom`
-        vm.prank(address(vault));
-        token.approve(address(strat1), 2000);
-
         vault.rebalance();
 
         assertTrue(token.balanceOf(address(strat1)) == 6000);
