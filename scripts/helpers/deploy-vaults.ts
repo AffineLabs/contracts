@@ -2,7 +2,13 @@ import { ethers, upgrades } from "hardhat";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../utils/bc-explorer-links";
 import { Config } from "../utils/config";
-import { ICreate2Deployer__factory, L1Vault, L2Vault, BridgeEscrow__factory } from "../../typechain";
+import {
+  ICreate2Deployer__factory,
+  L1Vault,
+  L2Vault,
+  BridgeEscrow__factory,
+  EmergencyWithdrawalQueue,
+} from "../../typechain";
 import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
 import { ETH_GOERLI, POLYGON_MUMBAI } from "../utils/constants/blockchain";
 import { address } from "../utils/types";
@@ -12,6 +18,7 @@ import { CHAIN_ID_ETH, CHAIN_ID_POLYGON } from "@certusone/wormhole-sdk";
 export interface VaultContracts {
   l1Vault: L1Vault;
   l2Vault: L2Vault;
+  emergencyWithdrawalQueue: EmergencyWithdrawalQueue;
 }
 
 export async function deployVaults(
@@ -88,6 +95,9 @@ export async function deployVaults(
   stagindDeployTx = await create2.deploy(0, salt, bridgeEscrowCreationCode);
   await stagindDeployTx.wait();
 
+  const emergencyWithdrawalQueueFactory = await ethers.getContractFactory("EmergencyWithdrawalQueue");
+  const emergencyWithdrawalQueue = await emergencyWithdrawalQueueFactory.deploy(l2Governance);
+
   const l2VaultFactory = await ethers.getContractFactory("L2Vault");
   const l2Vault = (await upgrades.deployProxy(
     l2VaultFactory,
@@ -97,6 +107,7 @@ export async function deployVaults(
       config.l2worm,
       wormholeRouters.l2WormholeRouter.address,
       bridgeEscrowAddr,
+      emergencyWithdrawalQueue.address,
       config.forwarder,
       9,
       1,
@@ -105,6 +116,8 @@ export async function deployVaults(
     { kind: "uups" },
   )) as L2Vault;
   await l2Vault.deployed();
+
+  await emergencyWithdrawalQueue.linkVault(l2Vault.address);
   await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonAlpSave`, "L2Vault", l2Vault);
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
 
@@ -135,5 +148,6 @@ export async function deployVaults(
   return {
     l1Vault,
     l2Vault,
+    emergencyWithdrawalQueue,
   };
 }

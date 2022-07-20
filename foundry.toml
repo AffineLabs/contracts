@@ -1,4 +1,4 @@
-[default]
+[profile.default]
 src = 'src'
 test = 'test'
 out = 'out'
@@ -33,4 +33,9 @@ block_base_fee_per_gas = 0
 block_coinbase = '0x0000000000000000000000000000000000000000'
 block_timestamp = 0
 block_difficulty = 0
-rpc_endpoints = { mumbai = "https://polygon-mumbai.g.alchemy.com/v2/${ALCHEMY_POLYGON_MUMBAI_KEY}", goerli = "https://eth-goerli.alchemyapi.io/v2/${ALCHEMY_ETH_GOERLI_KEY}", ethereum = "https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_ETH_MAINNET_KEY}", polygon = "https://polygon-mainnet.g.alchemy.com/v2/${ALCHEMY_POLYGON_MAINNET_KEY}" }
+
+[profile.default.rpc_endpoints]
+mumbai = "https://polygon-mumbai.g.alchemy.com/v2/${ALCHEMY_POLYGON_MUMBAI_KEY}"
+goerli = "https://eth-goerli.alchemyapi.io/v2/${ALCHEMY_ETH_GOERLI_KEY}"
+ethereum = "https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_ETH_MAINNET_KEY}"
+polygon = "https://polygon-mainnet.g.alchemy.com/v2/${ALCHEMY_POLYGON_MAINNET_KEY}"
