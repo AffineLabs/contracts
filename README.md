@@ -71,13 +71,13 @@ $ yarn test-hh path/to/test
 Run the solidity tests
 
 ```sh
-$ yarn test-all
+$ yarn test
 ```
 
 Update all gas snapshots
 
 ```sh
-$ yarn snap-all
+$ yarn snap
 ```
 
 ### Lint/Analyze
