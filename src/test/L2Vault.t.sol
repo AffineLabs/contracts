@@ -185,4 +185,19 @@ contract L2VaultTest is TestPlus {
         vault.togglePause();
         testDepositWithdraw(1e18);
     }
+
+    function testDetailedPrice() public {
+        // This function should work even if there is nothing in the vault
+        L2Vault.Number memory price = vault.detailedPrice();
+        assertEq(price.num, 10**vault.decimals());
+
+        address user = address(this);
+        token.mint(user, 2e18);
+        token.approve(address(vault), type(uint256).max);
+
+        vault.deposit(1e18, user);
+        token.transfer(address(vault), 1e18);
+        L2Vault.Number memory price2 = vault.detailedPrice();
+        assertEq(price2.num, 2 * 10**vault.decimals());
+    }
 }
