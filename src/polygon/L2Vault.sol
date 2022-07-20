@@ -434,7 +434,9 @@ contract L2Vault is
     }
 
     function detailedPrice() external view override returns (Number memory price) {
-        price = Number({ num: (totalAssets() * 10**decimals()) / totalSupply(), decimals: decimals() });
+        // If there are no shares, simply say that the price is 1
+        uint256 rawPrice = totalSupply() > 0 ? (totalAssets() * 10**decimals()) / totalSupply() : 10**decimals();
+        price = Number({ num: rawPrice, decimals: decimals() });
     }
 
     function detailedTotalSupply() external view override returns (Number memory supply) {
