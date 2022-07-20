@@ -459,7 +459,52 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
      */
     function _assessFees() internal virtual {}
 
-    // TODO: implement this
-    /// @notice  Rebalance strategies according to new tvl bps
-    function rebalance() external onlyGovernance {}
+    function liveTVL() internal returns (uint256 tvl) {
+        uint256 totalStrategyTVL;
+
+        // Loop through withdrawal queue and add up totalLockedValue
+        uint256 length = withdrawalQueue.length;
+        for (uint256 i = 0; i < length; i++) {
+            Strategy strategy = withdrawalQueue[i];
+            if (address(strategy) == address(0)) break;
+            totalStrategyTVL += strategy.totalLockedValue();
+        }
+        tvl = _asset.balanceOf(address(this)) + totalStrategyTVL;
+    }
+
+    /// @notice  Rebalance strategies according to given tvl bps
+    function rebalance() external onlyRole(harvesterRole) {
+        uint256 tvl = liveTVL();
+
+        // Loop through all strategies. Divesting from those whose tvl is too high,
+        // Invest in those whose tvl is too low
+
+        // MAX_STRATEGIES is always equal to withdrawalQueue.length
+        uint256[MAX_STRATEGIES] memory amountsToInvest;
+
+        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
+            Strategy strategy = withdrawalQueue[i];
+            if (address(strategy) == address(0)) break;
+
+            uint256 idealStrategyTVL = (tvl * strategies[strategy].tvlBps) / MAX_BPS;
+            uint256 currStrategyTVL = strategy.totalLockedValue();
+            if (idealStrategyTVL < currStrategyTVL) {
+                strategy.divest(currStrategyTVL - idealStrategyTVL);
+            }
+            if (idealStrategyTVL > currStrategyTVL) {
+                amountsToInvest[i] = idealStrategyTVL - currStrategyTVL;
+            }
+        }
+
+        // Loop through the strategies to invest in, and invest in them
+        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
+            uint256 amountToInvest = amountsToInvest[i];
+            if (amountToInvest == 0) continue;
+
+            Strategy strategy = withdrawalQueue[i];
+
+            _asset.safeApprove(address(strategy), amountToInvest);
+            strategy.invest(amountToInvest);
+        }
+    }
 }
