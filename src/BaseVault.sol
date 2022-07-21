@@ -35,6 +35,10 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
         return address(_asset);
     }
 
+    function assetBalance() internal view returns (uint256) {
+        return _asset.balanceOf(address(this));
+    }
+
     function baseInitialize(
         address _governance,
         ERC20 vaultAsset,
