@@ -468,11 +468,11 @@ contract L2Vault is
         if (invest) {
             // Increase balance of `token` to `delta` by withdrawing from strategies.
             // Then transfer `amount` of `token` to L1.
-            uint256 preLiquidationAssetBalance = assetBalance();
+            uint256 preLiquidationAssetBalance = _assetBalance();
             if (preLiquidationAssetBalance < amount) {
                 _liquidate(amount - preLiquidationAssetBalance);
             }
-            uint256 amountToSend = Math.min(assetBalance(), amount);
+            uint256 amountToSend = Math.min(_assetBalance(), amount);
             _transferToL1(amountToSend);
         } else {
             // Send message to L1 telling us how much should be transferred to this vault

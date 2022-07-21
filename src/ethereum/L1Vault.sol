@@ -75,11 +75,11 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     // Process a request for funds from L2 vault
     function processFundRequest(uint256 amountRequested) external {
         require(msg.sender == address(wormholeRouter), "Only wormhole router");
-        uint256 preLiquidationAssetBalance = assetBalance();
+        uint256 preLiquidationAssetBalance = _assetBalance();
         if (preLiquidationAssetBalance < amountRequested) {
             _liquidate(amountRequested - preLiquidationAssetBalance);
         }
-        uint256 amountToSend = Math.min(assetBalance(), amountRequested);
+        uint256 amountToSend = Math.min(_assetBalance(), amountRequested);
         _transferFundsToL2(amountToSend);
     }
 
