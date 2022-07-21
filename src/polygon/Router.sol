@@ -11,5 +11,7 @@ contract Router is ERC4626Router {
         _setTrustedForwarder(forwarder);
     }
 
-    function versionRecipient() external view virtual override returns (string memory) {}
+    function versionRecipient() external view virtual override returns (string memory) {
+        return "1";
+    }
 }

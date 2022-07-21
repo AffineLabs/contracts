@@ -77,5 +77,7 @@ contract ERC4626Router is ERC4626RouterBase {
         token.safeApprove(to, amount);
     }
 
-    function versionRecipient() external view virtual override returns (string memory) {}
+    function versionRecipient() external view virtual override returns (string memory) {
+        return "1";
+    }
 }
