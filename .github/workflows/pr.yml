@@ -53,9 +53,11 @@ jobs:
 
       - name: Use Python
         run: pip3 install solc-select
-      
+
       - name: Install Slither
         run: solc-select install 0.8.13
+
+      - name: Use slither
         run: solc-select use 0.8.13
 
       - name: Run Slither
