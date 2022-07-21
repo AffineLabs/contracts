@@ -35,7 +35,7 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
         return address(_asset);
     }
 
-    function assetBalance() internal view returns (uint256) {
+    function _assetBalance() internal view returns (uint256) {
         return _asset.balanceOf(address(this));
     }
 
@@ -53,6 +53,7 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
         // All roles use the default admin role
         // governance has the admin role and can grant/remove a role to any account
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
+        // TODO(ALP-1607): Re-evaluate roles granted to governance.
         _grantRole(harvesterRole, governance);
         _grantRole(queueOperatorRole, governance);
         _grantRole(rebalancerRole, governance);
@@ -285,7 +286,7 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
 
     /// @notice Deposit entire balance of `token` into strategies according to each strategies' `tvlBps`.
     function depositIntoStrategies() internal {
-        uint256 totalBal = _asset.balanceOf(address(this));
+        uint256 totalBal = _assetBalance();
         // All non-zero strategies are active
         uint256 length = withdrawalQueue.length;
         for (uint256 i = 0; i < length; i++) {
@@ -414,7 +415,7 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
 
     /// @notice The total amount of the underlying asset the vault has.
     function vaultTVL() public view returns (uint256) {
-        return _asset.balanceOf(address(this)) + totalStrategyHoldings;
+        return _assetBalance() + totalStrategyHoldings;
     }
 
     /**
@@ -438,7 +439,7 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
             Strategy strategy = withdrawalQueue[i];
             if (address(strategy) == address(0)) break;
 
-            uint256 balance = _asset.balanceOf(address(this));
+            uint256 balance = _assetBalance();
             if (balance >= amount) break;
 
             // NOTE: Don't withdraw more than the debt so that Strategy can still
@@ -474,7 +475,7 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
             if (address(strategy) == address(0)) break;
             totalStrategyTVL += strategy.totalLockedValue();
         }
-        tvl = _asset.balanceOf(address(this)) + totalStrategyTVL;
+        tvl = _assetBalance() + totalStrategyTVL;
     }
 
     /// @notice  Rebalance strategies according to given tvl bps
