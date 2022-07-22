@@ -74,6 +74,10 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         return BaseRelayRecipient._msgData();
     }
 
+    function setTrustedForwarder(address forwarder) external onlyGovernance {
+        _setTrustedForwarder(forwarder);
+    }
+
     function togglePause() external onlyGovernance {
         if (paused()) {
             _unpause();

@@ -238,6 +238,24 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
         }
     }
 
+    function updateStrategyAllocations(Strategy[] calldata strategyList, uint256[] calldata strategyBps)
+        external
+        onlyGovernance
+    {
+        for (uint256 i = 0; i < strategyList.length; i++) {
+            // Get the strategy at the current index.
+            Strategy strategy = strategyList[i];
+
+            // Ignore inactive (removed) strategies
+            if (!strategies[strategy].isActive) {
+                continue;
+            }
+
+            // update tvl bps
+            strategies[strategy].tvlBps = strategyBps[i];
+        }
+    }
+
     /** STRATEGY DEPOSIT/WITHDRAWAL
      **************************************************************************/
 
