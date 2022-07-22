@@ -12,5 +12,5 @@ COPY . .
 # Don't run lifecycle scipts as that depends on Dapptools
 RUN yarn --frozen-lockfile --ignore-scripts
 
-# Run the rebalance script
-ENTRYPOINT ["yarn", "script", "./scripts/rebalance.ts"]
+# Run the queuebot script
+ENTRYPOINT ["yarn", "script", "./scripts/queuebot.ts"]
