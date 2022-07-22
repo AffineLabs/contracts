@@ -5,11 +5,9 @@ import { POLYGON_MUMBAI } from "../utils/constants/blockchain";
 import { addToAddressBookAndDefender } from "../utils/export";
 // This only works on mumbai for now
 export async function deployBasket(config: Config): Promise<TwoAssetBasket> {
-  const [deployer] = await ethers.getSigners();
-
   const BasketFactory = await ethers.getContractFactory("TwoAssetBasket");
   const basket = await BasketFactory.deploy(
-    deployer.address,
+    config.l2Governance,
     config.forwarder,
     ethers.BigNumber.from(10).pow(8).mul(50_000), // $50,000 dollar rebalance delta (8 decimals to work with chainlink)
     ethers.BigNumber.from(10).pow(8).mul(10_000), // $10_000 block size
