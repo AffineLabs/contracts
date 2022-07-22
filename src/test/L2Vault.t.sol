@@ -338,4 +338,24 @@ contract L2VaultTest is TestPlus {
         L2Vault.Number memory price2 = vault.detailedPrice();
         assertEq(price2.num, 2 * 10**vault.decimals());
     }
+
+    function testSettingForwarder() public {
+        address newForwarder = 0x8f954E7D7ec3A31D9568316fb0F472B03fc2a7d5;
+        vault.setTrustedForwarder(newForwarder);
+        assertEq(vault.trustedForwarder(), newForwarder);
+
+        // only gov can call
+        vm.prank(newForwarder);
+        vm.expectRevert("Only Governance.");
+        vault.setTrustedForwarder(address(0));
+    }
+
+    function testSettingRebalanceDelta() public {
+        vault.setRebalanceDelta(100);
+        assertEq(vault.rebalanceDelta(), 100);
+
+        vm.prank(0x8f954E7D7ec3A31D9568316fb0F472B03fc2a7d5);
+        vm.expectRevert("Only Governance.");
+        vault.setRebalanceDelta(0);
+    }
 }

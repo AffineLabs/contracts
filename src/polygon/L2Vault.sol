@@ -428,9 +428,9 @@ contract L2Vault is
         L2Ratio = _L2Ratio;
     }
 
-    uint256 rebalanceDelta;
+    uint256 public rebalanceDelta;
 
-    function setRebalanceDetla(uint256 _rebalanceDelta) external onlyGovernance {
+    function setRebalanceDelta(uint256 _rebalanceDelta) external onlyGovernance {
         rebalanceDelta = _rebalanceDelta;
     }
 

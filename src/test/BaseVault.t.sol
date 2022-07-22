@@ -196,4 +196,27 @@ contract BaseVaultTest is TestPlus {
         assertTrue(token.balanceOf(address(strat1)) == 6000);
         assertTrue(token.balanceOf(address(strat2)) == 4000);
     }
+
+    function testUpdateStrategyAllocations() public {
+        BaseStrategy strat1 = new TestStrategy(token, vault);
+        BaseStrategy strat2 = new TestStrategy(token, vault);
+
+        vault.addStrategy(strat1, 5000);
+        vault.addStrategy(strat2, 5000);
+
+        BaseStrategy[] memory strategyList = new BaseStrategy[](2);
+        strategyList[0] = strat1;
+        strategyList[1] = strat2;
+
+        uint256[] memory bpsList = new uint256[](2);
+        bpsList[0] = 100;
+        bpsList[1] = 200;
+
+        vault.updateStrategyAllocations(strategyList, bpsList);
+        (, uint256 strat1TvlBps, , , ) = vault.strategies(strat1);
+        (, uint256 strat2TvlBps, , , ) = vault.strategies(strat2);
+
+        assertEq(strat1TvlBps, 100);
+        assertEq(strat2TvlBps, 200);
+    }
 }
