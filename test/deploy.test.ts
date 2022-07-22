@@ -6,14 +6,11 @@ import { deployVaults } from "../scripts/helpers/deploy-vaults";
 import { deployWormholeRouters } from "../scripts/helpers/deploy-wormhole-router";
 import { config } from "../scripts/utils/config";
 import { deployBasket } from "../scripts/helpers/deploy-btc-eth";
-import { L2Vault } from "typechain";
 
 chai.use(solidity);
 const { expect } = chai;
 
 describe("Deploy AlpSave", async () => {
-  // let l2VaultAddr: string;
-  let oldL2Vault: L2Vault;
   it("Deploy Vaults", async () => {
     const wormholeRouters = await deployWormholeRouters(
       process.env.ETH_NETWORK || "eth-goerli-fork",
@@ -27,9 +24,6 @@ describe("Deploy AlpSave", async () => {
       config,
       wormholeRouters,
     );
-
-    console.log("trying to set vault of addr");
-    oldL2Vault = l2Vault;
 
     // If tokens are set correctly, most likely everything else is.
     expect(await l2Vault.asset()).to.equal(config.l2USDC);
@@ -70,6 +64,14 @@ describe("Deploy AlpSave", async () => {
       process.env.ETH_NETWORK || "eth-goerli-fork",
       process.env.POLYGON_NETWORK || "polygon-mumbai-fork",
     );
+    const { l2Vault: oldL2Vault } = await deployVaults(
+      config.l1Governance,
+      config.l2Governance,
+      process.env.ETH_NETWORK || "eth-goerli-fork",
+      process.env.POLYGON_NETWORK || "polygon-mumbai-fork",
+      config,
+      wormholeRouters,
+    );
     const { l2Vault: newL2Vault } = await deployVaults(
       config.l1Governance,
       config.l2Governance,
@@ -78,9 +80,12 @@ describe("Deploy AlpSave", async () => {
       config,
       wormholeRouters,
     );
-    console.log("old implementation: ", await upgrades.erc1967.getImplementationAddress(oldL2Vault.address));
 
+    // Both vaults actually have the same implementation address already
+    // https://forum.openzeppelin.com/t/truffle-upgrades-upgrading-to-the-same-implementation-address/29882/2
+    console.log("old implementation: ", await upgrades.erc1967.getImplementationAddress(oldL2Vault.address));
     const newImplementation = await upgrades.erc1967.getImplementationAddress(newL2Vault.address);
+    console.log("new implementation: ", newImplementation);
 
     // Give timelock addr some eth, no leading zeroes allowed in hex string: https://github.com/NomicFoundation/hardhat/issues/1585
     await network.provider.send("hardhat_setBalance", [
@@ -97,7 +102,6 @@ describe("Deploy AlpSave", async () => {
     // call upgradeTo
     await oldL2Vault.connect(account).upgradeTo(newImplementation);
     expect(await upgrades.erc1967.getImplementationAddress(oldL2Vault.address)).to.equal(newImplementation);
-    console.log("new implementation: ", newImplementation);
   });
 });
 
