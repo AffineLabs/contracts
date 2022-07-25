@@ -178,7 +178,7 @@ contract L2VaultTest is TestPlus {
     }
 
     function testVaultPause() public {
-        vault.togglePause();
+        vault.pause();
 
         vm.expectRevert("Pausable: paused");
         vault.deposit(1e18, address(this));
@@ -186,7 +186,7 @@ contract L2VaultTest is TestPlus {
         vm.expectRevert("Pausable: paused");
         vault.withdraw(1e18, address(this), address(this));
 
-        vault.togglePause();
+        vault.unpause();
         testDepositWithdraw(1e18);
     }
 

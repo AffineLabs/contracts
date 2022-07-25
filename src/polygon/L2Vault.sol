@@ -84,7 +84,7 @@ contract L2Vault is
         BridgeEscrow _BridgeEscrow,
         EmergencyWithdrawalQueue _emergencyWithdrawalQueue,
         address forwarder,
-        uint256 _L1Ratio,
+        uint256 _l1Ratio,
         uint256 _L2Ratio,
         uint256[2] memory fees
     ) public initializer {
@@ -95,7 +95,7 @@ contract L2Vault is
 
         wormholeRouter = _wormholeRouter;
         emergencyWithdrawalQueue = _emergencyWithdrawalQueue;
-        L1Ratio = _L1Ratio;
+        l1Ratio = _l1Ratio;
         L2Ratio = _L2Ratio;
         rebalanceDelta = 100_000 * _asset.decimals();
         canTransferToL1 = true;
@@ -144,12 +144,12 @@ contract L2Vault is
         return _asset.decimals();
     }
 
-    function togglePause() external onlyRole(harvesterRole) {
-        if (paused()) {
-            _unpause();
-        } else {
-            _pause();
-        }
+    function pause() external onlyRole(harvesterRole) {
+        _pause();
+    }
+
+    function unpause() external onlyRole(harvesterRole) {
+        _unpause();
     }
 
     /** DEPOSIT
@@ -420,11 +420,11 @@ contract L2Vault is
 
     // Represents the amount of tvl (in `token`) that should exist on L1 and L2
     // E.g. if layer1 == 1 and layer2 == 2 then 1/3 of the TVL should be on L1
-    uint256 public L1Ratio;
+    uint256 public l1Ratio;
     uint256 public L2Ratio;
 
-    function setLayerRatios(uint256 _L1Ratio, uint256 _L2Ratio) external onlyGovernance {
-        L1Ratio = _L1Ratio;
+    function setLayerRatios(uint256 _l1Ratio, uint256 _L2Ratio) external onlyGovernance {
+        l1Ratio = _l1Ratio;
         L2Ratio = _L2Ratio;
     }
 
@@ -465,8 +465,8 @@ contract L2Vault is
     }
 
     function _computeRebalance() internal view returns (bool, uint256) {
-        uint256 numSlices = L1Ratio + L2Ratio;
-        uint256 L1IdealAmount = (L1Ratio * totalAssets()) / numSlices;
+        uint256 numSlices = l1Ratio + L2Ratio;
+        uint256 L1IdealAmount = (l1Ratio * totalAssets()) / numSlices;
 
         bool invest;
         uint256 delta;

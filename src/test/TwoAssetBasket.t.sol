@@ -92,7 +92,7 @@ contract BtcEthBasketTest is TestPlus {
     }
 
     function testVaultPause() public {
-        basket.togglePause();
+        basket.pause();
 
         vm.expectRevert("Pausable: paused");
         basket.deposit(1e18, address(this));
@@ -100,7 +100,7 @@ contract BtcEthBasketTest is TestPlus {
         vm.expectRevert("Pausable: paused");
         basket.withdraw(1e18, address(this), address(this));
 
-        basket.togglePause();
+        basket.unpause();
         testDepositWithdraw();
     }
 
