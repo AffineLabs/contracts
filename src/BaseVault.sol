@@ -238,6 +238,11 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
         }
     }
 
+    /**
+     * @notice Update tvl bps assigned to the given list of strategies
+     * @param strategyList The list of strategies
+     * @param strategyBps The new bps
+     */
     function updateStrategyAllocations(Strategy[] calldata strategyList, uint256[] calldata strategyBps)
         external
         onlyGovernance

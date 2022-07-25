@@ -85,7 +85,7 @@ contract L2Vault is
         EmergencyWithdrawalQueue _emergencyWithdrawalQueue,
         address forwarder,
         uint256 _l1Ratio,
-        uint256 _L2Ratio,
+        uint256 _l2Ratio,
         uint256[2] memory fees
     ) public initializer {
         __ERC20_init("Alpine Save", "alpSave");
@@ -96,7 +96,7 @@ contract L2Vault is
         wormholeRouter = _wormholeRouter;
         emergencyWithdrawalQueue = _emergencyWithdrawalQueue;
         l1Ratio = _l1Ratio;
-        L2Ratio = _L2Ratio;
+        l2Ratio = _l2Ratio;
         rebalanceDelta = 100_000 * _asset.decimals();
         canTransferToL1 = true;
         canRequestFromL1 = true;
@@ -128,6 +128,10 @@ contract L2Vault is
         return "1";
     }
 
+    /**
+     * @notice Set the trusted forwarder address
+     * @param forwarder The new forwarder address
+     */
     function setTrustedForwarder(address forwarder) external onlyGovernance {
         _setTrustedForwarder(forwarder);
     }
@@ -144,10 +148,12 @@ contract L2Vault is
         return _asset.decimals();
     }
 
+    /// @notice Pause the contract
     function pause() external onlyRole(harvesterRole) {
         _pause();
     }
 
+    /// @notice Unpause the contract
     function unpause() external onlyRole(harvesterRole) {
         _unpause();
     }
@@ -421,15 +427,28 @@ contract L2Vault is
     // Represents the amount of tvl (in `token`) that should exist on L1 and L2
     // E.g. if layer1 == 1 and layer2 == 2 then 1/3 of the TVL should be on L1
     uint256 public l1Ratio;
-    uint256 public L2Ratio;
+    uint256 public l2Ratio;
 
-    function setLayerRatios(uint256 _l1Ratio, uint256 _L2Ratio) external onlyGovernance {
+    /**
+     * @notice Set the layer ratios
+     * @param _l1Ratio The layer 1 ratio
+     * @param _l2Ratio The layer 2 ratio
+     */
+    function setLayerRatios(uint256 _l1Ratio, uint256 _l2Ratio) external onlyGovernance {
         l1Ratio = _l1Ratio;
-        L2Ratio = _L2Ratio;
+        l2Ratio = _l2Ratio;
     }
 
+    /**
+     * @notice The delta required to trigger a rebalance. The delta is the difference between current and ideal tvl
+     * on a given layer
+     */
     uint256 public rebalanceDelta;
 
+    /**
+     * @notice Set the rebalance delta
+     * @param _rebalanceDelta The new rebalance delta
+     */
     function setRebalanceDelta(uint256 _rebalanceDelta) external onlyGovernance {
         rebalanceDelta = _rebalanceDelta;
     }
@@ -465,7 +484,7 @@ contract L2Vault is
     }
 
     function _computeRebalance() internal view returns (bool, uint256) {
-        uint256 numSlices = l1Ratio + L2Ratio;
+        uint256 numSlices = l1Ratio + l2Ratio;
         uint256 L1IdealAmount = (l1Ratio * totalAssets()) / numSlices;
 
         bool invest;
