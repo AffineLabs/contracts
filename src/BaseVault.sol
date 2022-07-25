@@ -183,13 +183,19 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
      * @param tvlBps The number of bps of our tvl the strategy will get when funds are distributed to strategies
      */
     function addStrategy(Strategy strategy, uint256 tvlBps) external onlyGovernance {
-        require(totalBps + tvlBps <= MAX_BPS, "TVL_ALLOC_TOO_BIG");
+        _increaseTVLBps(tvlBps);
         strategies[strategy] = StrategyInfo({ isActive: true, tvlBps: tvlBps, balance: 0, totalGain: 0, totalLoss: 0 });
-        totalBps += tvlBps;
         //  Add strategy to withdrawal queue
         withdrawalQueue[withdrawalQueue.length - 1] = strategy;
         emit StrategyAdded(strategy);
         _organizeWithdrawalQueue();
+    }
+
+    /// @notice A helper function for increasing `totalBps`. Used when adding strategies or updating strategy allocations
+    function _increaseTVLBps(uint256 tvlBps) internal {
+        uint256 newTotalBps = totalBps + tvlBps;
+        require(newTotalBps <= MAX_BPS, "TVL_ALLOC_TOO_BIG");
+        totalBps = newTotalBps;
     }
 
     /**
@@ -235,6 +241,32 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
                 _organizeWithdrawalQueue();
                 break;
             }
+        }
+    }
+
+    /**
+     * @notice Update tvl bps assigned to the given list of strategies
+     * @param strategyList The list of strategies
+     * @param strategyBps The new bps
+     */
+    function updateStrategyAllocations(Strategy[] calldata strategyList, uint256[] calldata strategyBps)
+        external
+        onlyGovernance
+    {
+        for (uint256 i = 0; i < strategyList.length; i++) {
+            // Get the strategy at the current index.
+            Strategy strategy = strategyList[i];
+
+            // Ignore inactive (removed) strategies
+            if (!strategies[strategy].isActive) {
+                continue;
+            }
+
+            // update tvl bps
+            uint256 oldBps = strategies[strategy].tvlBps;
+            totalBps -= oldBps;
+            _increaseTVLBps(strategyBps[i]);
+            strategies[strategy].tvlBps = strategyBps[i];
         }
     }
 

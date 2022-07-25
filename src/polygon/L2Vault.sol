@@ -84,17 +84,20 @@ contract L2Vault is
         BridgeEscrow _BridgeEscrow,
         EmergencyWithdrawalQueue _emergencyWithdrawalQueue,
         address forwarder,
-        uint256 L1Ratio,
-        uint256 L2Ratio,
+        uint256 _l1Ratio,
+        uint256 _l2Ratio,
         uint256[2] memory fees
     ) public initializer {
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
         __Pausable_init();
         BaseVault.baseInitialize(_governance, _token, _wormhole, _BridgeEscrow);
+
         wormholeRouter = _wormholeRouter;
         emergencyWithdrawalQueue = _emergencyWithdrawalQueue;
-        layerRatios = LayerBalanceRatios({ layer1: L1Ratio, layer2: L2Ratio });
+        l1Ratio = _l1Ratio;
+        l2Ratio = _l2Ratio;
+        rebalanceDelta = 100_000 * _asset.decimals();
         canTransferToL1 = true;
         canRequestFromL1 = true;
 
@@ -125,12 +128,12 @@ contract L2Vault is
         return "1";
     }
 
-    function togglePause() external onlyRole(harvesterRole) {
-        if (paused()) {
-            _unpause();
-        } else {
-            _pause();
-        }
+    /**
+     * @notice Set the trusted forwarder address
+     * @param forwarder The new forwarder address
+     */
+    function setTrustedForwarder(address forwarder) external onlyGovernance {
+        _setTrustedForwarder(forwarder);
     }
 
     /** ERC4626 / ERC20 BASICS
@@ -143,6 +146,16 @@ contract L2Vault is
 
     function decimals() public view override returns (uint8) {
         return _asset.decimals();
+    }
+
+    /// @notice Pause the contract
+    function pause() external onlyRole(harvesterRole) {
+        _pause();
+    }
+
+    /// @notice Unpause the contract
+    function unpause() external onlyRole(harvesterRole) {
+        _unpause();
     }
 
     /** DEPOSIT
@@ -413,11 +426,32 @@ contract L2Vault is
 
     // Represents the amount of tvl (in `token`) that should exist on L1 and L2
     // E.g. if layer1 == 1 and layer2 == 2 then 1/3 of the TVL should be on L1
-    struct LayerBalanceRatios {
-        uint256 layer1;
-        uint256 layer2;
+    uint256 public l1Ratio;
+    uint256 public l2Ratio;
+
+    /**
+     * @notice Set the layer ratios
+     * @param _l1Ratio The layer 1 ratio
+     * @param _l2Ratio The layer 2 ratio
+     */
+    function setLayerRatios(uint256 _l1Ratio, uint256 _l2Ratio) external onlyGovernance {
+        l1Ratio = _l1Ratio;
+        l2Ratio = _l2Ratio;
     }
-    LayerBalanceRatios public layerRatios;
+
+    /**
+     * @notice The delta required to trigger a rebalance. The delta is the difference between current and ideal tvl
+     * on a given layer
+     */
+    uint256 public rebalanceDelta;
+
+    /**
+     * @notice Set the rebalance delta
+     * @param _rebalanceDelta The new rebalance delta
+     */
+    function setRebalanceDelta(uint256 _rebalanceDelta) external onlyGovernance {
+        rebalanceDelta = _rebalanceDelta;
+    }
 
     // Whether we can send or receive money from L1
     bool public canTransferToL1;
@@ -442,7 +476,7 @@ contract L2Vault is
         if (!canTransferToL1 || !canRequestFromL1) return;
 
         (bool invest, uint256 delta) = _computeRebalance();
-        // if (delta < 100_000 * 10 ** decimals()) return;
+        // if (delta < rebalanceDelta) return;
         // TODO: use the condition above eventually, this is just for testing
         if (delta == 0) return;
 
@@ -450,8 +484,8 @@ contract L2Vault is
     }
 
     function _computeRebalance() internal view returns (bool, uint256) {
-        uint256 numSlices = layerRatios.layer1 + layerRatios.layer2;
-        uint256 L1IdealAmount = (layerRatios.layer1 * totalAssets()) / numSlices;
+        uint256 numSlices = l1Ratio + l2Ratio;
+        uint256 L1IdealAmount = (l1Ratio * totalAssets()) / numSlices;
 
         bool invest;
         uint256 delta;
