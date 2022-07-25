@@ -17,7 +17,7 @@ contract ERC4626Router is ERC4626RouterBase {
         uint256 amount,
         uint256 minSharesOut
     ) external payable returns (uint256 sharesOut) {
-        ERC20(vault.asset()).safeTransferFrom(msg.sender, address(this), amount);
+        ERC20(vault.asset()).safeTransferFrom(_msgSender(), address(this), amount);
         return deposit(vault, to, amount, minSharesOut);
     }
 
@@ -51,10 +51,10 @@ contract ERC4626Router is ERC4626RouterBase {
         uint256 minSharesOut
     ) public payable returns (uint256 sharesOut) {
         ERC20 asset = ERC20(vault.asset());
-        uint256 assetBalance = asset.balanceOf(msg.sender);
+        uint256 assetBalance = asset.balanceOf(_msgSender());
         uint256 maxDeposit = vault.maxDeposit(to);
         uint256 amount = maxDeposit < assetBalance ? maxDeposit : assetBalance;
-        ERC20(vault.asset()).safeTransferFrom(msg.sender, address(this), amount);
+        ERC20(vault.asset()).safeTransferFrom(_msgSender(), address(this), amount);
         return deposit(vault, to, amount, minSharesOut);
     }
 
@@ -63,8 +63,8 @@ contract ERC4626Router is ERC4626RouterBase {
         address to,
         uint256 minAmountOut
     ) public payable returns (uint256 amountOut) {
-        uint256 shareBalance = ERC20(address(vault)).balanceOf(msg.sender);
-        uint256 maxRedeem = vault.maxRedeem(msg.sender);
+        uint256 shareBalance = ERC20(address(vault)).balanceOf(_msgSender());
+        uint256 maxRedeem = vault.maxRedeem(_msgSender());
         uint256 amountShares = maxRedeem < shareBalance ? maxRedeem : shareBalance;
         return redeem(vault, to, amountShares, minAmountOut);
     }
@@ -75,5 +75,9 @@ contract ERC4626Router is ERC4626RouterBase {
         uint256 amount
     ) public payable {
         token.safeApprove(to, amount);
+    }
+
+    function versionRecipient() external view virtual override returns (string memory) {
+        return "1";
     }
 }

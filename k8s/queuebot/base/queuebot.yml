@@ -1,0 +1,38 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: queuebot
+spec:
+  # https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#cron-schedule-syntax
+  # Run every 1/2 hours
+  schedule: "*/30 * * * *"
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: queuebot
+            image:  queuebot
+            env:
+            - name: ALCHEMY_ETH_GOERLI_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: queuebot-secrets
+                  key: ALCHEMY_ETH_GOERLI_KEY
+            - name: ALCHEMY_POLYGON_MUMBAI_KEY 
+              valueFrom:
+                secretKeyRef:
+                  name: queuebot-secrets
+                  key: ALCHEMY_POLYGON_MUMBAI_KEY
+            - name: MNEMONIC
+              valueFrom:
+                secretKeyRef:
+                  name: queuebot-secrets
+                  key: MNEMONIC
+            resources:
+              limits:
+                memory: "512Mi"
+                cpu: "100m"
+          restartPolicy: Never

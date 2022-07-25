@@ -1,9 +1,0 @@
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-namespace: staging
-images:
-- name: rebalancer
-  newName: 959984261658.dkr.ecr.us-east-2.amazonaws.com/rebalancer
-  newTag: fdb7ca00bc6abae97fb334d246e3857cec8acbc6
-resources:
-- ../../base
