@@ -183,13 +183,19 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
      * @param tvlBps The number of bps of our tvl the strategy will get when funds are distributed to strategies
      */
     function addStrategy(Strategy strategy, uint256 tvlBps) external onlyGovernance {
-        require(totalBps + tvlBps <= MAX_BPS, "TVL_ALLOC_TOO_BIG");
+        _increaseTVLBps(tvlBps);
         strategies[strategy] = StrategyInfo({ isActive: true, tvlBps: tvlBps, balance: 0, totalGain: 0, totalLoss: 0 });
-        totalBps += tvlBps;
         //  Add strategy to withdrawal queue
         withdrawalQueue[withdrawalQueue.length - 1] = strategy;
         emit StrategyAdded(strategy);
         _organizeWithdrawalQueue();
+    }
+
+    /// @notice A helper function for increasing `totalBps`. Used when adding strategies or updating strategy allocations
+    function _increaseTVLBps(uint256 tvlBps) internal {
+        uint256 newTotalBps = totalBps + tvlBps;
+        require(newTotalBps <= MAX_BPS, "TVL_ALLOC_TOO_BIG");
+        totalBps = newTotalBps;
     }
 
     /**
@@ -257,6 +263,9 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
             }
 
             // update tvl bps
+            uint256 oldBps = strategies[strategy].tvlBps;
+            totalBps -= oldBps;
+            _increaseTVLBps(strategyBps[i]);
             strategies[strategy].tvlBps = strategyBps[i];
         }
     }
