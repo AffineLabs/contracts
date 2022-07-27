@@ -51,12 +51,13 @@ jobs:
       - name: Run hardhat tests.
         run: yarn test-hh
 
-      - name: Check slither errors
-        uses: crytic/slither-action@v0.1.1
-        id: slither
-        continue-on-error: true
-        with:
-          sarif: results.sarif
+      # TODO: add back once slither works again (https://github.com/crytic/slither/issues/1211)
+      # - name: Check slither errors
+      #   uses: crytic/slither-action@v0.1.1
+      #   id: slither
+      #   continue-on-error: true
+      #   with:
+      #     sarif: results.sarif
 
       # TODO: add back once we have code scanning (https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/setting-up-code-scanning-for-a-repository#setting-up-code-scanning-manually)
       # - name: Upload SARIF file
