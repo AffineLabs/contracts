@@ -38,6 +38,12 @@ contract L2VaultTest is TestPlus {
         uint256 shares
     );
 
+    function testDeploy() public {
+        // this makes sure that the first time we assess management fees we get a reasonable number
+        // since management fees are calculated based on block.timestamp - lastHarvest
+        assertEq(vault.lastHarvest(), block.timestamp);
+    }
+
     function testDepositRedeem(uint128 amountAsset) public {
         // Running into overflow issues on the call to vault.redeem
         address user = address(this);
@@ -86,10 +92,8 @@ contract L2VaultTest is TestPlus {
     }
 
     function testManagementFee() public {
-        // Add total supply => occupies ERC20Upgradeable which inherits from two contracts with storage,
-        // One contract has one slots and the other has 50 slots. totalSupply is at slot three in ERC20Up, so
-        // the slot would is number 50 + 1 + 3 = 54 (index 53)
-        vm.store(address(vault), bytes32(uint256(53)), bytes32(uint256(1e18)));
+        // Increase vault's total supply
+        deal(address(vault), address(0), 1e18, true);
 
         assertEq(vault.totalSupply(), 1e18);
 
