@@ -222,13 +222,13 @@ contract L2Vault is
         // emergency withdrawal queue debt.
         uint256 liquidationAmount = _liquidationAmountForWithdrawalOf(
             assets,
-            caller != address(this.emergencyWithdrawalQueue())
+            caller != address(emergencyWithdrawalQueue)
         );
 
         if (liquidationAmount > 0) {
             uint256 liquidatedAmount = _liquidate(liquidationAmount);
             if (liquidatedAmount < liquidationAmount) {
-                require(caller != address(this.emergencyWithdrawalQueue()), "Not enough liquidity to emergency redeem");
+                require(caller != address(emergencyWithdrawalQueue), "Not enough liquidity to emergency redeem");
                 // Before pushing a request to emergency withdrawal queue we make sure every request
                 // in the queue is valid, so that, when the emergency withdrawal queue calls `redeem` we skip
                 // all the checks and execute the burns and transfers.
@@ -242,7 +242,7 @@ contract L2Vault is
 
         // If the call is coming from emergency withdrawal queue, then the allowence has
         // already been spent.
-        if (caller != owner && caller != address(this.emergencyWithdrawalQueue())) {
+        if (caller != owner && caller != address(emergencyWithdrawalQueue)) {
             _spendAllowance(owner, caller, shares);
         }
 
@@ -267,17 +267,14 @@ contract L2Vault is
         // emergency withdrawal queue debt.
         uint256 liquidationAmount = _liquidationAmountForWithdrawalOf(
             assets,
-            caller != address(this.emergencyWithdrawalQueue())
+            caller != address(emergencyWithdrawalQueue)
         );
         shares = previewWithdraw(assets);
 
         if (liquidationAmount > 0) {
             uint256 liquidatedAmount = _liquidate(liquidationAmount);
             if (liquidatedAmount < liquidationAmount) {
-                require(
-                    caller != address(this.emergencyWithdrawalQueue()),
-                    "Not enough liquidity to emergency withdraw"
-                );
+                require(caller != address(emergencyWithdrawalQueue), "Not enough liquidity to emergency withdraw");
                 // Before pushing a request to emergency withdrawal queue we make sure every request
                 // in the queue is valid, so that, when the emergency withdrawal queue calls `withdraw` we skip
                 // all the checks and execute the burns and transfers.
@@ -296,7 +293,7 @@ contract L2Vault is
 
         // If the call is coming from emergency withdrawal queue, then the allowence has
         // already been spent.
-        if (caller != owner && caller != address(this.emergencyWithdrawalQueue())) {
+        if (caller != owner && caller != address(emergencyWithdrawalQueue)) {
             _spendAllowance(owner, caller, shares);
         }
         _burn(owner, shares);
