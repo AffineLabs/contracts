@@ -44,10 +44,10 @@ library Deploy {
             address(this), // governance
             asset, // asset
             IWormhole(address(0)), // wormhole,
-            L1WormholeRouter(address(0)), // wormhole router
+            new L1WormholeRouter(), // wormhole router
             BridgeEscrow(address(0)),
             IRootChainManager(address(0)), // chain manager
-            address(0) // predicate
+            0x37c3bfC05d5ebF9EBb3FF80ce0bd0133Bf221BC8 // predicate
         );
     }
 
