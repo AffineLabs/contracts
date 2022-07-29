@@ -8,7 +8,6 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
 import { Constants } from "../Constants.sol";
 
 contract L2WormholeRouter {
-    IWormhole public wormhole;
     L2Vault public vault;
 
     address public l1WormholeRouterAddress;
@@ -30,18 +29,37 @@ contract L2WormholeRouter {
         l1WormholeChainID = _l1WormholeChainID;
     }
 
+    /** WORMHOLE CONFIGURATION
+     **************************************************************************/
+
+    /// @notice The address of the core wormhole contract
+    IWormhole public wormhole;
+    /// @notice This is the number of blocks it takes to emit produce the VAA. See https://book.wormholenetwork.com/wormhole/4_vaa.html
+    uint8 public consistencyLevel = 4;
+
+    /// @notice Set the wormhole address
+    function setWormhole(IWormhole _wormhole) external {
+        require(msg.sender == vault.governance(), "Only governance");
+        wormhole = _wormhole;
+    }
+
+    function setConsistencyLevel(uint8 _consistencyLevel) external {
+        require(msg.sender == vault.governance(), "Only governance");
+        consistencyLevel = _consistencyLevel;
+    }
+
     function reportTransferredFund(uint256 amount) external {
         require(msg.sender == address(vault), "Only vault");
         bytes memory payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
-        wormhole.publishMessage(uint32(sequence), payload, 4);
+        wormhole.publishMessage(uint32(sequence), payload, consistencyLevel);
     }
 
     function requestFunds(uint256 amount) external {
         require(msg.sender == address(vault), "Only vault");
         bytes memory payload = abi.encode(Constants.L2_FUND_REQUEST, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
-        wormhole.publishMessage(uint32(sequence), payload, 4);
+        wormhole.publishMessage(uint32(sequence), payload, consistencyLevel);
     }
 
     function validateWormholeMessageEmitter(IWormhole.VM memory vm) internal view {

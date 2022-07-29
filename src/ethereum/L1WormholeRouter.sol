@@ -8,7 +8,6 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
 import { Constants } from "../Constants.sol";
 
 contract L1WormholeRouter {
-    IWormhole public wormhole;
     L1Vault public vault;
 
     address public l2WormholeRouterAddress;
@@ -29,6 +28,25 @@ contract L1WormholeRouter {
         l2WormholeChainID = _l2WormholeChainID;
     }
 
+    /** WORMHOLE CONFIGURATION
+     **************************************************************************/
+
+    /// @notice The address of the core wormhole contract
+    IWormhole public wormhole;
+    /// @notice This is the number of blocks it takes to emit produce the VAA. See https://book.wormholenetwork.com/wormhole/4_vaa.html
+    uint8 public consistencyLevel = 4;
+
+    /// @notice Set the wormhole address
+    function setWormhole(IWormhole _wormhole) external {
+        require(msg.sender == vault.governance(), "Only Governance.");
+        wormhole = _wormhole;
+    }
+
+    function setConsistencyLevel(uint8 _consistencyLevel) external {
+        require(msg.sender == vault.governance(), "Only Governance.");
+        consistencyLevel = _consistencyLevel;
+    }
+
     function reportTVL(uint256 tvl, bool received) external {
         require(msg.sender == address(vault), "Only vault");
         bytes memory payload = abi.encode(Constants.L1_TVL, tvl, received);
@@ -36,10 +54,9 @@ contract L1WormholeRouter {
         // as a nonce when publishing messages
         // This casting is fine so long as we send less than 2 ** 32 - 1 (~ 4 billion) messages
         // NOTE: 4 ETH blocks will take about 1 minute to propagate
-        // TODO: make wormhole address, consistencyLevel configurable
         uint64 sequence = wormhole.nextSequence(address(this));
 
-        wormhole.publishMessage(uint32(sequence), payload, 4);
+        wormhole.publishMessage(uint32(sequence), payload, consistencyLevel);
     }
 
     function reportTransferredFund(uint256 amount) external {
@@ -47,7 +64,7 @@ contract L1WormholeRouter {
         bytes memory payload = abi.encode(Constants.L1_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
 
-        wormhole.publishMessage(uint32(sequence), payload, 4);
+        wormhole.publishMessage(uint32(sequence), payload, consistencyLevel);
     }
 
     function validateWormholeMessageEmitter(IWormhole.VM memory vm) internal view {
