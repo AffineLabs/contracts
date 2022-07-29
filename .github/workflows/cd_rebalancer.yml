@@ -48,7 +48,7 @@ jobs:
         ECR_REPOSITORY: rebalancer
         IMAGE_TAG: ${{ github.sha }}
       run: |
-       cd k8s/rebalancer/overlays
+       cd k8s/rebalancer/overlays/global
        kustomize edit set image $ECR_REPOSITORY=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
        cat kustomization.yml
 

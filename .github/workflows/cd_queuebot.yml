@@ -48,7 +48,7 @@ jobs:
         ECR_REPOSITORY: queuebot
         IMAGE_TAG: ${{ github.sha }}
       run: |
-       cd k8s/queuebot/overlays
+       cd k8s/queuebot/overlays/global
        kustomize edit set image $ECR_REPOSITORY=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
        cat kustomization.yml
         
