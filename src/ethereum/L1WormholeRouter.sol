@@ -33,7 +33,10 @@ contract L1WormholeRouter {
 
     /// @notice The address of the core wormhole contract
     IWormhole public wormhole;
-    /// @notice This is the number of blocks it takes to emit produce the VAA. See https://book.wormholenetwork.com/wormhole/4_vaa.html
+    /**
+     * @notice This is the number of blocks it takes to emit produce the VAA.
+     * See https://book.wormholenetwork.com/wormhole/4_vaa.html
+     */
     uint8 public consistencyLevel = 4;
 
     /// @notice Set the wormhole address
