@@ -22,9 +22,8 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-2
+        role-to-assume: arn:aws:iam::743156738557:role/github
+        aws-region: us-east-1
 
     - name: Login to Amazon ECR
       id: login-ecr
@@ -36,7 +35,7 @@ jobs:
         ECR_REPOSITORY: queuebot
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./dockerfiles/Dockerfile.queuebot
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f Dockerfile.queuebot ./dockerfiles/
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
     - name: Update global kubernetes manifests
       env:
