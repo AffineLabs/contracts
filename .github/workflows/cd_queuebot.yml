@@ -40,7 +40,7 @@ jobs:
         ECR_REPOSITORY: queuebot
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f Dockerfile.queuebot ./dockerfiles/
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f dockerfiles/Dockerfile.queuebot .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
     - name: Update global kubernetes manifests
       env:
