@@ -55,6 +55,8 @@ contract L1WormholeRouter {
         require(vm.emitterChainId == l2WormholeChainID, "Message emitted from wrong chain");
     }
 
+    event TransferFromL2(uint256 amount);
+
     function receiveFunds(bytes calldata message, bytes calldata data) external {
         require(vault.hasRole(vault.rebalancerRole(), msg.sender), "Only Rebalancer");
 
@@ -67,7 +69,10 @@ contract L1WormholeRouter {
         require(msgType == Constants.L2_FUND_TRANSFER_REPORT);
 
         vault.bridgeEscrow().l1ClearFund(amount, data);
+        emit TransferFromL2(amount);
     }
+
+    event TransferToL2(uint256 amount);
 
     function receiveFundRequest(bytes calldata message) external {
         require(vault.hasRole(vault.rebalancerRole(), msg.sender), "Only Rebalancer");
@@ -81,5 +86,6 @@ contract L1WormholeRouter {
         require(msgType == Constants.L2_FUND_REQUEST);
 
         vault.processFundRequest(amount);
+        emit TransferToL2(amount);
     }
 }
