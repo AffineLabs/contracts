@@ -26,18 +26,29 @@ contract L1VaultTest is TestPlus {
     function setUp() public {
         vm.createSelectFork("ethereum", 14971385);
         vault = Deploy.deployL1Vault();
-        asset = MockERC20(vault.asset());
+
         uint256 slot = stdstore.target(address(vault)).sig("wormhole()").find();
         bytes32 wormholeaddr = bytes32(uint256(uint160(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B)));
         vm.store(address(vault), bytes32(slot), wormholeaddr);
+
         slot = stdstore.target(address(vault)).sig("chainManager()").find();
-        bytes32 chainmanageraddr = bytes32(uint256(uint160(0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74)));
+        bytes32 chainmanageraddr = bytes32(uint256(uint160(0xA0c68C638235ee32657e8f720a23ceC1bFc77C77)));
         vm.store(address(vault), bytes32(slot), chainmanageraddr);
-        vault.wormholeRouter().initialize(vault.wormhole(), vault, address(0), 1);
+
         // setting bridge escrow addres to be non zero in order for deposit for to work
         slot = stdstore.target(address(vault)).sig("bridgeEscrow()").find();
         bytes32 bridgescrowaddr = bytes32(uint256(uint160(address(vault.wormholeRouter()))));
         vm.store(address(vault), bytes32(slot), bridgescrowaddr);
+
+        // depositFor will fail unless mapToken has been called. Let's use real ETH USDC addr (it is mapped)
+        // solhint-disable-next-line max-line-length
+        // https://github.com/maticnetwork/pos-portal/blob/88dbf0a88fd68fa11f7a3b9d36629930f6b93a05/contracts/root/RootChainManager/RootChainManager.sol#L169
+        slot = stdstore.target(address(vault)).sig("asset()").find();
+        bytes32 assetAddr = bytes32(uint256(uint160(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48)));
+        vm.store(address(vault), bytes32(slot), assetAddr);
+        asset = MockERC20(vault.asset());
+
+        vault.wormholeRouter().initialize(vault.wormhole(), vault, address(0), 1);
     }
 
     function testSendTVL() public {
@@ -48,30 +59,24 @@ contract L1VaultTest is TestPlus {
     }
 
     function testprocessFundRequest() public {
-        asset.mint(address(vault), 2e6);
-        emit log_named_address("Escrow addr: ", address(vault.bridgeEscrow()));
-        uint256 old_msg_count = vault.wormhole().nextSequence(address(vault.wormholeRouter()));
+        // We need to either map the root token to the child token or we need to use the correct already mapped addresses
+        deal(address(asset), address(vault), 2e6, true);
+        uint256 oldMsgCount = vault.wormhole().nextSequence(address(vault.wormholeRouter()));
         uint256 amount = 1e6;
-        vm.mockCall(
-            address(vault.chainManager()),
-            abi.encodeWithSelector(
-                IRootChainManager.depositFor.selector,
-                address(vault.bridgeEscrow()),
-                address(asset),
-                abi.encodePacked(amount)
-            ),
-            abi.encode(0)
-        );
+
+        vm.prank(address(vault));
+        asset.approve(vault.predicate(), 1e6);
+
         vm.prank(address(vault.wormholeRouter()));
         vault.processFundRequest(1e6);
-        assertTrue(vault.wormhole().nextSequence(address(vault.wormholeRouter())) > old_msg_count);
+        assertTrue(vault.wormhole().nextSequence(address(vault.wormholeRouter())) == oldMsgCount + 1);
     }
 
     function testafterReceive() public {
         BaseStrategy newStrategy1 = new TestStrategy(asset, vault);
         vault.addStrategy(newStrategy1, 1);
-        asset.mint(address(vault), 10000);
-        vm.prank(address(0));
+        deal(address(asset), address(vault), 10_000, true);
+        vm.prank(address(vault.bridgeEscrow()));
         vault.afterReceive();
         assertTrue(vault.received() == true);
         assertTrue(newStrategy1.balanceOfAsset() == 1);
