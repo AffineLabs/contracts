@@ -46,7 +46,7 @@ contract BaseStrategyTest is TestPlus {
     function testSweep() public {
         // Will revert if non governance tries to call it
         vm.expectRevert(bytes("ONLY_GOVERNANCE"));
-        vm.prank(0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045); // vitalik
+        vm.prank(mkaddr("vitalik")); // vitalik
         strategy.sweep(rewardToken);
 
         // Will revert if trying to sell `token` of BaseStrategy
