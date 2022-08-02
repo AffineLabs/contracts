@@ -59,7 +59,8 @@ contract L1VaultTest is TestPlus {
     }
 
     function testprocessFundRequest() public {
-        // We need to either map the root token to the child token or we need to use the correct already mapped addresses
+        // We need to either map the root token to the child token or
+        // we need to use the correct already mapped addresses
         deal(address(asset), address(vault), 2e6, true);
         uint256 oldMsgCount = vault.wormhole().nextSequence(address(vault.wormholeRouter()));
         uint256 amount = 1e6;
