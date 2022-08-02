@@ -14,17 +14,21 @@ on:
 jobs:
   deploy:
     name: Build Docker Image
+    permissions:
+      contents: write
+      id-token: write
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
-
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-2
+        role-to-assume: arn:aws:iam::743156738557:role/github
+        aws-region: us-east-1
 
     - name: Login to Amazon ECR
       id: login-ecr
@@ -36,7 +40,7 @@ jobs:
         ECR_REPOSITORY: queuebot
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./dockerfiles/Dockerfile.queuebot
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f dockerfiles/Dockerfile.queuebot .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
     - name: Update global kubernetes manifests
       env:
@@ -44,7 +48,7 @@ jobs:
         ECR_REPOSITORY: queuebot
         IMAGE_TAG: ${{ github.sha }}
       run: |
-       cd k8s/overlays/global
+       cd k8s/queuebot/overlays/global
        kustomize edit set image $ECR_REPOSITORY=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
        cat kustomization.yml
         

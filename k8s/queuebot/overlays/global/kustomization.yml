@@ -3,7 +3,7 @@ kind: Kustomization
 namespace: default
 images:
 - name: queuebot
-  newName: 959984261658.dkr.ecr.us-east-2.amazonaws.com/queuebot
-  newTag: latest
+  newName: 743156738557.dkr.ecr.us-east-1.amazonaws.com/queuebot
+  newTag: b3bf0fac1aa374a6265336b3070d36ec57458bc6
 resources:
 - ../../base
