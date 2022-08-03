@@ -1,53 +1,30 @@
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.8.10;
 
-import { IWormhole } from "../interfaces/IWormhole.sol";
-import { L1Vault } from "./L1Vault.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+
+import { IWormhole } from "../interfaces/IWormhole.sol";
+import { L1Vault } from "./L1Vault.sol";
+import { WormholeRouter } from "../WormholeRouter.sol";
 import { Constants } from "../Constants.sol";
 
-contract L1WormholeRouter {
-    L1Vault public vault;
-
-    address public l2WormholeRouterAddress;
-    uint16 public l2WormholeChainID;
-    uint256 nextVaildNonce;
+contract L1WormholeRouter is WormholeRouter {
+    L1Vault vault;
 
     constructor() {}
 
     function initialize(
         IWormhole _wormhole,
         L1Vault _vault,
-        address _l2WormholeRouterAddress,
-        uint16 _l2WormholeChainID
+        address _otherLayerRouter,
+        uint16 _otherLayerChainId
     ) external {
         wormhole = _wormhole;
         vault = _vault;
-        l2WormholeRouterAddress = _l2WormholeRouterAddress;
-        l2WormholeChainID = _l2WormholeChainID;
-    }
-
-    /** WORMHOLE CONFIGURATION
-     **************************************************************************/
-
-    /// @notice The address of the core wormhole contract
-    IWormhole public wormhole;
-    /**
-     * @notice This is the number of blocks it takes to emit produce the VAA.
-     * See https://book.wormholenetwork.com/wormhole/4_vaa.html
-     */
-    uint8 public consistencyLevel = 4;
-
-    /// @notice Set the wormhole address
-    function setWormhole(IWormhole _wormhole) external {
-        require(msg.sender == vault.governance(), "Only Governance.");
-        wormhole = _wormhole;
-    }
-
-    function setConsistencyLevel(uint8 _consistencyLevel) external {
-        require(msg.sender == vault.governance(), "Only Governance.");
-        consistencyLevel = _consistencyLevel;
+        governance = vault.governance();
+        otherLayerRouter = _otherLayerRouter;
+        otherLayerChainId = _otherLayerChainId;
     }
 
     function reportTVL(uint256 tvl, bool received) external {
@@ -71,8 +48,8 @@ contract L1WormholeRouter {
     }
 
     function validateWormholeMessageEmitter(IWormhole.VM memory vm) internal view {
-        require(vm.emitterAddress == bytes32(uint256(uint160(l2WormholeRouterAddress))), "Wrong emitter address");
-        require(vm.emitterChainId == l2WormholeChainID, "Message emitted from wrong chain");
+        require(vm.emitterAddress == bytes32(uint256(uint160(otherLayerRouter))), "Wrong emitter address");
+        require(vm.emitterChainId == otherLayerChainId, "Message emitted from wrong chain");
     }
 
     function receiveFunds(bytes calldata message, bytes calldata data) external {
@@ -100,6 +77,6 @@ contract L1WormholeRouter {
         (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
         require(msgType == Constants.L2_FUND_REQUEST);
 
-        vault.processFundRequest(amount);
+        L1Vault(address(vault)).processFundRequest(amount);
     }
 }
