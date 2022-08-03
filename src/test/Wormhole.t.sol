@@ -65,10 +65,6 @@ contract WormholeTest is TestPlus {
         bytes32 wormholeRouterAddr = bytes32(uint256(uint160(address(wormholeRouter))));
         vm.store(address(l1vault), bytes32(wormholeRouterSlot), wormholeRouterAddr);
 
-        uint256 wormholeSlot = stdstore.target(address(wormholeRouter)).sig("wormhole()").find();
-        bytes32 wormholeAddr = bytes32(uint256(uint160(address(wormhole))));
-        vm.store(address(wormholeRouter), bytes32(wormholeSlot), wormholeAddr);
-
         wormholeRouter.initialize(wormhole, l1vault, address(0), 0);
 
         l2vault = Deploy.deployL2Vault();
@@ -91,5 +87,23 @@ contract WormholeTest is TestPlus {
 
         // TODO: call receive message with a given encodedTVL
         // TODO: assert that l2vault.L1TotalValue is the value that we expect
+    }
+
+    function testWormholeConfigUpdates() public {
+        // update wormhole address
+        wormholeRouter.setWormhole(IWormhole(address(this)));
+        assertEq(address(wormholeRouter.wormhole()), address(this));
+
+        vm.prank(address(0));
+        vm.expectRevert("Only Governance.");
+        wormholeRouter.setWormhole(IWormhole(address(0)));
+
+        // update consistencyLevel
+        wormholeRouter.setConsistencyLevel(100);
+        assertEq(wormholeRouter.consistencyLevel(), 100);
+
+        vm.prank(address(0));
+        vm.expectRevert("Only Governance.");
+        wormholeRouter.setConsistencyLevel(0);
     }
 }
