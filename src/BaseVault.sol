@@ -51,7 +51,6 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
         _grantRole(harvesterRole, governance);
         _grantRole(queueOperatorRole, governance);
-        _grantRole(rebalancerRole, msg.sender);
         lastHarvest = block.timestamp;
     }
 
@@ -191,7 +190,7 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
         _organizeWithdrawalQueue();
     }
 
-    /// @notice A helper function for increasing `totalBps`. Used when adding strategies or updating strategy allocations
+    /// @notice A helper function for increasing `totalBps`.Used when adding strategies or updating strategy allocations
     function _increaseTVLBps(uint256 tvlBps) internal {
         uint256 newTotalBps = totalBps + tvlBps;
         require(newTotalBps <= MAX_BPS, "TVL_ALLOC_TOO_BIG");

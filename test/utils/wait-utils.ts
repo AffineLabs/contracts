@@ -3,7 +3,7 @@ import axios from "axios";
 import { ethers } from "ethers";
 import { BigNumber, Contract } from "ethers";
 import { address } from "scripts/utils/types";
-import { ERC20__factory } from "typechain";
+import { ERC20__factory } from "../../typechain";
 
 export async function sleep(ms: number) {
   await new Promise(f => setTimeout(f, ms));

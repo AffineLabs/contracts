@@ -1,4 +1,4 @@
-import { Contract, Wallet } from "ethers";
+import { BigNumber, Contract, Wallet } from "ethers";
 import utils from "../test/utils";
 import { ethers } from "hardhat";
 
@@ -43,8 +43,10 @@ async function eventHandler() {
   const { l1Vault, l2Vault, l1WormholeRouter, l2WormholeRouter, l1Wormhole, l2Wormhole, mumbaiProvider } =
     await setup();
   l1Vault.on("SendTVL", async tvl => {
+    console.log("Receiving TVL");
     let l1VaultSeq = await l1Wormhole.nextSequence(l1WormholeRouter.address);
     const tvlVAA = await utils.getVAA(l1WormholeRouter.address, String(l1VaultSeq.sub(1)), CHAIN_ID_ETH);
+    console.log("Got VAA");
     const tx = await l2WormholeRouter.receiveTVL(tvlVAA);
     await tx.wait();
   });
