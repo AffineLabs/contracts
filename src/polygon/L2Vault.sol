@@ -524,7 +524,6 @@ contract L2Vault is
     }
 
     function _divestFromL1(uint256 amount) internal {
-        // TODO: make wormhole address, consistencyLevel configurable
         wormholeRouter.requestFunds(amount);
         canRequestFromL1 = false;
     }

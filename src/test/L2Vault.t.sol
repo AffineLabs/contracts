@@ -155,7 +155,7 @@ contract L2VaultTest is TestPlus {
         uint256 amountAsset = 1e18;
         vault.setWithdrawalFee(50);
 
-        address user = 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045; // vitalik
+        address user = mkaddr("vitalik"); // vitalik
         vm.startPrank(user);
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);

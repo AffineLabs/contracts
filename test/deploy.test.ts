@@ -50,10 +50,10 @@ describe("Deploy AlpSave", async () => {
     expect(await wormholeRouters.l1WormholeRouter.wormhole()).to.equal(config.l1worm);
     expect(await wormholeRouters.l2WormholeRouter.wormhole()).to.equal(config.l2worm);
 
-    expect(await wormholeRouters.l1WormholeRouter.l2WormholeRouterAddress()).to.equal(
+    expect(await wormholeRouters.l1WormholeRouter.otherLayerRouter()).to.equal(
       wormholeRouters.l2WormholeRouter.address,
     );
-    expect(await wormholeRouters.l2WormholeRouter.l1WormholeRouterAddress()).to.equal(
+    expect(await wormholeRouters.l2WormholeRouter.otherLayerRouter()).to.equal(
       wormholeRouters.l1WormholeRouter.address,
     );
   });
