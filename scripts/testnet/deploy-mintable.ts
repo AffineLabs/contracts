@@ -177,44 +177,47 @@ async function useMainnetPrices() {
   const btc = MintableToken__factory.connect(config.wbtc, signer);
   const eth = MintableToken__factory.connect(config.weth, signer);
 
-  const tokenToPrice = { btc: 23_306, eth: 1_350 };
+  const tokenToPrice = { btc: 22_912, eth: 1_614 };
   const tokenToPool = { btc: btcUsdPool, eth: ethUsdPool };
   const tokenToContract = { btc, eth };
 
   const tokens: ["btc", "eth"] = ["btc", "eth"];
   const oneToken = ethers.BigNumber.from(10).pow(18);
-  // for (const name of tokens) {
-  //   const token = tokenToContract[name];
-  //   const pool = tokenToPool[name];
-  //   const price = tokenToPrice[name];
-  //   const tokenBal = await token.balanceOf(pool.address);
+  for (const name of tokens) {
+    const token = tokenToContract[name];
+    const pool = tokenToPool[name];
+    const price = tokenToPrice[name];
+    const tokenBal = await token.balanceOf(pool.address);
 
-  //   const tokenDollars = await tokenBal.div(oneToken).mul(price);
-  //   const usdcDollars = (await usdc.balanceOf(pool.address)).div(1e6);
+    const tokenDollars = await tokenBal.div(oneToken).mul(price);
+    const usdcDollars = (await usdc.balanceOf(pool.address)).div(1e6);
 
-  //   if (usdcDollars > tokenDollars) {
-  //     const numTokenNeeded = usdcDollars.sub(tokenDollars).div(price).mul(oneToken);
-  //     const tx = await token.mint(pool.address, numTokenNeeded);
-  //     await tx.wait();
-  //   }
+    if (usdcDollars.gt(tokenDollars)) {
+      console.log("minting btc or eth");
+      const numTokenNeeded = usdcDollars.sub(tokenDollars).div(price).mul(oneToken);
+      const tx = await token.mint(pool.address, numTokenNeeded);
+      console.log("tx: ", tx);
+      await tx.wait();
+    }
 
-  //   if (tokenDollars > usdcDollars) {
-  //     const numUsdcNeeded = tokenDollars.sub(usdcDollars).mul(1e6);
-  //     const tx = await usdc.mint(pool.address, numUsdcNeeded);
-  //     await tx.wait();
-  //   }
+    if (tokenDollars.gt(usdcDollars)) {
+      console.log("minting usdc");
+      const numUsdcNeeded = tokenDollars.sub(usdcDollars).mul(1e6);
+      const tx = await usdc.mint(pool.address, numUsdcNeeded);
+      await tx.wait();
+    }
 
-  //   // We do this swap to update the pool reserves to account for the transferred tokens
-  //   // The next swap after this one will happen at the prices given above
-  //   const swap = await router.swapExactTokensForTokens(
-  //     1e6,
-  //     0,
-  //     [config.l2USDC, token.address],
-  //     await signer.getAddress(),
-  //     Math.floor(Date.now() / 1000) + 24 * 60 * 60, // unix timestamp in seconds plus 24 hours
-  //   );
-  //   await swap.wait();
-  // }
+    // We do this swap to update the pool reserves to account for the transferred tokens
+    // The next swap after this one will happen at the prices given above
+    const swap = await router.swapExactTokensForTokens(
+      1e6,
+      0,
+      [config.l2USDC, token.address],
+      await signer.getAddress(),
+      Math.floor(Date.now() / 1000) + 24 * 60 * 60, // unix timestamp in seconds plus 24 hours
+    );
+    await swap.wait();
+  }
 
   // get quote
   const quotePrice = await router.getAmountsOut(oneToken, [config.wbtc, config.l2USDC]);
