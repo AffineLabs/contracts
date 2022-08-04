@@ -51,7 +51,6 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
         _grantRole(harvesterRole, governance);
         _grantRole(queueOperatorRole, governance);
-        _grantRole(rebalancerRole, msg.sender);
         lastHarvest = block.timestamp;
     }
 
