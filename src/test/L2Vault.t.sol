@@ -5,6 +5,7 @@ import { TestPlus } from "./TestPlus.sol";
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
 import { MockERC20 } from "./MockERC20.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
 import { BaseStrategy } from "../BaseStrategy.sol";
@@ -39,6 +40,7 @@ contract L2VaultTest is TestPlus {
     );
 
     function testDeploy() public {
+        assertEq(vault.decimals(), asset.decimals());
         // this makes sure that the first time we assess management fees we get a reasonable number
         // since management fees are calculated based on block.timestamp - lastHarvest
         assertEq(vault.lastHarvest(), block.timestamp);
@@ -153,7 +155,7 @@ contract L2VaultTest is TestPlus {
         uint256 amountAsset = 1e18;
         vault.setWithdrawalFee(50);
 
-        address user = 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045; // vitalik
+        address user = mkaddr("vitalik"); // vitalik
         vm.startPrank(user);
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
@@ -192,6 +194,26 @@ contract L2VaultTest is TestPlus {
 
         vault.unpause();
         testDepositWithdraw(1e18);
+
+        // Only the harvesterRole address can call pause or unpause
+        string memory errString = string(
+            abi.encodePacked(
+                "AccessControl: account ",
+                Strings.toHexString(uint160(address(0)), 20),
+                " is missing role ",
+                Strings.toHexString(uint256(vault.harvesterRole()), 32)
+            )
+        );
+
+        bytes memory errorMsg = abi.encodePacked(errString);
+
+        vm.expectRevert(errorMsg);
+        vm.prank(address(0));
+        vault.pause();
+
+        vm.expectRevert(errorMsg);
+        vm.prank(address(0));
+        vault.unpause();
     }
 
     event EmergencyWithdrawalQueueEnqueue(

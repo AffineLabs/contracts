@@ -1,32 +1,30 @@
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.8.10;
 
-import { IWormhole } from "../interfaces/IWormhole.sol";
-import { L1Vault } from "./L1Vault.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+
+import { IWormhole } from "../interfaces/IWormhole.sol";
+import { L1Vault } from "./L1Vault.sol";
+import { WormholeRouter } from "../WormholeRouter.sol";
 import { Constants } from "../Constants.sol";
 
-contract L1WormholeRouter {
-    IWormhole public wormhole;
-    L1Vault public vault;
-
-    address public l2WormholeRouterAddress;
-    uint16 public l2WormholeChainID;
-    uint256 nextVaildNonce;
+contract L1WormholeRouter is WormholeRouter {
+    L1Vault vault;
 
     constructor() {}
 
     function initialize(
         IWormhole _wormhole,
         L1Vault _vault,
-        address _l2WormholeRouterAddress,
-        uint16 _l2WormholeChainID
+        address _otherLayerRouter,
+        uint16 _otherLayerChainId
     ) external {
         wormhole = _wormhole;
         vault = _vault;
-        l2WormholeRouterAddress = _l2WormholeRouterAddress;
-        l2WormholeChainID = _l2WormholeChainID;
+        governance = vault.governance();
+        otherLayerRouter = _otherLayerRouter;
+        otherLayerChainId = _otherLayerChainId;
     }
 
     function reportTVL(uint256 tvl, bool received) external {
@@ -36,10 +34,9 @@ contract L1WormholeRouter {
         // as a nonce when publishing messages
         // This casting is fine so long as we send less than 2 ** 32 - 1 (~ 4 billion) messages
         // NOTE: 4 ETH blocks will take about 1 minute to propagate
-        // TODO: make wormhole address, consistencyLevel configurable
         uint64 sequence = wormhole.nextSequence(address(this));
 
-        wormhole.publishMessage(uint32(sequence), payload, 4);
+        wormhole.publishMessage(uint32(sequence), payload, consistencyLevel);
     }
 
     function reportTransferredFund(uint256 amount) external {
@@ -47,12 +44,12 @@ contract L1WormholeRouter {
         bytes memory payload = abi.encode(Constants.L1_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
 
-        wormhole.publishMessage(uint32(sequence), payload, 4);
+        wormhole.publishMessage(uint32(sequence), payload, consistencyLevel);
     }
 
     function validateWormholeMessageEmitter(IWormhole.VM memory vm) internal view {
-        require(vm.emitterAddress == bytes32(uint256(uint160(l2WormholeRouterAddress))), "Wrong emitter address");
-        require(vm.emitterChainId == l2WormholeChainID, "Message emitted from wrong chain");
+        require(vm.emitterAddress == bytes32(uint256(uint160(otherLayerRouter))), "Wrong emitter address");
+        require(vm.emitterChainId == otherLayerChainId, "Message emitted from wrong chain");
     }
 
     event TransferFromL2(uint256 amount);
@@ -85,7 +82,6 @@ contract L1WormholeRouter {
         (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
         require(msgType == Constants.L2_FUND_REQUEST);
 
-        vault.processFundRequest(amount);
-        emit TransferToL2(amount);
+        L1Vault(address(vault)).processFundRequest(amount);
     }
 }

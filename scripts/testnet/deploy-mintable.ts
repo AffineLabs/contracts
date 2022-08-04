@@ -177,7 +177,7 @@ async function useMainnetPrices() {
   const btc = MintableToken__factory.connect(config.wbtc, signer);
   const eth = MintableToken__factory.connect(config.weth, signer);
 
-  const tokenToPrice = { btc: 23_306, eth: 1_350 };
+  const tokenToPrice = { btc: 22_912, eth: 1_614 };
   const tokenToPool = { btc: btcUsdPool, eth: ethUsdPool };
   const tokenToContract = { btc, eth };
 
@@ -192,13 +192,16 @@ async function useMainnetPrices() {
     const tokenDollars = await tokenBal.div(oneToken).mul(price);
     const usdcDollars = (await usdc.balanceOf(pool.address)).div(1e6);
 
-    if (usdcDollars > tokenDollars) {
+    if (usdcDollars.gt(tokenDollars)) {
+      console.log("minting btc or eth");
       const numTokenNeeded = usdcDollars.sub(tokenDollars).div(price).mul(oneToken);
       const tx = await token.mint(pool.address, numTokenNeeded);
+      console.log("tx: ", tx);
       await tx.wait();
     }
 
-    if (tokenDollars > usdcDollars) {
+    if (tokenDollars.gt(usdcDollars)) {
+      console.log("minting usdc");
       const numUsdcNeeded = tokenDollars.sub(usdcDollars).mul(1e6);
       const tx = await usdc.mint(pool.address, numUsdcNeeded);
       await tx.wait();

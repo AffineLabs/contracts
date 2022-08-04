@@ -526,7 +526,6 @@ contract L2Vault is
     event RequestFromL1(uint256 amount);
 
     function _divestFromL1(uint256 amount) internal {
-        // TODO: make wormhole address, consistencyLevel configurable
         wormholeRouter.requestFunds(amount);
         canRequestFromL1 = false;
         emit RequestFromL1(amount);

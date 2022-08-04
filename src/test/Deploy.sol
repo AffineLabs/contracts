@@ -38,16 +38,19 @@ library Deploy {
     }
 
     function deployL1Vault() internal returns (L1Vault vault) {
+        // For polygon addresses, see
+        // solhint-disable-next-line max-line-length
+        // https://docs.polygon.technology/docs/develop/ethereum-polygon/pos/deploymenthttps://docs.polygon.technology/docs/develop/ethereum-polygon/pos/deployment
         MockERC20 asset = new MockERC20("Mock", "MT", 6);
         vault = new L1Vault();
         vault.initialize(
             address(this), // governance
             asset, // asset
             IWormhole(address(0)), // wormhole,
-            L1WormholeRouter(address(0)), // wormhole router
+            new L1WormholeRouter(), // wormhole router
             BridgeEscrow(address(0)),
             IRootChainManager(address(0)), // chain manager
-            address(0) // predicate
+            0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf // predicate (eth mainnet)
         );
     }
 
