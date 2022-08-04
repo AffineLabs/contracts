@@ -66,7 +66,7 @@ contract L1VaultTest is TestPlus {
         uint256 amount = 1e6;
 
         vm.prank(address(vault));
-        asset.approve(vault.predicate(), 1e6);
+        asset.approve(vault.predicate(), amount);
 
         vm.prank(address(vault.wormholeRouter()));
         vault.processFundRequest(1e6);
