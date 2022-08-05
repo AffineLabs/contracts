@@ -454,7 +454,7 @@ contract L2Vault is
     bool public canTransferToL1;
     bool public canRequestFromL1;
 
-    event SendToL1(uint256 amount);
+    event TransferToL1(uint256 amount);
     event ReceiveFromL1(uint256 amount);
 
     function receiveTVL(uint256 tvl, bool received) external {
@@ -512,7 +512,7 @@ contract L2Vault is
         // Send token
         _asset.safeTransfer(address(bridgeEscrow), amount);
         bridgeEscrow.l2Withdraw(amount);
-        emit SendToL1(amount);
+        emit TransferToL1(amount);
 
         // Update bridge state and L1 TVL
         // It's important to update this number now so that totalAssets() returns a smaller number
@@ -523,9 +523,12 @@ contract L2Vault is
         wormholeRouter.reportTransferredFund(amount);
     }
 
+    event RequestFromL1(uint256 amount);
+
     function _divestFromL1(uint256 amount) internal {
         wormholeRouter.requestFunds(amount);
         canRequestFromL1 = false;
+        emit RequestFromL1(amount);
     }
 
     function afterReceive(uint256 amount) external {

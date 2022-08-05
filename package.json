@@ -40,7 +40,7 @@
     "defender-base-client": "^1.14.0",
     "dotenv": "^16.0.0",
     "ethereum-waffle": "^3.3.0",
-    "ethers": "^5.5.2",
+    "ethers": "^5.6.9",
     "fs-extra": "^10.0.0",
     "glob": "^7.2.0",
     "hardhat": "^2.9.2",
@@ -66,8 +66,8 @@
     "@openzeppelin/contracts-upgradeable": "^4.4.2",
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "axios": "^0.26.1",
-    "forge-std": "https://github.com/foundry-rs/forge-std.git#c19dfd2f2a88a461216b0dd1f4961e1a85dcad46",
     "ds-test": "https://github.com/dapphub/ds-test.git#2c7dbcc8586b33f358e3307a443e524490c17666",
+    "forge-std": "https://github.com/foundry-rs/forge-std.git#c19dfd2f2a88a461216b0dd1f4961e1a85dcad46",
     "solmate": "npm:@rari-capital/solmate@6.4.0"
   }
 }

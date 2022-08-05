@@ -95,7 +95,6 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
 
   await utils.waitForNonZeroAddressTokenBalance(
     config.l2USDC,
-    usdcABI,
     "L2 BridgeEscrow",
     l2BridgeEscrow.address,
     ethers.provider,

@@ -61,6 +61,8 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
+    event SendTVL(uint256 tvl);
+
     function sendTVL() external onlyRole(rebalancerRole) {
         uint256 tvl = vaultTVL();
 
@@ -70,6 +72,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         // If received == true then the l2-l1 bridge gets unlocked upon message reception in l2
         // Resetting this to false since we haven't received any new transfers from L2 yet
         if (received) received = false;
+        emit SendTVL(tvl);
     }
 
     // Process a request for funds from L2 vault
@@ -80,6 +83,8 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         _transferFundsToL2(amountToSend);
     }
 
+    event FundTransferToL2(uint256 amount);
+
     // Send `asset` to L2 BridgeEscrow via polygon bridge
     function _transferFundsToL2(uint256 amount) internal {
         _asset.safeApprove(predicate, amount);
@@ -87,6 +92,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
 
         // Let L2 know how much money we sent
         wormholeRouter.reportTransferredFund(amount);
+        emit FundTransferToL2(amount);
     }
 
     function afterReceive() external {

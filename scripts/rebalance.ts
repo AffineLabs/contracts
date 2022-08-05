@@ -87,7 +87,6 @@ async function main() {
     // Wait for money to hit bridgeEscrow, then use message to clear funds from bridgeEscrow to l2 vault
     await utils.waitForNonZeroAddressTokenBalance(
       await l2Vault.token(),
-      usdcABI,
       "L2 BridgeEscrow",
       l2BridgeEscrow.address,
       mumbaiProvider,

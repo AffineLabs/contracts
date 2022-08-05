@@ -3,6 +3,7 @@ import axios from "axios";
 import { ethers } from "ethers";
 import { BigNumber, Contract } from "ethers";
 import { address } from "scripts/utils/types";
+import { ERC20__factory } from "../../typechain";
 
 export async function sleep(ms: number) {
   await new Promise(f => setTimeout(f, ms));
@@ -40,12 +41,11 @@ export async function waitForL2MessageProof(maticAPIUrl: string, txHash: string,
 
 export async function waitForNonZeroAddressTokenBalance(
   tokenAddres: address,
-  tokenABI: any,
   indentifier: string,
   userAddress: address,
   provider: ethers.providers.Provider,
 ) {
-  const polygonUSDCContract: Contract = new ethers.Contract(tokenAddres, tokenABI, provider);
+  const polygonUSDCContract = ERC20__factory.connect(tokenAddres, provider);
   const startTime = new Date().getTime();
   while (true) {
     await sleep(60000);
