@@ -1,4 +1,4 @@
-import { BigNumber, Contract, Wallet } from "ethers";
+import { Wallet } from "ethers";
 import utils from "../test/utils";
 import { ethers } from "hardhat";
 
@@ -13,15 +13,7 @@ import {
 } from "../typechain";
 import { readAddressBook } from "./utils/export";
 
-const {
-  l1WormholeRouterAddr,
-  l2WormholeRouterAddr,
-  l1VaultAddr,
-  l2VaultAddr,
-  mnemonic,
-  ethAlchemyURL,
-  polygonAlchemyURL,
-} = REBALANCE_CONFIG;
+const { mnemonic, ethAlchemyURL, polygonAlchemyURL } = REBALANCE_CONFIG;
 
 async function setup() {
   const addrBook = await readAddressBook("test");
@@ -48,7 +40,9 @@ async function eventHandler() {
     const tvlVAA = await utils.getVAA(l1WormholeRouter.address, String(l1VaultSeq.sub(1)), CHAIN_ID_ETH);
     console.log("Got VAA");
     const tx = await l2WormholeRouter.receiveTVL(tvlVAA);
+    console.log({ tx });
     await tx.wait();
+    console.log("receiveTVL complete");
   });
   l1WormholeRouter.on("TransferToL2", async amount => {
     await utils.waitForNonZeroAddressTokenBalance(
@@ -85,8 +79,10 @@ async function eventHandler() {
     const transferVAA = await utils.getVAA(l2WormholeRouter.address, l2VaultSeq.toString(), CHAIN_ID_POLYGON, 64);
 
     // Post VAA to clear funds
+    console.log("Clearing funds from L1 BridgeEscrow");
     const tx = await l1WormholeRouter.receiveFunds(transferVAA, ethers.utils.arrayify(messageProof));
     await tx.wait();
+    console.log("Funds cleared from L1 BridgeEscrow");
   });
 }
 
