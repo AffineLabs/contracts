@@ -6,7 +6,7 @@ import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { TestPlus } from "./TestPlus.sol";
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
-import { MockERC20 } from "./MockERC20.sol";
+import { MockERC20 } from "./mocks/MockERC20.sol";
 
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";

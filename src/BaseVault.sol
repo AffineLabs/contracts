@@ -190,7 +190,7 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
         _organizeWithdrawalQueue();
     }
 
-    /// @notice A helper function for increasing `totalBps`. Used when adding strategies or updating strategy allocations
+    /// @notice A helper function for increasing `totalBps`. Used when adding strategies or updating strategy allocs
     function _increaseTVLBps(uint256 tvlBps) internal {
         uint256 newTotalBps = totalBps + tvlBps;
         require(newTotalBps <= MAX_BPS, "TVL_ALLOC_TOO_BIG");
@@ -431,7 +431,7 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
      * @notice Current locked profit amount.
      * @dev Profit unlocks uniformly over `lockInterval` seconds after the last harvest
      */
-    function lockedProfit() public view returns (uint256) {
+    function lockedProfit() public view virtual returns (uint256) {
         if (block.timestamp >= lastHarvest + lockInterval) return 0;
 
         uint256 unlockedProfit = (maxLockedProfit * (block.timestamp - lastHarvest)) / lockInterval;
