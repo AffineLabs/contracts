@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import { TestPlus } from "./TestPlus.sol";
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
-import { MockERC20 } from "./MockERC20.sol";
+import { MockERC20 } from "./mocks/MockERC20.sol";
 
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { Constants } from "../Constants.sol";
@@ -81,5 +81,20 @@ contract L1VaultTest is TestPlus {
         vault.afterReceive();
         assertTrue(vault.received() == true);
         assertTrue(newStrategy1.balanceOfAsset() == 1);
+    }
+
+    function testLockedProfit() public {
+        BaseStrategy newStrategy1 = new TestStrategy(asset, vault);
+        vault.addStrategy(newStrategy1, 1000);
+        deal(address(asset), address(newStrategy1), 1000, true);
+        assertTrue(newStrategy1.balanceOfAsset() != 0);
+        BaseStrategy[] memory strategies = new BaseStrategy[](1);
+        strategies[0] = newStrategy1;
+        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+
+        vault.harvest(strategies);
+        assertEq(vault.lockedProfit(), 0);
+        assertEq(vault.maxLockedProfit(), 1000);
+        assertEq(vault.vaultTVL(), 1000);
     }
 }

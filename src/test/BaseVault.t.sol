@@ -4,37 +4,15 @@ pragma solidity ^0.8.13;
 import { TestPlus } from "./TestPlus.sol";
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
-import { MockERC20 } from "./MockERC20.sol";
+import { MockERC20 } from "./mocks/MockERC20.sol";
 import { BridgeEscrow } from "../BridgeEscrow.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { BaseStrategy } from "../BaseStrategy.sol";
 import { BaseVault } from "../BaseVault.sol";
 
+import { TestStrategy } from "./mocks/TestStrategy.sol";
+
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
-
-contract TestStrategy is BaseStrategy {
-    constructor(MockERC20 _token, BaseVault _vault) {
-        asset = _token;
-        vault = _vault;
-    }
-
-    function balanceOfAsset() public view override returns (uint256) {
-        return asset.balanceOf(address(this));
-    }
-
-    function invest(uint256 amount) public override {
-        asset.transferFrom(address(vault), address(this), amount);
-    }
-
-    function divest(uint256 amount) public override returns (uint256) {
-        asset.transfer(address(vault), amount);
-        return amount;
-    }
-
-    function totalLockedValue() public view override returns (uint256) {
-        return balanceOfAsset();
-    }
-}
 
 contract BaseVaultLiquidate is BaseVault {
     function liquidate(uint256 amount) public returns (uint256) {

@@ -5,7 +5,7 @@ import { TestPlus } from "./TestPlus.sol";
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
 
 import { Deploy } from "./Deploy.sol";
-import { MockERC20 } from "./MockERC20.sol";
+import { MockERC20 } from "./mocks/MockERC20.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
 import { TwoAssetBasket } from "../polygon/TwoAssetBasket.sol";
