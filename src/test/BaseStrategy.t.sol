@@ -8,39 +8,18 @@ import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
 import { MockERC20 } from "./mocks/MockERC20.sol";
 
-import { BaseStrategy } from "../BaseStrategy.sol";
+import { TestStrategy } from "./mocks/TestStrategy.sol";
+
 import { BaseVault } from "../BaseVault.sol";
 
-contract MockStrategy is BaseStrategy {
-    constructor(BaseVault _vault) {
-        vault = _vault;
-        asset = ERC20(vault.asset());
-    }
-
-    function invest(uint256 amount) external override {}
-
-    function divest(uint256 amount) public pure override returns (uint256) {
-        amount;
-        return 0;
-    }
-
-    function balanceOfAsset() external view override returns (uint256) {
-        return asset.balanceOf(address(this));
-    }
-
-    function totalLockedValue() public pure override returns (uint256) {
-        return 0;
-    }
-}
-
 contract BaseStrategyTest is TestPlus {
-    MockStrategy strategy;
+    TestStrategy strategy;
     MockERC20 rewardToken;
 
     function setUp() public {
         rewardToken = new MockERC20("Mock Token", "MT", 18);
         BaseVault vault = Deploy.deployL2Vault();
-        strategy = new MockStrategy(vault);
+        strategy = new TestStrategy(MockERC20(vault.asset()), vault);
     }
 
     function testSweep() public {
