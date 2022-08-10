@@ -83,8 +83,9 @@ contract BtcEthBasketTest is TestPlus {
         emit log_named_uint("alices shares: ", basket.balanceOf(alice));
         emit log_named_uint("num shares: ", basket.balanceOf(address(this)));
 
-        // Shares are $1 but have 18 decimals. Input asse only has  6 decimals
-        basket.withdraw(basket.balanceOf(address(this)) / 1e12, address(this), address(this));
+        // Shares are $1 but have 18 decimals. Input asset only has  6 decimals
+        // NOTE: The subtraction is not necessary when the USDC/USD price is set to 1
+        basket.withdraw(basket.balanceOf(address(this)) / 1e12 - 1e6, address(this), address(this));
         emit log_named_uint("my shares: ", basket.balanceOf(address(this)));
         emit log_named_uint("valueOfVault: ", Dollar.unwrap(basket.valueOfVault()));
         emit log_named_uint("TotalSupplyOfVault: ", basket.totalSupply());
