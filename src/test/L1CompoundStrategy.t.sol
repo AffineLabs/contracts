@@ -49,8 +49,7 @@ contract CompoundStratTest is TestPlus {
 
     function depositOneUSDCToVault() internal {
         // Give the Vault 1 usdc
-        uint256 slot = stdstore.target(address(usdc)).sig(usdc.balanceOf.selector).with_key(address(vault)).find();
-        vm.store(address(usdc), bytes32(slot), bytes32(uint256(oneUSDC)));
+        deal(address(usdc), address(vault), oneUSDC, true);
     }
 
     function investHalfOfVaultAssetInCompund() internal {
