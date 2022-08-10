@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { MockERC20 } from "./mocks/MockERC20.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
@@ -17,13 +16,18 @@ import { L1WormholeRouter } from "../ethereum/L1WormholeRouter.sol";
 import { L2WormholeRouter } from "../polygon/L2WormholeRouter.sol";
 import { EmergencyWithdrawalQueue } from "../polygon/EmergencyWithdrawalQueue.sol";
 
-library Deploy {
+import { MockERC20 } from "./mocks/MockERC20.sol";
+import { Test } from "forge-std/Test.sol";
+
+contract Deploy is Test {
+    address governance = makeAddr("governance");
+
     function deployL2Vault() internal returns (L2Vault vault) {
         MockERC20 asset = new MockERC20("Mock", "MT", 6);
         vault = new L2Vault();
-        EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(address(this));
+        EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(governance);
         vault.initialize(
-            address(this), // governance
+            governance, // governance
             asset, // asset
             IWormhole(address(0)), // wormhole
             L2WormholeRouter(address(0)), // wormholer router
@@ -44,7 +48,7 @@ library Deploy {
         MockERC20 asset = new MockERC20("Mock", "MT", 6);
         vault = new L1Vault();
         vault.initialize(
-            address(this), // governance
+            governance, // governance
             asset, // asset
             IWormhole(address(0)), // wormhole,
             new L1WormholeRouter(), // wormhole router
@@ -58,7 +62,7 @@ library Deploy {
         ERC20 btc = ERC20(0xc8BA1fdaf17c1f16C68778fde5f78F3D37cD1509);
         ERC20 weth = ERC20(0x3dd7F3CF122e0460Dba8A75d191b3486752B6A61);
         basket = new TwoAssetBasket(
-            address(this), // governance,
+            governance, // governance,
             address(0), // forwarder
             10_000 * 1e6, // once the vault is $10,000 out of balance then we can rebalance
             5_000 * 1e6, // selling in $5,000 blocks

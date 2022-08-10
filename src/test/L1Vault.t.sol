@@ -52,8 +52,12 @@ contract L1VaultTest is TestPlus {
     }
 
     function testSendTVL() public {
-        // Grant rebalancer role to this address
-        vault.grantRole(vault.rebalancerRole(), address(this));
+        // Grant rebalancer role to random user
+        changePrank(governance);
+        vault.grantRole(vault.rebalancerRole(), alice);
+
+        // user can call sendTVL
+        changePrank(alice);
         vault.sendTVL();
         assertTrue(vault.received() == false);
     }
@@ -75,19 +79,27 @@ contract L1VaultTest is TestPlus {
 
     function testafterReceive() public {
         BaseStrategy newStrategy1 = new TestStrategy(asset, vault);
+
+        changePrank(governance);
         vault.addStrategy(newStrategy1, 1);
+
         deal(address(asset), address(vault), 10_000, true);
-        vm.prank(address(vault.bridgeEscrow()));
+
+        changePrank(address(vault.bridgeEscrow()));
         vault.afterReceive();
+
         assertTrue(vault.received() == true);
         assertTrue(newStrategy1.balanceOfAsset() == 1);
     }
 
     function testLockedProfit() public {
+        changePrank(governance);
+
         BaseStrategy newStrategy1 = new TestStrategy(asset, vault);
         vault.addStrategy(newStrategy1, 1000);
+
         deal(address(asset), address(newStrategy1), 1000, true);
-        assertTrue(newStrategy1.balanceOfAsset() != 0);
+
         BaseStrategy[] memory strategies = new BaseStrategy[](1);
         strategies[0] = newStrategy1;
         vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);

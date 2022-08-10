@@ -25,20 +25,21 @@ contract BaseStrategyTest is TestPlus {
     function testSweep() public {
         // Will revert if non governance tries to call it
         vm.expectRevert(bytes("ONLY_GOVERNANCE"));
-        vm.prank(mkaddr("vitalik")); // vitalik
+        changePrank(alice); // vitalik
         strategy.sweep(rewardToken);
 
         // Will revert if trying to sell `token` of BaseStrategy
         ERC20 assetToken = ERC20(strategy.vault().asset());
         vm.expectRevert(bytes("!asset"));
+        changePrank(governance);
         strategy.sweep(assetToken);
 
         // award the strategy some tokens
         rewardToken.mint(address(strategy), 1e18);
         strategy.sweep(rewardToken);
 
-        // This contract is the governance address, and so should receive the awarded tokens
-        assertEq(rewardToken.balanceOf(address(this)), 1e18);
+        // Governance addr received reward tokens
+        assertEq(rewardToken.balanceOf(governance), 1e18);
         assertEq(rewardToken.balanceOf(address(strategy)), 0);
     }
 }

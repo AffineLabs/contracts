@@ -38,14 +38,13 @@ contract AAVEStratTest is TestPlus {
     }
 
     function testStrategyMakesMoney() public {
-        // Give us (this contract) 1 USDC. Deposit into vault
-        uint256 slot = stdstore.target(address(usdc)).sig(usdc.balanceOf.selector).with_key(address(this)).find();
-        vm.store(address(usdc), bytes32(slot), bytes32(uint256(1e6)));
-
-        // This contract is the governance address so this will work
+        vm.prank(governance);
         vault.addStrategy(strategy, 5_000);
 
         // Vault deposits half of its tvl into the strategy
+        // Give us (this contract) 1 USDC. Deposit into vault.
+        // This testnet usdc has a totalSupply of  the max uint256, so we set `adjust` to false
+        deal(address(usdc), address(this), 1e6, false);
         usdc.approve(address(vault), type(uint256).max);
         vault.deposit(1e6, address(this));
 
