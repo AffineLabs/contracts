@@ -120,4 +120,23 @@ contract CompoundStratTest is TestPlus {
         strategy.divest(tvl);
         assertInRange(usdc.balanceOf(address(vault)), oneUSDC - 1, oneUSDC);
     }
+
+    function testStrategyDivestsOnlyAmountNeeded() public {
+        // If the strategy already already has money, we only withdraw amountRequested - current money
+
+        // Give the strategy 1 usdc and 2 usdc worth of cTokens
+        deal(address(usdc), address(strategy), 3e6, false);
+
+        vm.startPrank(address(strategy));
+        strategy.cToken().mint(2e6);
+
+        // Divest to get 2 usdc back to vault
+        changePrank(address(vault));
+        strategy.divest(2e6);
+
+        // We only withdrew 2 - 1 == 1 usdc worth of cToken. We gave 2 usdc to the vault
+        assertEq(usdc.balanceOf(address(vault)), 2e6);
+        assertEq(usdc.balanceOf(address(strategy)), 0);
+        assertEq(strategy.underlyingBalanceOfCToken(), 1e6);
+    }
 }
