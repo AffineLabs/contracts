@@ -76,7 +76,7 @@ contract L1CompoundStrategy is BaseStrategy {
     /** INVESTMENT
      **************************************************************************/
     function invest(uint256 amount) external override {
-        asset.transferFrom(msg.sender, address(this), amount);
+        asset.safeTransferFrom(msg.sender, address(this), amount);
         _depositWant(amount);
     }
 

@@ -113,7 +113,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         // Get dollar amounts of btc and eth to buy
         (uint256 amountInputToBtc, uint256 amountInputToEth) = _getBuySplits(amountInput);
 
-        asset.transferFrom(_msgSender(), address(this), amountInput);
+        asset.safeTransferFrom(_msgSender(), address(this), amountInput);
         address[] memory pathBtc = new address[](2);
         pathBtc[0] = address(asset);
         pathBtc[1] = address(token1);
@@ -417,7 +417,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         uint256 sellTokenAmount = _tokensFromDollars(sellToken, Dollar.wrap(blockSize));
         uint256 buyTokenAmount = _tokensFromDollars(buyToken, Dollar.wrap(blockSize));
 
-        buyToken.transferFrom(_msgSender(), address(this), buyTokenAmount);
+        buyToken.safeTransferFrom(_msgSender(), address(this), buyTokenAmount);
         sellToken.transfer(_msgSender(), sellTokenAmount);
 
         _endAuction();
