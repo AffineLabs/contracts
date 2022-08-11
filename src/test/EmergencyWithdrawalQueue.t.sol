@@ -49,9 +49,8 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         vm.startPrank(vault.governance());
         // Governance can link vault.
         emergencyWithdrawalQueue.linkVault(vault);
-        vm.stopPrank();
 
-        vm.startPrank(user1);
+        changePrank(user1);
         // Anyone other than governance trying to re-link should throw error.
         vm.expectRevert(bytes("Vault is already linked"));
         emergencyWithdrawalQueue.linkVault(vault);

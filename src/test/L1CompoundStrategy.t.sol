@@ -49,14 +49,15 @@ contract CompoundStratTest is TestPlus {
 
     function depositOneUSDCToVault() internal {
         // Give the Vault 1 usdc
-        uint256 slot = stdstore.target(address(usdc)).sig(usdc.balanceOf.selector).with_key(address(vault)).find();
-        vm.store(address(usdc), bytes32(slot), bytes32(uint256(oneUSDC)));
+        deal(address(usdc), address(vault), oneUSDC, true);
     }
 
     function investHalfOfVaultAssetInCompund() internal {
+        changePrank(governance);
         vault.addStrategy(strategy, 5_000);
+
         // BridgeEscrow address is 0 in the default vault
-        vm.prank(address(0));
+        changePrank(address(0));
         // This simulates an internal rebalance of vault assets among strategies of the
         // vault. After calling this, 5,000 bips of vault assets will be invested
         // in the aforementioed strategy and the remaining 5,000 bips will stay in vault
@@ -114,7 +115,8 @@ contract CompoundStratTest is TestPlus {
         investHalfOfVaultAssetInCompund();
 
         uint256 tvl = strategy.totalLockedValue();
-        vm.prank(address(vault));
+
+        changePrank(address(vault));
         strategy.divest(tvl);
         assertInRange(usdc.balanceOf(address(vault)), oneUSDC - 1, oneUSDC);
     }

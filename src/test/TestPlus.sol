@@ -4,8 +4,14 @@ pragma solidity ^0.8.13;
 import { Test } from "forge-std/Test.sol";
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
 
-contract TestPlus is Test {
+import { Deploy } from "./Deploy.sol";
+
+contract TestPlus is Test, Deploy {
     using stdStorage for StdStorage;
+
+    address alice = makeAddr("alice");
+    address bob = makeAddr("bob");
+    address charlie = makeAddr("charlie");
 
     function assertInRange(
         uint256 a,
@@ -19,11 +25,5 @@ contract TestPlus is Test {
             emit log_named_uint("     Actual", a);
             fail();
         }
-    }
-
-    function mkaddr(string memory name) internal returns (address) {
-        address addr = address(uint160(uint256(keccak256(abi.encodePacked(name)))));
-        vm.label(addr, name);
-        return addr;
     }
 }

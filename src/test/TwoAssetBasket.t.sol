@@ -66,8 +66,6 @@ contract BtcEthBasketTest is TestPlus {
     }
 
     function testMaxWithdraw() public {
-        address alice = mkaddr("alice");
-
         uint256 mintAmount = 100 * 1e6;
         deal(address(usdc), alice, mintAmount, true);
         deal(address(usdc), address(this), mintAmount, true);

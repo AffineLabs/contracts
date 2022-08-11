@@ -100,6 +100,7 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.totalSupply(), 1e18);
 
         // Add this contract as a strategy
+        changePrank(governance);
         BaseStrategy myStrat = BaseStrategy(address(this));
         vault.addStrategy(myStrat, 10_000);
 
@@ -122,11 +123,12 @@ contract L2VaultTest is TestPlus {
 
         // Check that fees were assesed in the correct amounts => Management fees are sent to governance address
         // 1/2 of 2% of the vault's supply should be minted to governance
-        assertEq(vault.balanceOf(address(this)), (100 * 1e18) / 10_000);
+        assertEq(vault.balanceOf(governance), (100 * 1e18) / 10_000);
     }
 
     function testLockedProfit() public {
         // Add this contract as a strategy
+        changePrank(governance);
         BaseStrategy myStrat = BaseStrategy(address(this));
         vault.addStrategy(myStrat, 10_000);
 
@@ -152,31 +154,33 @@ contract L2VaultTest is TestPlus {
     }
 
     function testWithdrawalFee() public {
-        uint256 amountAsset = 1e18;
+        vm.prank(governance);
         vault.setWithdrawalFee(50);
 
-        address user = mkaddr("vitalik"); // vitalik
-        vm.startPrank(user);
-        asset.mint(user, amountAsset);
-        asset.approve(address(vault), type(uint256).max);
-        vault.deposit(amountAsset, user);
+        uint256 amountAsset = 1e18;
 
-        vault.redeem(vault.balanceOf(user), user, user);
-        assertEq(vault.balanceOf(user), 0);
+        changePrank(alice);
+        asset.mint(alice, amountAsset);
+        asset.approve(address(vault), type(uint256).max);
+        vault.deposit(amountAsset, alice);
+
+        vault.redeem(vault.balanceOf(alice), alice, alice);
+        assertEq(vault.balanceOf(alice), 0);
 
         // User gets the original amount with 50bps deducted
-        assertEq(asset.balanceOf(user), (amountAsset * (10_000 - 50)) / 10_000);
+        assertEq(asset.balanceOf(alice), (amountAsset * (10_000 - 50)) / 10_000);
         // Governance gets the 50bps fee
         assertEq(asset.balanceOf(vault.governance()), (amountAsset * 50) / 10_000);
     }
 
     function testSettingFees() public {
+        changePrank(governance);
         vault.setManagementFee(300);
         assertEq(vault.managementFee(), 300);
         vault.setWithdrawalFee(10);
         assertEq(vault.withdrawalFee(), 10);
 
-        vm.startPrank(0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045);
+        changePrank(alice);
         vm.expectRevert("Only Governance.");
         vault.setManagementFee(300);
         vm.expectRevert("Only Governance.");
@@ -184,6 +188,7 @@ contract L2VaultTest is TestPlus {
     }
 
     function testVaultPause() public {
+        changePrank(governance);
         vault.pause();
 
         vm.expectRevert("Pausable: paused");
@@ -193,13 +198,15 @@ contract L2VaultTest is TestPlus {
         vault.withdraw(1e18, address(this), address(this));
 
         vault.unpause();
+
+        vm.stopPrank();
         testDepositWithdraw(1e18);
 
         // Only the harvesterRole address can call pause or unpause
         string memory errString = string(
             abi.encodePacked(
                 "AccessControl: account ",
-                Strings.toHexString(uint160(address(0)), 20),
+                Strings.toHexString(uint160(alice), 20),
                 " is missing role ",
                 Strings.toHexString(uint256(vault.harvesterRole()), 32)
             )
@@ -208,11 +215,10 @@ contract L2VaultTest is TestPlus {
         bytes memory errorMsg = abi.encodePacked(errString);
 
         vm.expectRevert(errorMsg);
-        vm.prank(address(0));
+        changePrank(alice);
         vault.pause();
 
         vm.expectRevert(errorMsg);
-        vm.prank(address(0));
         vault.unpause();
     }
 
@@ -366,21 +372,23 @@ contract L2VaultTest is TestPlus {
     }
 
     function testSettingForwarder() public {
+        changePrank(governance);
         address newForwarder = 0x8f954E7D7ec3A31D9568316fb0F472B03fc2a7d5;
         vault.setTrustedForwarder(newForwarder);
         assertEq(vault.trustedForwarder(), newForwarder);
 
         // only gov can call
-        vm.prank(newForwarder);
+        changePrank(alice);
         vm.expectRevert("Only Governance.");
         vault.setTrustedForwarder(address(0));
     }
 
     function testSettingRebalanceDelta() public {
+        changePrank(governance);
         vault.setRebalanceDelta(100);
         assertEq(vault.rebalanceDelta(), 100);
 
-        vm.prank(0x8f954E7D7ec3A31D9568316fb0F472B03fc2a7d5);
+        changePrank(alice);
         vm.expectRevert("Only Governance.");
         vault.setRebalanceDelta(0);
     }

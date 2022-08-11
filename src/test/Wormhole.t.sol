@@ -79,7 +79,9 @@ contract WormholeTest is TestPlus {
         );
 
         // Grant rebalancer role to this address
+        vm.startPrank(governance);
         l1vault.grantRole(l1vault.rebalancerRole(), address(this));
+        vm.stopPrank();
 
         vm.expectCall(address(wormholeRouter.wormhole()), publishMessageData);
         l1vault.sendTVL();
@@ -91,18 +93,20 @@ contract WormholeTest is TestPlus {
 
     function testWormholeConfigUpdates() public {
         // update wormhole address
+        changePrank(governance);
         wormholeRouter.setWormhole(IWormhole(address(this)));
         assertEq(address(wormholeRouter.wormhole()), address(this));
 
-        vm.prank(address(0));
+        changePrank(alice);
         vm.expectRevert("Only Governance.");
         wormholeRouter.setWormhole(IWormhole(address(0)));
 
         // update consistencyLevel
+        changePrank(governance);
         wormholeRouter.setConsistencyLevel(100);
         assertEq(wormholeRouter.consistencyLevel(), 100);
 
-        vm.prank(address(0));
+        changePrank(alice);
         vm.expectRevert("Only Governance.");
         wormholeRouter.setConsistencyLevel(0);
     }
