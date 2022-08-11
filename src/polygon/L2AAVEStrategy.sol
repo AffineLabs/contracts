@@ -103,14 +103,15 @@ contract L2AAVEStrategy is BaseStrategy {
     /** DIVESTMENT
      **************************************************************************/
     function divest(uint256 amount) external override onlyVault returns (uint256) {
-        // TODO: take current balance into consideration and only withdraw the amount that you need to
         _claimAndSellRewards();
-        uint256 aTokenAmount = balanceOfAToken();
-        uint256 withdrawAmount = Math.min(amount, aTokenAmount);
 
-        uint256 withdrawnAmount = _withdrawWant(withdrawAmount);
-        asset.safeTransfer(address(vault), withdrawnAmount);
-        return withdrawnAmount;
+        uint256 currAssets = balanceOfAsset();
+        uint256 withdrawAmount = currAssets >= amount ? 0 : amount - currAssets;
+        _withdrawWant(withdrawAmount);
+
+        uint256 amountToSend = Math.min(amount, asset.balanceOf(address(this)));
+        asset.safeTransfer(address(vault), amountToSend);
+        return amountToSend;
     }
 
     function _withdrawWant(uint256 amount) internal returns (uint256) {
