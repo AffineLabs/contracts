@@ -4,6 +4,6 @@ namespace: default
 images:
 - name: queuebot
   newName: 743156738557.dkr.ecr.us-east-1.amazonaws.com/queuebot
-  newTag: 28d950a085e9b5b8f1a69d9475437c4282c61f0c
+  newTag: 78006feb5a62d7865a5fbdbe18a2cfb07f65a5be
 resources:
 - ../../base
