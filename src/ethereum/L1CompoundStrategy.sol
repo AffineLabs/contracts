@@ -95,7 +95,7 @@ contract L1CompoundStrategy is BaseStrategy {
         uint256 amountToWithdraw = amount - asset.balanceOf(address(this));
         _withdrawWant(amountToWithdraw);
         uint256 amountToTrasnferToVault = Math.min(asset.balanceOf(address(this)), amount);
-        asset.transfer(address(vault), amountToTrasnferToVault);
+        asset.safeTransfer(address(vault), amountToTrasnferToVault);
         return amountToTrasnferToVault;
     }
 

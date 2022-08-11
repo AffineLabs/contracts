@@ -223,7 +223,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         _burn(owner, numShares);
 
         emit Withdraw(_msgSender(), receiver, owner, amountInput, numShares);
-        asset.transfer(receiver, inputReceived);
+        asset.safeTransfer(receiver, inputReceived);
     }
 
     /** EXCHANGE RATES
@@ -418,7 +418,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         uint256 buyTokenAmount = _tokensFromDollars(buyToken, Dollar.wrap(blockSize));
 
         buyToken.safeTransferFrom(_msgSender(), address(this), buyTokenAmount);
-        sellToken.transfer(_msgSender(), sellTokenAmount);
+        sellToken.safeTransfer(_msgSender(), sellTokenAmount);
 
         _endAuction();
     }
