@@ -33,6 +33,7 @@ block_base_fee_per_gas = 0
 block_coinbase = '0x0000000000000000000000000000000000000000'
 block_timestamp = 1
 block_difficulty = 0
+solc_version = "0.8.16"
 
 [profile.default.rpc_endpoints]
 mumbai = "https://polygon-mumbai.g.alchemy.com/v2/${ALCHEMY_POLYGON_MUMBAI_KEY}"
