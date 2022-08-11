@@ -109,7 +109,7 @@ contract L2AAVEStrategy is BaseStrategy {
         uint256 withdrawAmount = currAssets >= amount ? 0 : amount - currAssets;
         _withdrawWant(withdrawAmount);
 
-        uint256 amountToSend = Math.min(amount, asset.balanceOf(address(this)));
+        uint256 amountToSend = Math.min(amount, balanceOfAsset());
         asset.safeTransfer(address(vault), amountToSend);
         return amountToSend;
     }
