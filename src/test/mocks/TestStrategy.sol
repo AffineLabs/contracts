@@ -16,7 +16,7 @@ contract TestStrategy is BaseStrategy {
     }
 
     function invest(uint256 amount) public override {
-        asset.safeTransferFrom(address(vault), address(this), amount);
+        asset.transferFrom(address(vault), address(this), amount);
     }
 
     function divest(uint256 amount) public override returns (uint256) {
