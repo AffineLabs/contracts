@@ -50,9 +50,13 @@ contract BridgeEscrowTest is TestPlus {
 }
 
 contract DummyL2Vault {
+    uint256 public x;
+
     constructor() {}
 
-    function afterReceive(uint256 amount) public {}
+    function afterReceive(uint256 amount) public {
+        x = 2;
+    }
 }
 
 contract L2BridgeEscrowTest is TestPlus {
@@ -63,6 +67,7 @@ contract L2BridgeEscrowTest is TestPlus {
     IRootChainManager manager = IRootChainManager(makeAddr("chain_manager"));
 
     function setUp() public {
+        // Forking here because a mock ERC20 will not have the `withdraw` function
         vm.createSelectFork("polygon", 31824532);
         vault = address(new DummyL2Vault());
         escrow = new BridgeEscrow(address(this));
@@ -95,6 +100,8 @@ contract L2BridgeEscrowTest is TestPlus {
         escrow.l2ClearFund(100);
 
         assertEq(asset.balanceOf(vault), 100);
+        // afterReceive was called on the vault
+        assertEq(DummyL2Vault(vault).x(), 2);
     }
 
     function testL2ClearFundInvariants() public {
@@ -102,12 +109,71 @@ contract L2BridgeEscrowTest is TestPlus {
         vm.prank(alice);
         escrow.l2ClearFund(100);
 
+        // Give escrow some money less than the amount that the wormhole router expects
+        // This means that the funds have not arrived from l1
         deal(address(asset), address(escrow), 100);
 
-        // Give escrow some money ss than the amount that the wormhole router expects
-        // This means that the funds have not arrived from l1
         changePrank(wormholeRouter);
         vm.expectRevert("Funds not received");
         escrow.l2ClearFund(200);
+    }
+}
+
+contract DummyL1Vault {
+    uint256 public x;
+
+    constructor() {}
+
+    function afterReceive() public {
+        x = 1;
+    }
+}
+
+contract L1BridgeEscrowTest is TestPlus {
+    BridgeEscrow escrow;
+    address vault;
+    address wormholeRouter = makeAddr("wormhole_router");
+    ERC20 asset;
+    IRootChainManager manager = IRootChainManager(makeAddr("chain_manager"));
+
+    function setUp() public {
+        // Not forking because getting a valid exitProof in l1ClearFund is tricky
+        vault = address(new DummyL1Vault());
+        asset = new MockERC20("Mock Token", "MT", 18);
+        escrow = new BridgeEscrow(address(this));
+        escrow.initialize(vault, wormholeRouter, asset, manager);
+    }
+
+    function testL1ClearFund() public {
+        // Give escrow some money
+        deal(address(asset), address(escrow), 100);
+
+        // Send money to vault (clear funds)
+        // Using an exitProof that is just empty bytes
+        changePrank(wormholeRouter);
+        vm.expectCall(vault, abi.encodeCall(DummyL1Vault.afterReceive, ()));
+        bytes memory exitProof;
+        vm.mockCall(address(manager), abi.encodeCall(IRootChainManager.exit, (exitProof)), "");
+        escrow.l1ClearFund(100, "");
+
+        assertEq(asset.balanceOf(vault), 100);
+        // afterReceive was called on the vault
+        assertEq(DummyL1Vault(vault).x(), 1);
+    }
+
+    function testL1ClearFundInvariants() public {
+        vm.expectRevert("Only wormhole router");
+        vm.prank(alice);
+        escrow.l1ClearFund(100, "");
+
+        // Give escrow some money less than the amount that the wormhole router expects
+        // This means that the funds have not arrived from l1
+        deal(address(asset), address(escrow), 100);
+        bytes memory exitProof;
+        vm.mockCall(address(manager), abi.encodeCall(IRootChainManager.exit, (exitProof)), "");
+
+        changePrank(wormholeRouter);
+        vm.expectRevert("Funds not received");
+        escrow.l1ClearFund(200, "");
     }
 }
