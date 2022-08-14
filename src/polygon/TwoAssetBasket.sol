@@ -152,7 +152,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         // Issue shares based on dollar amounts of user coins vs total holdings of the vault
         if (totalSupply == 0) {
             // Dollars have 8 decimals, add an an extra 10 here to match the 18 that this contract uses
-            shares = dollarsReceived * 1e10;
+            shares = ((dollarsReceived * 1e10) / 100);
         } else {
             shares = (dollarsReceived * totalSupply) / vaultDollars;
         }
