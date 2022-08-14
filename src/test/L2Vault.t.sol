@@ -47,6 +47,7 @@ contract L2VaultTest is TestPlus {
     }
 
     function testDepositRedeem(uint128 amountAsset) public {
+        vm.assume(amountAsset > 99);
         // Running into overflow issues on the call to vault.redeem
         address user = address(this);
         asset.mint(user, amountAsset);
@@ -54,17 +55,18 @@ contract L2VaultTest is TestPlus {
         // user gives max approval to vault for asset
         asset.approve(address(vault), type(uint256).max);
         vm.expectEmit(true, true, true, true);
-        emit Deposit(address(this), address(this), amountAsset, amountAsset);
+        emit Deposit(address(this), address(this), amountAsset, amountAsset / 100);
         vault.deposit(amountAsset, address(this));
 
-        // If vault is empty, assets are converted to shares at 1:1
+        // If vault is empty, assets are converted to shares at 100:1
         uint256 numShares = vault.balanceOf(user);
-        assertEq(numShares, amountAsset);
+        uint256 expectedShares = amountAsset / 100;
+        assertEq(numShares, expectedShares);
         assertEq(asset.balanceOf(address(user)), 0);
         assertEq(asset.balanceOf(address(vault)), amountAsset);
 
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(address(this), user, user, amountAsset, amountAsset);
+        emit Withdraw(address(this), user, user, amountAsset, amountAsset / 100);
         uint256 assetsReceived = vault.redeem(numShares, user, user);
 
         assertEq(vault.balanceOf(user), 0);
@@ -72,25 +74,38 @@ contract L2VaultTest is TestPlus {
     }
 
     function testDepositWithdraw(uint128 amountAsset) public {
-        // Using a uint64 since we multiply totalSupply by amountAsset in sharesFromTokens
-        // Using a uint64 makes sure the calculation will not overflow
+        vm.assume(amountAsset > 99);
+        // Using a uint128 since we multiply totalSupply by amountAsset in sharesFromTokens
+        // Using a uint128 makes sure the calculation will not overflow
         address user = address(this);
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
 
         vm.expectEmit(true, true, true, true);
-        emit Deposit(address(this), address(this), amountAsset, amountAsset);
-        vault.deposit(amountAsset, address(this));
+        emit Deposit(address(this), address(this), amountAsset, amountAsset / 100);
+        vault.deposit(amountAsset, user);
 
-        // If vault is empty, assets are converted to shares at 1:1
-        assertEq(vault.balanceOf(user), amountAsset);
+        // If vault is empty, assets are converted to shares at 100:1
+        assertEq(vault.balanceOf(user), amountAsset / 100);
         assertEq(asset.balanceOf(user), 0);
 
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(address(this), address(this), address(this), amountAsset, amountAsset);
-        vault.withdraw(amountAsset, address(this), address(this));
+        emit Withdraw(user, user, user, amountAsset, amountAsset / 100);
+        vault.withdraw(amountAsset, user, user);
         assertEq(vault.balanceOf(user), 0);
         assertEq(asset.balanceOf(user), amountAsset);
+    }
+
+    function testMinDeposit() public {
+        address user = address(this);
+        asset.mint(user, 100);
+        asset.approve(address(vault), type(uint256).max);
+
+        // shares = assets / 100. If you give less than 100 in assets we revert
+        vm.expectRevert("MIN_DEPOSIT_ERR");
+        vault.deposit(99, user);
+
+        vault.deposit(100, user);
     }
 
     function testManagementFee() public {
@@ -231,6 +246,7 @@ contract L2VaultTest is TestPlus {
     );
 
     function testEmergencyWithdrawal(uint128 amountAsset) public {
+        vm.assume(amountAsset > 99);
         address user = address(this);
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
@@ -268,10 +284,11 @@ contract L2VaultTest is TestPlus {
     }
 
     function testEmergencyWithdrawalWithRedeem(uint128 amountAsset) public {
+        vm.assume(amountAsset > 99);
         address user = address(this);
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
-        vault.deposit(amountAsset, address(this));
+        vault.deposit(amountAsset, user);
 
         // simulate vault assets being transferred to L1.
         asset.burn(address(vault), amountAsset);
@@ -281,19 +298,13 @@ contract L2VaultTest is TestPlus {
             bytes32(uint256(amountAsset))
         );
 
-        vm.startPrank(user);
-        if (amountAsset > 0) {
-            vm.expectEmit(true, true, false, true);
-            emit EmergencyWithdrawalQueueEnqueue(
-                1,
-                EmergencyWithdrawalQueue.RequestType.Redeem,
-                user,
-                user,
-                amountAsset
-            );
-        }
+        uint256 numShares = amountAsset / 100;
+        vm.expectEmit(true, true, false, true);
+        emit EmergencyWithdrawalQueueEnqueue(1, EmergencyWithdrawalQueue.RequestType.Redeem, user, user, numShares);
+
         // Trigger emergency withdrawal as vault doesn't have any asset.
-        vault.redeem(amountAsset, user, user);
+        vm.startPrank(user);
+        vault.redeem(numShares, user, user);
         assertEq(asset.balanceOf(user), 0);
 
         // Simulate funds being bridged from L1 to L2 vault.
@@ -303,9 +314,9 @@ contract L2VaultTest is TestPlus {
             bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
             bytes32(uint256(0))
         );
-        if (amountAsset > 0) {
-            vault.emergencyWithdrawalQueue().dequeue();
-        }
+
+        vault.emergencyWithdrawalQueue().dequeue();
+
         assertEq(asset.balanceOf(user), amountAsset);
     }
 
@@ -367,8 +378,10 @@ contract L2VaultTest is TestPlus {
 
         vault.deposit(1e18, user);
         asset.transfer(address(vault), 1e18);
+
+        // initial price is $100, but if we increase tvl by two it will be 200
         L2Vault.Number memory price2 = vault.detailedPrice();
-        assertEq(price2.num, 2 * 10**vault.decimals());
+        assertEq(price2.num, 200 * 10**vault.decimals());
     }
 
     function testSettingForwarder() public {

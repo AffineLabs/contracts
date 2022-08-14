@@ -107,7 +107,7 @@ contract ForwardTest is TestPlus {
         requests[1] = req2;
         forwarder.executeBatch(requests, abi.encodePacked(r, s, v, r2, s2, v2));
 
-        assertEq(vault.balanceOf(user), 2e6);
+        assertEq(vault.balanceOf(user), 2e6 / 100);
     }
 
     function testTransactVaultAndBasket() public {
@@ -153,7 +153,7 @@ contract ForwardTest is TestPlus {
         );
         forwarder.executeBatch(requests, abi.encodePacked(r, s, v, r2, s2, v2));
 
-        assertEq(vault.balanceOf(user), 1e6);
+        assertEq(vault.balanceOf(user), 1e6 / 100);
 
         // startrebalance will do nothing
         assertTrue(basket.isRebalancing() == false);

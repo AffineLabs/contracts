@@ -162,7 +162,8 @@ contract L2Vault is
      **************************************************************************/
     /// @notice See {IERC4262-deposit}
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
-        shares = convertToShares(assets);
+        shares = previewDeposit(assets);
+        require(shares > 0, "MIN_DEPOSIT_ERR");
         address caller = _msgSender();
 
         _asset.safeTransferFrom(caller, address(this), assets);
@@ -233,8 +234,6 @@ contract L2Vault is
                 // in the queue is valid, so that, when the emergency withdrawal queue calls `redeem` we skip
                 // all the checks and execute the burns and transfers.
                 if (caller != owner) _spendAllowance(owner, caller, shares);
-                // TODO(ALP-1572): Decide if we should transfer `liquidatedAmount` to user and add remaining
-                // amount to `emergencyWithdrawalQueue`.
                 emergencyWithdrawalQueue.enqueue(owner, receiver, shares, EmergencyWithdrawalQueue.RequestType.Redeem);
                 return 0;
             }
@@ -279,8 +278,6 @@ contract L2Vault is
                 // in the queue is valid, so that, when the emergency withdrawal queue calls `withdraw` we skip
                 // all the checks and execute the burns and transfers.
                 if (caller != owner) _spendAllowance(owner, caller, shares);
-                // TODO(ALP-1572): Decide if we should transfer `liquidatedAmount` to user and add remaining
-                // amount to `emergencyWithdrawalQueue`.
                 emergencyWithdrawalQueue.enqueue(
                     owner,
                     receiver,
@@ -328,8 +325,10 @@ contract L2Vault is
     /// @dev In previewDeposit we want to round down, but in previewWithdraw we want to round up
     function _convertToShares(uint256 assets, Rounding roundingDirection) internal view returns (uint256 shares) {
         uint256 totalShares = totalSupply();
+        // E.g. for USDC, we want the initial price of a share to be $100. Apparently testnet users confused AlpSave with a
+        // stablecoin
         if (totalShares == 0) {
-            shares = assets;
+            shares = assets / 100;
         } else {
             if (roundingDirection == Rounding.Up) {
                 shares = assets.mulDivUp(totalShares, totalAssets());
@@ -348,7 +347,8 @@ contract L2Vault is
     function _convertToAssets(uint256 shares, Rounding roundingDirection) internal view returns (uint256 assets) {
         uint256 totalShares = totalSupply();
         if (totalShares == 0) {
-            assets = 0;
+            // see _convertToShares
+            assets = shares * 100;
         } else {
             if (roundingDirection == Rounding.Up) {
                 assets = shares.mulDivUp(totalAssets(), totalShares);
