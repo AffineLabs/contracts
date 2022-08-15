@@ -49,7 +49,7 @@ contract BtcEthBasketTest is TestPlus {
 
     function testDepositWithdraw() public {
         // mint some usdc, can remove hardcoded selector later
-        uint256 mintAmount = 100 * 1e6;
+        uint256 mintAmount = 200 * 1e6;
         deal(address(usdc), address(this), mintAmount, true);
         usdc.approve(address(basket), type(uint256).max);
         basket.deposit(mintAmount, address(this));
@@ -58,8 +58,10 @@ contract BtcEthBasketTest is TestPlus {
         // the testnet usdc/btc usdc/eth pools do not have accurate prices
         assertTrue(basket.balanceOf(address(this)) > 0);
         uint256 vaultTVL = Dollar.unwrap(basket.valueOfVault());
-        assertEq(basket.balanceOf(address(this)), vaultTVL * 1e10);
+        assertEq(basket.balanceOf(address(this)), (vaultTVL * 1e10) / 100);
+
         emit log_named_uint("VALUE OF VAULT", vaultTVL);
+        emit log_named_uint("Initial AlpLarge price: ", basket.detailedPrice().num);
 
         uint256 inputReceived = basket.withdraw((mintAmount * 90) / 100, address(this), address(this));
         emit log_named_uint("DOLLARS WITHDRAWN: ", inputReceived);

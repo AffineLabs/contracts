@@ -55,6 +55,7 @@ contract DummyL2Vault {
     constructor() {}
 
     function afterReceive(uint256 amount) public {
+        amount;
         x = 2;
     }
 }
