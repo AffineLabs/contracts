@@ -325,8 +325,8 @@ contract L2Vault is
     /// @dev In previewDeposit we want to round down, but in previewWithdraw we want to round up
     function _convertToShares(uint256 assets, Rounding roundingDirection) internal view returns (uint256 shares) {
         uint256 totalShares = totalSupply();
-        // E.g. for USDC, we want the initial price of a share to be $100. Apparently testnet users confused AlpSave with a
-        // stablecoin
+        // E.g. for USDC, we want the initial price of a share to be $100.
+        // Apparently testnet users confused AlpSave with a stablecoin
         if (totalShares == 0) {
             shares = assets / 100;
         } else {
