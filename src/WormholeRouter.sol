@@ -37,5 +37,6 @@ abstract contract WormholeRouter is AffineGovernable {
     function _validateWormholeMessageEmitter(IWormhole.VM memory vm) internal view {
         require(vm.emitterAddress == bytes32(uint256(uint160(otherLayerRouter))), "Wrong emitter address");
         require(vm.emitterChainId == otherLayerChainId, "Wrong emitter chain");
+        require(vm.nonce >= nextValidNonce, "Old transaction");
     }
 }
