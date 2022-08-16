@@ -17,6 +17,8 @@ abstract contract WormholeRouter is AffineGovernable {
     /**
      * @notice This is the number of blocks it takes to emit produce the VAA.
      * See https://book.wormholenetwork.com/wormhole/4_vaa.html
+     * @dev This consistency level is actually being ignored on Polygon as of August 16, 2022. The minium number of blocks
+     * is actually hardcoded to 512. See https://github.com/certusone/wormhole/blob/9ba75ddb97162839e0cacd91851a9a0ef9b45496/node/cmd/guardiand/node.go#L969-L981
      */
     uint8 public consistencyLevel = 4;
 
