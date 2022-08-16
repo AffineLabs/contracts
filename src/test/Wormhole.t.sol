@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.16;
 
 import { TestPlus } from "./TestPlus.sol";
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
@@ -9,6 +9,7 @@ import { L2Vault } from "../polygon/L2Vault.sol";
 import { L1Vault } from "../ethereum/L1Vault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { L1WormholeRouter } from "../ethereum/L1WormholeRouter.sol";
+import { L2WormholeRouter } from "../polygon/L2WormholeRouter.sol";
 import { Constants } from "../Constants.sol";
 
 contract MockWormhole is IWormhole {
@@ -59,7 +60,7 @@ contract WormholeTest is TestPlus {
         l1vault = Deploy.deployL1Vault();
 
         MockWormhole wormhole = new MockWormhole();
-        wormholeRouter = new L1WormholeRouter();
+        wormholeRouter = l1vault.wormholeRouter();
 
         uint256 wormholeRouterSlot = stdstore.target(address(l1vault)).sig("wormholeRouter()").find();
         bytes32 wormholeRouterAddr = bytes32(uint256(uint160(address(wormholeRouter))));
@@ -109,5 +110,32 @@ contract WormholeTest is TestPlus {
         changePrank(alice);
         vm.expectRevert("Only Governance.");
         wormholeRouter.setConsistencyLevel(0);
+    }
+}
+
+contract L2WormholeRouterTest is TestPlus {
+    L2WormholeRouter router;
+    L2Vault vault;
+
+    function setUp() public {
+        vm.createSelectFork("polygon", 31824532);
+        vault = Deploy.deployL2Vault();
+        router = vault.wormholeRouter();
+
+        // See https://book.wormhole.com/reference/contracts.html for addresses
+        router.initialize(IWormhole(0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7), vault, address(0), uint16(0));
+    }
+
+    function testTransferReport() public {
+        // Only invariant is that the vault is the only caller
+
+        bytes memory payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, 100);
+        vm.expectCall(
+            address(router.wormhole()),
+            abi.encodeCall(IWormhole.publishMessage, (uint32(0), payload, router.consistencyLevel()))
+        );
+
+        vm.prank(address(vault));
+        router.reportTransferredFund(100);
     }
 }

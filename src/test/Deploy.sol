@@ -30,7 +30,7 @@ contract Deploy is Test {
             governance, // governance
             asset, // asset
             IWormhole(address(0)), // wormhole
-            L2WormholeRouter(address(0)), // wormholer router
+            new L2WormholeRouter(),
             BridgeEscrow(address(0)),
             emergencyWithdrawalQueue,
             address(0), // forwarder
