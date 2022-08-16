@@ -29,4 +29,11 @@ abstract contract WormholeRouter is AffineGovernable {
     function setConsistencyLevel(uint8 _consistencyLevel) external onlyGovernance {
         consistencyLevel = _consistencyLevel;
     }
+
+    /** VALIDATION
+     **************************************************************************/
+    function _validateWormholeMessageEmitter(IWormhole.VM memory vm) internal view {
+        require(vm.emitterAddress == bytes32(uint256(uint160(otherLayerRouter))), "Wrong emitter address");
+        require(vm.emitterChainId == otherLayerChainId, "Wrong emitter chain");
+    }
 }

@@ -113,6 +113,13 @@ contract WormholeTest is TestPlus {
     }
 }
 
+// This contract exists solely to test the internal view
+contract MockRouter is L2WormholeRouter {
+    function validateWormholeMessageEmitter(IWormhole.VM memory vm) public view {
+        return _validateWormholeMessageEmitter(vm);
+    }
+}
+
 contract L2WormholeRouterTest is TestPlus {
     L2WormholeRouter router;
     L2Vault vault;
@@ -128,14 +135,44 @@ contract L2WormholeRouterTest is TestPlus {
 
     function testTransferReport() public {
         // Only invariant is that the vault is the only caller
+        vm.prank(alice);
+        vm.expectRevert("Only vault");
+        router.reportTransferredFund(0);
 
-        bytes memory payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, 100);
+        uint256 transferAmount = 100;
+        bytes memory payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, transferAmount);
         vm.expectCall(
             address(router.wormhole()),
             abi.encodeCall(IWormhole.publishMessage, (uint32(0), payload, router.consistencyLevel()))
         );
 
         vm.prank(address(vault));
-        router.reportTransferredFund(100);
+        router.reportTransferredFund(transferAmount);
+    }
+
+    function testMessageValidation() public {
+        MockRouter mockRouter = new MockRouter();
+        uint16 emitter = uint16(1);
+        address otherLayerRouter = makeAddr("otherLayerRouter");
+        mockRouter.initialize(IWormhole(address(0)), vault, otherLayerRouter, emitter);
+
+        IWormhole.VM memory vaa;
+        vaa.emitterChainId = emitter;
+        vaa.emitterAddress = bytes32(uint256(uint160(address(0))));
+        vm.expectRevert("Wrong emitter address");
+        mockRouter.validateWormholeMessageEmitter(vaa);
+
+        IWormhole.VM memory vaa1;
+        vaa1.emitterChainId = uint16(0);
+        vaa1.emitterAddress = bytes32(uint256(uint160(otherLayerRouter)));
+        emit log_named_bytes32("left padded addr: ", bytes32(uint256(uint160(makeAddr("otherLayerRouter")))));
+        vm.expectRevert("Wrong emitter chain");
+        mockRouter.validateWormholeMessageEmitter(vaa1);
+
+        // This will work
+        IWormhole.VM memory goodVaa;
+        goodVaa.emitterChainId = emitter;
+        goodVaa.emitterAddress = bytes32(uint256(uint160(otherLayerRouter)));
+        mockRouter.validateWormholeMessageEmitter(goodVaa);
     }
 }
