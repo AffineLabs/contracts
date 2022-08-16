@@ -51,70 +51,6 @@ contract MockWormhole is IWormhole {
     }
 }
 
-contract WormholeTest is TestPlus {
-    L1Vault l1vault;
-    L2Vault l2vault;
-    L1WormholeRouter wormholeRouter;
-
-    using stdStorage for StdStorage;
-
-    function setUp() public {
-        l1vault = Deploy.deployL1Vault();
-
-        MockWormhole wormhole = new MockWormhole();
-        wormholeRouter = l1vault.wormholeRouter();
-
-        uint256 wormholeRouterSlot = stdstore.target(address(l1vault)).sig("wormholeRouter()").find();
-        bytes32 wormholeRouterAddr = bytes32(uint256(uint160(address(wormholeRouter))));
-        vm.store(address(l1vault), bytes32(wormholeRouterSlot), wormholeRouterAddr);
-
-        wormholeRouter.initialize(wormhole, l1vault, address(0), 0);
-
-        l2vault = Deploy.deployL2Vault();
-    }
-
-    function testMessagePass() public {
-        bytes memory publishMessageData = abi.encodeWithSelector(
-            IWormhole.publishMessage.selector,
-            uint32(0),
-            abi.encode(Constants.L1_TVL, uint256(0), false),
-            4
-        );
-
-        // Grant rebalancer role to this address
-        vm.startPrank(governance);
-        l1vault.grantRole(l1vault.rebalancerRole(), address(this));
-        vm.stopPrank();
-
-        vm.expectCall(address(wormholeRouter.wormhole()), publishMessageData);
-        l1vault.sendTVL();
-        // TODO: assert that publish message was called wih certain arguments
-
-        // TODO: call receive message with a given encodedTVL
-        // TODO: assert that l2vault.L1TotalValue is the value that we expect
-    }
-
-    function testWormholeConfigUpdates() public {
-        // update wormhole address
-        changePrank(governance);
-        wormholeRouter.setWormhole(IWormhole(address(this)));
-        assertEq(address(wormholeRouter.wormhole()), address(this));
-
-        changePrank(alice);
-        vm.expectRevert("Only Governance.");
-        wormholeRouter.setWormhole(IWormhole(address(0)));
-
-        // update consistencyLevel
-        changePrank(governance);
-        wormholeRouter.setConsistencyLevel(100);
-        assertEq(wormholeRouter.consistencyLevel(), 100);
-
-        changePrank(alice);
-        vm.expectRevert("Only Governance.");
-        wormholeRouter.setConsistencyLevel(0);
-    }
-}
-
 // This contract exists solely to test the internal view
 contract MockRouter is L2WormholeRouter {
     function validateWormholeMessageEmitter(IWormhole.VM memory vm) public view {
@@ -211,7 +147,7 @@ contract L2WormholeRouterTest is TestPlus {
 
         vm.mockCall(
             address(router.wormhole()),
-            abi.encodeCall(IWormhole.parseAndVerifyVM, ("VA_FROM_L1_TRANSFER")),
+            abi.encodeCall(IWormhole.parseAndVerifyVM, ("VAA_FROM_L1_TRANSFER")),
             wormholeReturnData
         );
 
