@@ -10,7 +10,7 @@ abstract contract WormholeRouter is AffineGovernable {
      **************************************************************************/
     address public otherLayerRouter;
     uint16 public otherLayerChainId;
-    uint256 public nextVaildNonce;
+    uint256 public nextValidNonce;
 
     /// @notice The address of the core wormhole contract
     IWormhole public wormhole;

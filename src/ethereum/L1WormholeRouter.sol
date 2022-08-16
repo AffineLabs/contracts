@@ -55,8 +55,8 @@ contract L1WormholeRouter is WormholeRouter {
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
         _validateWormholeMessageEmitter(vm);
-        require(vm.nonce >= nextVaildNonce, "Old transaction");
-        nextVaildNonce = vm.nonce + 1;
+        require(vm.nonce >= nextValidNonce, "Old transaction");
+        nextValidNonce = vm.nonce + 1;
         (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
         require(msgType == Constants.L2_FUND_TRANSFER_REPORT);
 
@@ -72,8 +72,8 @@ contract L1WormholeRouter is WormholeRouter {
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
         _validateWormholeMessageEmitter(vm);
-        require(vm.nonce >= nextVaildNonce, "Old transaction");
-        nextVaildNonce = vm.nonce + 1;
+        require(vm.nonce >= nextValidNonce, "Old transaction");
+        nextValidNonce = vm.nonce + 1;
         (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
         require(msgType == Constants.L2_FUND_REQUEST);
 

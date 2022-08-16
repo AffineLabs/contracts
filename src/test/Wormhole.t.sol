@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.16;
 
+import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+
 import { TestPlus } from "./TestPlus.sol";
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
@@ -121,6 +123,7 @@ contract MockRouter is L2WormholeRouter {
 }
 
 contract L2WormholeRouterTest is TestPlus {
+    using stdStorage for StdStorage;
     L2WormholeRouter router;
     L2Vault vault;
 
@@ -174,5 +177,108 @@ contract L2WormholeRouterTest is TestPlus {
         goodVaa.emitterChainId = emitter;
         goodVaa.emitterAddress = bytes32(uint256(uint160(otherLayerRouter)));
         mockRouter.validateWormholeMessageEmitter(goodVaa);
+    }
+
+    function testRequestFunds() public {
+        // Only invariant is that the vault is the only caller
+        vm.prank(alice);
+        vm.expectRevert("Only vault");
+        router.requestFunds(0);
+
+        uint256 requestAmount = 100;
+        bytes memory payload = abi.encode(Constants.L2_FUND_REQUEST, requestAmount);
+        vm.expectCall(
+            address(router.wormhole()),
+            abi.encodeCall(IWormhole.publishMessage, (uint32(0), payload, router.consistencyLevel()))
+        );
+
+        vm.prank(address(vault));
+        router.requestFunds(requestAmount);
+    }
+
+    function testReceiveFunds() public {
+        uint256 l1TransferAmount = 500;
+
+        // Mock call to wormhole.parseAndVerifyVM()
+        IWormhole.VM memory vaa;
+        vaa.nonce = 20;
+        vaa.payload = abi.encode(Constants.L1_FUND_TRANSFER_REPORT, l1TransferAmount);
+
+        bool valid = true;
+        string memory reason = "";
+
+        bytes memory wormholeReturnData = abi.encode(vaa, valid, reason);
+
+        vm.mockCall(
+            address(router.wormhole()),
+            abi.encodeCall(IWormhole.parseAndVerifyVM, ("VA_FROM_L1_TRANSFER")),
+            wormholeReturnData
+        );
+
+        // Make sure that bridgEscrow has funds to send to the vault
+        deal(vault.asset(), address(vault.bridgeEscrow()), l1TransferAmount);
+
+        // Make sure that L1TotalLockedValue is above amount being transferred to L2 (or else we get an underflow)
+        vm.store(
+            address(vault),
+            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(uint256(l1TransferAmount))
+        );
+
+        // You need the rebalancer role in the vault in order to call this function
+        // Governance gets the rebalancer role
+        vm.prank(governance);
+        router.receiveFunds("VAA_FROM_L1_TRANSFER");
+
+        // Nonce is updated
+        assertEq(router.nextValidNonce(), vaa.nonce + 1);
+
+        // Assert that funds get cleared
+        assertEq(ERC20(vault.asset()).balanceOf(address(vault)), l1TransferAmount);
+    }
+
+    function testReceiveFundsInvariants() public {
+        address rebalancer = governance;
+        // You must have the rebalancer role to call receiveFunds
+        vm.prank(alice);
+        vm.expectRevert("Only Rebalancer");
+        router.receiveFunds("VAA_FROM_L1_TRANSFER");
+
+        // If wormhole says the vaa is bad, we revert
+        // Mock call to wormhole.parseAndVerifyVM()
+        IWormhole.VM memory vaa;
+        bool valid = false;
+        string memory reason = "Reason string from wormhole contract";
+
+        vm.mockCall(
+            address(router.wormhole()),
+            abi.encodeCall(IWormhole.parseAndVerifyVM, ("VAA_FROM_L1_TRANSFER")),
+            abi.encode(vaa, valid, reason)
+        );
+
+        vm.startPrank(rebalancer);
+        vm.expectRevert(bytes(reason));
+        router.receiveFunds("VAA_FROM_L1_TRANSFER");
+        vm.clearMockedCalls();
+
+        // If the nonce is old, we revert
+        IWormhole.VM memory vaa2;
+        vaa2.nonce = 10;
+
+        // Make sure that L1TotalLockedValue is above amount being transferred to L2 (or else we get an underflow)
+        vm.store(
+            address(router),
+            bytes32(stdstore.target(address(router)).sig("nextValidNonce()").find()),
+            bytes32(uint256(11))
+        );
+
+        vm.mockCall(
+            address(router.wormhole()),
+            abi.encodeCall(IWormhole.parseAndVerifyVM, ("VAA_FROM_L1_TRANSFER")),
+            abi.encode(vaa2, true, "")
+        );
+
+        vm.expectRevert("Old transaction");
+        router.receiveFunds("VAA_FROM_L1_TRANSFER");
     }
 }
