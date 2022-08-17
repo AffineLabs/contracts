@@ -14,43 +14,6 @@ import { L1WormholeRouter } from "../ethereum/L1WormholeRouter.sol";
 import { L2WormholeRouter } from "../polygon/L2WormholeRouter.sol";
 import { Constants } from "../Constants.sol";
 
-contract MockWormhole is IWormhole {
-    uint64 public emitterSequence;
-
-    constructor() {}
-
-    function publishMessage(
-        uint32 nonce,
-        bytes memory payload,
-        uint8 consistencyLevel
-    ) external payable override returns (uint64 sequence) {
-        nonce;
-        payload;
-        consistencyLevel;
-        emitterSequence += 1;
-        sequence = emitterSequence;
-    }
-
-    function parseAndVerifyVM(bytes calldata encodedVM)
-        external
-        view
-        returns (
-            VM memory vm,
-            bool valid,
-            string memory reason
-        )
-    {
-        valid = true;
-        vm.payload = encodedVM;
-        reason;
-    }
-
-    function nextSequence(address emitter) external view returns (uint64) {
-        emitter;
-        return emitterSequence;
-    }
-}
-
 // This contract exists solely to test the internal view
 contract MockRouter is L2WormholeRouter {
     function validateWormholeMessageEmitter(IWormhole.VM memory vm) public view {
@@ -62,6 +25,7 @@ contract L2WormholeRouterTest is TestPlus {
     using stdStorage for StdStorage;
     L2WormholeRouter router;
     L2Vault vault;
+    address rebalancer = governance;
 
     function setUp() public {
         vm.createSelectFork("polygon", 31824532);
@@ -174,7 +138,6 @@ contract L2WormholeRouterTest is TestPlus {
     }
 
     function testReceiveFundsInvariants() public {
-        address rebalancer = governance;
         // You must have the rebalancer role to call receiveFunds
         vm.prank(alice);
         vm.expectRevert("Only Rebalancer");
@@ -216,5 +179,35 @@ contract L2WormholeRouterTest is TestPlus {
 
         vm.expectRevert("Old transaction");
         router.receiveFunds("VAA_FROM_L1_TRANSFER");
+    }
+
+    function testReceiveTVL() public {
+        // Mock call to wormhole.parseAndVerifyVM()
+        uint256 tvl = 1_000;
+        bool received = true;
+
+        IWormhole.VM memory vaa;
+        vaa.payload = abi.encode(Constants.L1_TVL, tvl, received);
+
+        vm.mockCall(
+            address(router.wormhole()),
+            abi.encodeCall(IWormhole.parseAndVerifyVM, ("L1_TVL_VAA")),
+            abi.encode(vaa, true, "")
+        );
+
+        vm.prank(rebalancer);
+        vm.expectCall(address(vault), abi.encodeCall(vault.receiveTVL, (tvl, received)));
+        router.receiveTVL("L1_TVL_VAA");
+
+        assertEq(router.nextValidNonce(), 1);
+    }
+
+    function testReceiveTVLInvariants() public {
+        // You must have the rebalancer role to call this receiveTVL
+        vm.prank(alice);
+        vm.expectRevert("Only Rebalancer");
+        router.receiveFunds("foo");
+
+        // The other invariants are the same as receiveFunds()
     }
 }
