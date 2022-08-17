@@ -12,6 +12,7 @@ import { L1Vault } from "../ethereum/L1Vault.sol";
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { L1WormholeRouter } from "../ethereum/L1WormholeRouter.sol";
 import { L2WormholeRouter } from "../polygon/L2WormholeRouter.sol";
+import { WormholeRouter } from "../WormholeRouter.sol";
 import { Constants } from "../Constants.sol";
 
 // This contract exists solely to test the internal view
@@ -34,6 +35,26 @@ contract L2WormholeRouterTest is TestPlus {
 
         // See https://book.wormhole.com/reference/contracts.html for addresses
         router.initialize(IWormhole(0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7), vault, address(0), uint16(0));
+    }
+
+    function testWormholeConfigUpdates() public {
+        // update wormhole address
+        changePrank(governance);
+        router.setWormhole(IWormhole(address(this)));
+        assertEq(address(router.wormhole()), address(this));
+
+        changePrank(alice);
+        vm.expectRevert("Only Governance.");
+        router.setWormhole(IWormhole(address(0)));
+
+        // update consistencyLevel
+        changePrank(governance);
+        router.setConsistencyLevel(100);
+        assertEq(router.consistencyLevel(), 100);
+
+        changePrank(alice);
+        vm.expectRevert("Only Governance.");
+        router.setConsistencyLevel(0);
     }
 
     function testTransferReport() public {
