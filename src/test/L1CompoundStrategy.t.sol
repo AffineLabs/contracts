@@ -56,8 +56,7 @@ contract CompoundStratTest is TestPlus {
         changePrank(governance);
         vault.addStrategy(strategy, 5_000);
 
-        // BridgeEscrow address is 0 in the default vault
-        changePrank(address(0));
+        changePrank(address(vault.bridgeEscrow()));
         // This simulates an internal rebalance of vault assets among strategies of the
         // vault. After calling this, 5,000 bips of vault assets will be invested
         // in the aforementioed strategy and the remaining 5,000 bips will stay in vault
