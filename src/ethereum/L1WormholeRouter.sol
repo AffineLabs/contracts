@@ -1,5 +1,5 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.16;
 
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
@@ -33,7 +33,6 @@ contract L1WormholeRouter is WormholeRouter {
         // NOTE: We use the current tx count (to wormhole) of this contract
         // as a nonce when publishing messages
         // This casting is fine so long as we send less than 2 ** 32 - 1 (~ 4 billion) messages
-        // NOTE: 4 ETH blocks will take about 1 minute to propagate
         uint64 sequence = wormhole.nextSequence(address(this));
 
         wormhole.publishMessage(uint32(sequence), payload, consistencyLevel);
@@ -47,11 +46,6 @@ contract L1WormholeRouter is WormholeRouter {
         wormhole.publishMessage(uint32(sequence), payload, consistencyLevel);
     }
 
-    function validateWormholeMessageEmitter(IWormhole.VM memory vm) internal view {
-        require(vm.emitterAddress == bytes32(uint256(uint160(otherLayerRouter))), "Wrong emitter address");
-        require(vm.emitterChainId == otherLayerChainId, "Message emitted from wrong chain");
-    }
-
     event TransferFromL2(uint256 amount);
 
     function receiveFunds(bytes calldata message, bytes calldata data) external {
@@ -59,9 +53,8 @@ contract L1WormholeRouter is WormholeRouter {
 
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
-        validateWormholeMessageEmitter(vm);
-        require(vm.nonce >= nextVaildNonce, "Old transaction");
-        nextVaildNonce = vm.nonce + 1;
+        _validateWormholeMessageEmitter(vm);
+        nextValidNonce = vm.nonce + 1;
         (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
         require(msgType == Constants.L2_FUND_TRANSFER_REPORT);
 
@@ -76,9 +69,8 @@ contract L1WormholeRouter is WormholeRouter {
 
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
-        validateWormholeMessageEmitter(vm);
-        require(vm.nonce >= nextVaildNonce, "Old transaction");
-        nextVaildNonce = vm.nonce + 1;
+        _validateWormholeMessageEmitter(vm);
+        nextValidNonce = vm.nonce + 1;
         (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
         require(msgType == Constants.L2_FUND_REQUEST);
 

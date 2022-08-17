@@ -26,17 +26,24 @@ contract Deploy is Test {
         MockERC20 asset = new MockERC20("Mock", "MT", 6);
         vault = new L2Vault();
         EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(governance);
+        BridgeEscrow escrow = new BridgeEscrow(address(this));
         vault.initialize(
             governance, // governance
             asset, // asset
             IWormhole(address(0)), // wormhole
-            L2WormholeRouter(address(0)), // wormholer router
-            BridgeEscrow(address(0)),
+            new L2WormholeRouter(),
+            escrow,
             emergencyWithdrawalQueue,
             address(0), // forwarder
             1, // l1 ratio
             1, // l2 ratio
             [uint256(0), uint256(200)] // withdrawal and AUM fees
+        );
+        escrow.initialize(
+            address(vault),
+            address(vault.wormholeRouter()),
+            ERC20(vault.asset()),
+            IRootChainManager(address(0))
         );
         emergencyWithdrawalQueue.linkVault(vault);
     }
