@@ -10,10 +10,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Context } from "@openzeppelin/contracts/utils/Context.sol";
 import { ContextUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
-import { IWormhole } from "../interfaces/IWormhole.sol";
-import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
-import { IWormhole } from "../interfaces/IWormhole.sol";
 import { BridgeEscrow } from "../BridgeEscrow.sol";
 import { BaseVault } from "../BaseVault.sol";
 import { L1WormholeRouter } from "./L1WormholeRouter.sol";
@@ -37,7 +34,6 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     function initialize(
         address _governance,
         ERC20 _token,
-        IWormhole _wormhole,
         L1WormholeRouter _wormholeRouter,
         BridgeEscrow _bridgeEscrow,
         IRootChainManager _chainManager,
@@ -45,7 +41,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     ) public initializer {
         __UUPSUpgradeable_init();
         __Pausable_init();
-        BaseVault.baseInitialize(_governance, _token, _wormhole, _bridgeEscrow);
+        BaseVault.baseInitialize(_governance, _token, _bridgeEscrow);
         wormholeRouter = _wormholeRouter;
         chainManager = _chainManager;
         predicate = _predicate;

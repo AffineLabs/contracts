@@ -15,9 +15,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { BaseRelayRecipient } from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
 import { BaseVault } from "../BaseVault.sol";
-import { IWormhole } from "../interfaces/IWormhole.sol";
 import { BridgeEscrow } from "../BridgeEscrow.sol";
-import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 import { DetailedShare } from "./Detailed.sol";
 import { L2WormholeRouter } from "./L2WormholeRouter.sol";
 import { IERC4626 } from "../interfaces/IERC4626.sol";
@@ -79,7 +77,6 @@ contract L2Vault is
     function initialize(
         address _governance,
         ERC20 _token,
-        IWormhole _wormhole,
         L2WormholeRouter _wormholeRouter,
         BridgeEscrow _BridgeEscrow,
         EmergencyWithdrawalQueue _emergencyWithdrawalQueue,
@@ -91,7 +88,7 @@ contract L2Vault is
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
         __Pausable_init();
-        BaseVault.baseInitialize(_governance, _token, _wormhole, _BridgeEscrow);
+        BaseVault.baseInitialize(_governance, _token, _BridgeEscrow);
 
         wormholeRouter = _wormholeRouter;
         emergencyWithdrawalQueue = _emergencyWithdrawalQueue;

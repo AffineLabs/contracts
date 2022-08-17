@@ -5,7 +5,6 @@ import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
 import { BaseVault } from "../BaseVault.sol";
-import { IWormhole } from "../interfaces/IWormhole.sol";
 import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
 import { L1Vault } from "../ethereum/L1Vault.sol";
 import { BridgeEscrow } from "../BridgeEscrow.sol";
@@ -30,7 +29,6 @@ contract Deploy is Test {
         vault.initialize(
             governance, // governance
             asset, // asset
-            IWormhole(address(0)), // wormhole
             new L2WormholeRouter(),
             escrow,
             emergencyWithdrawalQueue,
@@ -57,7 +55,6 @@ contract Deploy is Test {
         vault.initialize(
             governance, // governance
             asset, // asset
-            IWormhole(address(0)), // wormhole,
             new L1WormholeRouter(), // wormhole router
             BridgeEscrow(address(0)),
             IRootChainManager(address(0)), // chain manager

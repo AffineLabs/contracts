@@ -28,12 +28,10 @@ contract BaseVaultLiquidate is BaseVault {
     function baseInitialize(
         address _governance,
         ERC20 vaultAsset,
-        IWormhole _wormhole,
         BridgeEscrow _bridgeEscrow
     ) public override {
         governance = _governance;
         _asset = vaultAsset;
-        wormhole = _wormhole;
 
         // All roles use the default admin role
         // governance has the admin role and can grant/remove a role to any account
@@ -58,7 +56,6 @@ contract BaseVaultTest is TestPlus {
         vault.baseInitialize(
             address(this), // governance
             token, // token
-            IWormhole(address(0)), // wormhole
             BridgeEscrow(address(0))
         );
     }
