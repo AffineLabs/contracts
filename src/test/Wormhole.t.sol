@@ -68,7 +68,7 @@ contract L2WormholeRouterTest is TestPlus {
         IWormhole.VM memory vaa1;
         vaa1.emitterChainId = uint16(0);
         vaa1.emitterAddress = bytes32(uint256(uint160(otherLayerRouter)));
-        emit log_named_bytes32("left padded addr: ", bytes32(uint256(uint160(makeAddr("otherLayerRouter")))));
+        emit log_named_bytes32("left padded addr: ", bytes32(uint256(uint160(otherLayerRouter))));
         vm.expectRevert("Wrong emitter chain");
         mockRouter.validateWormholeMessageEmitter(vaa1);
 
@@ -209,5 +209,113 @@ contract L2WormholeRouterTest is TestPlus {
         router.receiveFunds("foo");
 
         // The other invariants are the same as receiveFunds()
+    }
+}
+
+contract L1WormholeRouterTest is TestPlus {
+    using stdStorage for StdStorage;
+    L1WormholeRouter router;
+    L1Vault vault;
+    address rebalancer = governance;
+
+    function setUp() public {
+        vm.createSelectFork("ethereum", 14971385);
+        vault = Deploy.deployL1Vault();
+        router = vault.wormholeRouter();
+
+        // See https://book.wormhole.com/reference/contracts.html for addresses
+        router.initialize(IWormhole(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B), vault, address(0), uint16(0));
+    }
+
+    function testReportTVL() public {
+        // Only invariant is that the vault is the only caller
+        vm.prank(alice);
+        vm.expectRevert("Only vault");
+        router.reportTVL(0, false);
+
+        uint256 tvl = 50_000;
+        bool received = true;
+        bytes memory payload = abi.encode(Constants.L1_TVL, tvl, received);
+        vm.expectCall(
+            address(router.wormhole()),
+            abi.encodeCall(IWormhole.publishMessage, (uint32(0), payload, router.consistencyLevel()))
+        );
+
+        vm.prank(address(vault));
+        router.reportTVL(tvl, received);
+    }
+
+    function testReportTransferredFund() public {
+        // Only invariant is that the vault is the only caller
+        vm.prank(alice);
+        vm.expectRevert("Only vault");
+        router.reportTransferredFund(0);
+
+        uint256 requestAmount = 100;
+        bytes memory payload = abi.encode(Constants.L1_FUND_TRANSFER_REPORT, requestAmount);
+        vm.expectCall(
+            address(router.wormhole()),
+            abi.encodeCall(IWormhole.publishMessage, (uint32(0), payload, router.consistencyLevel()))
+        );
+
+        vm.prank(address(vault));
+        router.reportTransferredFund(requestAmount);
+    }
+
+    function testReceiveFunds() public {
+        // Only invariant is that the vault is the only caller
+        vm.prank(alice);
+        vm.expectRevert("Only Rebalancer");
+        router.receiveFunds("", "");
+
+        uint256 l2TransferAmount = 500;
+
+        // Mock call to wormhole.parseAndVerifyVM()
+        IWormhole.VM memory vaa;
+        vaa.nonce = 2;
+        vaa.payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, l2TransferAmount);
+
+        bytes memory fakeVAA = bytes("VAA_FROM_L2_TRANSFER");
+        vm.mockCall(
+            address(router.wormhole()),
+            abi.encodeCall(IWormhole.parseAndVerifyVM, (fakeVAA)),
+            abi.encode(vaa, true, "")
+        );
+
+        // We use an empty exitProof since we are just going to mock the call to the bridgeEscrow
+        bytes memory clearFundData = abi.encodeCall(vault.bridgeEscrow().l1ClearFund, (l2TransferAmount, ""));
+        vm.mockCall(address(vault.bridgeEscrow()), clearFundData, "");
+        vm.expectCall(address(vault.bridgeEscrow()), clearFundData);
+        vm.prank(rebalancer);
+        router.receiveFunds(fakeVAA, "");
+
+        // Nonce is updated
+        assertEq(router.nextValidNonce(), vaa.nonce + 1);
+    }
+
+    function testReceiveFundRequest() public {
+        vm.prank(alice);
+        vm.expectRevert("Only Rebalancer");
+        router.receiveFundRequest("");
+
+        // Mock call to wormhole.parseAndVerifyVM()
+        uint256 requestAmount = 200;
+        IWormhole.VM memory vaa;
+        vaa.payload = abi.encode(Constants.L2_FUND_REQUEST, requestAmount);
+
+        bytes memory fakeVAA = bytes("L2_FUND_REQ");
+        vm.mockCall(
+            address(router.wormhole()),
+            abi.encodeCall(IWormhole.parseAndVerifyVM, (fakeVAA)),
+            abi.encode(vaa, true, "")
+        );
+
+        // We call processFundRequest
+        // We mock the call to the above function since we it is tested separately
+        bytes memory processData = abi.encodeCall(vault.processFundRequest, (requestAmount));
+        vm.mockCall(address(vault), processData, "");
+        vm.expectCall(address(vault), processData);
+        vm.prank(rebalancer);
+        router.receiveFundRequest(fakeVAA);
     }
 }
