@@ -29,7 +29,7 @@ contract Deploy is Test {
         vault.initialize(
             governance, // governance
             asset, // asset
-            new L2WormholeRouter(),
+            address(new L2WormholeRouter()),
             escrow,
             emergencyWithdrawalQueue,
             address(0), // forwarder
@@ -37,12 +37,7 @@ contract Deploy is Test {
             1, // l2 ratio
             [uint256(0), uint256(200)] // withdrawal and AUM fees
         );
-        escrow.initialize(
-            address(vault),
-            address(vault.wormholeRouter()),
-            ERC20(vault.asset()),
-            IRootChainManager(address(0))
-        );
+        escrow.initialize(address(vault), address(vault.wormholeRouter()), asset, IRootChainManager(address(0)));
         emergencyWithdrawalQueue.linkVault(vault);
     }
 
@@ -52,14 +47,19 @@ contract Deploy is Test {
         // https://docs.polygon.technology/docs/develop/ethereum-polygon/pos/deploymenthttps://docs.polygon.technology/docs/develop/ethereum-polygon/pos/deployment
         MockERC20 asset = new MockERC20("Mock", "MT", 6);
         vault = new L1Vault();
+        BridgeEscrow escrow = new BridgeEscrow(address(this));
+        IRootChainManager manager = IRootChainManager(0xA0c68C638235ee32657e8f720a23ceC1bFc77C77);
+
         vault.initialize(
             governance, // governance
             asset, // asset
-            new L1WormholeRouter(), // wormhole router
-            BridgeEscrow(address(0)),
-            IRootChainManager(address(0)), // chain manager
+            address(new L1WormholeRouter()),
+            escrow,
+            manager, // chain manager
             0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf // predicate (eth mainnet)
         );
+
+        escrow.initialize(address(vault), address(vault.wormholeRouter()), asset, manager);
     }
 
     function deployTwoAssetBasket(ERC20 usdc) internal returns (TwoAssetBasket basket) {

@@ -18,9 +18,6 @@ import { L1WormholeRouter } from "./L1WormholeRouter.sol";
 contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     using SafeTransferLib for ERC20;
 
-    // Wormhole Router
-    L1WormholeRouter public wormholeRouter;
-
     /////// Cross chain rebalancing
     bool public received;
     IRootChainManager public chainManager;
@@ -34,15 +31,14 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     function initialize(
         address _governance,
         ERC20 _token,
-        L1WormholeRouter _wormholeRouter,
+        address _wormholeRouter,
         BridgeEscrow _bridgeEscrow,
         IRootChainManager _chainManager,
         address _predicate
     ) public initializer {
         __UUPSUpgradeable_init();
         __Pausable_init();
-        BaseVault.baseInitialize(_governance, _token, _bridgeEscrow);
-        wormholeRouter = _wormholeRouter;
+        BaseVault.baseInitialize(_governance, _token, _wormholeRouter, _bridgeEscrow);
         chainManager = _chainManager;
         predicate = _predicate;
     }
@@ -68,7 +64,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         uint256 tvl = vaultTVL();
 
         // Report TVL to L2.
-        wormholeRouter.reportTVL(tvl, received);
+        L1WormholeRouter(wormholeRouter).reportTVL(tvl, received);
 
         // If received == true then the l2-l1 bridge gets unlocked upon message reception in l2
         // Resetting this to false since we haven't received any new transfers from L2 yet
@@ -92,7 +88,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         chainManager.depositFor(address(bridgeEscrow), address(_asset), abi.encodePacked(amount));
 
         // Let L2 know how much money we sent
-        wormholeRouter.reportTransferredFund(amount);
+        L1WormholeRouter(wormholeRouter).reportTransferredFund(amount);
         emit FundTransferToL2(amount);
     }
 

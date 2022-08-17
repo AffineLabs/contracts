@@ -12,7 +12,6 @@ import { L2Vault } from "../polygon/L2Vault.sol";
 import { L1Vault } from "../ethereum/L1Vault.sol";
 import { L1WormholeRouter } from "../ethereum/L1WormholeRouter.sol";
 import { BaseStrategy } from "../BaseStrategy.sol";
-import { Deploy } from "./Deploy.sol";
 import { EmergencyWithdrawalQueue } from "../polygon/EmergencyWithdrawalQueue.sol";
 import { TestStrategy } from "./BaseVault.t.sol";
 import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
@@ -28,24 +27,15 @@ contract L1VaultTest is TestPlus {
         vm.createSelectFork("ethereum", 14971385);
         vault = Deploy.deployL1Vault();
 
-        uint256 slot = stdstore.target(address(vault)).sig("chainManager()").find();
-        bytes32 chainmanageraddr = bytes32(uint256(uint160(0xA0c68C638235ee32657e8f720a23ceC1bFc77C77)));
-        vm.store(address(vault), bytes32(slot), chainmanageraddr);
-
-        // setting bridge escrow addres to be non zero in order for deposit for to work
-        slot = stdstore.target(address(vault)).sig("bridgeEscrow()").find();
-        bytes32 bridgescrowaddr = bytes32(uint256(uint160(address(vault.wormholeRouter()))));
-        vm.store(address(vault), bytes32(slot), bridgescrowaddr);
-
         // depositFor will fail unless mapToken has been called. Let's use real ETH USDC addr (it is mapped)
         // solhint-disable-next-line max-line-length
         // https://github.com/maticnetwork/pos-portal/blob/88dbf0a88fd68fa11f7a3b9d36629930f6b93a05/contracts/root/RootChainManager/RootChainManager.sol#L169
-        slot = stdstore.target(address(vault)).sig("asset()").find();
+        uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
         bytes32 assetAddr = bytes32(uint256(uint160(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48)));
         vm.store(address(vault), bytes32(slot), assetAddr);
         asset = MockERC20(vault.asset());
 
-        vault.wormholeRouter().initialize(wormhole, vault, address(0), 1);
+        L1WormholeRouter(vault.wormholeRouter()).initialize(wormhole, vault, address(0), 1);
     }
 
     function testSendTVL() public {
