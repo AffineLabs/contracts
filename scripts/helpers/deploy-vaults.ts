@@ -61,7 +61,6 @@ export async function deployVaults(
     [
       l1Governance,
       config.l1USDC,
-      config.l1worm,
       wormholeRouters.l1WormholeRouter.address,
       bridgeEscrowAddr,
       config.l1ChainManager,
@@ -107,7 +106,6 @@ export async function deployVaults(
     [
       l2Governance,
       config.l2USDC,
-      config.l2worm,
       wormholeRouters.l2WormholeRouter.address,
       bridgeEscrowAddr,
       emergencyWithdrawalQueue.address,
