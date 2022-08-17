@@ -20,9 +20,8 @@ import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
  * strategy liquidation.
- * @dev If forking this code, do not deploy this. The contract is only non-abstract for easy testing.
  */
-contract BaseVault is Initializable, AccessControl, AffineGovernable {
+abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
     using SafeTransferLib for ERC20;
 
     /** UNDERLYING ASSET AND INITIALIZATION
