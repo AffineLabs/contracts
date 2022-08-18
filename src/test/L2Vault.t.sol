@@ -400,6 +400,43 @@ contract L2VaultTest is TestPlus {
         assertEq(asset.balanceOf(alice), oneUSDC);
     }
 
+    function testCheckEmeregencyWithdrawalQueueBeforeRedeem() public {
+        asset.mint(alice, oneUSDC);
+        uint256 halfUSDCInShare = vault.previewWithdraw(halfUSDC);
+
+        vm.startPrank(alice);
+        asset.approve(address(vault), type(uint256).max);
+        vault.deposit(oneUSDC, alice);
+
+        // simulate vault assets being transferred to L1.
+        asset.burn(address(vault), oneUSDC);
+        vm.store(
+            address(vault),
+            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(uint256(oneUSDC))
+        );
+        // Triggier emergency withdrawal queue enqueue.
+        vault.redeem(halfUSDCInShare, alice, alice);
+
+        // Simulate funds being bridged from L1 to L2 vault.
+        asset.mint(address(vault), oneUSDC);
+        vm.store(
+            address(vault),
+            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(uint256(0))
+        );
+
+        vm.expectRevert("Not enough share available in owners balance");
+        // At this point alice can redeem at most half usdc worth of vault token. So trying 
+        // to redeem half usdc worth of vault token + 1 should fail.
+        vault.redeem(halfUSDCInShare + 1, alice, alice);
+
+        vault.redeem(halfUSDCInShare, alice, alice);
+        vault.emergencyWithdrawalQueue().dequeue();
+
+        assertEq(asset.balanceOf(alice), oneUSDC);
+    }
+
     function testDetailedPrice() public {
         // This function should work even if there is nothing in the vault
         L2Vault.Number memory price = vault.detailedPrice();
