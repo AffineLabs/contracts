@@ -427,7 +427,7 @@ contract L2VaultTest is TestPlus {
         );
 
         vm.expectRevert("Not enough share available in owners balance");
-        // At this point alice can redeem at most half usdc worth of vault token. So trying 
+        // At this point alice can redeem at most half usdc worth of vault token. So trying
         // to redeem half usdc worth of vault token + 1 should fail.
         vault.redeem(halfUSDCInShare + 1, alice, alice);
 
