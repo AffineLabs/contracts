@@ -267,7 +267,7 @@ contract L2VaultTest is TestPlus {
         // Trigger emergency withdrawal as vault doesn't have any asset.
         vault.withdraw(amountAsset, user, user);
         assertEq(asset.balanceOf(user), 0);
-        
+
         // Simulate funds being bridged from L1 to L2 vault.
         asset.mint(address(vault), amountAsset);
         vm.store(
