@@ -15,9 +15,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { BaseRelayRecipient } from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
 import { BaseVault } from "../BaseVault.sol";
-import { IWormhole } from "../interfaces/IWormhole.sol";
 import { BridgeEscrow } from "../BridgeEscrow.sol";
-import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 import { DetailedShare } from "./Detailed.sol";
 import { L2WormholeRouter } from "./L2WormholeRouter.sol";
 import { IERC4626 } from "../interfaces/IERC4626.sol";
@@ -79,8 +77,7 @@ contract L2Vault is
     function initialize(
         address _governance,
         ERC20 _token,
-        IWormhole _wormhole,
-        L2WormholeRouter _wormholeRouter,
+        address _wormholeRouter,
         BridgeEscrow _BridgeEscrow,
         EmergencyWithdrawalQueue _emergencyWithdrawalQueue,
         address forwarder,
@@ -91,9 +88,8 @@ contract L2Vault is
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
         __Pausable_init();
-        BaseVault.baseInitialize(_governance, _token, _wormhole, _BridgeEscrow);
+        BaseVault.baseInitialize(_governance, _token, _wormholeRouter, _BridgeEscrow);
 
-        wormholeRouter = _wormholeRouter;
         emergencyWithdrawalQueue = _emergencyWithdrawalQueue;
         l1Ratio = _l1Ratio;
         l2Ratio = _l2Ratio;
@@ -418,9 +414,6 @@ contract L2Vault is
     /** CROSS-CHAIN REBALANCING
      **************************************************************************/
 
-    // Wormhole Router
-    L2WormholeRouter public wormholeRouter;
-
     // Represents the amount of tvl (in `token`) that should exist on L1 and L2
     // E.g. if layer1 == 1 and layer2 == 2 then 1/3 of the TVL should be on L1
     uint256 public l1Ratio;
@@ -458,7 +451,7 @@ contract L2Vault is
     event ReceiveFromL1(uint256 amount);
 
     function receiveTVL(uint256 tvl, bool received) external {
-        require(msg.sender == address(wormholeRouter), "Only wormhole router");
+        require(msg.sender == wormholeRouter, "Only wormhole router");
 
         // If L1 has received the last transfer we sent it, unlock the L2->L1 bridge
         if (received && !canTransferToL1) canTransferToL1 = true;
@@ -520,13 +513,13 @@ contract L2Vault is
         L1TotalLockedValue += amount;
 
         // Let L1 know how much money we sent
-        wormholeRouter.reportTransferredFund(amount);
+        L2WormholeRouter(wormholeRouter).reportTransferredFund(amount);
     }
 
     event RequestFromL1(uint256 amount);
 
     function _divestFromL1(uint256 amount) internal {
-        wormholeRouter.requestFunds(amount);
+        L2WormholeRouter(wormholeRouter).requestFunds(amount);
         canRequestFromL1 = false;
         emit RequestFromL1(amount);
     }

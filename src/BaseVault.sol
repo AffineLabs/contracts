@@ -10,11 +10,8 @@ import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 
 import { BaseStrategy as Strategy } from "./BaseStrategy.sol";
 import { AffineGovernable } from "./AffineGovernable.sol";
-
-import { IWormhole } from "./interfaces/IWormhole.sol";
-import { IBridgeEscrow } from "./interfaces/IBridgeEscrow.sol";
 import { BridgeEscrow } from "./BridgeEscrow.sol";
-import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
+import { WormholeRouter } from "./WormholeRouter.sol";
 
 /**
  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding
@@ -37,12 +34,12 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
     function baseInitialize(
         address _governance,
         ERC20 vaultAsset,
-        IWormhole _wormhole,
+        address _wormholeRouter,
         BridgeEscrow _bridgeEscrow
     ) public virtual onlyInitializing {
         governance = _governance;
         _asset = vaultAsset;
-        wormhole = _wormhole;
+        wormholeRouter = _wormholeRouter;
         bridgeEscrow = _bridgeEscrow;
 
         // All roles use the default admin role
@@ -54,12 +51,15 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         lastHarvest = block.timestamp;
     }
 
-    /** CROSS CHAIN MESSAGE PASSING AND REBALANCING
+    /** CROSS CHAIN REBALANCING
      **************************************************************************/
 
-    /// @notice Wormhole contract for sending/receiving messages
-    IWormhole public wormhole;
-    /// @notice A "BridgeEscrow" contract for sending and receiving `token` across a bridge
+    /**
+     * @notice A contract used for sending and receiving messages via wormhole.
+     * @dev We use an address since we need to cast this to the L1 and L2 router types.
+     */
+    address public wormholeRouter;
+    /// @notice A "BridgeEscrow" contract for sending and receiving `token` across a bridge.
     BridgeEscrow public bridgeEscrow;
 
     /** AUTHENTICATION

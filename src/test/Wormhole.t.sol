@@ -31,7 +31,7 @@ contract L2WormholeRouterTest is TestPlus {
     function setUp() public {
         vm.createSelectFork("polygon", 31824532);
         vault = Deploy.deployL2Vault();
-        router = vault.wormholeRouter();
+        router = L2WormholeRouter(vault.wormholeRouter());
 
         // See https://book.wormhole.com/reference/contracts.html for addresses
         router.initialize(IWormhole(0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7), vault, address(0), uint16(0));
@@ -242,7 +242,7 @@ contract L1WormholeRouterTest is TestPlus {
     function setUp() public {
         vm.createSelectFork("ethereum", 14971385);
         vault = Deploy.deployL1Vault();
-        router = vault.wormholeRouter();
+        router = L1WormholeRouter(vault.wormholeRouter());
 
         // See https://book.wormhole.com/reference/contracts.html for addresses
         router.initialize(IWormhole(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B), vault, address(0), uint16(0));
