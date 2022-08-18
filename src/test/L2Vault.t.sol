@@ -55,8 +55,8 @@ contract L2VaultTest is TestPlus {
         // user gives max approval to vault for asset
         asset.approve(address(vault), type(uint256).max);
         vm.expectEmit(true, true, true, true);
-        emit Deposit(address(this), address(this), amountAsset, amountAsset / 100);
-        vault.deposit(amountAsset, address(this));
+        emit Deposit(user, user, amountAsset, amountAsset / 100);
+        vault.deposit(amountAsset, user);
 
         // If vault is empty, assets are converted to shares at 100:1
         uint256 numShares = vault.balanceOf(user);
@@ -66,7 +66,7 @@ contract L2VaultTest is TestPlus {
         assertEq(asset.balanceOf(address(vault)), amountAsset);
 
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(address(this), user, user, amountAsset, amountAsset / 100);
+        emit Withdraw(user, user, user, amountAsset, amountAsset / 100);
         uint256 assetsReceived = vault.redeem(numShares, user, user);
 
         assertEq(vault.balanceOf(user), 0);
@@ -239,7 +239,6 @@ contract L2VaultTest is TestPlus {
 
     event EmergencyWithdrawalQueueEnqueue(
         uint256 indexed pos,
-        EmergencyWithdrawalQueue.RequestType requestType,
         address indexed owner,
         address indexed receiver,
         uint256 amount
@@ -250,7 +249,7 @@ contract L2VaultTest is TestPlus {
         address user = address(this);
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
-        vault.deposit(amountAsset, address(this));
+        vault.deposit(amountAsset, user);
 
         // simulate vault assets being transferred to L1.
         asset.burn(address(vault), amountAsset);
@@ -262,24 +261,21 @@ contract L2VaultTest is TestPlus {
 
         vm.startPrank(user);
 
-        if (amountAsset > 0) {
-            vm.expectEmit(true, true, false, true);
-            emit EmergencyWithdrawalQueueEnqueue(
-                1,
-                EmergencyWithdrawalQueue.RequestType.Withdraw,
-                user,
-                user,
-                amountAsset
-            );
-        }
+        vm.expectEmit(true, true, false, true);
+        emit EmergencyWithdrawalQueueEnqueue(1, user, user, vault.previewWithdraw(amountAsset));
+
         // Trigger emergency withdrawal as vault doesn't have any asset.
         vault.withdraw(amountAsset, user, user);
         assertEq(asset.balanceOf(user), 0);
+
         // Simulate funds being bridged from L1 to L2 vault.
         asset.mint(address(vault), amountAsset);
-        if (amountAsset > 0) {
-            vault.emergencyWithdrawalQueue().dequeue();
-        }
+        vm.store(
+            address(vault),
+            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(uint256(0))
+        );
+        vault.emergencyWithdrawalQueue().dequeue();
         assertEq(asset.balanceOf(user), amountAsset);
     }
 
@@ -298,12 +294,12 @@ contract L2VaultTest is TestPlus {
             bytes32(uint256(amountAsset))
         );
 
-        uint256 numShares = amountAsset / 100;
+        vm.startPrank(user);
+        uint256 numShares = vault.convertToShares(amountAsset);
         vm.expectEmit(true, true, false, true);
-        emit EmergencyWithdrawalQueueEnqueue(1, EmergencyWithdrawalQueue.RequestType.Redeem, user, user, numShares);
+        emit EmergencyWithdrawalQueueEnqueue(1, user, user, numShares);
 
         // Trigger emergency withdrawal as vault doesn't have any asset.
-        vm.startPrank(user);
         vault.redeem(numShares, user, user);
         assertEq(asset.balanceOf(user), 0);
 
