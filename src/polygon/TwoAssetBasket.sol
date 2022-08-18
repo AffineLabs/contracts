@@ -113,7 +113,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         // Get dollar amounts of btc and eth to buy
         (uint256 amountInputToBtc, uint256 amountInputToEth) = _getBuySplits(amountInput);
 
-        asset.transferFrom(_msgSender(), address(this), amountInput);
+        asset.safeTransferFrom(_msgSender(), address(this), amountInput);
         address[] memory pathBtc = new address[](2);
         pathBtc[0] = address(asset);
         pathBtc[1] = address(token1);
@@ -152,7 +152,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         // Issue shares based on dollar amounts of user coins vs total holdings of the vault
         if (totalSupply == 0) {
             // Dollars have 8 decimals, add an an extra 10 here to match the 18 that this contract uses
-            shares = dollarsReceived * 1e10;
+            shares = ((dollarsReceived * 1e10) / 100);
         } else {
             shares = (dollarsReceived * totalSupply) / vaultDollars;
         }
@@ -223,7 +223,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         _burn(owner, numShares);
 
         emit Withdraw(_msgSender(), receiver, owner, amountInput, numShares);
-        asset.transfer(receiver, inputReceived);
+        asset.safeTransfer(receiver, inputReceived);
     }
 
     /** EXCHANGE RATES
@@ -417,8 +417,8 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         uint256 sellTokenAmount = _tokensFromDollars(sellToken, Dollar.wrap(blockSize));
         uint256 buyTokenAmount = _tokensFromDollars(buyToken, Dollar.wrap(blockSize));
 
-        buyToken.transferFrom(_msgSender(), address(this), buyTokenAmount);
-        sellToken.transfer(_msgSender(), sellTokenAmount);
+        buyToken.safeTransferFrom(_msgSender(), address(this), buyTokenAmount);
+        sellToken.safeTransfer(_msgSender(), sellTokenAmount);
 
         _endAuction();
     }

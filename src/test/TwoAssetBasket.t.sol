@@ -6,7 +6,7 @@ import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { TestPlus } from "./TestPlus.sol";
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
-import { MockERC20 } from "./MockERC20.sol";
+import { MockERC20 } from "./mocks/MockERC20.sol";
 
 import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
 import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
@@ -25,7 +25,7 @@ contract BtcEthBasketTest is TestPlus {
 
     function setUp() public {
         // NOTE: using mumbai addresses
-        vm.createSelectFork("mumbai", 25804436);
+        vm.createSelectFork("mumbai", 27549248);
 
         basket = new TwoAssetBasket(
             address(this), // governance
@@ -49,21 +49,46 @@ contract BtcEthBasketTest is TestPlus {
 
     function testDepositWithdraw() public {
         // mint some usdc, can remove hardcoded selector later
-        uint256 mintAmount = 100 * 1e6;
-        bytes memory mintData = abi.encodeWithSelector(0x40c10f19, address(this), mintAmount);
-        address(usdc).call(mintData);
-        assertEq(usdc.balanceOf(address(this)), mintAmount);
-
+        uint256 mintAmount = 200 * 1e6;
+        deal(address(usdc), address(this), mintAmount, true);
         usdc.approve(address(basket), type(uint256).max);
         basket.deposit(mintAmount, address(this));
 
         // you receive the dollar value of the amount of btc/eth deposited into the basket
         // the testnet usdc/btc usdc/eth pools do not have accurate prices
         assertTrue(basket.balanceOf(address(this)) > 0);
-        emit log_named_uint("VALUE OF VAULT", Dollar.unwrap(basket.valueOfVault()));
+        uint256 vaultTVL = Dollar.unwrap(basket.valueOfVault());
+        assertEq(basket.balanceOf(address(this)), (vaultTVL * 1e10) / 100);
+
+        emit log_named_uint("VALUE OF VAULT", vaultTVL);
+        emit log_named_uint("Initial AlpLarge price: ", basket.detailedPrice().num);
 
         uint256 inputReceived = basket.withdraw((mintAmount * 90) / 100, address(this), address(this));
         emit log_named_uint("DOLLARS WITHDRAWN: ", inputReceived);
+    }
+
+    function testMaxWithdraw() public {
+        uint256 mintAmount = 100 * 1e6;
+        deal(address(usdc), alice, mintAmount, true);
+        deal(address(usdc), address(this), mintAmount, true);
+
+        vm.startPrank(alice);
+        usdc.approve(address(basket), type(uint256).max);
+        basket.deposit(mintAmount, alice);
+        vm.stopPrank();
+
+        usdc.approve(address(basket), type(uint256).max);
+        basket.deposit(mintAmount, address(this));
+
+        emit log_named_uint("alices shares: ", basket.balanceOf(alice));
+        emit log_named_uint("num shares: ", basket.balanceOf(address(this)));
+
+        // Shares are $1 but have 18 decimals. Input asset only has  6 decimals
+        // NOTE: The subtraction is not necessary when the USDC/USD price is set to 1
+        basket.withdraw(basket.balanceOf(address(this)) / 1e12 - 1e6, address(this), address(this));
+        emit log_named_uint("my shares: ", basket.balanceOf(address(this)));
+        emit log_named_uint("valueOfVault: ", Dollar.unwrap(basket.valueOfVault()));
+        emit log_named_uint("TotalSupplyOfVault: ", basket.totalSupply());
     }
 
     function testSlippageCheck() public {

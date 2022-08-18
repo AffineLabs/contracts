@@ -10,19 +10,13 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Context } from "@openzeppelin/contracts/utils/Context.sol";
 import { ContextUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
-import { IWormhole } from "../interfaces/IWormhole.sol";
-import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
-import { IWormhole } from "../interfaces/IWormhole.sol";
 import { BridgeEscrow } from "../BridgeEscrow.sol";
 import { BaseVault } from "../BaseVault.sol";
 import { L1WormholeRouter } from "./L1WormholeRouter.sol";
 
 contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     using SafeTransferLib for ERC20;
-
-    // Wormhole Router
-    L1WormholeRouter public wormholeRouter;
 
     /////// Cross chain rebalancing
     bool public received;
@@ -37,16 +31,14 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     function initialize(
         address _governance,
         ERC20 _token,
-        IWormhole _wormhole,
-        L1WormholeRouter _wormholeRouter,
+        address _wormholeRouter,
         BridgeEscrow _bridgeEscrow,
         IRootChainManager _chainManager,
         address _predicate
     ) public initializer {
         __UUPSUpgradeable_init();
         __Pausable_init();
-        BaseVault.baseInitialize(_governance, _token, _wormhole, _bridgeEscrow);
-        wormholeRouter = _wormholeRouter;
+        BaseVault.baseInitialize(_governance, _token, _wormholeRouter, _bridgeEscrow);
         chainManager = _chainManager;
         predicate = _predicate;
     }
@@ -61,15 +53,23 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
+    /// @dev The L1Vault's profit does not need to unlock over time, because users to do not transact with it
+    function lockedProfit() public pure override returns (uint256) {
+        return 0;
+    }
+
+    event SendTVL(uint256 tvl);
+
     function sendTVL() external onlyRole(rebalancerRole) {
         uint256 tvl = vaultTVL();
 
         // Report TVL to L2.
-        wormholeRouter.reportTVL(tvl, received);
+        L1WormholeRouter(wormholeRouter).reportTVL(tvl, received);
 
         // If received == true then the l2-l1 bridge gets unlocked upon message reception in l2
         // Resetting this to false since we haven't received any new transfers from L2 yet
         if (received) received = false;
+        emit SendTVL(tvl);
     }
 
     // Process a request for funds from L2 vault
@@ -80,13 +80,16 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         _transferFundsToL2(amountToSend);
     }
 
+    event FundTransferToL2(uint256 amount);
+
     // Send `asset` to L2 BridgeEscrow via polygon bridge
     function _transferFundsToL2(uint256 amount) internal {
         _asset.safeApprove(predicate, amount);
         chainManager.depositFor(address(bridgeEscrow), address(_asset), abi.encodePacked(amount));
 
         // Let L2 know how much money we sent
-        wormholeRouter.reportTransferredFund(amount);
+        L1WormholeRouter(wormholeRouter).reportTransferredFund(amount);
+        emit FundTransferToL2(amount);
     }
 
     function afterReceive() external {

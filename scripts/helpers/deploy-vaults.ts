@@ -61,7 +61,6 @@ export async function deployVaults(
     [
       l1Governance,
       config.l1USDC,
-      config.l1worm,
       wormholeRouters.l1WormholeRouter.address,
       bridgeEscrowAddr,
       config.l1ChainManager,
@@ -72,6 +71,8 @@ export async function deployVaults(
   await l1Vault.deployed();
   await addToAddressBookAndDefender(ETH_GOERLI, `EthAlpSave`, "L1Vault", l1Vault);
   logContractDeploymentInfo(ethNetworkName, "L1Vault", l1Vault);
+
+  console.log("Initializing L1 Escrow: ");
 
   // Initialize bridgeEscrow
   let bridgeEscrow = BridgeEscrow__factory.connect(bridgeEscrowAddr, deployerSigner);
@@ -91,6 +92,7 @@ export async function deployVaults(
   [deployerSigner] = await ethers.getSigners();
 
   // Deploy bridgeEscrow
+  console.log("Deploying L2 Escrow");
   create2 = ICreate2Deployer__factory.connect(config.create2Deployer, deployerSigner);
   stagindDeployTx = await create2.deploy(0, salt, bridgeEscrowCreationCode);
   await stagindDeployTx.wait();
@@ -104,7 +106,6 @@ export async function deployVaults(
     [
       l2Governance,
       config.l2USDC,
-      config.l2worm,
       wormholeRouters.l2WormholeRouter.address,
       bridgeEscrowAddr,
       emergencyWithdrawalQueue.address,

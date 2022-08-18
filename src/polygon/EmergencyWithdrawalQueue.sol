@@ -86,7 +86,11 @@ contract EmergencyWithdrawalQueue is AccessControl {
         WithdrawalRequest memory withdrawalRequest = queue[headPtr];
         delete queue[headPtr];
         shareDebt -= withdrawalRequest.shares;
-        vault.redeemByEmergencyWithdrawalQueue(withdrawalRequest.shares, withdrawalRequest.receiver, withdrawalRequest.owner);
+        vault.redeemByEmergencyWithdrawalQueue(
+            withdrawalRequest.shares,
+            withdrawalRequest.receiver,
+            withdrawalRequest.owner
+        );
         emit EmergencyWithdrawalQueueDequeue(
             headPtr,
             withdrawalRequest.owner,
@@ -105,7 +109,11 @@ contract EmergencyWithdrawalQueue is AccessControl {
             WithdrawalRequest memory withdrawalRequest = queue[ptr];
             delete queue[ptr];
             shareDebtReduction += withdrawalRequest.shares;
-            vault.redeemByEmergencyWithdrawalQueue(withdrawalRequest.shares, withdrawalRequest.receiver, withdrawalRequest.owner);
+            vault.redeemByEmergencyWithdrawalQueue(
+                withdrawalRequest.shares,
+                withdrawalRequest.receiver,
+                withdrawalRequest.owner
+            );
             emit EmergencyWithdrawalQueueDequeue(
                 headPtr,
                 withdrawalRequest.owner,

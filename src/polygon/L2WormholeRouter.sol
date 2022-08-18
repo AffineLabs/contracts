@@ -41,22 +41,19 @@ contract L2WormholeRouter is WormholeRouter {
         wormhole.publishMessage(uint32(sequence), payload, consistencyLevel);
     }
 
-    function validateWormholeMessageEmitter(IWormhole.VM memory vm) internal view {
-        require(vm.emitterAddress == bytes32(uint256(uint160(otherLayerRouter))), "Wrong emitter address");
-        require(vm.emitterChainId == otherLayerChainId, "Message emitted from wrong chain");
-    }
+    event TransferFromL1(uint256 amount);
 
     function receiveFunds(bytes calldata message) external {
         require(vault.hasRole(vault.rebalancerRole(), msg.sender), "Only Rebalancer");
 
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
-        validateWormholeMessageEmitter(vm);
-        require(vm.nonce >= nextVaildNonce, "Old transaction");
-        nextVaildNonce = vm.nonce + 1;
+        _validateWormholeMessageEmitter(vm);
+        nextValidNonce = vm.nonce + 1;
         (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
         require(msgType == Constants.L1_FUND_TRANSFER_REPORT);
         vault.bridgeEscrow().l2ClearFund(amount);
+        emit TransferFromL1(amount);
     }
 
     function receiveTVL(bytes calldata message) external {
@@ -64,9 +61,8 @@ contract L2WormholeRouter is WormholeRouter {
 
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
-        validateWormholeMessageEmitter(vm);
-        require(vm.nonce >= nextVaildNonce, "Old TVL");
-        nextVaildNonce = vm.nonce + 1;
+        _validateWormholeMessageEmitter(vm);
+        nextValidNonce = vm.nonce + 1;
         (bytes32 msgType, uint256 tvl, bool received) = abi.decode(vm.payload, (bytes32, uint256, bool));
         require(msgType == Constants.L1_TVL, "Not a TVL message");
         L2Vault(address(vault)).receiveTVL(tvl, received);

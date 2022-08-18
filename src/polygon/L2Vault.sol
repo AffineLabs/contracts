@@ -15,9 +15,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { BaseRelayRecipient } from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
 import { BaseVault } from "../BaseVault.sol";
-import { IWormhole } from "../interfaces/IWormhole.sol";
 import { BridgeEscrow } from "../BridgeEscrow.sol";
-import { ICreate2Deployer } from "../interfaces/ICreate2Deployer.sol";
 import { DetailedShare } from "./Detailed.sol";
 import { L2WormholeRouter } from "./L2WormholeRouter.sol";
 import { IERC4626 } from "../interfaces/IERC4626.sol";
@@ -79,8 +77,7 @@ contract L2Vault is
     function initialize(
         address _governance,
         ERC20 _token,
-        IWormhole _wormhole,
-        L2WormholeRouter _wormholeRouter,
+        address _wormholeRouter,
         BridgeEscrow _BridgeEscrow,
         EmergencyWithdrawalQueue _emergencyWithdrawalQueue,
         address forwarder,
@@ -91,9 +88,8 @@ contract L2Vault is
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
         __Pausable_init();
-        BaseVault.baseInitialize(_governance, _token, _wormhole, _BridgeEscrow);
+        BaseVault.baseInitialize(_governance, _token, _wormholeRouter, _BridgeEscrow);
 
-        wormholeRouter = _wormholeRouter;
         emergencyWithdrawalQueue = _emergencyWithdrawalQueue;
         l1Ratio = _l1Ratio;
         l2Ratio = _l2Ratio;
@@ -162,7 +158,8 @@ contract L2Vault is
      **************************************************************************/
     /// @notice See {IERC4262-deposit}
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
-        shares = convertToShares(assets);
+        shares = previewDeposit(assets);
+        require(shares > 0, "MIN_DEPOSIT_ERR");
         address caller = _msgSender();
 
         _asset.safeTransferFrom(caller, address(this), assets);
@@ -309,8 +306,10 @@ contract L2Vault is
     /// @dev In previewDeposit we want to round down, but in previewWithdraw we want to round up
     function _convertToShares(uint256 assets, Rounding roundingDirection) internal view returns (uint256 shares) {
         uint256 totalShares = totalSupply();
+        // E.g. for USDC, we want the initial price of a share to be $100.
+        // Apparently testnet users confused AlpSave with a stablecoin
         if (totalShares == 0) {
-            shares = assets;
+            shares = assets / 100;
         } else {
             if (roundingDirection == Rounding.Up) {
                 shares = assets.mulDivUp(totalShares, totalAssets());
@@ -329,7 +328,8 @@ contract L2Vault is
     function _convertToAssets(uint256 shares, Rounding roundingDirection) internal view returns (uint256 assets) {
         uint256 totalShares = totalSupply();
         if (totalShares == 0) {
-            assets = 0;
+            // see _convertToShares
+            assets = shares * 100;
         } else {
             if (roundingDirection == Rounding.Up) {
                 assets = shares.mulDivUp(totalAssets(), totalShares);
@@ -399,9 +399,6 @@ contract L2Vault is
     /** CROSS-CHAIN REBALANCING
      **************************************************************************/
 
-    // Wormhole Router
-    L2WormholeRouter public wormholeRouter;
-
     // Represents the amount of tvl (in `token`) that should exist on L1 and L2
     // E.g. if layer1 == 1 and layer2 == 2 then 1/3 of the TVL should be on L1
     uint256 public l1Ratio;
@@ -435,11 +432,11 @@ contract L2Vault is
     bool public canTransferToL1;
     bool public canRequestFromL1;
 
-    event SendToL1(uint256 amount);
+    event TransferToL1(uint256 amount);
     event ReceiveFromL1(uint256 amount);
 
     function receiveTVL(uint256 tvl, bool received) external {
-        require(msg.sender == address(wormholeRouter), "Only wormhole router");
+        require(msg.sender == wormholeRouter, "Only wormhole router");
 
         // If L1 has received the last transfer we sent it, unlock the L2->L1 bridge
         if (received && !canTransferToL1) canTransferToL1 = true;
@@ -493,7 +490,7 @@ contract L2Vault is
         // Send token
         _asset.safeTransfer(address(bridgeEscrow), amount);
         bridgeEscrow.l2Withdraw(amount);
-        emit SendToL1(amount);
+        emit TransferToL1(amount);
 
         // Update bridge state and L1 TVL
         // It's important to update this number now so that totalAssets() returns a smaller number
@@ -501,12 +498,15 @@ contract L2Vault is
         L1TotalLockedValue += amount;
 
         // Let L1 know how much money we sent
-        wormholeRouter.reportTransferredFund(amount);
+        L2WormholeRouter(wormholeRouter).reportTransferredFund(amount);
     }
 
+    event RequestFromL1(uint256 amount);
+
     function _divestFromL1(uint256 amount) internal {
-        wormholeRouter.requestFunds(amount);
+        L2WormholeRouter(wormholeRouter).requestFunds(amount);
         canRequestFromL1 = false;
+        emit RequestFromL1(amount);
     }
 
     function afterReceive(uint256 amount) external {

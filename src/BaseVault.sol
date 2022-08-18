@@ -10,19 +10,15 @@ import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 
 import { BaseStrategy as Strategy } from "./BaseStrategy.sol";
 import { AffineGovernable } from "./AffineGovernable.sol";
-
-import { IWormhole } from "./interfaces/IWormhole.sol";
-import { IBridgeEscrow } from "./interfaces/IBridgeEscrow.sol";
 import { BridgeEscrow } from "./BridgeEscrow.sol";
-import { ICreate2Deployer } from "./interfaces/ICreate2Deployer.sol";
+import { WormholeRouter } from "./WormholeRouter.sol";
 
 /**
  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
  * strategy liquidation.
- * @dev If forking this code, do not deploy this. The contract is only non-abstract for easy testing.
  */
-contract BaseVault is Initializable, AccessControl, AffineGovernable {
+abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
     using SafeTransferLib for ERC20;
 
     /** UNDERLYING ASSET AND INITIALIZATION
@@ -38,12 +34,12 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
     function baseInitialize(
         address _governance,
         ERC20 vaultAsset,
-        IWormhole _wormhole,
+        address _wormholeRouter,
         BridgeEscrow _bridgeEscrow
     ) public virtual onlyInitializing {
         governance = _governance;
         _asset = vaultAsset;
-        wormhole = _wormhole;
+        wormholeRouter = _wormholeRouter;
         bridgeEscrow = _bridgeEscrow;
 
         // All roles use the default admin role
@@ -51,16 +47,19 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
         _grantRole(harvesterRole, governance);
         _grantRole(queueOperatorRole, governance);
-
+        _grantRole(rebalancerRole, governance);
         lastHarvest = block.timestamp;
     }
 
-    /** CROSS CHAIN MESSAGE PASSING AND REBALANCING
+    /** CROSS CHAIN REBALANCING
      **************************************************************************/
 
-    /// @notice Wormhole contract for sending/receiving messages
-    IWormhole public wormhole;
-    /// @notice A "BridgeEscrow" contract for sending and receiving `token` across a bridge
+    /**
+     * @notice A contract used for sending and receiving messages via wormhole.
+     * @dev We use an address since we need to cast this to the L1 and L2 router types.
+     */
+    address public wormholeRouter;
+    /// @notice A "BridgeEscrow" contract for sending and receiving `token` across a bridge.
     BridgeEscrow public bridgeEscrow;
 
     /** AUTHENTICATION
@@ -191,7 +190,7 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
         _organizeWithdrawalQueue();
     }
 
-    /// @notice A helper function for increasing `totalBps`. Used when adding strategies or updating strategy allocations
+    /// @notice A helper function for increasing `totalBps`. Used when adding strategies or updating strategy allocs
     function _increaseTVLBps(uint256 tvlBps) internal {
         uint256 newTotalBps = totalBps + tvlBps;
         require(newTotalBps <= MAX_BPS, "TVL_ALLOC_TOO_BIG");
@@ -432,7 +431,7 @@ contract BaseVault is Initializable, AccessControl, AffineGovernable {
      * @notice Current locked profit amount.
      * @dev Profit unlocks uniformly over `lockInterval` seconds after the last harvest
      */
-    function lockedProfit() public view returns (uint256) {
+    function lockedProfit() public view virtual returns (uint256) {
         if (block.timestamp >= lastHarvest + lockInterval) return 0;
 
         uint256 unlockedProfit = (maxLockedProfit * (block.timestamp - lastHarvest)) / lockInterval;

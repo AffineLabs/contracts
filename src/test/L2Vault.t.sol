@@ -4,7 +4,8 @@ pragma solidity ^0.8.13;
 import { TestPlus } from "./TestPlus.sol";
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
-import { MockERC20 } from "./MockERC20.sol";
+import { MockERC20 } from "./mocks/MockERC20.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
 import { BaseStrategy } from "../BaseStrategy.sol";
@@ -39,12 +40,14 @@ contract L2VaultTest is TestPlus {
     );
 
     function testDeploy() public {
+        assertEq(vault.decimals(), asset.decimals());
         // this makes sure that the first time we assess management fees we get a reasonable number
         // since management fees are calculated based on block.timestamp - lastHarvest
         assertEq(vault.lastHarvest(), block.timestamp);
     }
 
     function testDepositRedeem(uint128 amountAsset) public {
+        vm.assume(amountAsset > 99);
         // Running into overflow issues on the call to vault.redeem
         address user = address(this);
         asset.mint(user, amountAsset);
@@ -52,17 +55,18 @@ contract L2VaultTest is TestPlus {
         // user gives max approval to vault for asset
         asset.approve(address(vault), type(uint256).max);
         vm.expectEmit(true, true, true, true);
-        emit Deposit(address(this), address(this), amountAsset, amountAsset);
+        emit Deposit(address(this), address(this), amountAsset, amountAsset / 100);
         vault.deposit(amountAsset, address(this));
 
-        // If vault is empty, assets are converted to shares at 1:1
+        // If vault is empty, assets are converted to shares at 100:1
         uint256 numShares = vault.balanceOf(user);
-        assertEq(numShares, amountAsset);
+        uint256 expectedShares = amountAsset / 100;
+        assertEq(numShares, expectedShares);
         assertEq(asset.balanceOf(address(user)), 0);
         assertEq(asset.balanceOf(address(vault)), amountAsset);
 
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(address(this), user, user, amountAsset, amountAsset);
+        emit Withdraw(address(this), user, user, amountAsset, amountAsset / 100);
         uint256 assetsReceived = vault.redeem(numShares, user, user);
 
         assertEq(vault.balanceOf(user), 0);
@@ -70,25 +74,38 @@ contract L2VaultTest is TestPlus {
     }
 
     function testDepositWithdraw(uint128 amountAsset) public {
-        // Using a uint64 since we multiply totalSupply by amountAsset in sharesFromTokens
-        // Using a uint64 makes sure the calculation will not overflow
+        vm.assume(amountAsset > 99);
+        // Using a uint128 since we multiply totalSupply by amountAsset in sharesFromTokens
+        // Using a uint128 makes sure the calculation will not overflow
         address user = address(this);
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
 
         vm.expectEmit(true, true, true, true);
-        emit Deposit(address(this), address(this), amountAsset, amountAsset);
-        vault.deposit(amountAsset, address(this));
+        emit Deposit(address(this), address(this), amountAsset, amountAsset / 100);
+        vault.deposit(amountAsset, user);
 
-        // If vault is empty, assets are converted to shares at 1:1
-        assertEq(vault.balanceOf(user), amountAsset);
+        // If vault is empty, assets are converted to shares at 100:1
+        assertEq(vault.balanceOf(user), amountAsset / 100);
         assertEq(asset.balanceOf(user), 0);
 
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(address(this), address(this), address(this), amountAsset, amountAsset);
-        vault.withdraw(amountAsset, address(this), address(this));
+        emit Withdraw(user, user, user, amountAsset, amountAsset / 100);
+        vault.withdraw(amountAsset, user, user);
         assertEq(vault.balanceOf(user), 0);
         assertEq(asset.balanceOf(user), amountAsset);
+    }
+
+    function testMinDeposit() public {
+        address user = address(this);
+        asset.mint(user, 100);
+        asset.approve(address(vault), type(uint256).max);
+
+        // shares = assets / 100. If you give less than 100 in assets we revert
+        vm.expectRevert("MIN_DEPOSIT_ERR");
+        vault.deposit(99, user);
+
+        vault.deposit(100, user);
     }
 
     function testManagementFee() public {
@@ -98,6 +115,7 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.totalSupply(), 1e18);
 
         // Add this contract as a strategy
+        changePrank(governance);
         BaseStrategy myStrat = BaseStrategy(address(this));
         vault.addStrategy(myStrat, 10_000);
 
@@ -120,11 +138,12 @@ contract L2VaultTest is TestPlus {
 
         // Check that fees were assesed in the correct amounts => Management fees are sent to governance address
         // 1/2 of 2% of the vault's supply should be minted to governance
-        assertEq(vault.balanceOf(address(this)), (100 * 1e18) / 10_000);
+        assertEq(vault.balanceOf(governance), (100 * 1e18) / 10_000);
     }
 
     function testLockedProfit() public {
         // Add this contract as a strategy
+        changePrank(governance);
         BaseStrategy myStrat = BaseStrategy(address(this));
         vault.addStrategy(myStrat, 10_000);
 
@@ -150,31 +169,33 @@ contract L2VaultTest is TestPlus {
     }
 
     function testWithdrawalFee() public {
-        uint256 amountAsset = 1e18;
+        vm.prank(governance);
         vault.setWithdrawalFee(50);
 
-        address user = mkaddr("vitalik"); // vitalik
-        vm.startPrank(user);
-        asset.mint(user, amountAsset);
-        asset.approve(address(vault), type(uint256).max);
-        vault.deposit(amountAsset, user);
+        uint256 amountAsset = 1e18;
 
-        vault.redeem(vault.balanceOf(user), user, user);
-        assertEq(vault.balanceOf(user), 0);
+        changePrank(alice);
+        asset.mint(alice, amountAsset);
+        asset.approve(address(vault), type(uint256).max);
+        vault.deposit(amountAsset, alice);
+
+        vault.redeem(vault.balanceOf(alice), alice, alice);
+        assertEq(vault.balanceOf(alice), 0);
 
         // User gets the original amount with 50bps deducted
-        assertEq(asset.balanceOf(user), (amountAsset * (10_000 - 50)) / 10_000);
+        assertEq(asset.balanceOf(alice), (amountAsset * (10_000 - 50)) / 10_000);
         // Governance gets the 50bps fee
         assertEq(asset.balanceOf(vault.governance()), (amountAsset * 50) / 10_000);
     }
 
     function testSettingFees() public {
+        changePrank(governance);
         vault.setManagementFee(300);
         assertEq(vault.managementFee(), 300);
         vault.setWithdrawalFee(10);
         assertEq(vault.withdrawalFee(), 10);
 
-        vm.startPrank(0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045);
+        changePrank(alice);
         vm.expectRevert("Only Governance.");
         vault.setManagementFee(300);
         vm.expectRevert("Only Governance.");
@@ -182,6 +203,7 @@ contract L2VaultTest is TestPlus {
     }
 
     function testVaultPause() public {
+        changePrank(governance);
         vault.pause();
 
         vm.expectRevert("Pausable: paused");
@@ -191,7 +213,28 @@ contract L2VaultTest is TestPlus {
         vault.withdraw(1e18, address(this), address(this));
 
         vault.unpause();
+
+        vm.stopPrank();
         testDepositWithdraw(1e18);
+
+        // Only the harvesterRole address can call pause or unpause
+        string memory errString = string(
+            abi.encodePacked(
+                "AccessControl: account ",
+                Strings.toHexString(uint160(alice), 20),
+                " is missing role ",
+                Strings.toHexString(uint256(vault.harvesterRole()), 32)
+            )
+        );
+
+        bytes memory errorMsg = abi.encodePacked(errString);
+
+        vm.expectRevert(errorMsg);
+        changePrank(alice);
+        vault.pause();
+
+        vm.expectRevert(errorMsg);
+        vault.unpause();
     }
 
     event EmergencyWithdrawalQueueEnqueue(
@@ -202,6 +245,7 @@ contract L2VaultTest is TestPlus {
     );
 
     function testEmergencyWithdrawal(uint128 amountAsset) public {
+        vm.assume(amountAsset > 99);
         address user = address(this);
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
@@ -219,12 +263,7 @@ contract L2VaultTest is TestPlus {
 
         if (amountAsset > 0) {
             vm.expectEmit(true, true, false, true);
-            emit EmergencyWithdrawalQueueEnqueue(
-                1,
-                user,
-                user,
-                amountAsset
-            );
+            emit EmergencyWithdrawalQueueEnqueue(1, user, user, amountAsset);
         }
         // Trigger emergency withdrawal as vault doesn't have any asset.
         vault.withdraw(amountAsset, user, user);
@@ -238,10 +277,11 @@ contract L2VaultTest is TestPlus {
     }
 
     function testEmergencyWithdrawalWithRedeem(uint128 amountAsset) public {
+        vm.assume(amountAsset > 99);
         address user = address(this);
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
-        vault.deposit(amountAsset, address(this));
+        vault.deposit(amountAsset, user);
 
         // simulate vault assets being transferred to L1.
         asset.burn(address(vault), amountAsset);
@@ -252,17 +292,13 @@ contract L2VaultTest is TestPlus {
         );
 
         vm.startPrank(user);
-        if (amountAsset > 0) {
-            vm.expectEmit(true, true, false, true);
-            emit EmergencyWithdrawalQueueEnqueue(
-                1,
-                user,
-                user,
-                amountAsset
-            );
-        }
+        uint256 numShares = amountAsset / 100;
+        vm.expectEmit(true, true, false, true);
+        emit EmergencyWithdrawalQueueEnqueue(1, user, user, numShares);
+
         // Trigger emergency withdrawal as vault doesn't have any asset.
-        vault.redeem(amountAsset, user, user);
+        vm.startPrank(user);
+        vault.redeem(numShares, user, user);
         assertEq(asset.balanceOf(user), 0);
 
         // Simulate funds being bridged from L1 to L2 vault.
@@ -272,9 +308,9 @@ contract L2VaultTest is TestPlus {
             bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
             bytes32(uint256(0))
         );
-        if (amountAsset > 0) {
-            vault.emergencyWithdrawalQueue().dequeue();
-        }
+
+        vault.emergencyWithdrawalQueue().dequeue();
+
         assertEq(asset.balanceOf(user), amountAsset);
     }
 
@@ -336,26 +372,30 @@ contract L2VaultTest is TestPlus {
 
         vault.deposit(1e18, user);
         asset.transfer(address(vault), 1e18);
+
+        // initial price is $100, but if we increase tvl by two it will be 200
         L2Vault.Number memory price2 = vault.detailedPrice();
-        assertEq(price2.num, 2 * 10**vault.decimals());
+        assertEq(price2.num, 200 * 10**vault.decimals());
     }
 
     function testSettingForwarder() public {
+        changePrank(governance);
         address newForwarder = 0x8f954E7D7ec3A31D9568316fb0F472B03fc2a7d5;
         vault.setTrustedForwarder(newForwarder);
         assertEq(vault.trustedForwarder(), newForwarder);
 
         // only gov can call
-        vm.prank(newForwarder);
+        changePrank(alice);
         vm.expectRevert("Only Governance.");
         vault.setTrustedForwarder(address(0));
     }
 
     function testSettingRebalanceDelta() public {
+        changePrank(governance);
         vault.setRebalanceDelta(100);
         assertEq(vault.rebalanceDelta(), 100);
 
-        vm.prank(0x8f954E7D7ec3A31D9568316fb0F472B03fc2a7d5);
+        changePrank(alice);
         vm.expectRevert("Only Governance.");
         vault.setRebalanceDelta(0);
     }

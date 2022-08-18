@@ -49,14 +49,14 @@ contract CompoundStratTest is TestPlus {
 
     function depositOneUSDCToVault() internal {
         // Give the Vault 1 usdc
-        uint256 slot = stdstore.target(address(usdc)).sig(usdc.balanceOf.selector).with_key(address(vault)).find();
-        vm.store(address(usdc), bytes32(slot), bytes32(uint256(oneUSDC)));
+        deal(address(usdc), address(vault), oneUSDC, true);
     }
 
     function investHalfOfVaultAssetInCompund() internal {
+        changePrank(governance);
         vault.addStrategy(strategy, 5_000);
-        // BridgeEscrow address is 0 in the default vault
-        vm.prank(address(0));
+
+        changePrank(address(vault.bridgeEscrow()));
         // This simulates an internal rebalance of vault assets among strategies of the
         // vault. After calling this, 5,000 bips of vault assets will be invested
         // in the aforementioed strategy and the remaining 5,000 bips will stay in vault
@@ -114,8 +114,28 @@ contract CompoundStratTest is TestPlus {
         investHalfOfVaultAssetInCompund();
 
         uint256 tvl = strategy.totalLockedValue();
-        vm.prank(address(vault));
+
+        changePrank(address(vault));
         strategy.divest(tvl);
         assertInRange(usdc.balanceOf(address(vault)), oneUSDC - 1, oneUSDC);
+    }
+
+    function testStrategyDivestsOnlyAmountNeeded() public {
+        // If the strategy already already has money, we only withdraw amountRequested - current money
+
+        // Give the strategy 1 usdc and 2 usdc worth of cTokens
+        deal(address(usdc), address(strategy), 3e6, false);
+
+        vm.startPrank(address(strategy));
+        strategy.cToken().mint(2e6);
+
+        // Divest to get 2 usdc back to vault
+        changePrank(address(vault));
+        strategy.divest(2e6);
+
+        // We only withdrew 2 - 1 == 1 usdc worth of cToken. We gave 2 usdc to the vault
+        assertEq(usdc.balanceOf(address(vault)), 2e6);
+        assertEq(usdc.balanceOf(address(strategy)), 0);
+        assertEq(strategy.underlyingBalanceOfCToken(), 1e6);
     }
 }

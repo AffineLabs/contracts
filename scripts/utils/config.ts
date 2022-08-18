@@ -5,6 +5,7 @@ import { address } from "./types";
 dotenvConfig({ path: resolve(__dirname, "./.env") });
 
 // Hardcoded Mumbai addresses and values
+// See https://docs.polygon.technology/docs/develop/ethereum-polygon/pos/deployment for more
 const ETH_USDC = "0xb465fBFE1678fF41CD3D749D54d2ee2CfABE06F3";
 const POLYGON_USDC = "0x8f7116CA03AEB48547d0E2EdD3Faa73bfB232538";
 const POLYGON_ERC20_PREDICATE = "0x37c3bfC05d5ebF9EBb3FF80ce0bd0133Bf221BC8";

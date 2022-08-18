@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import { TestPlus } from "./TestPlus.sol";
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Deploy } from "./Deploy.sol";
-import { MockERC20 } from "./MockERC20.sol";
+import { MockERC20 } from "./mocks/MockERC20.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
 import { TwoAssetBasket } from "../polygon/TwoAssetBasket.sol";
@@ -43,7 +43,7 @@ contract RouterTest is TestPlus {
         router.approve(token, address(vault), 2e6);
         router.approve(token, address(basket), 2e6);
         router.multicall(data);
-        assert(vault.balanceOf(user) == 1e6);
+        assert(vault.balanceOf(user) == 1e6 / 100);
         assert(basket.balanceOf(user) > 0);
     }
 }
