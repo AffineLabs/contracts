@@ -60,7 +60,7 @@ describe("Deploy AlpSave", async () => {
 
   it("We can upgrade the the L2 Vault", async () => {
     // deploy a new l2vault
-    const wormholeRouters = await deployWormholeRouters(
+    const oldWormholeRouters = await deployWormholeRouters(
       process.env.ETH_NETWORK || "eth-goerli-fork",
       process.env.POLYGON_NETWORK || "polygon-mumbai-fork",
     );
@@ -70,7 +70,11 @@ describe("Deploy AlpSave", async () => {
       process.env.ETH_NETWORK || "eth-goerli-fork",
       process.env.POLYGON_NETWORK || "polygon-mumbai-fork",
       config,
-      wormholeRouters,
+      oldWormholeRouters,
+    );
+    const newWormholeRouters = await deployWormholeRouters(
+      process.env.ETH_NETWORK || "eth-goerli-fork",
+      process.env.POLYGON_NETWORK || "polygon-mumbai-fork",
     );
     const { l2Vault: newL2Vault } = await deployVaults(
       config.l1Governance,
@@ -78,7 +82,7 @@ describe("Deploy AlpSave", async () => {
       process.env.ETH_NETWORK || "eth-goerli-fork",
       process.env.POLYGON_NETWORK || "polygon-mumbai-fork",
       config,
-      wormholeRouters,
+      newWormholeRouters,
     );
 
     // Both vaults actually have the same implementation address already
