@@ -29,6 +29,9 @@ contract EmergencyWithdrawalQueue is AccessControl {
     /// @notice Debt in shares unit.
     uint256 public shareDebt;
 
+    // @notice User debts in share unit
+    mapping(address => uint256) public debtToOwner;
+
     /// @notice Envents
     event EmergencyWithdrawalQueueEnqueue(
         uint256 indexed pos,
@@ -77,6 +80,7 @@ contract EmergencyWithdrawalQueue is AccessControl {
         tailPtr += 1;
         queue[tailPtr] = WithdrawalRequest(owner, receiver, shares, block.timestamp);
         shareDebt += shares;
+        debtToOwner[owner] += shares;
         emit EmergencyWithdrawalQueueEnqueue(tailPtr, owner, receiver, shares);
     }
 
@@ -86,6 +90,7 @@ contract EmergencyWithdrawalQueue is AccessControl {
         WithdrawalRequest memory withdrawalRequest = queue[headPtr];
         delete queue[headPtr];
         shareDebt -= withdrawalRequest.shares;
+        debtToOwner[withdrawalRequest.owner] -= withdrawalRequest.shares;
         vault.redeemByEmergencyWithdrawalQueue(
             withdrawalRequest.shares,
             withdrawalRequest.receiver,
@@ -109,6 +114,7 @@ contract EmergencyWithdrawalQueue is AccessControl {
             WithdrawalRequest memory withdrawalRequest = queue[ptr];
             delete queue[ptr];
             shareDebtReduction += withdrawalRequest.shares;
+            debtToOwner[withdrawalRequest.owner] -= withdrawalRequest.shares;
             vault.redeemByEmergencyWithdrawalQueue(
                 withdrawalRequest.shares,
                 withdrawalRequest.receiver,
