@@ -57,11 +57,23 @@ contract CompoundStratTest is TestPlus {
         vault.addStrategy(strategy, 5_000);
 
         changePrank(address(vault.bridgeEscrow()));
-        // This simulates an internal rebalance of vault assets among strategies of the
-        // vault. After calling this, 5,000 bips of vault assets will be invested
+        // After calling this, 5,000 bps of vault assets will be invested
         // in the aforementioed strategy and the remaining 5,000 bips will stay in vault
         // as a pile of idle USDC.
         vault.afterReceive();
+    }
+
+    function testTVL() public {
+        deal(address(usdc), address(strategy), oneUSDC, true);
+        assertEq(strategy.totalLockedValue(), oneUSDC);
+
+        depositOneUSDCToVault();
+        investHalfOfVaultAssetInCompund();
+
+        // We should have 1.5 USDC
+        // Compound might round down when reporting balanceOfUnderlying
+        // E.g. is you deposit .5 USDC (500_000) you might get (499_999) as a balanceOfUnderlying
+        assertInRange(strategy.totalLockedValue(), oneUSDC + halfUSDC - 1, oneUSDC + halfUSDC + 1);
     }
 
     function testStrategyInvest() public {
