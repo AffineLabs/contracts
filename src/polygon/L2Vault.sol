@@ -21,6 +21,8 @@ import { L2WormholeRouter } from "./L2WormholeRouter.sol";
 import { IERC4626 } from "../interfaces/IERC4626.sol";
 import { EmergencyWithdrawalQueue } from "./EmergencyWithdrawalQueue.sol";
 
+import { Test } from "forge-std/Test.sol";
+
 /**
  * @notice An L2 vault. This is a cross-chain vault, i.e. some funds deposited here will be moved to L1 for investment.
  * @dev This vault is ERC4626 compliant. See the EIP description here: https://eips.ethereum.org/EIPS/eip-4626.
@@ -33,7 +35,8 @@ contract L2Vault is
     BaseVault,
     BaseRelayRecipient,
     DetailedShare,
-    IERC4626
+    IERC4626,
+    Test
 {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -194,7 +197,7 @@ contract L2Vault is
         address owner
     ) external whenNotPaused returns (uint256 assets) {
         address caller = _msgSender();
-        require(caller == address(this.emergencyWithdrawalQueue), "Only emergency withdrawal queue");
+        require(caller == address(emergencyWithdrawalQueue), "Only emergency withdrawal queue");
 
         (uint256 assetsToUser, uint256 assetsFee) = _previewRedeem(shares);
         assets = assetsToUser;
@@ -222,7 +225,7 @@ contract L2Vault is
         assets = assetsToUser;
 
         address caller = _msgSender();
-        uint256 assetDemand = this.emergencyWithdrawalQueue.totalDebt() + assets + assetsFee;
+        uint256 assetDemand = emergencyWithdrawalQueue.totalDebt() + assets + assetsFee;
         _liquidate(assetDemand);
 
         // Add to emergency withdrawal queue if there is not enough liquidity.
@@ -256,7 +259,7 @@ contract L2Vault is
     ) external whenNotPaused returns (uint256 shares) {
         address caller = _msgSender();
 
-        uint256 assetDemand = this.emergencyWithdrawalQueue.totalDebt() + assets;
+        uint256 assetDemand = emergencyWithdrawalQueue.totalDebt() + assets;
         _liquidate(assetDemand);
 
         shares = previewWithdraw(assets);
