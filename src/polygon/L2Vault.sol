@@ -33,7 +33,7 @@ contract L2Vault is
     BaseVault,
     BaseRelayRecipient,
     DetailedShare,
-    IERC4626,
+    IERC4626
 {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
