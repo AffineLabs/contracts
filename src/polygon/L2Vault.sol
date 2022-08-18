@@ -21,8 +21,6 @@ import { L2WormholeRouter } from "./L2WormholeRouter.sol";
 import { IERC4626 } from "../interfaces/IERC4626.sol";
 import { EmergencyWithdrawalQueue } from "./EmergencyWithdrawalQueue.sol";
 
-import { Test } from "forge-std/Test.sol";
-
 /**
  * @notice An L2 vault. This is a cross-chain vault, i.e. some funds deposited here will be moved to L1 for investment.
  * @dev This vault is ERC4626 compliant. See the EIP description here: https://eips.ethereum.org/EIPS/eip-4626.
@@ -36,7 +34,6 @@ contract L2Vault is
     BaseRelayRecipient,
     DetailedShare,
     IERC4626,
-    Test
 {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
