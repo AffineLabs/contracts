@@ -6,18 +6,11 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
 import { L2Vault } from "./L2Vault.sol";
 
 contract EmergencyWithdrawalQueue is AccessControl {
-    /// @notice Enum representing type of withdrawal requests.
-    /// See {IERC4626-redeem} and {IERC4626-withdraw}
-    enum RequestType {
-        Withdraw,
-        Redeem
-    }
     /// @notice Struct representing withdrawalRequest stored in each queue node.
     struct WithdrawalRequest {
-        RequestType requestType;
         address owner;
         address receiver;
-        uint256 amount;
+        uint256 shares;
         uint256 pushTime;
     }
     /// @notice Mapping representing the queue.
@@ -33,25 +26,21 @@ contract EmergencyWithdrawalQueue is AccessControl {
     /// @notice Address of Alpine vault.
     L2Vault public vault;
 
-    /// @notice Debt in shares from redeem requests
+    /// @notice Debt in shares unit.
     uint256 public shareDebt;
-    /// @notice Debt in assets from withdraw requests
-    uint256 public assetDebt;
 
     /// @notice Envents
     event EmergencyWithdrawalQueueEnqueue(
         uint256 indexed pos,
-        RequestType requestType,
         address indexed owner,
         address indexed receiver,
-        uint256 amount
+        uint256 shares
     );
     event EmergencyWithdrawalQueueDequeue(
         uint256 indexed pos,
-        RequestType requestType,
         address indexed owner,
         address indexed receiver,
-        uint256 amount
+        uint256 shares
     );
 
     constructor(address _governance) {
@@ -76,25 +65,19 @@ contract EmergencyWithdrawalQueue is AccessControl {
 
     /// @notice total debt
     function totalDebt() public view returns (uint256) {
-        return assetDebt + vault.convertToAssets(shareDebt);
+        return vault.convertToAssets(shareDebt);
     }
 
     /// @notice enqueue user withdrawal requests to the queue.
     function enqueue(
         address owner,
         address receiver,
-        uint256 amount,
-        RequestType requestType
+        uint256 shares
     ) external onlyRole(OPERATOR_ROLE) {
         tailPtr += 1;
-        queue[tailPtr] = WithdrawalRequest(requestType, owner, receiver, amount, block.timestamp);
-        if (requestType == RequestType.Withdraw) {
-            assetDebt += amount;
-        }
-        if (requestType == RequestType.Redeem) {
-            shareDebt += amount;
-        }
-        emit EmergencyWithdrawalQueueEnqueue(tailPtr, requestType, owner, receiver, amount);
+        queue[tailPtr] = WithdrawalRequest(owner, receiver, shares, block.timestamp);
+        shareDebt += shares;
+        emit EmergencyWithdrawalQueueEnqueue(tailPtr, owner, receiver, shares);
     }
 
     /// @notice dequeue user withdrawal requests from the queue.
@@ -102,20 +85,13 @@ contract EmergencyWithdrawalQueue is AccessControl {
         require(tailPtr >= headPtr, "Queue is empty");
         WithdrawalRequest memory withdrawalRequest = queue[headPtr];
         delete queue[headPtr];
-        if (withdrawalRequest.requestType == RequestType.Withdraw) {
-            assetDebt -= withdrawalRequest.amount;
-            vault.withdraw(withdrawalRequest.amount, withdrawalRequest.receiver, withdrawalRequest.owner);
-        }
-        if (withdrawalRequest.requestType == RequestType.Redeem) {
-            shareDebt -= withdrawalRequest.amount;
-            vault.redeem(withdrawalRequest.amount, withdrawalRequest.receiver, withdrawalRequest.owner);
-        }
+        shareDebt -= withdrawalRequest.shares;
+        vault.redeemByEmergencyWithdrawalQueue(withdrawalRequest.shares, withdrawalRequest.receiver, withdrawalRequest.owner);
         emit EmergencyWithdrawalQueueDequeue(
             headPtr,
-            withdrawalRequest.requestType,
             withdrawalRequest.owner,
             withdrawalRequest.receiver,
-            withdrawalRequest.amount
+            withdrawalRequest.shares
         );
         headPtr += 1;
     }
@@ -124,31 +100,22 @@ contract EmergencyWithdrawalQueue is AccessControl {
     function dequeueBatch(uint256 batchSize) external {
         require(size() >= batchSize, "Batch size too big");
         uint256 batchTailPtr = headPtr + batchSize;
-        uint256 assetDebtReduction;
         uint256 shareDebtReduction;
         for (uint256 ptr = headPtr; ptr < batchTailPtr; ) {
             WithdrawalRequest memory withdrawalRequest = queue[ptr];
             delete queue[ptr];
-            if (withdrawalRequest.requestType == RequestType.Withdraw) {
-                assetDebtReduction += withdrawalRequest.amount;
-                vault.withdraw(withdrawalRequest.amount, withdrawalRequest.receiver, withdrawalRequest.owner);
-            }
-            if (withdrawalRequest.requestType == RequestType.Redeem) {
-                shareDebtReduction += withdrawalRequest.amount;
-                vault.redeem(withdrawalRequest.amount, withdrawalRequest.receiver, withdrawalRequest.owner);
-            }
+            shareDebtReduction += withdrawalRequest.shares;
+            vault.redeemByEmergencyWithdrawalQueue(withdrawalRequest.shares, withdrawalRequest.receiver, withdrawalRequest.owner);
             emit EmergencyWithdrawalQueueDequeue(
                 headPtr,
-                withdrawalRequest.requestType,
                 withdrawalRequest.owner,
                 withdrawalRequest.receiver,
-                withdrawalRequest.amount
+                withdrawalRequest.shares
             );
             unchecked {
                 ptr++;
             }
         }
-        assetDebt -= assetDebtReduction;
         shareDebt -= shareDebtReduction;
         headPtr += batchSize;
     }

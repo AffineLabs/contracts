@@ -196,7 +196,6 @@ contract L2VaultTest is TestPlus {
 
     event EmergencyWithdrawalQueueEnqueue(
         uint256 indexed pos,
-        EmergencyWithdrawalQueue.RequestType requestType,
         address indexed owner,
         address indexed receiver,
         uint256 amount
@@ -222,7 +221,6 @@ contract L2VaultTest is TestPlus {
             vm.expectEmit(true, true, false, true);
             emit EmergencyWithdrawalQueueEnqueue(
                 1,
-                EmergencyWithdrawalQueue.RequestType.Withdraw,
                 user,
                 user,
                 amountAsset
@@ -258,7 +256,6 @@ contract L2VaultTest is TestPlus {
             vm.expectEmit(true, true, false, true);
             emit EmergencyWithdrawalQueueEnqueue(
                 1,
-                EmergencyWithdrawalQueue.RequestType.Redeem,
                 user,
                 user,
                 amountAsset
