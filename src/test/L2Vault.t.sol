@@ -352,6 +352,7 @@ contract L2VaultTest is TestPlus {
         vault.emergencyWithdrawalQueue().dequeue();
         assertEq(asset.balanceOf(user1), halfUSDC);
 
+        // Simulate funds being bridged from L1 to L2 vault.
         asset.mint(address(vault), halfUSDC);
         vm.store(
             address(vault),
@@ -361,6 +362,42 @@ contract L2VaultTest is TestPlus {
 
         vault.emergencyWithdrawalQueue().dequeue();
         assertEq(asset.balanceOf(user2), halfUSDC);
+    }
+
+    function testCheckEmeregencyWithdrawalQueueBeforeWithdraw() public {
+        asset.mint(alice, oneUSDC);
+
+        vm.startPrank(alice);
+        asset.approve(address(vault), type(uint256).max);
+        vault.deposit(oneUSDC, alice);
+
+        // simulate vault assets being transferred to L1.
+        asset.burn(address(vault), oneUSDC);
+        vm.store(
+            address(vault),
+            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(uint256(oneUSDC))
+        );
+        // Triggier emergency withdrawal queue enqueue.
+        vault.withdraw(halfUSDC, alice, alice);
+
+        // Simulate funds being bridged from L1 to L2 vault.
+        asset.mint(address(vault), oneUSDC);
+        vm.store(
+            address(vault),
+            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(uint256(0))
+        );
+
+        vm.expectRevert("Not enough share available in owners balance");
+        // At this point alice can withdraw at most half usdc. So trying to withdraw
+        // half usdc + 1 should fail.
+        vault.withdraw(halfUSDC + 1, alice, alice);
+
+        vault.withdraw(halfUSDC, alice, alice);
+        vault.emergencyWithdrawalQueue().dequeue();
+
+        assertEq(asset.balanceOf(alice), oneUSDC);
     }
 
     function testDetailedPrice() public {
