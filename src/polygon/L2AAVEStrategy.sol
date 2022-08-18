@@ -36,10 +36,7 @@ contract L2AAVEStrategy is BaseStrategy {
     // Router for swapping reward tokens to `asset`
     IUniLikeSwapRouter public immutable router;
 
-    // The mininum amount of asset asset to trigger position adjustment
-    uint256 public minWant = 100;
     uint256 public minRewardToSell = 1e15;
-
     uint256 public constant MAX_BPS = 1e4;
     uint256 public constant PESSIMISM_FACTOR = 1000;
 
@@ -147,11 +144,6 @@ contract L2AAVEStrategy is BaseStrategy {
      **************************************************************************/
     function totalLockedValue() public view override returns (uint256) {
         uint256 balanceExcludingRewards = balanceOfAsset() + balanceOfAToken();
-
-        // if we don't have a position, don't worry about rewards
-        if (balanceExcludingRewards < minWant) {
-            return balanceExcludingRewards;
-        }
 
         uint256 rewards = (estimatedRewardsInWant() * (MAX_BPS - PESSIMISM_FACTOR)) / MAX_BPS;
 
