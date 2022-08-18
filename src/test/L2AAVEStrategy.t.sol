@@ -72,4 +72,18 @@ contract AAVEStratTest is TestPlus {
         assertEq(usdc.balanceOf(address(strategy)), 0);
         assertEq(strategy.aToken().balanceOf(address(strategy)), 1e6);
     }
+
+    function testTVL() public {
+        // Give the strategy 3 usdc
+        deal(address(usdc), address(strategy), 3e6, false);
+
+        assertEq(strategy.totalLockedValue(), 3e6);
+
+        vm.startPrank(address(strategy));
+        strategy.lendingPool().deposit(address(usdc), 2e6, address(strategy), 0);
+
+        assertEq(strategy.totalLockedValue(), 3e6);
+
+        // TODO: Make sure rewards get tested as well
+    }
 }
