@@ -19,20 +19,15 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
     EmergencyWithdrawalQueue emergencyWithdrawalQueue;
     L2Vault vault;
 
-    address user1 = address(uint160(block.timestamp + 1));
-    address user2 = address(uint160(block.timestamp + 2));
-
     event Transfer(address indexed from, address indexed to, uint256 amount);
     event EmergencyWithdrawalQueueEnqueue(
         uint256 indexed pos,
-        EmergencyWithdrawalQueue.RequestType requestType,
         address indexed owner,
         address indexed receiver,
         uint256 amount
     );
     event EmergencyWithdrawalQueueDequeue(
         uint256 indexed pos,
-        EmergencyWithdrawalQueue.RequestType requestType,
         address indexed owner,
         address indexed receiver,
         uint256 amount
@@ -50,7 +45,7 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         // Governance can link vault.
         emergencyWithdrawalQueue.linkVault(vault);
 
-        changePrank(user1);
+        changePrank(alice);
         // Anyone other than governance trying to re-link should throw error.
         vm.expectRevert(bytes("Vault is already linked"));
         emergencyWithdrawalQueue.linkVault(vault);
@@ -58,23 +53,11 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
 
     function testEnqueueSuccess() external {
         vm.expectEmit(true, true, false, true);
-        emit EmergencyWithdrawalQueueEnqueue(1, EmergencyWithdrawalQueue.RequestType.Withdraw, user2, user1, 1000);
+        emit EmergencyWithdrawalQueueEnqueue(1, bob, alice, 1000);
         // Impersonate vault
         vm.startPrank(address(vault));
         // Only vault should be able to enqueue.
-        emergencyWithdrawalQueue.enqueue(user2, user1, 1000, EmergencyWithdrawalQueue.RequestType.Withdraw);
-        vm.stopPrank();
-
-        assertEq(emergencyWithdrawalQueue.size(), 1);
-    }
-
-    function testEnqueueSuccessWithRedeem() external {
-        vm.expectEmit(true, true, false, true);
-        emit EmergencyWithdrawalQueueEnqueue(1, EmergencyWithdrawalQueue.RequestType.Redeem, user2, user1, 1000);
-        // Impersonate vault
-        vm.startPrank(address(vault));
-        // Only vault should be able to enqueue.
-        emergencyWithdrawalQueue.enqueue(user2, user1, 1000, EmergencyWithdrawalQueue.RequestType.Redeem);
+        emergencyWithdrawalQueue.enqueue(bob, alice, 1000);
         vm.stopPrank();
 
         assertEq(emergencyWithdrawalQueue.size(), 1);
@@ -92,7 +75,7 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
             )
         );
         // Only vault should be able to enqueue.
-        emergencyWithdrawalQueue.enqueue(user2, user1, 1000, EmergencyWithdrawalQueue.RequestType.Withdraw);
+        emergencyWithdrawalQueue.enqueue(bob, alice, 1000);
     }
 
     function testCorreclyEnqueueReturningUser() external {
@@ -100,16 +83,16 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         vm.startPrank(address(vault));
 
         vm.expectEmit(true, true, false, true);
-        emit EmergencyWithdrawalQueueEnqueue(1, EmergencyWithdrawalQueue.RequestType.Withdraw, user2, user1, 1000);
-        emergencyWithdrawalQueue.enqueue(user2, user1, 1000, EmergencyWithdrawalQueue.RequestType.Withdraw);
+        emit EmergencyWithdrawalQueueEnqueue(1, bob, alice, 1000);
+        emergencyWithdrawalQueue.enqueue(bob, alice, 1000);
 
         vm.expectEmit(true, true, false, true);
-        emit EmergencyWithdrawalQueueEnqueue(2, EmergencyWithdrawalQueue.RequestType.Withdraw, user1, user2, 2000);
-        emergencyWithdrawalQueue.enqueue(user1, user2, 2000, EmergencyWithdrawalQueue.RequestType.Withdraw);
+        emit EmergencyWithdrawalQueueEnqueue(2, alice, bob, 2000);
+        emergencyWithdrawalQueue.enqueue(alice, bob, 2000);
 
         vm.expectEmit(true, true, false, true);
-        emit EmergencyWithdrawalQueueEnqueue(3, EmergencyWithdrawalQueue.RequestType.Withdraw, user2, user1, 3000);
-        emergencyWithdrawalQueue.enqueue(user2, user1, 3000, EmergencyWithdrawalQueue.RequestType.Withdraw);
+        emit EmergencyWithdrawalQueueEnqueue(3, bob, alice, 3000);
+        emergencyWithdrawalQueue.enqueue(bob, alice, 3000);
 
         vm.stopPrank();
 
@@ -120,26 +103,43 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         // Impersonate vault
         vm.startPrank(address(vault));
         // Only vault should be able to enqueue.
-        emergencyWithdrawalQueue.enqueue(user2, user1, 1000, EmergencyWithdrawalQueue.RequestType.Withdraw);
-        emergencyWithdrawalQueue.enqueue(user1, user2, 2000, EmergencyWithdrawalQueue.RequestType.Redeem);
-        emergencyWithdrawalQueue.enqueue(user2, user1, 3000, EmergencyWithdrawalQueue.RequestType.Withdraw);
+        emergencyWithdrawalQueue.enqueue(bob, alice, 1000);
+        emergencyWithdrawalQueue.enqueue(alice, bob, 2000);
+        emergencyWithdrawalQueue.enqueue(bob, alice, 3000);
         vm.stopPrank();
 
-        vm.mockCall(address(vault), abi.encodeWithSelector(L2Vault.withdraw.selector), abi.encode(1000));
-        vm.mockCall(address(vault), abi.encodeWithSelector(L2Vault.redeem.selector), abi.encode(2000));
+        vm.mockCall(
+            address(vault),
+            abi.encodeWithSelector(L2Vault.redeemByEmergencyWithdrawalQueue.selector),
+            abi.encode(1000)
+        );
+        vm.mockCall(
+            address(vault),
+            abi.encodeWithSelector(L2Vault.redeemByEmergencyWithdrawalQueue.selector),
+            abi.encode(2000)
+        );
 
         vm.expectEmit(false, false, false, false);
-        emit EmergencyWithdrawalQueueDequeue(1, EmergencyWithdrawalQueue.RequestType.Withdraw, user2, user1, 1000);
-        vm.expectCall(address(vault), abi.encodeWithSelector(L2Vault.withdraw.selector, 1000, user1, user2));
+        emit EmergencyWithdrawalQueueDequeue(1, bob, alice, 1000);
+        vm.expectCall(
+            address(vault),
+            abi.encodeWithSelector(L2Vault.redeemByEmergencyWithdrawalQueue.selector, 1000, alice, bob)
+        );
         emergencyWithdrawalQueue.dequeue();
         assertEq(emergencyWithdrawalQueue.size(), 2);
 
         vm.expectEmit(false, false, false, false);
-        emit EmergencyWithdrawalQueueDequeue(2, EmergencyWithdrawalQueue.RequestType.Redeem, user1, user2, 2000);
-        vm.expectCall(address(vault), abi.encodeWithSelector(L2Vault.redeem.selector, 2000, user2, user1));
+        emit EmergencyWithdrawalQueueDequeue(2, alice, bob, 2000);
+        vm.expectCall(
+            address(vault),
+            abi.encodeWithSelector(L2Vault.redeemByEmergencyWithdrawalQueue.selector, 2000, bob, alice)
+        );
         vm.expectEmit(false, false, false, false);
-        emit EmergencyWithdrawalQueueDequeue(3, EmergencyWithdrawalQueue.RequestType.Withdraw, user2, user1, 3000);
-        vm.expectCall(address(vault), abi.encodeWithSelector(L2Vault.withdraw.selector, 3000, user1, user2));
+        emit EmergencyWithdrawalQueueDequeue(3, bob, alice, 3000);
+        vm.expectCall(
+            address(vault),
+            abi.encodeWithSelector(L2Vault.redeemByEmergencyWithdrawalQueue.selector, 3000, alice, bob)
+        );
         emergencyWithdrawalQueue.dequeueBatch(2);
         assertEq(emergencyWithdrawalQueue.size(), 0);
     }
