@@ -37,6 +37,12 @@ contract L2WormholeRouterTest is TestPlus {
         router.initialize(IWormhole(0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7), vault, address(0), uint16(0));
     }
 
+    function testReinitializeFails() public {
+        address maliciousWormhole = makeAddr("maliciousWormhole");
+        vm.expectRevert("Initializable: contract is already initialized");
+        router.initialize(IWormhole(maliciousWormhole), vault, address(0), uint16(0));
+    }
+
     function testWormholeConfigUpdates() public {
         // update wormhole address
         changePrank(governance);
@@ -246,6 +252,12 @@ contract L1WormholeRouterTest is TestPlus {
 
         // See https://book.wormhole.com/reference/contracts.html for addresses
         router.initialize(IWormhole(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B), vault, address(0), uint16(0));
+    }
+
+    function testReinitializeFails() public {
+        address maliciousWormhole = makeAddr("maliciousWormhole");
+        vm.expectRevert("Initializable: contract is already initialized");
+        router.initialize(IWormhole(maliciousWormhole), vault, address(0), uint16(0));
     }
 
     function testReportTVL() public {
