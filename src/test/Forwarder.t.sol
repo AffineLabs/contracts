@@ -24,9 +24,14 @@ contract ForwardTest is TestPlus {
     function setUp() public {
         vm.createSelectFork("mumbai", 25804436);
         vault = Deploy.deployL2Vault();
+
+        bytes32 tokenAddr = bytes32(uint256(uint160(0x8f7116CA03AEB48547d0E2EdD3Faa73bfB232538)));
+        vm.store(address(vault), bytes32(stdstore.target(address(vault)).sig("asset()").find()), tokenAddr);
+
         token = MockERC20(address(vault.asset()));
         basket = Deploy.deployTwoAssetBasket(token);
         forwarder = new Forwarder();
+
         // Update trusted forwarder in vault
         uint256 slot = stdstore.target(address(vault)).sig("trustedForwarder()").find();
         bytes32 forwarderAddr = bytes32(uint256(uint160(address(forwarder))));
@@ -117,6 +122,7 @@ contract ForwardTest is TestPlus {
         token.mint(user, 2e6);
         vm.startPrank(user);
         token.approve(address(vault), type(uint256).max);
+        token.approve(address(basket), type(uint256).max);
 
         // get transaction data for a deposit of 1 usdc to L2Vault
         MinimalForwarder.ForwardRequest memory req1 = MinimalForwarder.ForwardRequest(
@@ -127,35 +133,32 @@ contract ForwardTest is TestPlus {
             0,
             abi.encodeCall(vault.deposit, (1e6, user))
         );
-        bytes32 reqStructHash1 = getHashedReq(req1);
+
         MinimalForwarder.ForwardRequest memory req2 = MinimalForwarder.ForwardRequest(
             user,
             address(basket),
             0,
             15e6,
             1,
-            abi.encodeWithSelector(basket.startRebalance.selector)
+            abi.encodeCall(basket.deposit, (1e6, user))
         );
-        bytes32 reqStructHash2 = getHashedReq(req2);
 
         bytes32 domainSeparator = getDomainSeparator(address(forwarder));
         // sign data
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(1, toTypedDataHash(domainSeparator, reqStructHash1));
-        (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(1, toTypedDataHash(domainSeparator, reqStructHash2));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(1, toTypedDataHash(domainSeparator, getHashedReq(req1)));
+        (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(1, toTypedDataHash(domainSeparator, getHashedReq(req2)));
 
         MinimalForwarder.ForwardRequest[] memory requests = new MinimalForwarder.ForwardRequest[](2);
         requests[0] = req1;
         requests[1] = req2;
-        vm.mockCall(
-            address(0),
-            abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-            abi.encode(uint80(0), int256(1), uint256(0), uint256(0), uint80(0))
-        );
+        // vm.mockCall(
+        //     address(0),
+        //     abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
+        //     abi.encode(uint80(0), int256(1), uint256(0), uint256(0), uint80(0))
+        // );
         forwarder.executeBatch(requests, abi.encodePacked(r, s, v, r2, s2, v2));
 
         assertEq(vault.balanceOf(user), 1e6 / 100);
-
-        // startrebalance will do nothing
-        assertTrue(basket.isRebalancing() == false);
+        assertTrue(basket.balanceOf(user) > 0);
     }
 }

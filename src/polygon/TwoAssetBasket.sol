@@ -18,8 +18,6 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
     using SafeTransferLib for ERC20;
 
     // The token which we take in to buy token1 and token2, e.g. USDC
-    // NOTE: Assuming that asset is $1 for now
-    // TODO: allow component tokens to be bought using any token that has a USD price oracle
     ERC20 public asset;
     ERC20 public token1;
     ERC20 public token2;
@@ -34,19 +32,14 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
     constructor(
         address _governance,
         address forwarder,
-        uint256 _rebalanceDelta,
-        uint256 _blockSize,
         IUniLikeSwapRouter _uniRouter,
         ERC20 _input,
         ERC20[2] memory _tokens,
         uint256[2] memory _ratios,
         AggregatorV3Interface[3] memory _priceFeeds
     ) ERC20("Alpine Large Vault Token", "alpLarge", _tokens[0].decimals()) {
-        require(_rebalanceDelta >= _blockSize, "DELTA_TOO_SMALL");
         governance = _governance;
         _setTrustedForwarder(forwarder);
-        rebalanceDelta = _rebalanceDelta;
-        blockSize = _blockSize;
         (token1, token2) = (_tokens[0], _tokens[1]);
         asset = _input;
         ratios = _ratios;
@@ -345,94 +338,6 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         uint256 amountDollarsInt = Dollar.unwrap(amountDollars);
         uint256 tokenPrice = Dollar.unwrap(_getTokenPrice(token));
         return (amountDollarsInt * oneToken) / tokenPrice;
-    }
-
-    /** AUCTIONS
-     **************************************************************************/
-
-    /// @notice The amount (in dollars that one token must be above its ideal amount before we begin to auction it off)
-    uint256 rebalanceDelta;
-
-    /// @notice Is the auction active
-    bool public isRebalancing;
-
-    /// @notice The size of each rebalancing trade
-    /// @dev This should be smaller than the rebalance delta
-    uint256 blockSize;
-    /// @notice The number of blocks left to sell in the current rebalance
-    uint256 numBlocksLeftToSell;
-    /// @notice Whether we are selling token1 or token2 (btc or eth)
-    ERC20 tokenToSell;
-
-    /// @notice Initiate the auction. This can be done by anyone since it will only proceed if
-    /// vault is significantly imbalanced
-    function startRebalance() external {
-        (bool needRebalance, uint256 numBlocks, ERC20 _tokenToSell) = _isImbalanced();
-        if (!needRebalance) return;
-        isRebalancing = true;
-        numBlocksLeftToSell = numBlocks;
-        tokenToSell = _tokenToSell;
-    }
-
-    function _isImbalanced()
-        internal
-        view
-        returns (
-            bool imbalanced,
-            uint256 numBlocks,
-            ERC20 _tokenToSell
-        )
-    {
-        (Dollar rawBtcDollars, Dollar rawEthDollars) = _valueOfVaultComponents();
-        uint256 btcDollars = Dollar.unwrap(rawBtcDollars);
-        uint256 ethDollars = Dollar.unwrap(rawEthDollars);
-
-        uint256 vaultDollars = btcDollars + ethDollars;
-
-        // See how far we are from ideal amount of Eth/Btc
-        (uint256 r1, uint256 r2) = (ratios[0], ratios[1]);
-        uint256 idealDollarsOfEth = (r2 * vaultDollars) / (r1 + r2);
-        uint256 idealDollarsOfBtc = vaultDollars - idealDollarsOfEth;
-
-        if (ethDollars > idealDollarsOfEth + rebalanceDelta) {
-            imbalanced = true;
-            numBlocks = (ethDollars - idealDollarsOfEth) / blockSize;
-            _tokenToSell = token2;
-        }
-
-        if (btcDollars > idealDollarsOfBtc + rebalanceDelta) {
-            imbalanced = true;
-            numBlocks = (btcDollars - idealDollarsOfBtc) / blockSize;
-            _tokenToSell = token1;
-        }
-    }
-
-    function rebalanceBuy() external {
-        require(isRebalancing, "NOT REBALANCING");
-        numBlocksLeftToSell -= 1;
-
-        ERC20 sellToken = tokenToSell;
-        ERC20 buyToken = sellToken == token1 ? token2 : token1;
-
-        uint256 sellTokenAmount = _tokensFromDollars(sellToken, Dollar.wrap(blockSize));
-        uint256 buyTokenAmount = _tokensFromDollars(buyToken, Dollar.wrap(blockSize));
-
-        buyToken.safeTransferFrom(_msgSender(), address(this), buyTokenAmount);
-        sellToken.safeTransfer(_msgSender(), sellTokenAmount);
-
-        _endAuction();
-    }
-
-    function endAuction() external {
-        _endAuction();
-    }
-
-    function _endAuction() internal {
-        (bool needRebalance, , ) = _isImbalanced();
-        if (!needRebalance) {
-            isRebalancing = false;
-            numBlocksLeftToSell = 0;
-        }
     }
 
     /** DETAILED PRICE INFO
