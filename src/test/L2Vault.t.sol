@@ -6,8 +6,9 @@ import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
+import { L2WormholeRouter } from "../polygon/L2WormholeRouter.sol";
 import { BaseStrategy } from "../BaseStrategy.sol";
-import { Deploy } from "./Deploy.sol";
+import { BridgeEscrow } from "../BridgeEscrow.sol";
 import { EmergencyWithdrawalQueue } from "../polygon/EmergencyWithdrawalQueue.sol";
 
 import { Deploy } from "./Deploy.sol";
@@ -46,6 +47,10 @@ contract L2VaultTest is TestPlus {
         // this makes sure that the first time we assess management fees we get a reasonable number
         // since management fees are calculated based on block.timestamp - lastHarvest
         assertEq(vault.lastHarvest(), block.timestamp);
+
+        // The bridge is unlocked to begin with
+        assertTrue(vault.canTransferToL1());
+        assertTrue(vault.canRequestFromL1());
     }
 
     function testDepositRedeem(uint128 amountAsset) public {
@@ -213,6 +218,33 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.L1TotalLockedValue(), 100);
 
         // TODO: revert if one of bridge variables is false and test it here
+    }
+
+    function testL1ToL2Rebalance() public {
+        // Any call to the wormholerouter will do nothing
+        vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.requestFunds, (25)), "");
+
+        // The L1 vault has to send us 25 to meet the 1:1 ratio between layers
+        asset.mint(address(vault), 100);
+        vm.startPrank(vault.wormholeRouter());
+        vm.expectCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.requestFunds, (25)));
+        vault.receiveTVL(150, false);
+
+        assertEq(vault.canRequestFromL1(), false);
+    }
+
+    function testL2ToL1Rebalance() public {
+        // Any call to the wormholerouter will do nothing, and we won't actually attempt to bridge funds
+        vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportTransferredFund, (25)), "");
+        vm.mockCall(address(vault.bridgeEscrow()), abi.encodeCall(BridgeEscrow.l2Withdraw, (25)), "");
+
+        // L2Vault has to send 25 to meet the 1:1 ratio between layers
+        asset.mint(address(vault), 100);
+        vm.startPrank(vault.wormholeRouter());
+        vm.expectCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportTransferredFund, (25)));
+        vault.receiveTVL(50, false);
+
+        assertEq(vault.canTransferToL1(), false);
     }
 
     function testWithdrawalFee() public {
