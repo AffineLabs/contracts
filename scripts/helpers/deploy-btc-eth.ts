@@ -9,8 +9,6 @@ export async function deployBasket(config: Config): Promise<TwoAssetBasket> {
   const basket = await BasketFactory.deploy(
     config.l2Governance,
     config.forwarder,
-    ethers.BigNumber.from(10).pow(8).mul(50_000), // $50,000 dollar rebalance delta (8 decimals to work with chainlink)
-    ethers.BigNumber.from(10).pow(8).mul(10_000), // $10_000 block size
     "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506", // sushiswap router
     config.l2USDC,
     [config.wbtc, config.weth],
