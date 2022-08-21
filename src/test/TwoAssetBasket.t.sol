@@ -127,8 +127,6 @@ contract BtcEthBasketTest is TestPlus {
         testDepositWithdraw();
     }
 
-    function testAuction() public {}
-
     function testDetailedPrice() public {
         // This function should work even if there is nothing in the vault
         TwoAssetBasket.Number memory price = basket.detailedPrice();
