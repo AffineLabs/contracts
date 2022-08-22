@@ -19,12 +19,12 @@ import { ERC4626RouterBase } from "../polygon/ERC4626RouterBase.sol";
 contract BtcEthBasketTest is TestPlus {
     TwoAssetBasket basket;
     Router router;
+    // NOTE: using mumbai addresses
     ERC20 usdc = ERC20(0x8f7116CA03AEB48547d0E2EdD3Faa73bfB232538);
     ERC20 btc = ERC20(0xc8BA1fdaf17c1f16C68778fde5f78F3D37cD1509);
     ERC20 weth = ERC20(0x3dd7F3CF122e0460Dba8A75d191b3486752B6A61);
 
     function setUp() public {
-        // NOTE: using mumbai addresses
         vm.createSelectFork("mumbai", 27549248);
 
         basket = new TwoAssetBasket(
@@ -112,6 +112,78 @@ contract BtcEthBasketTest is TestPlus {
         router.deposit(IERC4626(address(basket)), address(this), 1e6, minShares);
 
         // TODO: add test for withdrawal check once this mocking works again
+    }
+
+    function testBuySplitsFuzz(uint256 balBtc, uint256 balEth) public {
+        //	Let balances vary
+        // 10k BTC is about 200M at todays prices, same for 133,000 ETH
+        balBtc = bound(balBtc, 0, 10_000 * 1e18);
+        balEth = bound(balEth, 0, 133e3 * 1e18);
+        deal(address(btc), address(basket), balBtc);
+        deal(address(weth), address(basket), balEth);
+
+        // Test that if you are far from ideal amount, then we buy just one asset
+
+        // Calculate idealAmount of Btc
+        uint256 r1 = basket.ratios(0);
+        uint256 r2 = basket.ratios(1);
+        uint256 vaultDollars = Dollar.unwrap(basket.valueOfVault());
+        uint256 idealBtcDollars = (r1 * (vaultDollars)) / (r1 + r2);
+        uint256 idealEthDollars = vaultDollars - idealBtcDollars;
+
+        (Dollar rawBtcDollars, Dollar rawEthDollars) = basket._valueOfVaultComponents();
+        uint256 btcDollars = Dollar.unwrap(rawBtcDollars);
+        uint256 ethDollars = Dollar.unwrap(rawEthDollars);
+
+        uint256 amountInput = 100e6; // 100 USDC.
+        (uint256 assetsToBtc, uint256 assetsToEth) = basket._getBuySplits(amountInput);
+        uint256 inputDollars = amountInput * 1e2; // 100 usdc with 8 decimals
+        if (btcDollars + inputDollars < idealBtcDollars) {
+            // We buy just btc
+            assertEq(assetsToBtc, amountInput);
+            assertEq(assetsToEth, 0);
+        } else if (ethDollars + inputDollars < idealEthDollars) {
+            // We buy just eth
+            assertEq(assetsToBtc, 0);
+            assertEq(assetsToEth, amountInput);
+        } else {
+            // If you are close to ideal amount, then we buy some of both asset
+            assertTrue(assetsToBtc > 0);
+            assertTrue(assetsToEth > 0);
+        }
+    }
+
+    function testBuySplits() public {
+        // We have too much eth, so we only buy btc
+        // Mocking balanceOf. Not using encodeCall because ERC20.balaneOf can't be found by solc
+        vm.mockCall(address(basket.token2()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(100e18));
+
+        uint256 amountInput = 100e6; // 100 USDC.
+        (uint256 assetsToBtc, uint256 assetsToEth) = basket._getBuySplits(amountInput);
+
+        assertEq(assetsToBtc, amountInput);
+        assertEq(assetsToEth, 0);
+
+        // We have too much btc so we only buy eth
+        vm.clearMockedCalls();
+        vm.mockCall(address(basket.token1()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(100e18));
+
+        (assetsToBtc, assetsToEth) = basket._getBuySplits(amountInput);
+
+        assertEq(assetsToBtc, 0);
+        assertEq(assetsToEth, amountInput);
+
+        // We have some of both, so we buy until we hit the ratios
+        // The btc/eth ratio at the pinned block is ~0.08, so if we pick 0.1 we have roughly equal value
+        vm.clearMockedCalls();
+        vm.mockCall(address(basket.token1()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(1e18));
+        vm.mockCall(address(basket.token2()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(10e18));
+
+        // We have a split that is more even than 1:2
+        uint256 largeInput = 100e6 * 1e6;
+        (assetsToBtc, assetsToEth) = basket._getBuySplits(largeInput);
+        assertTrue(assetsToBtc > largeInput / 3);
+        assertTrue(assetsToEth > largeInput / 3);
     }
 
     function testVaultPause() public {
