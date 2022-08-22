@@ -45,6 +45,14 @@ contract BtcEthBasketTest is TestPlus {
         router = new Router("Alp", 0x52c8e413Ed9E961565D8D1de67e805E81b26C01b);
     }
 
+    function mockUSDCPrice() internal {
+        vm.mockCall(
+            0x572dDec9087154dC5dfBB1546Bb62713147e0Ab0,
+            abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
+            abi.encode(uint80(1), uint256(1e8), 0, block.timestamp, uint80(1))
+        );
+    }
+
     function testDepositWithdraw() public {
         // mint some usdc, can remove hardcoded selector later
         uint256 mintAmount = 200 * 1e6;
@@ -155,7 +163,7 @@ contract BtcEthBasketTest is TestPlus {
 
     function testBuySplits() public {
         // We have too much eth, so we only buy btc
-        // Mocking balanceOf. Not using encodeCall because ERC20.balaneOf can't be found by solc
+        // Mocking balanceOf. Not using encodeCall because ERC20.balanceOf can't be found by solc
         vm.mockCall(address(basket.token2()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(100e18));
 
         uint256 amountInput = 100e6; // 100 USDC.
@@ -184,6 +192,47 @@ contract BtcEthBasketTest is TestPlus {
         (assetsToBtc, assetsToEth) = basket._getBuySplits(largeInput);
         assertTrue(assetsToBtc > largeInput / 3);
         assertTrue(assetsToEth > largeInput / 3);
+    }
+
+    function testSellSplits() public {
+        // We have too much btc, so we only sell it
+        // Mocking balanceOf. Not using encodeCall because ERC20.balanceOf can't be found by solc
+        vm.mockCall(address(basket.token1()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(1e18));
+        mockUSDCPrice();
+
+        uint256 amountInput = 100e6; // 100 USDC.
+        (Dollar rawDollarsFromBtc, Dollar rawDollarsFromEth) = basket._getSellSplits(amountInput);
+        uint256 dollarsFromBtc = Dollar.unwrap(rawDollarsFromBtc);
+        uint256 dollarsFromEth = Dollar.unwrap(rawDollarsFromEth);
+
+        assertEq(dollarsFromBtc, amountInput * 1e2);
+        assertEq(dollarsFromEth, 0);
+
+        // We have too much eth so we only sell eth
+        vm.clearMockedCalls();
+        vm.mockCall(address(basket.token2()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(100e18));
+        mockUSDCPrice();
+        (rawDollarsFromBtc, rawDollarsFromEth) = basket._getSellSplits(amountInput);
+        dollarsFromBtc = Dollar.unwrap(rawDollarsFromBtc);
+        dollarsFromEth = Dollar.unwrap(rawDollarsFromEth);
+
+        assertEq(dollarsFromBtc, 0);
+        assertEq(dollarsFromEth, amountInput * 1e2);
+
+        // // We have some of both, so we buy until we hit the ratios
+        // See notes on how these values were chosen in testBuySplits
+        vm.clearMockedCalls();
+        vm.mockCall(address(basket.token1()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(1e18));
+        vm.mockCall(address(basket.token2()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(10e18));
+        mockUSDCPrice();
+
+        // We have a split that is more even than 1:2
+        uint256 largeInput = 100e6 * 1e6;
+        (rawDollarsFromBtc, rawDollarsFromEth) = basket._getSellSplits(largeInput);
+        dollarsFromBtc = Dollar.unwrap(rawDollarsFromBtc);
+        dollarsFromEth = Dollar.unwrap(rawDollarsFromEth);
+        assertTrue(dollarsFromBtc > (largeInput * 1e2) / 3);
+        assertTrue(dollarsFromEth > (largeInput * 1e2) / 3);
     }
 
     function testVaultPause() public {

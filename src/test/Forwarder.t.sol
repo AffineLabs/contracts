@@ -151,11 +151,6 @@ contract ForwardTest is TestPlus {
         MinimalForwarder.ForwardRequest[] memory requests = new MinimalForwarder.ForwardRequest[](2);
         requests[0] = req1;
         requests[1] = req2;
-        // vm.mockCall(
-        //     address(0),
-        //     abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-        //     abi.encode(uint80(0), int256(1), uint256(0), uint256(0), uint80(0))
-        // );
         forwarder.executeBatch(requests, abi.encodePacked(r, s, v, r2, s2, v2));
 
         assertEq(vault.balanceOf(user), 1e6 / 100);
