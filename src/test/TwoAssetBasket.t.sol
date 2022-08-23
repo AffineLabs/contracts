@@ -28,7 +28,7 @@ contract BtcEthBasketTest is TestPlus {
         vm.createSelectFork("mumbai", 27549248);
 
         basket = new TwoAssetBasket(
-            address(this), // governance
+            governance, // governance
             address(0), // forwarder
             IUniLikeSwapRouter(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506), // sushiswap router
             usdc, // mintable usdc
@@ -42,6 +42,9 @@ contract BtcEthBasketTest is TestPlus {
                 AggregatorV3Interface(0x0715A7794a1dc8e42615F059dD6e406A6594651A)
             ]
         );
+        vm.prank(governance);
+        basket.setAssetLimit(type(uint256).max);
+
         router = new Router("Alp", 0x52c8e413Ed9E961565D8D1de67e805E81b26C01b);
     }
 
@@ -236,6 +239,7 @@ contract BtcEthBasketTest is TestPlus {
     }
 
     function testVaultPause() public {
+        vm.prank(governance);
         basket.pause();
 
         vm.expectRevert("Pausable: paused");
@@ -244,6 +248,7 @@ contract BtcEthBasketTest is TestPlus {
         vm.expectRevert("Pausable: paused");
         basket.withdraw(1e18, address(this), address(this));
 
+        vm.prank(governance);
         basket.unpause();
         testDepositWithdraw();
     }
@@ -261,5 +266,28 @@ contract BtcEthBasketTest is TestPlus {
         MockERC20(address(btc)).mint(address(basket), 1e18);
         TwoAssetBasket.Number memory price2 = basket.detailedPrice();
         assertGt(price2.num, 10**8);
+    }
+
+    function testAssetLimit() public {
+        mockUSDCPrice();
+
+        vm.prank(governance);
+        basket.setAssetLimit(1000 * 1e8);
+
+        deal(address(usdc), address(this), 2000e6, false);
+        usdc.approve(address(basket), type(uint256).max);
+
+        basket.deposit(500e6, address(this));
+        assertEq(usdc.balanceOf(address(this)), 1500e6);
+
+        // We only deposit 500 because the limit is 500 and 500 is already in the vault
+        basket.deposit(1000e6, address(this));
+        uint256 newUsdcBal = usdc.balanceOf(address(this));
+        // We have to approximate since not exactly $500 dollars enters vault do to uniswap trade
+        assertApproxEqRel(newUsdcBal, 1000e6, 1e18 / 2);
+
+        uint256 shares = basket.deposit(200e6, address(this));
+        assertEq(shares, 0);
+        assertEq(usdc.balanceOf(address(this)), newUsdcBal);
     }
 }

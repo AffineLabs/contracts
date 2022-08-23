@@ -526,7 +526,7 @@ contract L2VaultTest is TestPlus {
 
         deal(address(asset), address(vault), 2e18);
 
-        // Call teardown and make sure they get there money back
+        // Call teardown and make sure they get money back
         address[] memory users = new address[](2);
         users[0] = alice;
         users[1] = bob;
