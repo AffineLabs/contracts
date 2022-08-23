@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import { L2Vault } from "../../polygon/L2Vault.sol";
+import "../../polygon/TwoAssetBasket.sol";
 
 // Mocks needed to update variables that are in packed slots (forge-std cannot write to packed slots yet)
 contract MockL2Vault is L2Vault {
