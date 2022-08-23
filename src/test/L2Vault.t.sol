@@ -480,4 +480,42 @@ contract L2VaultTest is TestPlus {
         vm.expectRevert("Only Governance.");
         vault.setRebalanceDelta(0);
     }
+
+    function testAssetLimit() public {
+        vm.prank(governance);
+        vault.setAssetLimit(1000);
+
+        asset.mint(address(this), 2000);
+        asset.approve(address(vault), type(uint256).max);
+
+        vault.deposit(500, address(this));
+        assertEq(asset.balanceOf(address(this)), 1500);
+
+        // We only deposit 500 because the limit is 500 and 500 is already in the vault
+        vault.deposit(1000, address(this));
+        assertEq(asset.balanceOf(address(this)), 1000);
+
+        vm.expectRevert("MIN_DEPOSIT_ERR");
+        vault.deposit(200, address(this));
+        assertEq(asset.balanceOf(address(this)), 1000);
+    }
+
+    function testAssetLimitMint() public {
+        vm.prank(governance);
+        vault.setAssetLimit(1000);
+
+        asset.mint(address(this), 2000);
+        asset.approve(address(vault), type(uint256).max);
+
+        vault.mint(5, address(this));
+        assertEq(asset.balanceOf(address(this)), 1500);
+
+        // We only deposit 500 because the limit is 500 and 500 is already in the vault
+        vault.mint(10, address(this));
+        assertEq(asset.balanceOf(address(this)), 1000);
+
+        vm.expectRevert("MIN_DEPOSIT_ERR");
+        vault.mint(20, address(this));
+        assertEq(asset.balanceOf(address(this)), 1000);
+    }
 }

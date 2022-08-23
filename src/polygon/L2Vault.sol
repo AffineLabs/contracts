@@ -158,6 +158,11 @@ contract L2Vault is
      **************************************************************************/
     /// @notice See {IERC4262-deposit}
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
+        // TODO: remove after mainnet alpha
+        uint256 tvl = totalAssets();
+        uint256 allowedDepositAmount = tvl > assetLimit ? 0 : assetLimit - tvl;
+        assets = Math.min(allowedDepositAmount, assets);
+
         shares = previewDeposit(assets);
         require(shares > 0, "MIN_DEPOSIT_ERR");
         address caller = _msgSender();
@@ -173,6 +178,14 @@ contract L2Vault is
     /// @notice See {IERC4262-mint}
     function mint(uint256 shares, address receiver) external whenNotPaused returns (uint256 assets) {
         assets = previewMint(shares);
+        // TODO: remove after mainnet alpha
+        uint256 tvl = totalAssets();
+        uint256 allowedDepositAmount = tvl > assetLimit ? 0 : assetLimit - tvl;
+        assets = Math.min(allowedDepositAmount, assets);
+
+        shares = previewDeposit(assets);
+        require(shares > 0, "MIN_DEPOSIT_ERR");
+
         address caller = _msgSender();
 
         _asset.safeTransferFrom(caller, address(this), assets);
@@ -533,4 +546,14 @@ contract L2Vault is
     function detailedTotalSupply() external view override returns (Number memory supply) {
         supply = Number({ num: totalSupply(), decimals: decimals() });
     }
+
+    /** MAINNET ALPHA TEMP STUFF
+     **************************************************************************/
+    uint256 assetLimit;
+
+    function setAssetLimit(uint256 _assetLimit) external onlyGovernance {
+        assetLimit = _assetLimit;
+    }
+
+    function tearDown() external onlyGovernance {}
 }
