@@ -231,6 +231,10 @@ contract L2Vault is
         address receiver,
         address owner
     ) external whenNotPaused returns (uint256 assets) {
+        require(
+            shares + emergencyWithdrawalQueue.debtToOwner(owner) <= balanceOf(owner),
+            "Not enough share available in owners balance"
+        );
         (uint256 assetsToUser, uint256 assetsFee) = _previewRedeem(shares);
         assets = assetsToUser;
 
@@ -267,12 +271,16 @@ contract L2Vault is
         address receiver,
         address owner
     ) external whenNotPaused returns (uint256 shares) {
+        shares = previewWithdraw(assets);
+        require(
+            shares + emergencyWithdrawalQueue.debtToOwner(owner) <= balanceOf(owner),
+            "Not enough share available in owners balance"
+        );
+
         address caller = _msgSender();
 
         uint256 assetDemand = emergencyWithdrawalQueue.totalDebt() + assets;
         _liquidate(assetDemand);
-
-        shares = previewWithdraw(assets);
 
         // Add to emergency withdrawal queue if there is not enough liquidity.
         if (_asset.balanceOf(address(this)) < assetDemand) {
