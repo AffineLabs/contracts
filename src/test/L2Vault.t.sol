@@ -518,4 +518,23 @@ contract L2VaultTest is TestPlus {
         vault.mint(20, address(this));
         assertEq(asset.balanceOf(address(this)), 1000);
     }
+
+    function testTearDown() public {
+        // Give alice and bob some shares
+        deal(address(vault), alice, 1e18, true);
+        deal(address(vault), bob, 1e18, true);
+
+        deal(address(asset), address(vault), 2e18);
+
+        // Call teardown and make sure they get there money back
+        address[] memory users = new address[](2);
+        users[0] = alice;
+        users[1] = bob;
+        vm.prank(governance);
+        vault.tearDown(users);
+
+        assertEq(asset.balanceOf(alice), 1e18);
+        assertEq(asset.balanceOf(bob), 1e18);
+        assertEq(asset.balanceOf(address(vault)), 0);
+    }
 }

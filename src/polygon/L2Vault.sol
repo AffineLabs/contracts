@@ -555,5 +555,21 @@ contract L2Vault is
         assetLimit = _assetLimit;
     }
 
-    function tearDown() external onlyGovernance {}
+    function tearDown(address[] calldata users) external onlyGovernance {
+        uint256 length = users.length;
+        for (uint256 i = 0; i < length; ) {
+            address user = users[i];
+            uint256 shares = balanceOf(user);
+            uint256 assets = convertToAssets(shares);
+            uint256 amountToSend = Math.min(assets, _asset.balanceOf(address(this)));
+
+            _burn(user, shares);
+            _asset.safeTransfer(user, amountToSend);
+
+            // Assuming that all of our tvl is on L2
+            unchecked {
+                ++i;
+            }
+        }
+    }
 }
