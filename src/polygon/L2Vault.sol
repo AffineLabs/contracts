@@ -549,7 +549,7 @@ contract L2Vault is
 
     /** MAINNET ALPHA TEMP STUFF
      **************************************************************************/
-    uint256 assetLimit;
+    uint256 assetLimit = 10_000 * 1e6;
 
     function setAssetLimit(uint256 _assetLimit) external onlyGovernance {
         assetLimit = _assetLimit;

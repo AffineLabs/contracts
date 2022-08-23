@@ -290,4 +290,32 @@ contract BtcEthBasketTest is TestPlus {
         assertEq(shares, 0);
         assertEq(usdc.balanceOf(address(this)), newUsdcBal);
     }
+
+    function testTearDown() public {
+        // Give alice and bob some shares
+        deal(address(basket), alice, 1e18, true);
+        deal(address(basket), bob, 1e18, true);
+
+        // give the vault some bitcoin and ether
+        deal(address(btc), address(basket), 1e18);
+        deal(address(weth), address(basket), 10e18);
+
+        // Call teardown and make sure they get money back
+        address[] memory users = new address[](2);
+        users[0] = alice;
+        users[1] = bob;
+        vm.prank(governance);
+        basket.tearDown(users);
+
+        // alice and bob got usdc (they also get the same amount)
+        assertTrue(usdc.balanceOf(alice) > 0);
+        assertEq(usdc.balanceOf(alice), usdc.balanceOf(bob));
+
+        // There's truncation since we round down, so we might have some dust left
+        assertApproxEqAbs(usdc.balanceOf(address(basket)), 0, 10);
+
+        // We dumped all btc and weth
+        assertEq(btc.balanceOf(address(basket)), 0);
+        assertEq(weth.balanceOf(address(basket)), 0);
+    }
 }

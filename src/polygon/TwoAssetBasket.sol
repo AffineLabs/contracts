@@ -3,6 +3,8 @@ pragma solidity ^0.8.13;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
+import { FixedPointMathLib } from "solmate/src/utils/FixedPointMathLib.sol";
+
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Context } from "@openzeppelin/contracts/utils/Context.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
@@ -16,6 +18,7 @@ import { DetailedShare } from "./Detailed.sol";
 
 contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, AffineGovernable {
     using SafeTransferLib for ERC20;
+    using FixedPointMathLib for uint256;
 
     // The token which we take in to buy token1 and token2, e.g. USDC
     ERC20 public asset;
@@ -404,24 +407,38 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
     /** MAINNET ALPHA TEMP STUFF
      **************************************************************************/
     /// @notice This is actually a dollar amount We don't bother with `Dollar` type because this is external
-    uint256 assetLimit;
+    uint256 assetLimit = 10_000 * 1e8;
 
     function setAssetLimit(uint256 _assetLimit) external onlyGovernance {
         assetLimit = _assetLimit;
     }
 
+    /// @dev This function must be submitted through a private RPC. We first liquidate all of the vaults assets
+    /// and then distribute the remaining `asset` (USDC) to all of the share holders
     function tearDown(address[] calldata users) external onlyGovernance {
+        // first liquidate all assets
+        address[] memory pathBtc = new address[](2);
+        pathBtc[0] = address(token1);
+        pathBtc[1] = address(asset);
+
+        address[] memory pathEth = new address[](2);
+        pathEth[0] = address(token2);
+        pathEth[1] = address(asset);
+
+        uniRouter.swapExactTokensForTokens(token1.balanceOf(address(this)), 0, pathBtc, address(this), block.timestamp);
+        uniRouter.swapExactTokensForTokens(token2.balanceOf(address(this)), 0, pathEth, address(this), block.timestamp);
+
+        uint256 totalAssets = asset.balanceOf(address(this));
+        uint256 numShares = totalSupply;
         uint256 length = users.length;
         for (uint256 i = 0; i < length; ) {
             address user = users[i];
             uint256 shares = balanceOf[user];
 
-            // uint256 assets = convertToAssets(shares);
-            uint256 assets = 100;
-            uint256 amountToSend = Math.min(assets, asset.balanceOf(address(this)));
+            uint256 assets = shares.mulDivDown(totalAssets, numShares);
 
             _burn(user, shares);
-            asset.safeTransfer(user, amountToSend);
+            asset.safeTransfer(user, assets);
             unchecked {
                 ++i;
             }
