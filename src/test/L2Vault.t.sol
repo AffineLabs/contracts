@@ -3,19 +3,22 @@ pragma solidity ^0.8.13;
 
 import { TestPlus } from "./TestPlus.sol";
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
-import { Deploy } from "./Deploy.sol";
-import { MockERC20 } from "./mocks/MockERC20.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
+import { L2WormholeRouter } from "../polygon/L2WormholeRouter.sol";
 import { BaseStrategy } from "../BaseStrategy.sol";
-import { Deploy } from "./Deploy.sol";
+import { BridgeEscrow } from "../BridgeEscrow.sol";
 import { EmergencyWithdrawalQueue } from "../polygon/EmergencyWithdrawalQueue.sol";
+
+import { Deploy } from "./Deploy.sol";
+import { MockERC20 } from "./mocks/MockERC20.sol";
+import { MockL2Vault } from "./mocks/index.sol";
 
 contract L2VaultTest is TestPlus {
     using stdStorage for StdStorage;
 
-    L2Vault vault;
+    MockL2Vault vault;
     MockERC20 asset;
     uint256 oneUSDC = 1_000_000;
     uint256 halfUSDC = oneUSDC / 2;
@@ -44,6 +47,10 @@ contract L2VaultTest is TestPlus {
         // this makes sure that the first time we assess management fees we get a reasonable number
         // since management fees are calculated based on block.timestamp - lastHarvest
         assertEq(vault.lastHarvest(), block.timestamp);
+
+        // The bridge is unlocked to begin with
+        assertTrue(vault.canTransferToL1());
+        assertTrue(vault.canRequestFromL1());
     }
 
     function testDepositRedeem(uint128 amountAsset) public {
@@ -94,6 +101,25 @@ contract L2VaultTest is TestPlus {
         vault.withdraw(amountAsset, user, user);
         assertEq(vault.balanceOf(user), 0);
         assertEq(asset.balanceOf(user), amountAsset);
+    }
+
+    function testMint(uint128 amountAsset) public {
+        vm.assume(amountAsset > 99);
+        address user = address(this);
+        asset.mint(user, amountAsset);
+        asset.approve(address(vault), type(uint256).max);
+
+        uint256 numShares = amountAsset / 100;
+        vm.expectEmit(true, true, true, true);
+        emit Deposit(address(this), address(this), numShares * 100, numShares);
+        vault.mint(numShares, user);
+
+        // If vault is empty, assets are converted to shares at 100:1
+        assertEq(vault.balanceOf(user), numShares);
+
+        // E.g. is amountAsset is 201, numShares is 2 and we actually have 1 in asset left
+        assertEq(asset.balanceOf(user), amountAsset - (numShares * 100));
+        assertEq(asset.balanceOf(address(vault)), numShares * 100);
     }
 
     function testMinDeposit() public {
@@ -149,7 +175,7 @@ contract L2VaultTest is TestPlus {
 
         // call to balanceOfAsset in harvest() will return 1e18
         vm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfAsset.selector), abi.encode(1e18));
-        // block.timestap must be >= lastHarvest + lockInterval when harvesting
+        // block.timestamp must be >= lastHarvest + lockInterval when harvesting
         vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
 
         asset.mint(address(myStrat), 1e18);
@@ -166,6 +192,59 @@ contract L2VaultTest is TestPlus {
         vm.warp(block.timestamp + vault.lockInterval() / 2);
         assertEq(vault.lockedProfit(), 1e18 / 2);
         assertEq(vault.totalAssets(), 1e18 / 2);
+    }
+
+    /** CROSS CHAIN REBALANCING
+     */
+
+    function testReceiveTVL() public {
+        vm.prank(alice);
+        vm.expectRevert("Only wormhole router");
+        vault.receiveTVL(0, false);
+
+        // If L1 has received our last transfer, we can transfer again
+        // We mint some money so that we don't trigger any actual rebalancing
+        asset.mint(address(vault), 100);
+        vault.setCanTransferToL1(false);
+        vm.startPrank(vault.wormholeRouter());
+        vault.receiveTVL(100, true);
+
+        assertEq(vault.canTransferToL1(), true);
+        assertEq(vault.L1TotalLockedValue(), 100);
+
+        // If L1 is sending us money, then we ignore all tvl values sent
+        vault.setCanRequestFromL1(false);
+        vault.receiveTVL(120, true);
+        assertEq(vault.L1TotalLockedValue(), 100);
+
+        // TODO: revert if one of bridge variables is false and test it here
+    }
+
+    function testL1ToL2Rebalance() public {
+        // Any call to the wormholerouter will do nothing
+        vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.requestFunds, (25)), "");
+
+        // The L1 vault has to send us 25 to meet the 1:1 ratio between layers
+        asset.mint(address(vault), 100);
+        vm.startPrank(vault.wormholeRouter());
+        vm.expectCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.requestFunds, (25)));
+        vault.receiveTVL(150, false);
+
+        assertEq(vault.canRequestFromL1(), false);
+    }
+
+    function testL2ToL1Rebalance() public {
+        // Any call to the wormholerouter will do nothing, and we won't actually attempt to bridge funds
+        vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportTransferredFund, (25)), "");
+        vm.mockCall(address(vault.bridgeEscrow()), abi.encodeCall(BridgeEscrow.l2Withdraw, (25)), "");
+
+        // L2Vault has to send 25 to meet the 1:1 ratio between layers
+        asset.mint(address(vault), 100);
+        vm.startPrank(vault.wormholeRouter());
+        vm.expectCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportTransferredFund, (25)));
+        vault.receiveTVL(50, false);
+
+        assertEq(vault.canTransferToL1(), false);
     }
 
     function testWithdrawalFee() public {

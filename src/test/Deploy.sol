@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { Test } from "forge-std/Test.sol";
 
 import { L2Vault } from "../polygon/L2Vault.sol";
 import { BaseVault } from "../BaseVault.sol";
@@ -16,14 +17,14 @@ import { L2WormholeRouter } from "../polygon/L2WormholeRouter.sol";
 import { EmergencyWithdrawalQueue } from "../polygon/EmergencyWithdrawalQueue.sol";
 
 import { MockERC20 } from "./mocks/MockERC20.sol";
-import { Test } from "forge-std/Test.sol";
+import { MockL2Vault } from "./mocks/index.sol";
 
 contract Deploy is Test {
     address governance = makeAddr("governance");
 
-    function deployL2Vault() internal returns (L2Vault vault) {
+    function deployL2Vault() internal returns (MockL2Vault vault) {
         MockERC20 asset = new MockERC20("Mock", "MT", 6);
-        vault = new L2Vault();
+        vault = new MockL2Vault();
         EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(governance);
         BridgeEscrow escrow = new BridgeEscrow(address(this));
         vault.initialize(
@@ -68,8 +69,6 @@ contract Deploy is Test {
         basket = new TwoAssetBasket(
             governance, // governance,
             address(0), // forwarder
-            10_000 * 1e6, // once the vault is $10,000 out of balance then we can rebalance
-            5_000 * 1e6, // selling in $5,000 blocks
             IUniLikeSwapRouter(address(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506)), // sushiswap router
             usdc, // mintable usdc
             // WBTC AND WETH
