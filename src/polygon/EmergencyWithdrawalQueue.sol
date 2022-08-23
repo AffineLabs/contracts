@@ -17,9 +17,9 @@ contract EmergencyWithdrawalQueue is AccessControl {
     mapping(uint256 => WithdrawalRequest) queue;
 
     /// @notice Pointer to head of the queue.
-    uint256 headPtr = 1;
+    uint256 public headPtr = 1;
     /// @notice Pointer to tail of the queue.
-    uint256 tailPtr = 0;
+    uint256 public tailPtr = 0;
 
     /// @notice Queue Admin role.
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR");
