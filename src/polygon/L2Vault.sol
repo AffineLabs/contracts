@@ -101,6 +101,8 @@ contract L2Vault is
 
         withdrawalFee = fees[0];
         managementFee = fees[1];
+
+        assetLimit = 10_000 * 1e6;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
@@ -557,7 +559,7 @@ contract L2Vault is
 
     /** MAINNET ALPHA TEMP STUFF
      **************************************************************************/
-    uint256 assetLimit = 10_000 * 1e6;
+    uint256 assetLimit;
 
     function setAssetLimit(uint256 _assetLimit) external onlyGovernance {
         assetLimit = _assetLimit;
