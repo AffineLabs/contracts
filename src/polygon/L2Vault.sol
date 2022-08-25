@@ -464,20 +464,19 @@ contract L2Vault is
         // If L1 has received the last transfer we sent it, unlock the L2->L1 bridge
         if (received && !canTransferToL1) canTransferToL1 = true;
 
-        // If L1 is sending us money (!canRequestFromL1), the TVL its sending could be wrong
-        if (canRequestFromL1) L1TotalLockedValue = tvl;
-
         // Only rebalance if all cross chain transfers have been settled.
         // If the L1 vault is sending money (!canRequestFromL1), then its TVL could be wrong. Also
         // we don't to accidentally request money again. If (!canTransferToL1), we don't want to accidentally
         // send money when one transfer to L1 is already in progress
-        if (!canTransferToL1 || !canRequestFromL1) return;
+        if (!canTransferToL1 || !canRequestFromL1) revert("Rebalance in progress");
+
+        // Update L1TotalLockedValue to match what we received from L1
+        L1TotalLockedValue = tvl;
 
         (bool invest, uint256 delta) = _computeRebalance();
         // if (delta < rebalanceDelta) return;
         // TODO: use the condition above eventually, this is just for testing
         if (delta == 0) return;
-
         _L1L2Rebalance(invest, delta);
     }
 
