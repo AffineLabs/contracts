@@ -468,47 +468,6 @@ contract TwoAssetBasket is
         assetLimit = _assetLimit;
     }
 
-    /// @dev This function must be submitted through a private RPC. We first liquidate all of the vaults assets
-    /// and then distribute the remaining `asset` (USDC) to all of the share holders
-    function tearDown(address[] calldata users) external onlyGovernance {
-        // first liquidate all assets
-        address[] memory pathBtc = new address[](2);
-        pathBtc[0] = address(token1);
-        pathBtc[1] = address(asset);
-
-        address[] memory pathEth = new address[](2);
-        pathEth[0] = address(token2);
-        pathEth[1] = address(asset);
-
-        uniRouter.swapExactTokensForTokens(token1.balanceOf(address(this)), 0, pathBtc, address(this), block.timestamp);
-        uniRouter.swapExactTokensForTokens(token2.balanceOf(address(this)), 0, pathEth, address(this), block.timestamp);
-
-        uint256 totalAssets = asset.balanceOf(address(this));
-        uint256 numShares = totalSupply();
-        uint256 length = users.length;
-        for (uint256 i = 0; i < length; ) {
-            address user = users[i];
-            uint256 shares = balanceOf(user);
-
-            uint256 assets = shares.mulDivDown(totalAssets, numShares);
-
-            _burn(user, shares);
-            asset.safeTransfer(user, assets);
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    /** MAINNET ALPHA TEMP STUFF
-     **************************************************************************/
-    /// @notice This is actually a dollar amount We don't bother with `Dollar` type because this is external
-    uint256 assetLimit;
-
-    function setAssetLimit(uint256 _assetLimit) external onlyGovernance {
-        assetLimit = _assetLimit;
-    }
-
     /// @dev This function must be submitted through a private RPC. We liquidate all assets and then
     ///  pause deposits and withdrawals
     function prepareForTeardown() external onlyGovernance {
@@ -531,11 +490,11 @@ contract TwoAssetBasket is
     /// @dev This should only be called after prepareForTeardown is called. Can be called as many times as needed
     function tearDown(address[] calldata users) external onlyGovernance {
         uint256 totalAssets = asset.balanceOf(address(this));
-        uint256 numShares = totalSupply;
+        uint256 numShares = totalSupply();
         uint256 length = users.length;
         for (uint256 i = 0; i < length; ) {
             address user = users[i];
-            uint256 shares = balanceOf[user];
+            uint256 shares = balanceOf(user);
 
             uint256 assets = shares.mulDivDown(totalAssets, numShares);
 
