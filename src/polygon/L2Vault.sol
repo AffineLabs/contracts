@@ -101,6 +101,8 @@ contract L2Vault is
 
         withdrawalFee = fees[0];
         managementFee = fees[1];
+
+        assetLimit = 10_000 * 1e6;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
@@ -158,6 +160,11 @@ contract L2Vault is
      **************************************************************************/
     /// @notice See {IERC4262-deposit}
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
+        // TODO: remove after mainnet alpha
+        uint256 tvl = totalAssets();
+        uint256 allowedDepositAmount = tvl > assetLimit ? 0 : assetLimit - tvl;
+        assets = Math.min(allowedDepositAmount, assets);
+
         shares = previewDeposit(assets);
         require(shares > 0, "MIN_DEPOSIT_ERR");
         address caller = _msgSender();
@@ -173,6 +180,14 @@ contract L2Vault is
     /// @notice See {IERC4262-mint}
     function mint(uint256 shares, address receiver) external whenNotPaused returns (uint256 assets) {
         assets = previewMint(shares);
+        // TODO: remove after mainnet alpha
+        uint256 tvl = totalAssets();
+        uint256 allowedDepositAmount = tvl > assetLimit ? 0 : assetLimit - tvl;
+        assets = Math.min(allowedDepositAmount, assets);
+
+        shares = previewDeposit(assets);
+        require(shares > 0, "MIN_DEPOSIT_ERR");
+
         address caller = _msgSender();
 
         _asset.safeTransferFrom(caller, address(this), assets);
@@ -539,5 +554,31 @@ contract L2Vault is
 
     function detailedTotalSupply() external view override returns (Number memory supply) {
         supply = Number({ num: totalSupply(), decimals: decimals() });
+    }
+
+    /** MAINNET ALPHA TEMP STUFF
+     **************************************************************************/
+    uint256 assetLimit;
+
+    function setAssetLimit(uint256 _assetLimit) external onlyGovernance {
+        assetLimit = _assetLimit;
+    }
+
+    function tearDown(address[] calldata users) external onlyGovernance {
+        uint256 length = users.length;
+        for (uint256 i = 0; i < length; ) {
+            address user = users[i];
+            uint256 shares = balanceOf(user);
+            uint256 assets = convertToAssets(shares);
+            uint256 amountToSend = Math.min(assets, _asset.balanceOf(address(this)));
+
+            _burn(user, shares);
+            _asset.safeTransfer(user, amountToSend);
+
+            // Assuming that all of our tvl is on L2
+            unchecked {
+                ++i;
+            }
+        }
     }
 }
