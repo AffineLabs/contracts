@@ -304,7 +304,10 @@ contract BtcEthBasketTest is TestPlus {
         address[] memory users = new address[](2);
         users[0] = alice;
         users[1] = bob;
-        vm.prank(governance);
+
+        vm.startPrank(governance);
+        basket.prepareForTeardown();
+        assertTrue(basket.paused()); // We pause deposit/withdrawals before calling tearDown
         basket.tearDown(users);
 
         // alice and bob got usdc (they also get the same amount)
