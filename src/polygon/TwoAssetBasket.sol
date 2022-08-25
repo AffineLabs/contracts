@@ -6,8 +6,12 @@ import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "solmate/src/utils/FixedPointMathLib.sol";
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import { Context } from "@openzeppelin/contracts/utils/Context.sol";
-import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
+import { ContextUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+
 import { BaseRelayRecipient } from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
 import { AffineGovernable } from "../AffineGovernable.sol";
@@ -16,7 +20,14 @@ import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
 import { Dollar, DollarMath } from "../DollarMath.sol";
 import { DetailedShare } from "./Detailed.sol";
 
-contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, AffineGovernable {
+contract TwoAssetBasket is
+    ERC20Upgradeable,
+    UUPSUpgradeable,
+    PausableUpgradeable,
+    BaseRelayRecipient,
+    DetailedShare,
+    AffineGovernable
+{
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -32,7 +43,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
     // These must be USD price feeds for token1 and token2
     mapping(ERC20 => AggregatorV3Interface) public tokenToOracle;
 
-    constructor(
+    function initialize(
         address _governance,
         address forwarder,
         IUniLikeSwapRouter _uniRouter,
@@ -40,7 +51,11 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         ERC20[2] memory _tokens,
         uint256[2] memory _ratios,
         AggregatorV3Interface[3] memory _priceFeeds
-    ) ERC20("Alpine Large Vault Token", "alpLarge", _tokens[0].decimals()) {
+    ) public initializer {
+        __ERC20_init("Alpine Large", "alpLarge");
+        __UUPSUpgradeable_init();
+        __Pausable_init();
+
         governance = _governance;
         _setTrustedForwarder(forwarder);
         (token1, token2) = (_tokens[0], _tokens[1]);
@@ -56,17 +71,19 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         asset.safeApprove(address(uniRouter), type(uint256).max);
         token1.safeApprove(address(uniRouter), type(uint256).max);
         token2.safeApprove(address(uniRouter), type(uint256).max);
+
+        assetLimit = 10_000 * 1e8;
     }
 
     function versionRecipient() external pure override returns (string memory) {
         return "1";
     }
 
-    function _msgSender() internal view override(Context, BaseRelayRecipient) returns (address) {
+    function _msgSender() internal view override(ContextUpgradeable, BaseRelayRecipient) returns (address) {
         return BaseRelayRecipient._msgSender();
     }
 
-    function _msgData() internal view override(Context, BaseRelayRecipient) returns (bytes calldata) {
+    function _msgData() internal view override(ContextUpgradeable, BaseRelayRecipient) returns (bytes calldata) {
         return BaseRelayRecipient._msgData();
     }
 
@@ -77,6 +94,12 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
     function setTrustedForwarder(address forwarder) external onlyGovernance {
         _setTrustedForwarder(forwarder);
     }
+
+    function decimals() public view override returns (uint8) {
+        return token1.decimals();
+    }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
     /// @notice Pause the contract
     function pause() external onlyGovernance {
@@ -155,11 +178,12 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         );
 
         // Issue shares based on dollar amounts of user coins vs total holdings of the vault
-        if (totalSupply == 0) {
+        uint256 _totalSupply = totalSupply();
+        if (_totalSupply == 0) {
             // Dollars have 8 decimals, add an an extra 10 here to match the 18 that this contract uses
             shares = ((dollarsReceived * 1e10) / 100);
         } else {
-            shares = (dollarsReceived * totalSupply) / vaultDollars;
+            shares = (dollarsReceived * _totalSupply) / vaultDollars;
         }
 
         emit Deposit(_msgSender(), receiver, amountInput, shares);
@@ -220,7 +244,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
 
         // Convert from Dollar for easy calculations
         uint256 amountInputDollars = Dollar.unwrap(_valueOfToken(asset, amountInput));
-        uint256 numShares = (amountInputDollars * totalSupply) / vaultDollars;
+        uint256 numShares = (amountInputDollars * totalSupply()) / vaultDollars;
 
         // TODO: fix approvals, anyone can burn a user's shares now
         _burn(owner, numShares);
@@ -387,12 +411,14 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         Dollar vaultDollars = valueOfVault();
         uint256 vaultValue = Dollar.unwrap(vaultDollars);
         uint256 _price;
-        uint256 shareDecimals = decimals;
+        uint256 shareDecimals = decimals();
+
+        uint256 _totalSupply = totalSupply();
 
         // Assuming that shareDecimals > 8. TODO: reconsider
         // Price is set to 1 if there are no shares in the vault
-        if (totalSupply > 0) {
-            _price = (vaultValue * (10**shareDecimals)) / totalSupply;
+        if (_totalSupply > 0) {
+            _price = (vaultValue * (10**shareDecimals)) / _totalSupply;
         } else {
             _price = 10**8;
         }
@@ -401,13 +427,13 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
     }
 
     function detailedTotalSupply() external view override returns (Number memory supply) {
-        supply = Number({ num: totalSupply, decimals: decimals });
+        supply = Number({ num: totalSupply(), decimals: decimals() });
     }
 
     /** MAINNET ALPHA TEMP STUFF
      **************************************************************************/
     /// @notice This is actually a dollar amount We don't bother with `Dollar` type because this is external
-    uint256 assetLimit = 10_000 * 1e8;
+    uint256 assetLimit;
 
     function setAssetLimit(uint256 _assetLimit) external onlyGovernance {
         assetLimit = _assetLimit;
@@ -429,11 +455,11 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         uniRouter.swapExactTokensForTokens(token2.balanceOf(address(this)), 0, pathEth, address(this), block.timestamp);
 
         uint256 totalAssets = asset.balanceOf(address(this));
-        uint256 numShares = totalSupply;
+        uint256 numShares = totalSupply();
         uint256 length = users.length;
         for (uint256 i = 0; i < length; ) {
             address user = users[i];
-            uint256 shares = balanceOf[user];
+            uint256 shares = balanceOf(user);
 
             uint256 assets = shares.mulDivDown(totalAssets, numShares);
 

@@ -27,24 +27,7 @@ contract BtcEthBasketTest is TestPlus {
     function setUp() public {
         vm.createSelectFork("mumbai", 27549248);
 
-        basket = new TwoAssetBasket(
-            governance, // governance
-            address(0), // forwarder
-            IUniLikeSwapRouter(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506), // sushiswap router
-            usdc, // mintable usdc
-            // WBTC AND WETH
-            [btc, weth],
-            [uint256(1), uint256(1)], // ratios (basket should contain an equal amount of btc/eth)
-            // Price feeds (BTC/USD and ETH/USD)
-            [
-                AggregatorV3Interface(0x572dDec9087154dC5dfBB1546Bb62713147e0Ab0),
-                AggregatorV3Interface(0x007A22900a3B98143368Bd5906f8E17e9867581b),
-                AggregatorV3Interface(0x0715A7794a1dc8e42615F059dD6e406A6594651A)
-            ]
-        );
-        vm.prank(governance);
-        basket.setAssetLimit(type(uint256).max);
-
+        basket = Deploy.deployTwoAssetBasket(usdc);
         router = new Router("Alp", 0x52c8e413Ed9E961565D8D1de67e805E81b26C01b);
     }
 
