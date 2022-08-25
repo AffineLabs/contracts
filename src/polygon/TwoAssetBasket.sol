@@ -445,11 +445,11 @@ contract TwoAssetBasket is
         uint256 _totalSupply = totalSupply();
 
         // Assuming that shareDecimals > 8. TODO: reconsider
-        // Price is set to 1 if there are no shares in the vault
+        // Price is set to 100 if there are no shares in the vault
         if (_totalSupply > 0) {
             _price = (vaultValue * (10**shareDecimals)) / _totalSupply;
         } else {
-            _price = 10**8;
+            _price = 100**8;
         }
 
         price = Number({ num: _price, decimals: 8 });

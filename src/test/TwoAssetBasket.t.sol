@@ -257,7 +257,7 @@ contract BtcEthBasketTest is TestPlus {
     function testDetailedPrice() public {
         // This function should work even if there is nothing in the vault
         TwoAssetBasket.Number memory price = basket.detailedPrice();
-        assertEq(price.num, 10**8);
+        assertEq(price.num, 100**8);
 
         address user = address(this);
         MockERC20(address(usdc)).mint(user, 2e6);
