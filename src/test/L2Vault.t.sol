@@ -212,12 +212,32 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.canTransferToL1(), true);
         assertEq(vault.L1TotalLockedValue(), 100);
 
-        // If L1 is sending us money, then we ignore all tvl values sent
+        // If one of the bridge vars is locked, we just revert
+        // canRequestFromL1 is false, canTransferToL1 is true
         vault.setCanRequestFromL1(false);
+        vm.expectRevert("Rebalance in progress");
         vault.receiveTVL(120, true);
-        assertEq(vault.L1TotalLockedValue(), 100);
 
-        // TODO: revert if one of bridge variables is false and test it here
+        // canRequestFromL1 is true, canTransferToL1 is false
+        vault.setCanRequestFromL1(true);
+        vault.setCanTransferToL1(false);
+        vm.expectRevert("Rebalance in progress");
+        vault.receiveTVL(120, false); // if `received` is true then canTransferToL1 will be true
+
+        // canRequestFromL1 is false, canTransferToL1 is false (we should actually never get in this state)
+        vault.setCanRequestFromL1(false);
+        vault.setCanTransferToL1(false);
+        vm.expectRevert("Rebalance in progress");
+        vault.receiveTVL(120, false);
+
+        // canRequestFromL1 is true, canTransferToL1 is true
+        vault.setCanRequestFromL1(true);
+        vault.setCanTransferToL1(true);
+        asset.mint(address(vault), 20); // mint so that we don't try to request money from L1
+        vault.receiveTVL(120, true);
+
+        assertEq(vault.canTransferToL1(), true);
+        assertEq(vault.L1TotalLockedValue(), 120);
     }
 
     function testL1ToL2Rebalance() public {
