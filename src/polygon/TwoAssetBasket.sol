@@ -122,7 +122,7 @@ contract TwoAssetBasket is
         uint256 shares
     );
 
-    function deposit(uint256 amountInput, address receiver) external whenNotPaused returns (uint256 shares) {
+    function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
         // Get current amounts of btc/eth (in dollars) => 8 decimals
         uint256 vaultDollars = Dollar.unwrap(valueOfVault());
 
@@ -130,17 +130,17 @@ contract TwoAssetBasket is
         {
             uint256 tvl = vaultDollars;
             uint256 allowedDepositAmount = tvl > assetLimit ? 0 : assetLimit - tvl;
-            uint256 allowedDollars = Math.min(allowedDepositAmount, Dollar.unwrap(_valueOfToken(asset, amountInput)));
-            amountInput = _tokensFromDollars(asset, Dollar.wrap(allowedDollars));
+            uint256 allowedDollars = Math.min(allowedDepositAmount, Dollar.unwrap(_valueOfToken(asset, assets)));
+            assets = _tokensFromDollars(asset, Dollar.wrap(allowedDollars));
         }
         // end TODO
 
         // We do two swaps. The amount of dollars we swap to each coin is determined by the ratios given above
         // See the whitepaper for the derivation of these amounts
         // Get  of btc and eth to buy (in `asset`)
-        (uint256 amountInputToBtc, uint256 amountInputToEth) = _getBuySplits(amountInput);
+        (uint256 assetsToBtc, uint256 assetsToEth) = _getBuySplits(assets);
 
-        asset.safeTransferFrom(_msgSender(), address(this), amountInput);
+        asset.safeTransferFrom(_msgSender(), address(this), assets);
         address[] memory pathBtc = new address[](2);
         pathBtc[0] = address(asset);
         pathBtc[1] = address(token1);
@@ -150,9 +150,9 @@ contract TwoAssetBasket is
         pathEth[1] = address(token2);
 
         uint256 btcReceived;
-        if (amountInputToBtc > 0) {
+        if (assetsToBtc > 0) {
             uint256[] memory btcAmounts = uniRouter.swapExactTokensForTokens(
-                amountInputToBtc,
+                assetsToBtc,
                 0,
                 pathBtc,
                 address(this),
@@ -162,9 +162,9 @@ contract TwoAssetBasket is
         }
 
         uint256 ethReceived;
-        if (amountInputToEth > 0) {
+        if (assetsToEth > 0) {
             uint256[] memory ethAmounts = uniRouter.swapExactTokensForTokens(
-                amountInputToEth,
+                assetsToEth,
                 0,
                 pathEth,
                 address(this),
@@ -186,21 +186,69 @@ contract TwoAssetBasket is
             shares = (dollarsReceived * _totalSupply) / vaultDollars;
         }
 
-        emit Deposit(_msgSender(), receiver, amountInput, shares);
+        emit Deposit(_msgSender(), receiver, assets, shares);
         _mint(receiver, shares);
     }
 
     function withdraw(
-        uint256 amountInput,
+        uint256 assets,
         address receiver,
         address owner
-    ) external whenNotPaused returns (uint256 inputReceived) {
-        // Try to get `amountInput` of `asset` out of vault
+    ) external whenNotPaused returns (uint256 assetsReceived) {
+        // Try to get `assets` of `asset` out of vault
         uint256 vaultDollars = Dollar.unwrap(valueOfVault());
 
         // Get dollar amounts of btc and eth to sell
-        (Dollar dollarsFromBtc, Dollar dollarsFromEth) = _getSellSplits(amountInput);
+        (Dollar dollarsFromBtc, Dollar dollarsFromEth) = _getSellSplits(assets);
 
+        assetsReceived = _sell(dollarsFromBtc, dollarsFromEth);
+
+        // NOTE: The user eats the slippage and trading fees. E.g. if you request $10 you may only get $9 out
+
+        // Calculate number of shares to burn with numShares = dollarAmount * shares_per_dollar
+        // Try to burn numShares, will revert if user does not have enough
+
+        // NOTE: Even if assetsReceived > assets, the vault only sold $assetsDollars worth of assets
+        // (according to chainlink). The share price is a chainlink price, and so the user can at most be asked to
+        // burn $assetsDollars worth of shares
+
+        // Convert from Dollar for easy calculations
+        uint256 assetsDollars = Dollar.unwrap(_valueOfToken(asset, assets));
+        uint256 numShares = (assetsDollars * totalSupply()) / vaultDollars;
+
+        address caller = _msgSender();
+        if (caller != owner) _spendAllowance(owner, caller, numShares);
+        _burn(owner, numShares);
+
+        emit Withdraw(_msgSender(), receiver, owner, assetsReceived, numShares);
+        asset.safeTransfer(receiver, assetsReceived);
+    }
+
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) external whenNotPaused returns (uint256 assets) {
+        // Convert shares to dollar amounts
+
+        // Try to get `assets` of `asset` out of vault
+        uint256 vaultDollars = Dollar.unwrap(valueOfVault());
+        uint256 dollars = shares.mulDivDown(vaultDollars, totalSupply());
+        uint256 assetsToSell = _tokensFromDollars(asset, Dollar.wrap(dollars));
+
+        // Get dollar amounts of btc and eth to sell
+        (Dollar dollarsFromBtc, Dollar dollarsFromEth) = _getSellSplits(assetsToSell);
+        assets = _sell(dollarsFromBtc, dollarsFromEth);
+
+        address caller = _msgSender();
+        if (caller != owner) _spendAllowance(owner, caller, shares);
+        _burn(owner, shares);
+
+        emit Withdraw(_msgSender(), receiver, owner, assets, shares);
+        asset.safeTransfer(receiver, assets);
+    }
+
+    function _sell(Dollar dollarsFromBtc, Dollar dollarsFromEth) internal returns (uint256 assetsReceived) {
         address[] memory pathBtc = new address[](2);
         pathBtc[0] = address(token1);
         pathBtc[1] = address(asset);
@@ -218,7 +266,7 @@ contract TwoAssetBasket is
                 address(this),
                 block.timestamp
             );
-            inputReceived += btcAmounts[1];
+            assetsReceived += btcAmounts[1];
         }
 
         if (Dollar.unwrap(dollarsFromEth) > 0) {
@@ -230,27 +278,8 @@ contract TwoAssetBasket is
                 address(this),
                 block.timestamp
             );
-            inputReceived += ethAmounts[1];
+            assetsReceived += ethAmounts[1];
         }
-
-        // NOTE: The user eats the slippage and trading fees. E.g. if you request $10 you may only get $9 out
-
-        // Calculate number of shares to burn with numShares = dollarAmount * shares_per_dollar
-        // Try to burn numShares, will revert if user does not have enough
-
-        // NOTE: Even if inputReceived > amountInput, the vault only sold $amountInputDollars worth of assets
-        // (according to chainlink). The share price is a chainlink price, and so the user can at most be asked to
-        // burn $amountInputDollars worth of shares
-
-        // Convert from Dollar for easy calculations
-        uint256 amountInputDollars = Dollar.unwrap(_valueOfToken(asset, amountInput));
-        uint256 numShares = (amountInputDollars * totalSupply()) / vaultDollars;
-
-        // TODO: fix approvals, anyone can burn a user's shares now
-        _burn(owner, numShares);
-
-        emit Withdraw(_msgSender(), receiver, owner, amountInput, numShares);
-        asset.safeTransfer(receiver, inputReceived);
     }
 
     /** EXCHANGE RATES
@@ -307,8 +336,8 @@ contract TwoAssetBasket is
     }
 
     /// @notice   When depositing, determine amount of input token that should be used to buy BTC and ETH respectively
-    function _getBuySplits(uint256 amountInput) public view returns (uint256 assetToBtc, uint256 assetToEth) {
-        uint256 inputDollars = Dollar.unwrap(_valueOfToken(asset, amountInput));
+    function _getBuySplits(uint256 assets) public view returns (uint256 assetToBtc, uint256 assetToEth) {
+        uint256 inputDollars = Dollar.unwrap(_valueOfToken(asset, assets));
 
         // We don't care about decimals here, so we can simply treat these as integers
         (Dollar rawBtcDollars, Dollar rawEthDollars) = _valueOfVaultComponents();
@@ -350,12 +379,12 @@ contract TwoAssetBasket is
         }
         // Convert from dollars back to the input asset
         assetToBtc = _tokensFromDollars(asset, Dollar.wrap(dollarsToBtc));
-        assetToEth = amountInput - assetToBtc;
+        assetToEth = assets - assetToBtc;
     }
 
     /// @notice The same as getBuySplits, but with some signs reversed and we return dollar amounts
-    function _getSellSplits(uint256 amountInput) public view returns (Dollar, Dollar) {
-        uint256 inputDollars = Dollar.unwrap(_valueOfToken(asset, amountInput));
+    function _getSellSplits(uint256 assets) public view returns (Dollar, Dollar) {
+        uint256 inputDollars = Dollar.unwrap(_valueOfToken(asset, assets));
 
         // We don't care about decimals here, so we can simply treat these as integers
         (Dollar rawBtcDollars, Dollar rawEthDollars) = _valueOfVaultComponents();

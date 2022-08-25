@@ -59,6 +59,24 @@ contract BtcEthBasketTest is TestPlus {
         emit log_named_uint("DOLLARS WITHDRAWN: ", inputReceived);
     }
 
+    function testRedeem() public {
+        mockUSDCPrice();
+
+        // give vault some btc/eth
+        deal(address(btc), address(basket), 1e18);
+        deal(address(weth), address(basket), 10e18);
+
+        // Give us 50% of shares
+        deal(address(basket), address(this), 1e18, true);
+        deal(address(basket), alice, 1e18, true);
+
+        // We sold approximately half of the assets in the vault
+        uint256 oldTVL = Dollar.unwrap(basket.valueOfVault());
+        uint256 assetsReceived = basket.redeem(1e18, address(this), address(this));
+        assertTrue(assetsReceived > 0);
+        assertApproxEqRel(Dollar.unwrap(basket.valueOfVault()), oldTVL / 2, 1e18 / 1);
+    }
+
     function testMaxWithdraw() public {
         uint256 mintAmount = 100 * 1e6;
         deal(address(usdc), alice, mintAmount, true);
