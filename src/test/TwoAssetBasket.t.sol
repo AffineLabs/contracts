@@ -168,7 +168,7 @@ contract BtcEthBasketTest is TestPlus {
     function testBuySplits() public {
         // We have too much eth, so we only buy btc
         // Mocking balanceOf. Not using encodeCall because ERC20.balanceOf can't be found by solc
-        vm.mockCall(address(basket.token2()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(100e18));
+        vm.mockCall(address(basket.weth()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(100e18));
 
         uint256 amountInput = 100e6; // 100 USDC.
         (uint256 assetsToBtc, uint256 assetsToEth) = basket._getBuySplits(amountInput);
@@ -178,7 +178,7 @@ contract BtcEthBasketTest is TestPlus {
 
         // We have too much btc so we only buy eth
         vm.clearMockedCalls();
-        vm.mockCall(address(basket.token1()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(100e18));
+        vm.mockCall(address(basket.btc()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(100e18));
 
         (assetsToBtc, assetsToEth) = basket._getBuySplits(amountInput);
 
@@ -188,8 +188,8 @@ contract BtcEthBasketTest is TestPlus {
         // We have some of both, so we buy until we hit the ratios
         // The btc/eth ratio at the pinned block is ~0.08, so if we pick 0.1 we have roughly equal value
         vm.clearMockedCalls();
-        vm.mockCall(address(basket.token1()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(1e18));
-        vm.mockCall(address(basket.token2()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(10e18));
+        vm.mockCall(address(basket.btc()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(1e18));
+        vm.mockCall(address(basket.weth()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(10e18));
 
         // We have a split that is more even than 1:2
         uint256 largeInput = 100e6 * 1e6;
@@ -201,7 +201,7 @@ contract BtcEthBasketTest is TestPlus {
     function testSellSplits() public {
         // We have too much btc, so we only sell it
         // Mocking balanceOf. Not using encodeCall because ERC20.balanceOf can't be found by solc
-        vm.mockCall(address(basket.token1()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(1e18));
+        vm.mockCall(address(basket.btc()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(1e18));
         mockUSDCPrice();
 
         uint256 amountInput = 100e6; // 100 USDC.
@@ -214,7 +214,7 @@ contract BtcEthBasketTest is TestPlus {
 
         // We have too much eth so we only sell eth
         vm.clearMockedCalls();
-        vm.mockCall(address(basket.token2()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(100e18));
+        vm.mockCall(address(basket.weth()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(100e18));
         mockUSDCPrice();
         (rawDollarsFromBtc, rawDollarsFromEth) = basket._getSellSplits(amountInput);
         dollarsFromBtc = Dollar.unwrap(rawDollarsFromBtc);
@@ -226,8 +226,8 @@ contract BtcEthBasketTest is TestPlus {
         // // We have some of both, so we buy until we hit the ratios
         // See notes on how these values were chosen in testBuySplits
         vm.clearMockedCalls();
-        vm.mockCall(address(basket.token1()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(1e18));
-        vm.mockCall(address(basket.token2()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(10e18));
+        vm.mockCall(address(basket.btc()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(1e18));
+        vm.mockCall(address(basket.weth()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(10e18));
         mockUSDCPrice();
 
         // We have a split that is more even than 1:2
