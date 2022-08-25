@@ -553,7 +553,7 @@ contract L2VaultTest is TestPlus {
         vm.expectEmit(true, true, false, true);
         emit EmergencyWithdrawalQueueRequestDropped(1, alice, alice, vault.convertToShares(oneUSDC));
         vault.emergencyWithdrawalQueue().dequeue();
-        // The dequeue should bre dropped.
+        // The emergency withdrawal request should be dropped.
         assertEq(asset.balanceOf(alice), 0);
     }
 
