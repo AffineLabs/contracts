@@ -56,6 +56,8 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         asset.safeApprove(address(uniRouter), type(uint256).max);
         token1.safeApprove(address(uniRouter), type(uint256).max);
         token2.safeApprove(address(uniRouter), type(uint256).max);
+
+        assetLimit = 10_000 * 1e8;
     }
 
     function versionRecipient() external pure override returns (string memory) {
@@ -407,7 +409,7 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
     /** MAINNET ALPHA TEMP STUFF
      **************************************************************************/
     /// @notice This is actually a dollar amount We don't bother with `Dollar` type because this is external
-    uint256 assetLimit = 10_000 * 1e8;
+    uint256 assetLimit;
 
     function setAssetLimit(uint256 _assetLimit) external onlyGovernance {
         assetLimit = _assetLimit;
