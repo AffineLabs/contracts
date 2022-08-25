@@ -113,7 +113,7 @@ describe("Deploy AlpLarge", async () => {
   it("Deploy TwoAssetBasket", async () => {
     const basket = await deployBasket(config);
     expect(await basket.asset()).to.equal(config.l2USDC);
-    expect(await basket.token1()).to.equal(config.wbtc);
-    expect(await basket.token2()).to.equal(config.weth);
+    expect(await basket.btc()).to.equal(config.wbtc);
+    expect(await basket.weth()).to.equal(config.weth);
   });
 });
