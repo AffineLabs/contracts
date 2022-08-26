@@ -3,6 +3,8 @@ pragma solidity ^0.8.13;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
+import { FixedPointMathLib } from "solmate/src/utils/FixedPointMathLib.sol";
+
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Context } from "@openzeppelin/contracts/utils/Context.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
@@ -16,6 +18,7 @@ import { DetailedShare } from "./Detailed.sol";
 
 contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, AffineGovernable {
     using SafeTransferLib for ERC20;
+    using FixedPointMathLib for uint256;
 
     // The token which we take in to buy token1 and token2, e.g. USDC
     ERC20 public asset;
@@ -53,6 +56,8 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
         asset.safeApprove(address(uniRouter), type(uint256).max);
         token1.safeApprove(address(uniRouter), type(uint256).max);
         token2.safeApprove(address(uniRouter), type(uint256).max);
+
+        assetLimit = 10_000 * 1e8;
     }
 
     function versionRecipient() external pure override returns (string memory) {
@@ -98,8 +103,16 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
 
     function deposit(uint256 amountInput, address receiver) external whenNotPaused returns (uint256 shares) {
         // Get current amounts of btc/eth (in dollars) => 8 decimals
-        Dollar rawVaultDollars = valueOfVault();
-        uint256 vaultDollars = Dollar.unwrap(rawVaultDollars);
+        uint256 vaultDollars = Dollar.unwrap(valueOfVault());
+
+        // TODO: remove after mainnet alpha
+        {
+            uint256 tvl = vaultDollars;
+            uint256 allowedDepositAmount = tvl > assetLimit ? 0 : assetLimit - tvl;
+            uint256 allowedDollars = Math.min(allowedDepositAmount, Dollar.unwrap(_valueOfToken(asset, amountInput)));
+            amountInput = _tokensFromDollars(asset, Dollar.wrap(allowedDollars));
+        }
+        // end TODO
 
         // We do two swaps. The amount of dollars we swap to each coin is determined by the ratios given above
         // See the whitepaper for the derivation of these amounts
@@ -139,8 +152,9 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
             ethReceived = ethAmounts[1];
         }
 
-        Dollar rawDollarsReceived = _valueOfToken(token1, btcReceived).add(_valueOfToken(token2, ethReceived));
-        uint256 dollarsReceived = Dollar.unwrap(rawDollarsReceived);
+        uint256 dollarsReceived = Dollar.unwrap(
+            _valueOfToken(token1, btcReceived).add(_valueOfToken(token2, ethReceived))
+        );
 
         // Issue shares based on dollar amounts of user coins vs total holdings of the vault
         if (totalSupply == 0) {
@@ -390,5 +404,52 @@ contract TwoAssetBasket is ERC20, BaseRelayRecipient, DetailedShare, Pausable, A
 
     function detailedTotalSupply() external view override returns (Number memory supply) {
         supply = Number({ num: totalSupply, decimals: decimals });
+    }
+
+    /** MAINNET ALPHA TEMP STUFF
+     **************************************************************************/
+    /// @notice This is actually a dollar amount We don't bother with `Dollar` type because this is external
+    uint256 assetLimit;
+
+    function setAssetLimit(uint256 _assetLimit) external onlyGovernance {
+        assetLimit = _assetLimit;
+    }
+
+    /// @dev This function must be submitted through a private RPC. We liquidate all assets and then
+    ///  pause deposits and withdrawals
+    function prepareForTeardown() external onlyGovernance {
+        // Pause deposits/withdrawals
+        _pause();
+
+        // Liquidate all assets
+        address[] memory pathBtc = new address[](2);
+        pathBtc[0] = address(token1);
+        pathBtc[1] = address(asset);
+
+        address[] memory pathEth = new address[](2);
+        pathEth[0] = address(token2);
+        pathEth[1] = address(asset);
+
+        uniRouter.swapExactTokensForTokens(token1.balanceOf(address(this)), 0, pathBtc, address(this), block.timestamp);
+        uniRouter.swapExactTokensForTokens(token2.balanceOf(address(this)), 0, pathEth, address(this), block.timestamp);
+    }
+
+    /// @dev This should only be called after prepareForTeardown is called. Can be called as many times as needed
+    function tearDown(address[] calldata users) external onlyGovernance {
+        uint256 totalAssets = asset.balanceOf(address(this));
+        uint256 numShares = totalSupply;
+        uint256 length = users.length;
+        for (uint256 i = 0; i < length; ) {
+            address user = users[i];
+            uint256 shares = balanceOf[user];
+
+            uint256 assets = shares.mulDivDown(totalAssets, numShares);
+
+            _burn(user, shares);
+            asset.safeTransfer(user, assets);
+            unchecked {
+                ++i;
+            }
+        }
     }
 }

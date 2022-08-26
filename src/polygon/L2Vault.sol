@@ -101,6 +101,8 @@ contract L2Vault is
 
         withdrawalFee = fees[0];
         managementFee = fees[1];
+
+        assetLimit = 10_000 * 1e6;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
@@ -158,6 +160,11 @@ contract L2Vault is
      **************************************************************************/
     /// @notice See {IERC4262-deposit}
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
+        // TODO: remove after mainnet alpha
+        uint256 tvl = totalAssets();
+        uint256 allowedDepositAmount = tvl > assetLimit ? 0 : assetLimit - tvl;
+        assets = Math.min(allowedDepositAmount, assets);
+
         shares = previewDeposit(assets);
         require(shares > 0, "MIN_DEPOSIT_ERR");
         address caller = _msgSender();
@@ -173,6 +180,14 @@ contract L2Vault is
     /// @notice See {IERC4262-mint}
     function mint(uint256 shares, address receiver) external whenNotPaused returns (uint256 assets) {
         assets = previewMint(shares);
+        // TODO: remove after mainnet alpha
+        uint256 tvl = totalAssets();
+        uint256 allowedDepositAmount = tvl > assetLimit ? 0 : assetLimit - tvl;
+        assets = Math.min(allowedDepositAmount, assets);
+
+        shares = previewDeposit(assets);
+        require(shares > 0, "MIN_DEPOSIT_ERR");
+
         address caller = _msgSender();
 
         _asset.safeTransferFrom(caller, address(this), assets);
@@ -462,20 +477,19 @@ contract L2Vault is
         // If L1 has received the last transfer we sent it, unlock the L2->L1 bridge
         if (received && !canTransferToL1) canTransferToL1 = true;
 
-        // If L1 is sending us money (!canRequestFromL1), the TVL its sending could be wrong
-        if (canRequestFromL1) L1TotalLockedValue = tvl;
-
         // Only rebalance if all cross chain transfers have been settled.
         // If the L1 vault is sending money (!canRequestFromL1), then its TVL could be wrong. Also
         // we don't to accidentally request money again. If (!canTransferToL1), we don't want to accidentally
         // send money when one transfer to L1 is already in progress
-        if (!canTransferToL1 || !canRequestFromL1) return;
+        if (!canTransferToL1 || !canRequestFromL1) revert("Rebalance in progress");
+
+        // Update L1TotalLockedValue to match what we received from L1
+        L1TotalLockedValue = tvl;
 
         (bool invest, uint256 delta) = _computeRebalance();
         // if (delta < rebalanceDelta) return;
         // TODO: use the condition above eventually, this is just for testing
         if (delta == 0) return;
-
         _L1L2Rebalance(invest, delta);
     }
 
@@ -553,5 +567,31 @@ contract L2Vault is
 
     function detailedTotalSupply() external view override returns (Number memory supply) {
         supply = Number({ num: totalSupply(), decimals: decimals() });
+    }
+
+    /** MAINNET ALPHA TEMP STUFF
+     **************************************************************************/
+    uint256 assetLimit;
+
+    function setAssetLimit(uint256 _assetLimit) external onlyGovernance {
+        assetLimit = _assetLimit;
+    }
+
+    function tearDown(address[] calldata users) external onlyGovernance {
+        uint256 length = users.length;
+        for (uint256 i = 0; i < length; ) {
+            address user = users[i];
+            uint256 shares = balanceOf(user);
+            uint256 assets = convertToAssets(shares);
+            uint256 amountToSend = Math.min(assets, _asset.balanceOf(address(this)));
+
+            _burn(user, shares);
+            _asset.safeTransfer(user, amountToSend);
+
+            // Assuming that all of our tvl is on L2
+            unchecked {
+                ++i;
+            }
+        }
     }
 }
