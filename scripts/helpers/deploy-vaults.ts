@@ -71,7 +71,7 @@ export async function deployVaults(
     { kind: "uups" },
   )) as L1Vault;
   await l1Vault.deployed();
-  await addToAddressBookAndDefender(ETH_GOERLI, `EthAlpSave`, "L1Vault", l1Vault);
+  await addToAddressBookAndDefender(ethNetworkName, `EthAlpSave`, "L1Vault", l1Vault);
   logContractDeploymentInfo(ethNetworkName, "L1Vault", l1Vault);
 
   // Initialize bridgeEscrow
@@ -109,7 +109,7 @@ export async function deployVaults(
       wormholeRouters.l2WormholeRouter.address,
       bridgeEscrowAddr,
       emergencyWithdrawalQueue.address,
-      getContractAddress(forwarder),
+      await getContractAddress(forwarder),
       9,
       1,
       [config.l2.withdrawFee, config.l2.managementFee],
@@ -119,7 +119,7 @@ export async function deployVaults(
   await l2Vault.deployed();
 
   await emergencyWithdrawalQueue.linkVault(l2Vault.address);
-  await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonAlpSave`, "L2Vault", l2Vault);
+  await addToAddressBookAndDefender(polygonNetworkName, `PolygonAlpSave`, "L2Vault", l2Vault);
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
 
   // Initialize bridgeEscrow

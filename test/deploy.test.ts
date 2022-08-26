@@ -4,24 +4,24 @@ import { solidity } from "ethereum-waffle";
 
 import { deployVaults } from "../scripts/helpers/deploy-vaults";
 import { deployWormholeRouters } from "../scripts/helpers/deploy-wormhole-router";
-import { testConfig } from "../scripts/utils/config";
+import { mainnetConfig } from "../scripts/utils/config";
 import { deployBasket } from "../scripts/helpers/deploy-btc-eth";
-import { deployForwarder } from "scripts/fixtures/deploy-forwarder";
+import { deployForwarder } from "../scripts/fixtures/deploy-forwarder";
 
 chai.use(solidity);
 const { expect } = chai;
 
 describe("Deploy AlpSave", async () => {
   it("Deploy Vaults", async () => {
-    const config = testConfig;
+    const config = mainnetConfig;
     const forwarder = await deployForwarder(process.env.POLYGON_NETWORK || "polygon-mumbai-fork");
     const wormholeRouters = await deployWormholeRouters(
       process.env.ETH_NETWORK || "eth-goerli-fork",
       process.env.POLYGON_NETWORK || "polygon-mumbai-fork",
     );
     const { l1Vault, l2Vault, emergencyWithdrawalQueue } = await deployVaults(
-      testConfig.l1.governance,
-      testConfig.l2.governance,
+      config.l1.governance,
+      config.l2.governance,
       process.env.ETH_NETWORK || "eth-goerli-fork",
       process.env.POLYGON_NETWORK || "polygon-mumbai-fork",
       config,
@@ -30,13 +30,13 @@ describe("Deploy AlpSave", async () => {
     );
 
     // If tokens are set correctly, most likely everything else is.
-    expect(await l2Vault.asset()).to.equal(testConfig.l2.usdc);
-    expect(await l1Vault.asset()).to.equal(testConfig.l1.usdc);
+    expect(await l2Vault.asset()).to.equal(config.l2.usdc);
+    expect(await l1Vault.asset()).to.equal(config.l1.usdc);
 
     const forwarderAddr = await l2Vault.trustedForwarder();
     expect(forwarderAddr).to.be.properAddress;
     expect(forwarderAddr).to.not.equal(ethers.constants.AddressZero);
-    expect(forwarder).to.equal(forwarder.address);
+    expect(forwarderAddr).to.equal(forwarder.address);
 
     // Check that bridgeEscrow addresses are the same
     const l1BridgeEscrow = await l1Vault.bridgeEscrow();
@@ -65,10 +65,11 @@ describe("Deploy AlpSave", async () => {
 
 describe("Deploy AlpLarge", async () => {
   it("Deploy TwoAssetBasket", async () => {
+    const config = mainnetConfig;
     const forwarder = await deployForwarder(process.env.POLYGON_NETWORK || "polygon-mumbai-fork");
-    const basket = await deployBasket(testConfig, forwarder);
-    expect(await basket.asset()).to.equal(testConfig.l2.usdc);
-    expect(await basket.btc()).to.equal(testConfig.l2.wbtc);
-    expect(await basket.weth()).to.equal(testConfig.l2.weth);
+    const basket = await deployBasket(config, forwarder);
+    expect(await basket.asset()).to.equal(config.l2.usdc);
+    expect(await basket.btc()).to.equal(config.l2.wbtc);
+    expect(await basket.weth()).to.equal(config.l2.weth);
   });
 });

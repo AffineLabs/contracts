@@ -16,9 +16,8 @@ export async function deployStrategies(
   polygonNetworkName: string,
   vaults: VaultContracts,
   config: totalConfig,
-  test: boolean = true,
 ): Promise<StrategyContracts | undefined> {
-  if (test) return;
+  if (ethNetworkName.includes("goerli")) return;
 
   // Deploy L2AAVEStrat on Polygon
   hre.changeNetwork(polygonNetworkName);
@@ -34,14 +33,7 @@ export async function deployStrategies(
     aaveConfig.rewardToken,
     aaveConfig.wrappedNative,
   );
-  await addToAddressBookAndDefender(
-    test ? POLYGON_MUMBAI : POLYGON_MAINNET,
-    `PolygonAAVEStrategy`,
-    "L2AAVEStrategy",
-    l2Strategy,
-    [],
-    false,
-  );
+  await addToAddressBookAndDefender(polygonNetworkName, `PolygonAAVEStrategy`, "L2AAVEStrategy", l2Strategy, [], false);
   console.log("strategy L2: ", l2Strategy.address);
 
   // Deploy L1CompoundStrat on ethereum
@@ -59,14 +51,7 @@ export async function deployStrategies(
     compConfig.wrappedNative,
   );
   await l1Strategy.deployed();
-  await addToAddressBookAndDefender(
-    test ? ETH_GOERLI : ETH_MAINNET,
-    `EthCompoundStrategy`,
-    "L1CompoundStrategy",
-    l1Strategy,
-    [],
-    false,
-  );
+  await addToAddressBookAndDefender(ethNetworkName, `EthCompoundStrategy`, "L1CompoundStrategy", l1Strategy, [], false);
   console.log("strategy l1: ", l1Strategy.address);
 
   return {

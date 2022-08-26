@@ -46,9 +46,16 @@ export async function deployAll(
   const basket = await deployBasket(config, forwarder);
 
   // Add usdc to address book
-  await addToAddressBookAndDefender(POLYGON_MUMBAI, "PolygonUSDC", "MintableToken", config.l2.usdc, [], false);
   await addToAddressBookAndDefender(
-    POLYGON_MUMBAI,
+    polygonNetworkName,
+    "PolygonUSDC",
+    polygonNetworkName.includes("mumbai") ? "MintableToken" : "ERC20",
+    config.l2.usdc,
+    [],
+    false,
+  );
+  await addToAddressBookAndDefender(
+    polygonNetworkName,
     "Forwarder",
     "Forwarder",
     await getContractAddress(forwarder),
