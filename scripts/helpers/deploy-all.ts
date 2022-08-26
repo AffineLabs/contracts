@@ -1,9 +1,9 @@
 import { deployVaults, VaultContracts } from "./deploy-vaults";
-import { Config } from "../utils/config";
+import { totalConfig } from "../utils/config";
 import { deployStrategies, StrategyContracts } from "./deploy-strategies";
 import { deployBasket } from "./deploy-btc-eth";
 import { address } from "../utils/types";
-import { MintableToken__factory, TwoAssetBasket } from "../../typechain";
+import { TwoAssetBasket } from "../../typechain";
 import { ethers } from "hardhat";
 import hre from "hardhat";
 import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
@@ -11,11 +11,12 @@ import { POLYGON_MUMBAI } from "../utils/constants/blockchain";
 import { deployWormholeRouters, WormholeRouterContracts } from "./deploy-wormhole-router";
 import { deployRouter } from "./deploy-router";
 import { Router } from "typechain/src/polygon";
+import { deployForwarder } from "scripts/fixtures/deploy-forwarder";
 
 export interface AllContracts {
   wormholeRouters: WormholeRouterContracts;
   vaults: VaultContracts;
-  strategies: StrategyContracts;
+  strategies: StrategyContracts | undefined;
   basket: TwoAssetBasket;
   router: Router;
 }
@@ -25,8 +26,10 @@ export async function deployAll(
   l2Governance: address,
   ethNetworkName: string,
   polygonNetworkName: string,
-  config: Config,
+  config: totalConfig,
 ): Promise<AllContracts> {
+  const forwarder = await deployForwarder(polygonNetworkName);
+  const router = await deployRouter(polygonNetworkName, forwarder);
   const wormholeRouters = await deployWormholeRouters(ethNetworkName, polygonNetworkName);
   const vaults = await deployVaults(
     l1Governance,
@@ -35,16 +38,23 @@ export async function deployAll(
     polygonNetworkName,
     config,
     wormholeRouters,
+    forwarder,
   );
-  const strategies = await deployStrategies(ethNetworkName, polygonNetworkName, vaults);
-  const router = await deployRouter(polygonNetworkName);
+  const strategies = await deployStrategies(ethNetworkName, polygonNetworkName, vaults, config);
 
   hre.changeNetwork(polygonNetworkName);
-  const basket = await deployBasket(config);
+  const basket = await deployBasket(config, forwarder);
 
   // Add usdc to address book
-  await addToAddressBookAndDefender(POLYGON_MUMBAI, "PolygonUSDC", "MintableToken", config.l2USDC, [], false);
-  await addToAddressBookAndDefender(POLYGON_MUMBAI, "Forwarder", "Forwarder", config.forwarder, [], false);
+  await addToAddressBookAndDefender(POLYGON_MUMBAI, "PolygonUSDC", "MintableToken", config.l2.usdc, [], false);
+  await addToAddressBookAndDefender(
+    POLYGON_MUMBAI,
+    "Forwarder",
+    "Forwarder",
+    await getContractAddress(forwarder),
+    [],
+    false,
+  );
 
   return {
     wormholeRouters,

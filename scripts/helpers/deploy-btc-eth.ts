@@ -1,19 +1,19 @@
+import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
 import { ethers, upgrades } from "hardhat";
-import { TwoAssetBasket } from "../../typechain";
-import { Config } from "../utils/config";
+import { Forwarder, TwoAssetBasket } from "../../typechain";
+import { totalConfig } from "../utils/config";
 import { POLYGON_MUMBAI } from "../utils/constants/blockchain";
-import { addToAddressBookAndDefender } from "../utils/export";
-// This only works on mumbai for now
-export async function deployBasket(config: Config): Promise<TwoAssetBasket> {
+
+export async function deployBasket(config: totalConfig, forwarder: Forwarder): Promise<TwoAssetBasket> {
   const BasketFactory = await ethers.getContractFactory("TwoAssetBasket");
   const basket = (await upgrades.deployProxy(
     BasketFactory,
     [
-      config.l2Governance,
-      config.forwarder,
-      "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506", // sushiswap router
-      config.l2USDC,
-      [config.wbtc, config.weth],
+      config.l2.governance,
+      await getContractAddress(forwarder),
+      config.l2.aave.uniRouter,
+      config.l2.usdc,
+      [config.l2.wbtc, config.l2.weth],
       [100, 100],
       [
         "0x572dDec9087154dC5dfBB1546Bb62713147e0Ab0",

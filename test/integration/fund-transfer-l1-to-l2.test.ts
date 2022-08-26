@@ -4,7 +4,7 @@ import usdcABI from "../assets/usdc-abi.json";
 
 import { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
-import { config } from "../../scripts/utils/config";
+import { testConfig } from "../../scripts/utils/config";
 import { ContractTransaction } from "ethers";
 import { getTxExplorerLink } from "../../scripts/utils/bc-explorer-links";
 import { AllContracts, deployAll } from "../../scripts/helpers/deploy-all";
@@ -34,7 +34,7 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
     governance.address,
     ETH_NETWORK_NAME,
     POLYGON_NETWORK_NAME,
-    config,
+    testConfig,
   );
 
   const { l1Vault, l2Vault } = allContracts.vaults;
@@ -46,7 +46,7 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
   [governance] = await ethers.getSigners();
 
   // Transfer some USDC from owner to L1 vault.
-  const ethUSDC = new ethers.Contract(config.l1USDC, usdcABI, governance);
+  const ethUSDC = new ethers.Contract(testConfig.l1.usdc, usdcABI, governance);
   let tx: ContractTransaction = await ethUSDC.transfer(l1Vault.address, initialL1TVL);
   await tx.wait();
   expect(await ethUSDC.balanceOf(l1Vault.address)).to.eq(initialL1TVL);
@@ -94,7 +94,7 @@ it("Eth-Matic Fund Transfer Integration Test L1 -> L2", async () => {
   console.log("L2 bridgeEscrow address: ", l2BridgeEscrow.address);
 
   await utils.waitForNonZeroAddressTokenBalance(
-    config.l2USDC,
+    testConfig.l2.usdc,
     "L2 BridgeEscrow",
     l2BridgeEscrow.address,
     ethers.provider,

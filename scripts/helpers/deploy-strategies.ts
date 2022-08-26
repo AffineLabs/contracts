@@ -1,46 +1,72 @@
 import { ethers } from "hardhat";
 import hre from "hardhat";
-import { BaseStrategy, MintableStrategy } from "typechain";
+import { L1CompoundStrategy, L2AAVEStrategy, MintableStrategy } from "typechain";
 import { VaultContracts } from "./deploy-vaults";
-import { addToAddressBookAndDefender } from "../utils/export";
-import { ETH_GOERLI, POLYGON_MUMBAI } from "../utils/constants/blockchain";
+import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
+import { ETH_GOERLI, POLYGON_MUMBAI, POLYGON_MAINNET, ETH_MAINNET } from "../utils/constants/blockchain";
+import { totalConfig } from "scripts/utils/config";
 
 export interface StrategyContracts {
-  l1: { [strategyName: string]: BaseStrategy };
-  l2: { [strategyName: string]: BaseStrategy };
+  l1: { compound: L1CompoundStrategy };
+  l2: { aave: L2AAVEStrategy };
 }
 
 export async function deployStrategies(
   ethNetworkName: string,
   polygonNetworkName: string,
   vaults: VaultContracts,
+  config: totalConfig,
   test: boolean = true,
 ): Promise<StrategyContracts | undefined> {
   if (test) return;
 
-  // Deploy Mintable strategy on Polygon
+  // Deploy L2AAVEStrat on Polygon
   hre.changeNetwork(polygonNetworkName);
   let [signer] = await ethers.getSigners();
 
-  let stratFactory = await ethers.getContractFactory("L2AAVEStrategy", signer);
-  const l2Strategy = await stratFactory.deploy(getContractAddress(vaults.l2Vault));
+  const aaveConfig = config.l2.aave;
+  const stratFactory = await ethers.getContractFactory("L2AAVEStrategy", signer);
+  const l2Strategy = await stratFactory.deploy(
+    await getContractAddress(vaults.l2Vault),
+    aaveConfig.registry,
+    aaveConfig.incentivesController,
+    aaveConfig.uniRouter,
+    aaveConfig.rewardToken,
+    aaveConfig.wrappedNative,
+  );
   await addToAddressBookAndDefender(
-    POLYGON_MUMBAI,
-    `PolygonMintableStrategy`,
-    "MintableStrategy",
+    test ? POLYGON_MUMBAI : POLYGON_MAINNET,
+    `PolygonAAVEStrategy`,
+    "L2AAVEStrategy",
     l2Strategy,
     [],
     false,
   );
   console.log("strategy L2: ", l2Strategy.address);
 
-  // Deploy Mintable strategy on ethereum
+  // Deploy L1CompoundStrat on ethereum
   hre.changeNetwork(ethNetworkName);
   [signer] = await ethers.getSigners();
-  stratFactory = await ethers.getContractFactory("MintableStrategy", signer);
-  const l1Strategy = (await stratFactory.deploy(vaults.l1Vault.address)) as MintableStrategy;
+
+  const compConfig = config.l1.compound;
+  const compStratFactory = await ethers.getContractFactory("L1CompoundStrategy", signer);
+  const l1Strategy = await compStratFactory.deploy(
+    await getContractAddress(vaults.l2Vault),
+    compConfig.cToken,
+    compConfig.comptroller,
+    compConfig.uniRouter,
+    compConfig.rewardToken,
+    compConfig.wrappedNative,
+  );
   await l1Strategy.deployed();
-  await addToAddressBookAndDefender(ETH_GOERLI, `EthMintableStrategy`, "MintableStrategy", l1Strategy, [], false);
+  await addToAddressBookAndDefender(
+    test ? ETH_GOERLI : ETH_MAINNET,
+    `EthCompoundStrategy`,
+    "L1CompoundStrategy",
+    l1Strategy,
+    [],
+    false,
+  );
   console.log("strategy l1: ", l1Strategy.address);
 
   return {
