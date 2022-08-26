@@ -69,7 +69,8 @@ contract Deploy is Test {
     function deployTwoAssetBasket(ERC20 usdc) internal returns (TwoAssetBasket basket) {
         ERC20 btc = ERC20(0xc8BA1fdaf17c1f16C68778fde5f78F3D37cD1509);
         ERC20 weth = ERC20(0x3dd7F3CF122e0460Dba8A75d191b3486752B6A61);
-        basket = new TwoAssetBasket(
+        basket = new TwoAssetBasket();
+        basket.initialize(
             governance, // governance,
             address(0), // forwarder
             IUniLikeSwapRouter(address(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506)), // sushiswap router

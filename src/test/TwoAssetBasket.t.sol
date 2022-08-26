@@ -27,24 +27,7 @@ contract BtcEthBasketTest is TestPlus {
     function setUp() public {
         vm.createSelectFork("mumbai", 27549248);
 
-        basket = new TwoAssetBasket(
-            governance, // governance
-            address(0), // forwarder
-            IUniLikeSwapRouter(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506), // sushiswap router
-            usdc, // mintable usdc
-            // WBTC AND WETH
-            [btc, weth],
-            [uint256(1), uint256(1)], // ratios (basket should contain an equal amount of btc/eth)
-            // Price feeds (BTC/USD and ETH/USD)
-            [
-                AggregatorV3Interface(0x572dDec9087154dC5dfBB1546Bb62713147e0Ab0),
-                AggregatorV3Interface(0x007A22900a3B98143368Bd5906f8E17e9867581b),
-                AggregatorV3Interface(0x0715A7794a1dc8e42615F059dD6e406A6594651A)
-            ]
-        );
-        vm.prank(governance);
-        basket.setAssetLimit(type(uint256).max);
-
+        basket = Deploy.deployTwoAssetBasket(usdc);
         router = new Router("Alp", 0x52c8e413Ed9E961565D8D1de67e805E81b26C01b);
     }
 
@@ -74,6 +57,24 @@ contract BtcEthBasketTest is TestPlus {
 
         uint256 inputReceived = basket.withdraw((mintAmount * 90) / 100, address(this), address(this));
         emit log_named_uint("DOLLARS WITHDRAWN: ", inputReceived);
+    }
+
+    function testRedeem() public {
+        mockUSDCPrice();
+
+        // give vault some btc/eth
+        deal(address(btc), address(basket), 1e18);
+        deal(address(weth), address(basket), 10e18);
+
+        // Give us 50% of shares
+        deal(address(basket), address(this), 1e18, true);
+        deal(address(basket), alice, 1e18, true);
+
+        // We sold approximately half of the assets in the vault
+        uint256 oldTVL = Dollar.unwrap(basket.valueOfVault());
+        uint256 assetsReceived = basket.redeem(1e18, address(this), address(this));
+        assertTrue(assetsReceived > 0);
+        assertApproxEqRel(Dollar.unwrap(basket.valueOfVault()), oldTVL / 2, 1e18 / 1);
     }
 
     function testMaxWithdraw() public {
@@ -167,7 +168,7 @@ contract BtcEthBasketTest is TestPlus {
     function testBuySplits() public {
         // We have too much eth, so we only buy btc
         // Mocking balanceOf. Not using encodeCall because ERC20.balanceOf can't be found by solc
-        vm.mockCall(address(basket.token2()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(100e18));
+        vm.mockCall(address(basket.weth()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(100e18));
 
         uint256 amountInput = 100e6; // 100 USDC.
         (uint256 assetsToBtc, uint256 assetsToEth) = basket._getBuySplits(amountInput);
@@ -177,7 +178,7 @@ contract BtcEthBasketTest is TestPlus {
 
         // We have too much btc so we only buy eth
         vm.clearMockedCalls();
-        vm.mockCall(address(basket.token1()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(100e18));
+        vm.mockCall(address(basket.btc()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(100e18));
 
         (assetsToBtc, assetsToEth) = basket._getBuySplits(amountInput);
 
@@ -187,8 +188,8 @@ contract BtcEthBasketTest is TestPlus {
         // We have some of both, so we buy until we hit the ratios
         // The btc/eth ratio at the pinned block is ~0.08, so if we pick 0.1 we have roughly equal value
         vm.clearMockedCalls();
-        vm.mockCall(address(basket.token1()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(1e18));
-        vm.mockCall(address(basket.token2()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(10e18));
+        vm.mockCall(address(basket.btc()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(1e18));
+        vm.mockCall(address(basket.weth()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(10e18));
 
         // We have a split that is more even than 1:2
         uint256 largeInput = 100e6 * 1e6;
@@ -200,7 +201,7 @@ contract BtcEthBasketTest is TestPlus {
     function testSellSplits() public {
         // We have too much btc, so we only sell it
         // Mocking balanceOf. Not using encodeCall because ERC20.balanceOf can't be found by solc
-        vm.mockCall(address(basket.token1()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(1e18));
+        vm.mockCall(address(basket.btc()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(1e18));
         mockUSDCPrice();
 
         uint256 amountInput = 100e6; // 100 USDC.
@@ -213,7 +214,7 @@ contract BtcEthBasketTest is TestPlus {
 
         // We have too much eth so we only sell eth
         vm.clearMockedCalls();
-        vm.mockCall(address(basket.token2()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(100e18));
+        vm.mockCall(address(basket.weth()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(100e18));
         mockUSDCPrice();
         (rawDollarsFromBtc, rawDollarsFromEth) = basket._getSellSplits(amountInput);
         dollarsFromBtc = Dollar.unwrap(rawDollarsFromBtc);
@@ -225,8 +226,8 @@ contract BtcEthBasketTest is TestPlus {
         // // We have some of both, so we buy until we hit the ratios
         // See notes on how these values were chosen in testBuySplits
         vm.clearMockedCalls();
-        vm.mockCall(address(basket.token1()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(1e18));
-        vm.mockCall(address(basket.token2()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(10e18));
+        vm.mockCall(address(basket.btc()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(1e18));
+        vm.mockCall(address(basket.weth()), abi.encodeWithSelector(0x70a08231, address(basket)), abi.encode(10e18));
         mockUSDCPrice();
 
         // We have a split that is more even than 1:2
@@ -256,7 +257,7 @@ contract BtcEthBasketTest is TestPlus {
     function testDetailedPrice() public {
         // This function should work even if there is nothing in the vault
         TwoAssetBasket.Number memory price = basket.detailedPrice();
-        assertEq(price.num, 10**8);
+        assertEq(price.num, 100**8);
 
         address user = address(this);
         MockERC20(address(usdc)).mint(user, 2e6);
