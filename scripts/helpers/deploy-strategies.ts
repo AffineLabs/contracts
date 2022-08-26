@@ -1,13 +1,13 @@
 import { ethers } from "hardhat";
 import hre from "hardhat";
-import { MintableStrategy } from "typechain";
+import { BaseStrategy, MintableStrategy } from "typechain";
 import { VaultContracts } from "./deploy-vaults";
 import { addToAddressBookAndDefender } from "../utils/export";
 import { ETH_GOERLI, POLYGON_MUMBAI } from "../utils/constants/blockchain";
 
 export interface StrategyContracts {
-  l1: { [strategyName: string]: MintableStrategy };
-  l2: { [strategyName: string]: MintableStrategy };
+  l1: { [strategyName: string]: BaseStrategy };
+  l2: { [strategyName: string]: BaseStrategy };
 }
 
 export async function deployStrategies(
@@ -15,16 +15,15 @@ export async function deployStrategies(
   polygonNetworkName: string,
   vaults: VaultContracts,
   test: boolean = true,
-): Promise<StrategyContracts> {
-  if (!test) throw Error("Cannot deploy to mainnet");
+): Promise<StrategyContracts | undefined> {
+  if (test) return;
 
   // Deploy Mintable strategy on Polygon
   hre.changeNetwork(polygonNetworkName);
   let [signer] = await ethers.getSigners();
 
-  let stratFactory = await ethers.getContractFactory("MintableStrategy", signer);
-  const l2Strategy = (await stratFactory.deploy(vaults.l2Vault.address)) as MintableStrategy;
-  await l2Strategy.deployed();
+  let stratFactory = await ethers.getContractFactory("L2AAVEStrategy", signer);
+  const l2Strategy = await stratFactory.deploy(getContractAddress(vaults.l2Vault));
   await addToAddressBookAndDefender(
     POLYGON_MUMBAI,
     `PolygonMintableStrategy`,

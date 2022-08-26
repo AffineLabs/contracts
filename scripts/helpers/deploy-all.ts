@@ -38,24 +38,11 @@ export async function deployAll(
   );
   const strategies = await deployStrategies(ethNetworkName, polygonNetworkName, vaults);
   const router = await deployRouter(polygonNetworkName);
-  // TODO: Consider strategies. We can't add strategies anymore since the timelock address is the governance address
-  // In tests we can simply use hardhat's mocking abilities.
 
-  // console.log("Adding strategies to vault...");
-  // add L2 strategies
-  // changeNetwork(polygonNetworkName);
-  // let [governanceSigner] = await ethers.getSigners();
-  // await vaults.l2Vault.connect(governanceSigner).addStrategy(strategies.l2.aave.address);
-
-  // add L1 strategies
-  // changeNetwork(ethNetworkName);
-  // [governanceSigner] = await ethers.getSigners();
-  // await vaults.l1Vault.connect(governanceSigner).addStrategy(strategies.l1.compound.address);
-  // console.log("Strategies added");
   hre.changeNetwork(polygonNetworkName);
   const basket = await deployBasket(config);
 
-  // Add usdc to address book, TODO: handle the production version of this
+  // Add usdc to address book
   await addToAddressBookAndDefender(POLYGON_MUMBAI, "PolygonUSDC", "MintableToken", config.l2USDC, [], false);
   await addToAddressBookAndDefender(POLYGON_MUMBAI, "Forwarder", "Forwarder", config.forwarder, [], false);
 

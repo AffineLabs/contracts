@@ -4,60 +4,117 @@ import { address } from "./types";
 
 dotenvConfig({ path: resolve(__dirname, "./.env") });
 
-// Hardcoded Mumbai addresses and values
-// See https://docs.polygon.technology/docs/develop/ethereum-polygon/pos/deployment for more
-const ETH_USDC = "0xb465fBFE1678fF41CD3D749D54d2ee2CfABE06F3";
-const POLYGON_USDC = "0x8f7116CA03AEB48547d0E2EdD3Faa73bfB232538";
-const POLYGON_ERC20_PREDICATE = "0x37c3bfC05d5ebF9EBb3FF80ce0bd0133Bf221BC8";
-const ROOT_CHAIN_MANAGER = "0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74";
-const ETH_WORMHOLE = "0x706abc4E45D419950511e474C7B9Ed348A4a716c";
-const POLYGON_WORMHOLE = "0x0CBE91CF822c73C2315FB05100C2F714765d5c20";
-
-// Testnet create2 deployer contract version deployed by alpine
-const create2Deployer = "0x7F4eD93f8Da2A07008de3f87759d220e2f7B8C40";
-
-const wbtc = "0xc8BA1fdaf17c1f16C68778fde5f78F3D37cD1509";
-const weth = "0x3dd7F3CF122e0460Dba8A75d191b3486752B6A61";
-// Forwarder contract for meta transactions (and batched meta transactions) on layer 3
-const forwarder = "0x52c8e413Ed9E961565D8D1de67e805E81b26C01b";
-const withdrawFee = 50; // user pays 50 bps
-const managementFee = 200; // 200 bps to be charged to vault over the course of the year
-// https://defender.openzeppelin.com/#/admin/contracts/goerli-0xdbA49884464689800BF95C7BbD50eBA0DA0F67b9
-const L1_GOVERNANCE = "0xdbA49884464689800BF95C7BbD50eBA0DA0F67b9";
-// https://defender.openzeppelin.com/#/admin/contracts/mumbai-0xCBF0C1bA68D22666ef01069b1a42CcC1F0281A9C
-const L2_GOVERNANCE = "0xCBF0C1bA68D22666ef01069b1a42CcC1F0281A9C";
-
-export interface Config {
-  l1ChainManager: address;
-  l1USDC: address;
-  l2USDC: address;
-  l2ERC20Predicate: address;
-  l1worm: address;
-  l2worm: address;
+export interface l1Config {
+  chainManager: address;
+  usdc: address;
+  wormhole: address;
   create2Deployer: address;
+  governance: address;
+  compound: {
+    cToken: address;
+    comptroller: address;
+    uniRouter: address;
+    rewardToken: address;
+    wrappedNative: address;
+  };
+}
+export interface l2Config {
+  governance: address;
+  usdc: address;
+  wormhole: address;
+  create2Deployer: address;
+  ERC20Predicate: address;
+  forwarder: address;
   weth: address;
   wbtc: address;
-  forwarder: address;
   withdrawFee: number;
   managementFee: number;
-  l1Governance: address;
-  l2Governance: address;
+  aave: {
+    registry: address;
+    incentivesController: address;
+    uniRouter: address;
+    rewardToken: address;
+    wrappedNative: address;
+  };
 }
-export const config: Config = {
-  l1ChainManager: ROOT_CHAIN_MANAGER,
-  l1USDC: ETH_USDC,
-  l2USDC: POLYGON_USDC,
-  l2ERC20Predicate: POLYGON_ERC20_PREDICATE,
-  l1worm: ETH_WORMHOLE,
-  l2worm: POLYGON_WORMHOLE,
-  create2Deployer,
-  wbtc,
-  weth,
-  forwarder,
-  withdrawFee,
-  managementFee,
-  l1Governance: L1_GOVERNANCE,
-  l2Governance: L2_GOVERNANCE,
+
+export interface totalConfig {
+  l1: l1Config;
+  l2: l2Config;
+}
+
+const testConfig: totalConfig = {
+  l1: {
+    governance: "0xdbA49884464689800BF95C7BbD50eBA0DA0F67b9",
+    usdc: "0xb465fBFE1678fF41CD3D749D54d2ee2CfABE06F3",
+    wormhole: "0x706abc4E45D419950511e474C7B9Ed348A4a716c",
+    create2Deployer: "0x7F4eD93f8Da2A07008de3f87759d220e2f7B8C40", // Testnet create2 deployer contract deployed by Affine
+    chainManager: "0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74",
+  },
+  l2: {
+    // See https://docs.polygon.technology/docs/develop/ethereum-polygon/pos/deployment for more addresses
+    usdc: "0x8f7116CA03AEB48547d0E2EdD3Faa73bfB232538",
+    ERC20Predicate: "0x37c3bfC05d5ebF9EBb3FF80ce0bd0133Bf221BC8",
+    wormhole: "0x0CBE91CF822c73C2315FB05100C2F714765d5c20",
+    create2Deployer: "0x7F4eD93f8Da2A07008de3f87759d220e2f7B8C40",
+    governance: "0xCBF0C1bA68D22666ef01069b1a42CcC1F0281A9C",
+    withdrawFee: 50,
+    managementFee: 200,
+    wbtc: "0xc8BA1fdaf17c1f16C68778fde5f78F3D37cD1509",
+    weth: "0x3dd7F3CF122e0460Dba8A75d191b3486752B6A61",
+    forwarder: "0x52c8e413Ed9E961565D8D1de67e805E81b26C01b",
+    aave: {
+      registry: "",
+      incentivesController: "",
+      uniRouter: "",
+      rewardToken: "",
+      wrappedNative: "",
+    },
+    compound: {
+      cToken: "",
+      comptroller: "",
+      uniRouter: "",
+      rewardToken: "",
+      wrappedNative: "",
+    },
+  },
+};
+
+const mainnetConfig: totalConfig = {
+  l1: {
+    chainManager: "0xA0c68C638235ee32657e8f720a23ceC1bFc77C77",
+    usdc: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    wormhole: "0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B",
+    create2Deployer: "", // Testnet create2 deployer contract deployed by Affine
+    governance: "",
+    compound: {
+      cToken: "0x39AA39c021dfbaE8faC545936693aC917d5E7563",
+      comptroller: "0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B",
+      uniRouter: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D", // uniswap v2
+      rewardToken: "0xc00e94Cb662C3520282E6f5717214004A7f26888", // comp
+      wrappedNative: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    },
+  },
+  l2: {
+    // See https://docs.polygon.technology/docs/develop/ethereum-polygon/pos/deployment for more addresses
+    usdc: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+    ERC20Predicate: "0x9923263fA127b3d1484cFD649df8f1831c2A74e4",
+    wormhole: "0x0CBE91CF822c73C2315FB05100C2F714765d5c20",
+    create2Deployer: "",
+    governance: "",
+    withdrawFee: 0,
+    managementFee: 0,
+    wbtc: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6",
+    weth: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
+    forwarder: "",
+    aave: {
+      registry: "0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19",
+      incentivesController: "0x357D51124f59836DeD84c8a1730D72B749d8BC23",
+      uniRouter: "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
+      rewardToken: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+      wrappedNative: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+    },
+  },
 };
 
 export interface RebalanceConfig {
