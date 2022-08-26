@@ -1,13 +1,14 @@
 import { ethers, upgrades } from "hardhat";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../utils/bc-explorer-links";
-import { Config } from "../utils/config";
+import { totalConfig } from "../utils/config";
 import {
   ICreate2Deployer__factory,
   L1Vault,
   L2Vault,
   BridgeEscrow__factory,
   EmergencyWithdrawalQueue,
+  Forwarder,
 } from "../../typechain";
 import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
 import { ETH_GOERLI, POLYGON_MUMBAI } from "../utils/constants/blockchain";
@@ -26,8 +27,9 @@ export async function deployVaults(
   l2Governance: address,
   ethNetworkName: string,
   polygonNetworkName: string,
-  config: Config,
+  config: totalConfig,
   wormholeRouters: WormholeRouterContracts,
+  forwarder: Forwarder,
 ): Promise<VaultContracts> {
   /**
    * Deploy vault in eth.
@@ -47,7 +49,7 @@ export async function deployVaults(
 
   const bridgeEscrowCreationCode = ethers.utils.hexConcat([bridgeEscrowCode, constructorParams]); // bytecode concat constructor params
 
-  let create2 = ICreate2Deployer__factory.connect(config.create2Deployer, deployerSigner);
+  let create2 = ICreate2Deployer__factory.connect(config.l1.create2Deployer, deployerSigner);
   let stagindDeployTx = await create2.deploy(0, salt, bridgeEscrowCreationCode);
   await stagindDeployTx.wait();
 
@@ -60,27 +62,25 @@ export async function deployVaults(
     l1VaultFactory,
     [
       l1Governance,
-      config.l1USDC,
+      config.l1.usdc,
       wormholeRouters.l1WormholeRouter.address,
       bridgeEscrowAddr,
-      config.l1ChainManager,
-      config.l2ERC20Predicate,
+      config.l1.chainManager,
+      config.l1.ERC20Predicate,
     ],
     { kind: "uups" },
   )) as L1Vault;
   await l1Vault.deployed();
-  await addToAddressBookAndDefender(ETH_GOERLI, `EthAlpSave`, "L1Vault", l1Vault);
+  await addToAddressBookAndDefender(ethNetworkName, `EthAlpSave`, "L1Vault", l1Vault);
   logContractDeploymentInfo(ethNetworkName, "L1Vault", l1Vault);
-
-  console.log("Initializing L1 Escrow: ");
 
   // Initialize bridgeEscrow
   let bridgeEscrow = BridgeEscrow__factory.connect(bridgeEscrowAddr, deployerSigner);
   let bridgeEscrowInitTx = await bridgeEscrow.initialize(
     await getContractAddress(l1Vault),
     wormholeRouters.l1WormholeRouter.address,
-    config.l1USDC,
-    config.l1ChainManager,
+    config.l1.usdc,
+    config.l1.chainManager,
   );
   await bridgeEscrowInitTx.wait();
 
@@ -93,7 +93,7 @@ export async function deployVaults(
 
   // Deploy bridgeEscrow
   console.log("Deploying L2 Escrow");
-  create2 = ICreate2Deployer__factory.connect(config.create2Deployer, deployerSigner);
+  create2 = ICreate2Deployer__factory.connect(config.l2.create2Deployer, deployerSigner);
   stagindDeployTx = await create2.deploy(0, salt, bridgeEscrowCreationCode);
   await stagindDeployTx.wait();
 
@@ -105,21 +105,21 @@ export async function deployVaults(
     l2VaultFactory,
     [
       l2Governance,
-      config.l2USDC,
+      config.l2.usdc,
       wormholeRouters.l2WormholeRouter.address,
       bridgeEscrowAddr,
       emergencyWithdrawalQueue.address,
-      config.forwarder,
+      await getContractAddress(forwarder),
       9,
       1,
-      [config.withdrawFee, config.managementFee],
+      [config.l2.withdrawFee, config.l2.managementFee],
     ],
     { kind: "uups" },
   )) as L2Vault;
   await l2Vault.deployed();
 
   await emergencyWithdrawalQueue.linkVault(l2Vault.address);
-  await addToAddressBookAndDefender(POLYGON_MUMBAI, `PolygonAlpSave`, "L2Vault", l2Vault);
+  await addToAddressBookAndDefender(polygonNetworkName, `PolygonAlpSave`, "L2Vault", l2Vault);
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
 
   // Initialize bridgeEscrow
@@ -127,20 +127,20 @@ export async function deployVaults(
   bridgeEscrowInitTx = await bridgeEscrow.initialize(
     await getContractAddress(l2Vault),
     wormholeRouters.l2WormholeRouter.address,
-    config.l2USDC,
+    config.l2.usdc,
     ethers.constants.AddressZero, // there is no root chain manager in polygon
   );
   await bridgeEscrowInitTx.wait();
 
   // Initialize wormhole routers
   await wormholeRouters.l1WormholeRouter.initialize(
-    config.l1worm,
+    config.l1.wormhole,
     l1Vault.address,
     wormholeRouters.l2WormholeRouter.address,
     CHAIN_ID_POLYGON,
   );
   await wormholeRouters.l2WormholeRouter.initialize(
-    config.l2worm,
+    config.l2.wormhole,
     l2Vault.address,
     wormholeRouters.l1WormholeRouter.address,
     CHAIN_ID_ETH,

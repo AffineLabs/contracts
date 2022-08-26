@@ -57,7 +57,6 @@ function createNetworkConfig(network: ethNetwork | polygonNetwork, type: "eth" |
     },
     chainId: isEth ? ethChainIds[network as ethNetwork] : polygonChainIds[network as polygonNetwork],
     url,
-    gasPrice: 50e9,
   };
   const forkPort = isEth ? 8545 : 8546;
   const forkConfig: NetworkUserConfig = {
