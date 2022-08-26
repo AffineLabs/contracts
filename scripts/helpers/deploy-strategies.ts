@@ -43,7 +43,7 @@ export async function deployStrategies(
   const compConfig = config.l1.compound;
   const compStratFactory = await ethers.getContractFactory("L1CompoundStrategy", signer);
   const l1Strategy = await compStratFactory.deploy(
-    await getContractAddress(vaults.l2Vault),
+    await getContractAddress(vaults.l1Vault),
     compConfig.cToken,
     compConfig.comptroller,
     compConfig.uniRouter,
@@ -55,7 +55,7 @@ export async function deployStrategies(
   console.log("strategy l1: ", l1Strategy.address);
 
   return {
-    l1: { compound: l1Strategy }, // TODO: add real compound strategy
+    l1: { compound: l1Strategy },
     l2: { aave: l2Strategy },
   };
 }

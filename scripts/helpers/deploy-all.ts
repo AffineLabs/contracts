@@ -48,7 +48,7 @@ export async function deployAll(
   await addToAddressBookAndDefender(
     polygonNetworkName,
     "PolygonUSDC",
-    polygonNetworkName.includes("mumbai") ? "MintableToken" : "ERC20",
+    polygonNetworkName.includes("mumbai") ? "MintableToken" : "IERC20",
     config.l2.usdc,
     [],
     false,

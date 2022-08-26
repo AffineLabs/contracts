@@ -43,7 +43,8 @@ export async function addToAddressBookAndDefender(
   addToDefender = true,
 ) {
   let blockchainInfo: BlockchainInfo;
-  // end if eth/polygon mainnet or goerli
+
+  // find blockchainInfo
   if (networkName.includes("mainnet")) {
     if (networkName.includes("eth")) blockchainInfo = ETH_MAINNET;
     else blockchainInfo = POLYGON_MAINNET;
