@@ -95,7 +95,7 @@ export const mainnetConfig: totalConfig = {
     usdc: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     wormhole: "0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B",
     create2Deployer: "0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2", // warning: This can be paused by the owner
-    governance: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", // vitalik: TODO: fix
+    governance: "0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e",
     compound: {
       cToken: "0x39AA39c021dfbaE8faC545936693aC917d5E7563",
       comptroller: "0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B",
@@ -109,7 +109,7 @@ export const mainnetConfig: totalConfig = {
     usdc: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
     wormhole: "0x0CBE91CF822c73C2315FB05100C2F714765d5c20",
     create2Deployer: "0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2",
-    governance: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", // vitalik: TODO: fix
+    governance: "0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0",
     withdrawFee: 0,
     managementFee: 0,
     wbtc: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6",

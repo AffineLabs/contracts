@@ -1,9 +1,8 @@
 import { ethers } from "hardhat";
 import hre from "hardhat";
-import { L1CompoundStrategy, L2AAVEStrategy, MintableStrategy } from "typechain";
+import { L1CompoundStrategy, L2AAVEStrategy } from "typechain";
 import { VaultContracts } from "./deploy-vaults";
 import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
-import { ETH_GOERLI, POLYGON_MUMBAI, POLYGON_MAINNET, ETH_MAINNET } from "../utils/constants/blockchain";
 import { totalConfig } from "scripts/utils/config";
 
 export interface StrategyContracts {
@@ -17,6 +16,7 @@ export async function deployStrategies(
   vaults: VaultContracts,
   config: totalConfig,
 ): Promise<StrategyContracts | undefined> {
+  console.log("deploying strategies");
   if (ethNetworkName.includes("goerli")) return;
 
   // Deploy L2AAVEStrat on Polygon

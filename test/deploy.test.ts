@@ -1,35 +1,32 @@
-import { ethers, upgrades, network } from "hardhat";
+import { ethers } from "hardhat";
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
 
-import { deployVaults } from "../scripts/helpers/deploy-vaults";
-import { deployWormholeRouters } from "../scripts/helpers/deploy-wormhole-router";
 import { mainnetConfig } from "../scripts/utils/config";
-import { deployBasket } from "../scripts/helpers/deploy-btc-eth";
-import { deployForwarder } from "../scripts/fixtures/deploy-forwarder";
+import { deployAll } from "../scripts/helpers/deploy-all";
 
 chai.use(solidity);
 const { expect } = chai;
 
-describe("Deploy AlpSave", async () => {
-  it("Deploy Vaults", async () => {
+describe("Deploy All", async () => {
+  it("Can deploy all contracts", async () => {
     const config = mainnetConfig;
-    const forwarder = await deployForwarder(process.env.POLYGON_NETWORK || "polygon-mumbai-fork");
-    const wormholeRouters = await deployWormholeRouters(
-      process.env.ETH_NETWORK || "eth-goerli-fork",
-      process.env.POLYGON_NETWORK || "polygon-mumbai-fork",
-    );
-    const { l1Vault, l2Vault, emergencyWithdrawalQueue } = await deployVaults(
+
+    const allContracts = await deployAll(
       config.l1.governance,
       config.l2.governance,
       process.env.ETH_NETWORK || "eth-goerli-fork",
       process.env.POLYGON_NETWORK || "polygon-mumbai-fork",
       config,
-      wormholeRouters,
-      forwarder,
     );
+    const {
+      vaults: { l1Vault, l2Vault, emergencyWithdrawalQueue },
+      forwarder,
+      wormholeRouters,
+      basket,
+    } = allContracts;
 
-    // If tokens are set correctly, most likely everything else is.
+    // Tokens are set correctly
     expect(await l2Vault.asset()).to.equal(config.l2.usdc);
     expect(await l1Vault.asset()).to.equal(config.l1.usdc);
 
@@ -60,14 +57,7 @@ describe("Deploy AlpSave", async () => {
     expect(await wormholeRouters.l2WormholeRouter.otherLayerRouter()).to.equal(
       wormholeRouters.l1WormholeRouter.address,
     );
-  });
-});
 
-describe("Deploy AlpLarge", async () => {
-  it("Deploy TwoAssetBasket", async () => {
-    const config = mainnetConfig;
-    const forwarder = await deployForwarder(process.env.POLYGON_NETWORK || "polygon-mumbai-fork");
-    const basket = await deployBasket(config, forwarder);
     expect(await basket.asset()).to.equal(config.l2.usdc);
     expect(await basket.btc()).to.equal(config.l2.wbtc);
     expect(await basket.weth()).to.equal(config.l2.weth);

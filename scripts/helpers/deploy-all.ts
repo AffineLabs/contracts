@@ -4,16 +4,15 @@ import { deployStrategies, StrategyContracts } from "./deploy-strategies";
 import { deployBasket } from "./deploy-btc-eth";
 import { address } from "../utils/types";
 import { TwoAssetBasket } from "../../typechain";
-import { ethers } from "hardhat";
 import hre from "hardhat";
 import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
-import { POLYGON_MUMBAI } from "../utils/constants/blockchain";
 import { deployWormholeRouters, WormholeRouterContracts } from "./deploy-wormhole-router";
 import { deployRouter } from "./deploy-router";
-import { Router } from "typechain/src/polygon";
-import { deployForwarder } from "scripts/fixtures/deploy-forwarder";
+import { Forwarder, Router } from "typechain/src/polygon";
+import { deployForwarder } from "./deploy-forwarder";
 
 export interface AllContracts {
+  forwarder: Forwarder;
   wormholeRouters: WormholeRouterContracts;
   vaults: VaultContracts;
   strategies: StrategyContracts | undefined;
@@ -65,6 +64,7 @@ export async function deployAll(
 
   return {
     wormholeRouters,
+    forwarder,
     vaults,
     strategies,
     basket,
