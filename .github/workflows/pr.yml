@@ -41,9 +41,13 @@ jobs:
       - name: Install yarn dependencies
         run: yarn --frozen-lockfile
 
+      - name: Run forge tests.
+        run: yarn test
+
+      # Snapshots are buggy https://github.com/foundry-rs/foundry/issues/2959
       # Fuzz tests are included by default
-      - name: Check gas snapshots.
-        run: yarn snap --check
+      # - name: Check gas snapshots.
+      #   run: yarn snap --check
 
       - name: Run hardhat tests.
         run: yarn test-hh -eth mainnet -p mainnet
