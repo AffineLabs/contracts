@@ -1,7 +1,7 @@
 import { ERC20__factory, IUniLikeSwapRouter__factory, MintableToken__factory, Router__factory } from "../../typechain";
 import hre from "hardhat";
 import { ethers } from "hardhat";
-import { config } from "../utils/config";
+import { testConfig } from "../utils/config";
 import { getContractAddress } from "../utils/export";
 
 const ETH_NETWORK_NAME = process.env.ETH_NETWORK || "";
@@ -39,7 +39,7 @@ async function deployBtcEth() {
   const [signer] = await ethers.getSigners();
 
   // mint some usdc to add to pairs
-  const usdc = MintableToken__factory.connect(config.l2USDC, signer);
+  const usdc = MintableToken__factory.connect(testConfig.l2.usdc, signer);
   await usdc.mint(signer.address, 200e6);
 
   let tokenFactory = await ethers.getContractFactory("MintableToken", signer);
@@ -74,10 +74,10 @@ async function addLiquidity() {
   const amountUSDC = ethers.BigNumber.from(100e6);
   hre.changeNetwork(POLYGON_NETWORK_NAME);
   let [signer] = await ethers.getSigners();
-  const { wbtc: btcAddr, weth: ethAddr } = config;
+  const { wbtc: btcAddr, weth: ethAddr } = testConfig.l2;
 
   const router = IUniLikeSwapRouter__factory.connect("0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506", signer);
-  const usdc = MintableToken__factory.connect(config.l2USDC, signer);
+  const usdc = MintableToken__factory.connect(testConfig.l2.usdc, signer);
   const btc = MintableToken__factory.connect(btcAddr, signer);
   const eth = MintableToken__factory.connect(ethAddr, signer);
 
@@ -99,7 +99,7 @@ async function addLiquidity() {
 
   // usdc/btc
   tx = await router.addLiquidity(
-    config.l2USDC,
+    testConfig.l2.usdc,
     btcAddr,
     oneHunderedMUsdc,
     oneHunderedMBtc,
@@ -112,7 +112,7 @@ async function addLiquidity() {
 
   // usdc/eth
   tx = await router.addLiquidity(
-    config.l2USDC,
+    testConfig.l2.usdc,
     ethAddr,
     oneHunderedMUsdc,
     oneHundredMEth,
@@ -143,8 +143,8 @@ async function removeLiquidity() {
 
   console.log("removing BTC liquidity");
   const removeBtcTx = await router.removeLiquidity(
-    config.wbtc,
-    config.l2USDC,
+    testConfig.l2.wbtc,
+    testConfig.l2.usdc,
     await btcUsdPool.balanceOf(await signer.getAddress()),
     0,
     0,
@@ -156,8 +156,8 @@ async function removeLiquidity() {
   console.log("removing ETH liquidity");
 
   const removeEthTx = await router.removeLiquidity(
-    config.weth,
-    config.l2USDC,
+    testConfig.l2.weth,
+    testConfig.l2.usdc,
     await ethUsdPool.balanceOf(await signer.getAddress()),
     0,
     0,
@@ -173,9 +173,9 @@ async function useMainnetPrices() {
   const router = IUniLikeSwapRouter__factory.connect("0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506", signer);
   const btcUsdPool = ERC20__factory.connect("0x48a8E74730Fc1b00fE8a6F4Ef5FA489685c3F7a2", signer);
   const ethUsdPool = ERC20__factory.connect("0xdF95317B41082eb8AFC1CE10eDfE9081CeD39caD", signer);
-  const usdc = MintableToken__factory.connect(config.l2USDC, signer);
-  const btc = MintableToken__factory.connect(config.wbtc, signer);
-  const eth = MintableToken__factory.connect(config.weth, signer);
+  const usdc = MintableToken__factory.connect(testConfig.l2.usdc, signer);
+  const btc = MintableToken__factory.connect(testConfig.l2.wbtc, signer);
+  const eth = MintableToken__factory.connect(testConfig.l2.weth, signer);
 
   const tokenToPrice = { btc: 22_912, eth: 1_614 };
   const tokenToPool = { btc: btcUsdPool, eth: ethUsdPool };
@@ -212,7 +212,7 @@ async function useMainnetPrices() {
     const swap = await router.swapExactTokensForTokens(
       1e6,
       0,
-      [config.l2USDC, token.address],
+      [testConfig.l2.usdc, token.address],
       await signer.getAddress(),
       Math.floor(Date.now() / 1000) + 24 * 60 * 60, // unix timestamp in seconds plus 24 hours
     );
@@ -220,12 +220,12 @@ async function useMainnetPrices() {
   }
 
   // get quote
-  const quotePrice = await router.getAmountsOut(oneToken, [config.wbtc, config.l2USDC]);
+  const quotePrice = await router.getAmountsOut(oneToken, [testConfig.l2.wbtc, testConfig.l2.usdc]);
   console.log(
     "btc quote-price: ",
     quotePrice.map(num => num.toString()),
   );
-  const quotePriceEth = await router.getAmountsOut(oneToken, [config.weth, config.l2USDC]);
+  const quotePriceEth = await router.getAmountsOut(oneToken, [testConfig.l2.weth, testConfig.l2.usdc]);
   console.log(
     "eth quote-price: ",
     quotePriceEth.map(num => num.toString()),

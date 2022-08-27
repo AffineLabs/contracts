@@ -1,13 +1,14 @@
 import { resolve, join } from "path";
 import { readJSON, outputJSON } from "fs-extra";
 import { Contract } from "ethers";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { address } from "./types";
 import { BlockchainInfo } from "./constants/types";
 import defenderClient from "./defender-client";
 import { Contract as DefenderContract } from "defender-admin-client";
 import { Network as DefenderNetwork } from "defender-base-client";
 import axios from "axios";
+import { ETH_GOERLI, ETH_MAINNET, POLYGON_MAINNET, POLYGON_MUMBAI } from "./constants/blockchain";
 
 // Wayaround for https://github.com/nomiclabs/hardhat/issues/2162
 export async function getContractAddress(contract: Contract): Promise<string> {
@@ -34,13 +35,24 @@ async function addContractToDefender(
 }
 
 export async function addToAddressBookAndDefender(
-  blockchainInfo: BlockchainInfo,
+  networkName: string, // name of the hardhat network we deployed on
   contractTicker: string,
   contractType: string,
   contractOrAddress: Contract | address,
   events_to_watch: Array<string> = [],
   addToDefender = true,
 ) {
+  let blockchainInfo: BlockchainInfo;
+
+  // find blockchainInfo
+  if (networkName.includes("mainnet")) {
+    if (networkName.includes("eth")) blockchainInfo = ETH_MAINNET;
+    else blockchainInfo = POLYGON_MAINNET;
+  } else {
+    if (networkName.includes("eth")) blockchainInfo = ETH_GOERLI;
+    else blockchainInfo = POLYGON_MUMBAI;
+  }
+
   const contractAddr =
     typeof contractOrAddress === "string" ? contractOrAddress : await getContractAddress(contractOrAddress);
   const rootDir = resolve(__dirname, "../..");

@@ -580,7 +580,7 @@ contract L2VaultTest is TestPlus {
     function testDetailedPrice() public {
         // This function should work even if there is nothing in the vault
         L2Vault.Number memory price = vault.detailedPrice();
-        assertEq(price.num, 10**vault.decimals());
+        assertEq(price.num, 100**vault.decimals());
 
         address user = address(this);
         asset.mint(user, 2e18);

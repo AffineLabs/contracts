@@ -4,7 +4,7 @@ import usdcABI from "../assets/usdc-abi.json";
 
 import { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
-import { config } from "../../scripts/utils/config";
+import { testConfig } from "../../scripts/utils/config";
 import { ContractTransaction } from "ethers";
 import { deployAll } from "../../scripts/helpers/deploy-all";
 import utils from "../utils";
@@ -31,7 +31,7 @@ it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
     governance.address,
     ETH_NETWORK_NAME,
     POLYGON_NETWORK_NAME,
-    config,
+    testConfig,
   );
 
   const { l1Vault, l2Vault } = allContracts.vaults;
@@ -41,7 +41,7 @@ it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
 
   hre.changeNetwork(POLYGON_NETWORK_NAME);
   [governance] = await ethers.getSigners();
-  const polygonUSDC = new ethers.Contract(config.l2USDC, usdcABI, governance);
+  const polygonUSDC = new ethers.Contract(testConfig.l2.usdc, usdcABI, governance);
   console.log("Transfer USDC to L2 vault.");
   let tx: ContractTransaction = await polygonUSDC.transfer(l2Vault.address, initialL2TVL);
   await tx.wait();
