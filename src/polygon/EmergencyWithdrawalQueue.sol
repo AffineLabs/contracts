@@ -91,17 +91,20 @@ contract EmergencyWithdrawalQueue is AccessControl {
         delete queue[headPtr];
         shareDebt -= withdrawalRequest.shares;
         debtToOwner[withdrawalRequest.owner] -= withdrawalRequest.shares;
-        vault.redeemByEmergencyWithdrawalQueue(
+        uint256 redeemedAssetAmount = vault.redeemByEmergencyWithdrawalQueue(
+            headPtr,
             withdrawalRequest.shares,
             withdrawalRequest.receiver,
             withdrawalRequest.owner
         );
-        emit EmergencyWithdrawalQueueDequeue(
-            headPtr,
-            withdrawalRequest.owner,
-            withdrawalRequest.receiver,
-            withdrawalRequest.shares
-        );
+        if (redeemedAssetAmount > 0) {
+            emit EmergencyWithdrawalQueueDequeue(
+                headPtr,
+                withdrawalRequest.owner,
+                withdrawalRequest.receiver,
+                withdrawalRequest.shares
+            );
+        }
         headPtr += 1;
     }
 
@@ -115,17 +118,20 @@ contract EmergencyWithdrawalQueue is AccessControl {
             delete queue[ptr];
             shareDebtReduction += withdrawalRequest.shares;
             debtToOwner[withdrawalRequest.owner] -= withdrawalRequest.shares;
-            vault.redeemByEmergencyWithdrawalQueue(
+            uint256 redeemedAssetAmount = vault.redeemByEmergencyWithdrawalQueue(
+                ptr,
                 withdrawalRequest.shares,
                 withdrawalRequest.receiver,
                 withdrawalRequest.owner
             );
-            emit EmergencyWithdrawalQueueDequeue(
-                headPtr,
-                withdrawalRequest.owner,
-                withdrawalRequest.receiver,
-                withdrawalRequest.shares
-            );
+            if (redeemedAssetAmount > 0) {
+                emit EmergencyWithdrawalQueueDequeue(
+                    headPtr,
+                    withdrawalRequest.owner,
+                    withdrawalRequest.receiver,
+                    withdrawalRequest.shares
+                );
+            }
             unchecked {
                 ptr++;
             }

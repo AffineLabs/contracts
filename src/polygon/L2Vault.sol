@@ -202,15 +202,28 @@ contract L2Vault is
 
     EmergencyWithdrawalQueue public emergencyWithdrawalQueue;
 
+    event EmergencyWithdrawalQueueRequestDropped(
+        uint256 indexed pos,
+        address indexed owner,
+        address indexed receiver,
+        uint256 shares
+    );
+
     /// @notice Redeem logic when done via emeregency withdrawal queue.
     function redeemByEmergencyWithdrawalQueue(
+        uint256 pos,
         uint256 shares,
         address receiver,
         address owner
     ) external whenNotPaused returns (uint256 assets) {
         address caller = _msgSender();
         require(caller == address(emergencyWithdrawalQueue), "Only emergency withdrawal queue");
-
+        // Owner doesn't have enough shares. Can happen if owner transfers some ALP token to other
+        // accounts while the request is in the queue.
+        if (balanceOf(owner) < shares) {
+            emit EmergencyWithdrawalQueueRequestDropped(pos, owner, receiver, shares);
+            return 0;
+        }
         (uint256 assetsToUser, uint256 assetsFee) = _previewRedeem(shares);
         assets = assetsToUser;
 
