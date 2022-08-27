@@ -38,15 +38,21 @@ const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 const POLYGONSCAN_API_KEY = process.env.POLYGONSCAN_API_KEY || "";
 const ALCHEMY_ETH_GOERLI_KEY = process.env.ALCHEMY_ETH_GOERLI_KEY || "";
 const ALCHEMY_POLYGON_MUMBAI_KEY = process.env.ALCHEMY_POLYGON_MUMBAI_KEY || "";
+const ALCHEMY_ETH_MAINNET_KEY = process.env.ALCHEMY_ETH_MAINNET_KEY || "";
+const ALCHEMY_POLYGON_MAINNET_KEY = process.env.ALCHEMY_POLYGON_MAINNET_KEY || "";
 
 interface ethNetworkConfig {
   [key: string]: NetworkUserConfig;
 }
 function createNetworkConfig(network: ethNetwork | polygonNetwork, type: "eth" | "polygon" = "eth"): ethNetworkConfig {
+  // Use a mainnet key for mainnet, otherwise use a testnet key
+  const ALCHEMY_ETH_KEY = network === "mainnet" ? ALCHEMY_ETH_MAINNET_KEY : ALCHEMY_ETH_GOERLI_KEY;
+  const ALCHEMY_POLYGON_KEY = network === "mainnet" ? ALCHEMY_POLYGON_MAINNET_KEY : ALCHEMY_POLYGON_MUMBAI_KEY;
+
   const isEth = type === "eth";
   const url: string = isEth
-    ? `https://eth-${network}.alchemyapi.io/v2/${ALCHEMY_ETH_GOERLI_KEY}`
-    : `https://polygon-${network}.g.alchemy.com/v2/${ALCHEMY_POLYGON_MUMBAI_KEY}`;
+    ? `https://eth-${network}.alchemyapi.io/v2/${ALCHEMY_ETH_KEY}`
+    : `https://polygon-${network}.g.alchemy.com/v2/${ALCHEMY_POLYGON_KEY}`;
 
   const networkConfig: NetworkUserConfig = {
     accounts: {
