@@ -6,16 +6,23 @@ import { config as dotenvConfig } from "dotenv";
 import { resolve } from "path";
 dotenvConfig({ path: resolve(__dirname, "../.env") });
 
-const ALCHEMY_ETH_GOERLI_KEY = process.env.ALCHEMY_ETH_GOERLI_KEY || "";
-const ALCHEMY_POLYGON_MUMBAI_KEY = process.env.ALCHEMY_POLYGON_MUMBAI_KEY || "";
-
 function executeScript(script: string, options: { ethereum: string; polygon: string; fork: boolean }, test: boolean) {
+  const ALCHEMY_ETH_KEY =
+    options.ethereum === "mainnet"
+      ? process.env.ALCHEMY_ETH_MAINNET_KEY || ""
+      : process.env.ALCHEMY_ETH_GOERLI_KEY || "";
+  const ALCHEMY_POLYGON_KEY =
+    options.polygon === "mainnet"
+      ? process.env.ALCHEMY_POLYGON_MAINNET_KEY || ""
+      : process.env.ALCHEMY_POLYGON_MUMBAI_KEY || "";
+
   const hhCommand = test ? "yarn hardhat test" : "yarn hardhat run";
   // url info
   const ethNetwork = `eth-${options.ethereum}`;
   const polygonNetwork = `polygon-${options.polygon}`;
-  const ethUrl = `https://eth-${options.ethereum}.alchemyapi.io/v2/${ALCHEMY_ETH_GOERLI_KEY}`;
-  const polygonUrl = `https://polygon-${options.polygon}.g.alchemy.com/v2/${ALCHEMY_POLYGON_MUMBAI_KEY}`;
+
+  const ethUrl = `https://eth-${options.ethereum}.alchemyapi.io/v2/${ALCHEMY_ETH_KEY}`;
+  const polygonUrl = `https://polygon-${options.polygon}.g.alchemy.com/v2/${ALCHEMY_POLYGON_KEY}`;
 
   const shouldFork = options.fork;
   if (!shouldFork) {
