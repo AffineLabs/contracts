@@ -1,5 +1,5 @@
 # Upload artifacts to S3 bucket when a new release is started.
-name: Release Workflow Test
+name: Release Workflow Testnet
 
 # Triggers the workflow on push of a release tag
 on:
@@ -16,9 +16,8 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: "us-east-2"
-      VERSION: ${{ github.event.release.tag_name }}
       # Hardhat env variables
-      MNEMONIC: ${{ secrets.MNEMONIC }}
+      MNEMONIC: ${{ secrets.MNEMONIC_TESTNET }}
       ALCHEMY_ETH_GOERLI_KEY: ${{ secrets.ALCHEMY_ETH_GOERLI_KEY }}
       ALCHEMY_POLYGON_MUMBAI_KEY: ${{ secrets.ALCHEMY_POLYGON_MUMBAI_KEY }}
       ALCHEMY_ETH_MAINNET_KEY: ${{ secrets.ALCHEMY_ETH_MAINNET_KEY }}
@@ -48,4 +47,4 @@ jobs:
         with:
           args: --follow-symlinks --delete --exclude '*' --include 'addressbook.json' --include 'abi/*.json' --include 'typechain/*'
         env:
-          DEST_DIR: ${{ env.VERSION || 'test' }}
+          DEST_DIR: 'test'
