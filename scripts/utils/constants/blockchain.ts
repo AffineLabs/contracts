@@ -11,7 +11,7 @@ enum ethNetworks {
 }
 
 enum polygonNetworks {
-  MAINNET = "Mainnet",
+  MAINNET = "Matic",
   MUMBAI = "Mumbai",
 }
 
