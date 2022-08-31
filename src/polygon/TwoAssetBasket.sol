@@ -96,7 +96,7 @@ contract TwoAssetBasket is
     }
 
     function decimals() public view override returns (uint8) {
-        return btc.decimals();
+        return 18;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
