@@ -47,4 +47,4 @@ jobs:
         with:
           args: --follow-symlinks --delete --exclude '*' --include 'addressbook.json' --include 'abi/*.json' --include 'typechain/*'
         env:
-          DEST_DIR: 'test'
+          DEST_DIR: "test"
