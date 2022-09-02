@@ -2,7 +2,7 @@ import { ethers, Wallet } from "ethers";
 import { readAddressBook } from "./utils/export";
 import { L2Vault__factory, L2Vault, EmergencyWithdrawalQueue__factory, EmergencyWithdrawalQueue } from "../typechain";
 
-import { BOT_CONFIG } from "./utils/config";
+import { BOT_CONFIG } from "./utils/bot-config";
 import { config } from "hardhat";
 import { HttpNetworkConfig } from "hardhat/types";
 

@@ -3,7 +3,7 @@ import { Wallet } from "ethers";
 import utils from "../test/utils";
 import { ethers, config } from "hardhat";
 
-import { BOT_CONFIG } from "./utils/config";
+import { BOT_CONFIG } from "./utils/bot-config";
 import { CHAIN_ID_ETH, CHAIN_ID_POLYGON } from "@certusone/wormhole-sdk";
 import {
   ERC20,
