@@ -43,11 +43,13 @@ export interface l2Config {
 }
 
 export interface totalConfig {
+  mainnet: boolean;
   l1: l1Config;
   l2: l2Config;
 }
 
 export const testConfig: totalConfig = {
+  mainnet: false,
   l1: {
     governance: "0xdbA49884464689800BF95C7BbD50eBA0DA0F67b9",
     usdc: "0xb465fBFE1678fF41CD3D749D54d2ee2CfABE06F3",
@@ -89,6 +91,7 @@ export const testConfig: totalConfig = {
 };
 
 export const mainnetConfig: totalConfig = {
+  mainnet: true,
   l1: {
     chainManager: "0xA0c68C638235ee32657e8f720a23ceC1bFc77C77",
     ERC20Predicate: "0x9923263fA127b3d1484cFD649df8f1831c2A74e4",

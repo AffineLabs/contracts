@@ -123,8 +123,8 @@ async function trySendingTVLFromL1(contracts: Contracts): Promise<StepStatus> {
 }
 
 async function tryReceivingTVLInL2(contracts: Contracts): Promise<StepStatus> {
-  let l1WormholeRouterSeq = await contracts.l1Wormhole.nextSequence(contracts.l1WormholeRouter.address);
-  let l1WormholeRouterLastSentTVLNonce = l1WormholeRouterSeq.sub(1);
+  const l1WormholeRouterSeq = await contracts.l1Wormhole.nextSequence(contracts.l1WormholeRouter.address);
+  const l1WormholeRouterLastSentTVLNonce = l1WormholeRouterSeq.sub(1);
   if (l1WormholeRouterLastSentTVLNonce.lt(await contracts.l2WormholeRouter.nextValidNonce())) {
     return {
       success: false,
@@ -134,7 +134,7 @@ async function tryReceivingTVLInL2(contracts: Contracts): Promise<StepStatus> {
   const tvlVAA = await utils.attemptGettingVAA(
     getWormholeAPIURL(),
     contracts.l1WormholeRouter.address,
-    l1WormholeRouterLastSentTVLNonce,
+    await contracts.l2WormholeRouter.nextValidNonce(),
     CHAIN_ID_ETH,
   );
   if (tvlVAA === undefined) {
@@ -189,11 +189,10 @@ async function getL2FundTransferMessageProof(contracts: Contracts): Promise<stri
 }
 
 async function getL2FundTransferReportMessageVAA(contracts: Contracts): Promise<Uint8Array | undefined> {
-  let l2WormholeRouterSeq = await contracts.l2Wormhole.nextSequence(contracts.l2WormholeRouter.address);
   return utils.attemptGettingVAA(
     getWormholeAPIURL(),
     contracts.l2WormholeRouter.address,
-    l2WormholeRouterSeq.sub(1),
+    await contracts.l1WormholeRouter.nextValidNonce(),
     CHAIN_ID_POLYGON,
   );
 }
@@ -268,7 +267,7 @@ async function tryTrigerringTransferFromL1(contracts: Contracts): Promise<StepSt
   const l2WormholeRouterLastSentFundRequestVAA = await utils.attemptGettingVAA(
     getWormholeAPIURL(),
     contracts.l2WormholeRouter.address,
-    l2WormholeRouterLastSentFundRequestNonce,
+    await contracts.l1WormholeRouter.nextValidNonce(),
     CHAIN_ID_POLYGON,
   );
   if (l2WormholeRouterLastSentFundRequestVAA === undefined) {
@@ -321,7 +320,7 @@ async function tryClearingFundsFromL2Escrow(contracts: Contracts): Promise<StepS
   const l1WormholeRouterFundTransferReportVAA = await utils.attemptGettingVAA(
     getWormholeAPIURL(),
     contracts.l1WormholeRouter.address,
-    l1WormholeRouterSeq,
+    await contracts.l2WormholeRouter.nextValidNonce(),
     CHAIN_ID_ETH,
   );
   if (l1WormholeRouterFundTransferReportVAA === undefined) {
