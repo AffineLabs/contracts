@@ -2,13 +2,16 @@ import { ethers, Wallet } from "ethers";
 import { readAddressBook } from "./utils/export";
 import { L2Vault__factory, L2Vault, EmergencyWithdrawalQueue__factory, EmergencyWithdrawalQueue } from "../typechain";
 
-import { REBALANCE_CONFIG } from "./utils/config";
+import { BOT_CONFIG } from "./utils/config";
+import { config } from "hardhat";
+import { HttpNetworkConfig } from "hardhat/types";
 
 async function main() {
-  const { mnemonic, polygonAlchemyURL } = REBALANCE_CONFIG;
+  const { mnemonic, polygonNetworkName } = BOT_CONFIG;
 
-  const mumbaiProvider = new ethers.providers.JsonRpcProvider(polygonAlchemyURL);
-  const polygonWallet = Wallet.fromMnemonic(mnemonic).connect(mumbaiProvider);
+  const polygonNetworkConfig = config.networks[polygonNetworkName] as HttpNetworkConfig;
+  const polygonProvider = new ethers.providers.JsonRpcProvider(polygonNetworkConfig.url);
+  const polygonWallet = Wallet.fromMnemonic(mnemonic).connect(polygonProvider);
 
   const addrBook = await readAddressBook();
   const l2Vault: L2Vault = L2Vault__factory.connect(addrBook.EthAlpSave.address, polygonWallet);
