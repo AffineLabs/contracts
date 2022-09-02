@@ -26,6 +26,8 @@ jobs:
       ALCHEMY_POLYGON_MAINNET_KEY: ${{ secrets.ALCHEMY_POLYGON_MAINNET_KEY }}
       DEFENDER_API_KEY: ${{ secrets.DEFENDER_API_KEY }}
       DEFENDER_API_SECRET: ${{ secrets.DEFENDER_API_SECRET }}
+      # No rebalancer running
+      CONTRACT_VERSION: "n/a"
     steps:
       - name: Checkout
         uses: actions/checkout@v2
