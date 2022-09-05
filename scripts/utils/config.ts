@@ -43,11 +43,13 @@ export interface l2Config {
 }
 
 export interface totalConfig {
+  mainnet: boolean;
   l1: l1Config;
   l2: l2Config;
 }
 
 export const testConfig: totalConfig = {
+  mainnet: false,
   l1: {
     governance: "0xdbA49884464689800BF95C7BbD50eBA0DA0F67b9",
     usdc: "0xb465fBFE1678fF41CD3D749D54d2ee2CfABE06F3",
@@ -89,6 +91,7 @@ export const testConfig: totalConfig = {
 };
 
 export const mainnetConfig: totalConfig = {
+  mainnet: true,
   l1: {
     chainManager: "0xA0c68C638235ee32657e8f720a23ceC1bFc77C77",
     ERC20Predicate: "0x9923263fA127b3d1484cFD649df8f1831c2A74e4",
@@ -128,41 +131,3 @@ export const mainnetConfig: totalConfig = {
     },
   },
 };
-
-export interface RebalanceConfig {
-  ethAlchemyURL: string;
-  polygonAlchemyURL: string;
-  mnemonic: string;
-  l1WormholeRouterAddr: address;
-  l2WormholeRouterAddr: address;
-  l1VaultAddr: address;
-  l2VaultAddr: address;
-}
-
-const ethAlchemyURL = process.env.ALCHEMY_ETH_GOERLI_KEY
-  ? `https://eth-goerli.alchemyapi.io/v2/${process.env.ALCHEMY_ETH_GOERLI_KEY}`
-  : "";
-const polygonAlchemyURL = process.env.ALCHEMY_POLYGON_MUMBAI_KEY
-  ? `https://polygon-mumbai.g.alchemy.com/v2/${process.env.ALCHEMY_POLYGON_MUMBAI_KEY}`
-  : "";
-const mnemonic = process.env.MNEMONIC || "";
-
-const l1VaultAddr = "0xFcA174CF987b00e79f46016e7922c445c615D723";
-const l2VaultAddr = "0x8f23f3ee92CbDb36Da970Ad5d959a1386C4019CA";
-
-const l1WormholeRouterAddr = "0xf75F1fF2A4835BB141b52C2Ec0635A24Ed02264B";
-const l2WormholeRouterAddr = "0x85e91273546CfE0F42e2D759584Bb8EbA3047Cad";
-
-export const REBALANCE_CONFIG: RebalanceConfig = {
-  ethAlchemyURL,
-  polygonAlchemyURL,
-  mnemonic,
-  l1WormholeRouterAddr,
-  l2WormholeRouterAddr,
-  l1VaultAddr,
-  l2VaultAddr,
-};
-
-Object.entries(REBALANCE_CONFIG).map(([key, val]) => {
-  if (val === "") throw Error(`${key} may not be empty. Check .env file`);
-});

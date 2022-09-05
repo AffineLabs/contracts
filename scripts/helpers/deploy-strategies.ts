@@ -17,7 +17,6 @@ export async function deployStrategies(
   config: totalConfig,
 ): Promise<StrategyContracts | undefined> {
   console.log("deploying strategies");
-  if (ethNetworkName.includes("goerli")) return;
 
   // Deploy L2AAVEStrat on Polygon
   hre.changeNetwork(polygonNetworkName);
