@@ -6,7 +6,11 @@ import { config as dotenvConfig } from "dotenv";
 import { resolve } from "path";
 dotenvConfig({ path: resolve(__dirname, "../.env") });
 
-function executeScript(script: string, options: { ethereum: string; polygon: string; fork: boolean }, test: boolean) {
+function executeScript(
+  script: string,
+  options: { ethereum: string; polygon: string; fork: boolean; relay: boolean },
+  test: boolean,
+) {
   const ALCHEMY_ETH_KEY =
     options.ethereum === "mainnet"
       ? process.env.ALCHEMY_ETH_MAINNET_KEY || ""
@@ -26,13 +30,22 @@ function executeScript(script: string, options: { ethereum: string; polygon: str
 
   const shouldFork = options.fork;
   if (!shouldFork) {
+    if (options.relay) console.log("Will relay transcations via OZ Defender Relayer");
     execSync(`${hhCommand} ${script}`, {
-      env: { ...process.env, ETH_NETWORK: ethNetwork, POLYGON_NETWORK: polygonNetwork },
+      env: {
+        ...process.env,
+        ETH_NETWORK: ethNetwork,
+        POLYGON_NETWORK: polygonNetwork,
+        SHOULD_RELAY: options.relay ? "1" : "0",
+      },
       stdio: "inherit",
     });
     process.exit(0);
   }
 
+  if (options.relay) {
+    console.log("[Warning] Not relaying in fork mode.");
+  }
   // If we should fork, start up some hardhat nodes
   process.env = { ...process.env, ETH_NETWORK: `${ethNetwork}-fork`, POLYGON_NETWORK: `${polygonNetwork}-fork` };
   const { result } = concurrently(
@@ -78,6 +91,7 @@ program.commands.forEach(cmd => {
   cmd
     .option("--no-fork", "If present, runs script against real networks instead of forking")
     .option("-eth, --ethereum <net>", "The ethereum network", "goerli")
-    .option("-p, --polygon <net>", "The polygon network", "mumbai");
+    .option("-p, --polygon <net>", "The polygon network", "mumbai")
+    .option("-r, --relay", "Whether to relay transcations via OZ Defender Relayer or not", false);
 });
 program.parse();

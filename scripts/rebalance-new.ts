@@ -1,6 +1,5 @@
-import { Wallet } from "ethers";
 import utils from "../test/utils";
-import { config, ethers } from "hardhat";
+import { ethers } from "ethers";
 
 import { BOT_CONFIG } from "./utils/bot-config";
 import { CHAIN_ID_ETH, CHAIN_ID_POLYGON } from "@certusone/wormhole-sdk";
@@ -12,30 +11,23 @@ import {
   L2WormholeRouter__factory,
 } from "../typechain";
 import { readAddressBook } from "./utils/export";
-import { HttpNetworkConfig } from "hardhat/types";
 
-const { mnemonic, ethNetworkName, polygonNetworkName } = BOT_CONFIG;
+const { ethSigner, polygonSigner } = BOT_CONFIG;
 
 async function setup() {
   const addrBook = await readAddressBook("test");
-  const ethNetworkConfig = config.networks[ethNetworkName] as HttpNetworkConfig;
-  const polygonNetworkConfig = config.networks[polygonNetworkName] as HttpNetworkConfig;
-  const ethProvider = new ethers.providers.JsonRpcProvider(ethNetworkConfig.url);
-  const polygonProvider = new ethers.providers.JsonRpcProvider(polygonNetworkConfig.url);
-  const ethWallet = Wallet.fromMnemonic(mnemonic).connect(ethProvider);
-  const polygonWallet = Wallet.fromMnemonic(mnemonic).connect(polygonProvider);
-  const l1WormholeRouter = L1WormholeRouter__factory.connect(addrBook.EthWormholeRouter.address, ethWallet);
-  const l2WormholeRouter = L2WormholeRouter__factory.connect(addrBook.PolygonWormholeRouter.address, polygonWallet);
-  const l1Wormhole = IWormhole__factory.connect(await l1WormholeRouter.wormhole(), ethWallet);
-  const l2Wormhole = IWormhole__factory.connect(await l2WormholeRouter.wormhole(), polygonWallet);
+  const l1WormholeRouter = L1WormholeRouter__factory.connect(addrBook.EthWormholeRouter.address, ethSigner);
+  const l2WormholeRouter = L2WormholeRouter__factory.connect(addrBook.PolygonWormholeRouter.address, polygonSigner);
+  const l1Wormhole = IWormhole__factory.connect(await l1WormholeRouter.wormhole(), ethSigner);
+  const l2Wormhole = IWormhole__factory.connect(await l2WormholeRouter.wormhole(), polygonSigner);
 
-  const l1Vault = L1Vault__factory.connect(addrBook.EthAlpSave.address, ethWallet);
-  const l2Vault = L2Vault__factory.connect(addrBook.PolygonAlpSave.address, polygonWallet);
-  return { l1Vault, l2Vault, l1WormholeRouter, l2WormholeRouter, l1Wormhole, l2Wormhole, ethProvider };
+  const l1Vault = L1Vault__factory.connect(addrBook.EthAlpSave.address, ethSigner);
+  const l2Vault = L2Vault__factory.connect(addrBook.PolygonAlpSave.address, polygonSigner);
+  return { l1Vault, l2Vault, l1WormholeRouter, l2WormholeRouter, l1Wormhole, l2Wormhole };
 }
 
 async function eventHandler() {
-  const { l1Vault, l2Vault, l1WormholeRouter, l2WormholeRouter, l1Wormhole, l2Wormhole, ethProvider } = await setup();
+  const { l1Vault, l2Vault, l1WormholeRouter, l2WormholeRouter, l1Wormhole, l2Wormhole } = await setup();
   l1Vault.on("SendTVL", async tvl => {
     console.log("Receiving TVL");
     let l1VaultSeq = await l1Wormhole.nextSequence(l1WormholeRouter.address);
@@ -51,7 +43,7 @@ async function eventHandler() {
       await l2Vault.asset(),
       "L2 BridgeEscrow",
       await l2Vault.bridgeEscrow(),
-      ethProvider,
+      ethSigner.provider as ethers.providers.Provider,
     );
     console.log("\n\nBridgeEscrow contract has received funds. Getting transfer VAA from L1 Wormhole Router");
     let l1VaultSeq = await l1Wormhole.nextSequence(l1WormholeRouter.address);
