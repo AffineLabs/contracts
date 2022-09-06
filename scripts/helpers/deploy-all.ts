@@ -16,7 +16,7 @@ export interface AllContracts {
   wormholeRouters: WormholeRouterContracts;
   vaults: VaultContracts;
   strategies: StrategyContracts | undefined;
-  basket: TwoAssetBasket | undefined;
+  basket: TwoAssetBasket;
   router: Router;
 }
 
@@ -44,13 +44,13 @@ export async function deployAll(
     : undefined;
 
   hre.changeNetwork(polygonNetworkName);
-  const basket = config.mainnet ? await deployBasket(config, forwarder) : undefined;
+  const basket = await deployBasket(config, forwarder);
 
   // Add usdc to address book
   await addToAddressBookAndDefender(
     polygonNetworkName,
     "PolygonUSDC",
-    polygonNetworkName.includes("mumbai") ? "MintableToken" : "IERC20",
+    config.mainnet ? "IERC20" : "MintableToken",
     config.l2.usdc,
     [],
     false,

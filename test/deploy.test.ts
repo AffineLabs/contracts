@@ -58,8 +58,8 @@ describe("Deploy All", async () => {
       wormholeRouters.l1WormholeRouter.address,
     );
 
-    expect(await basket?.asset()).to.equal(config.l2.usdc);
-    expect(await basket?.btc()).to.equal(config.l2.wbtc);
-    expect(await basket?.weth()).to.equal(config.l2.weth);
+    expect(await basket.asset()).to.equal(config.l2.usdc);
+    expect(await basket.btc()).to.equal(config.l2.wbtc);
+    expect(await basket.weth()).to.equal(config.l2.weth);
   });
 });
