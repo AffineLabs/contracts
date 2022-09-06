@@ -1,7 +1,6 @@
 import axios from "axios";
-import { Wallet } from "ethers";
 import utils from "../test/utils";
-import { ethers, config } from "hardhat";
+import { ethers } from "hardhat";
 
 import { BOT_CONFIG } from "./utils/bot-config";
 import { CHAIN_ID_ETH, CHAIN_ID_POLYGON } from "@certusone/wormhole-sdk";
@@ -22,9 +21,8 @@ import {
   L2WormholeRouter__factory,
 } from "../typechain";
 import { readAddressBook } from "./utils/export";
-import { HttpNetworkConfig } from "hardhat/types";
 
-const { ethNetworkName, polygonNetworkName, mnemonic, contractVersion } = BOT_CONFIG;
+const { isMainnet, contractVersion, ethSigner, polygonSigner } = BOT_CONFIG;
 
 interface Contracts {
   l1Wormhole: IWormhole;
@@ -43,39 +41,28 @@ interface StepStatus {
   message: string;
 }
 
-function isMainnet() {
-  return ethNetworkName === "eth-mainnet" && polygonNetworkName === "polygon-mainnet";
-}
-
 function getPolygonAPIURL() {
-  return `https://apis.matic.network/api/v1/${isMainnet() ? "matic" : "mumbai"}`;
+  return `https://apis.matic.network/api/v1/${isMainnet ? "matic" : "mumbai"}`;
 }
 
 function getWormholeAPIURL() {
-  return `https://wormhole-v2-${isMainnet() ? "mainnet" : "testnet"}-api.certus.one`;
+  return `https://wormhole-v2-${isMainnet ? "mainnet" : "testnet"}-api.certus.one`;
 }
 
 async function getContracts(): Promise<Contracts> {
   // Read addressbook
   const addrBook = await readAddressBook(contractVersion);
-  // Get eth and polygon providers.
-  const ethNetworkConfig = config.networks[ethNetworkName] as HttpNetworkConfig;
-  const polygonNetworkConfig = config.networks[polygonNetworkName] as HttpNetworkConfig;
-  const ethProvider = new ethers.providers.JsonRpcProvider(ethNetworkConfig.url);
-  const polygonProvider = new ethers.providers.JsonRpcProvider(polygonNetworkConfig.url);
-  // Get wallets
-  const ethWallet = Wallet.fromMnemonic(mnemonic).connect(ethProvider);
-  const polygonWallet = Wallet.fromMnemonic(mnemonic).connect(polygonProvider);
+
   // Get Contracts
-  const l1WormholeRouter = L1WormholeRouter__factory.connect(addrBook.EthWormholeRouter.address, ethWallet);
-  const l2WormholeRouter = L2WormholeRouter__factory.connect(addrBook.PolygonWormholeRouter.address, polygonWallet);
-  const l1Wormhole = IWormhole__factory.connect(await l1WormholeRouter.wormhole(), ethWallet);
-  const l2Wormhole = IWormhole__factory.connect(await l2WormholeRouter.wormhole(), polygonWallet);
-  const l1Vault = L1Vault__factory.connect(addrBook.EthAlpSave.address, ethWallet);
-  const l2Vault = L2Vault__factory.connect(addrBook.PolygonAlpSave.address, polygonWallet);
-  const l1BridgeEscrow = IBridgeEscrow__factory.connect(await l1Vault.bridgeEscrow(), ethWallet);
-  const l2BridgeEscrow = IBridgeEscrow__factory.connect(await l2Vault.bridgeEscrow(), polygonWallet);
-  const l2USDC = ERC20__factory.connect(await l2Vault.asset(), polygonWallet);
+  const l1WormholeRouter = L1WormholeRouter__factory.connect(addrBook.EthWormholeRouter.address, ethSigner);
+  const l2WormholeRouter = L2WormholeRouter__factory.connect(addrBook.PolygonWormholeRouter.address, polygonSigner);
+  const l1Wormhole = IWormhole__factory.connect(await l1WormholeRouter.wormhole(), ethSigner);
+  const l2Wormhole = IWormhole__factory.connect(await l2WormholeRouter.wormhole(), polygonSigner);
+  const l1Vault = L1Vault__factory.connect(addrBook.EthAlpSave.address, ethSigner);
+  const l2Vault = L2Vault__factory.connect(addrBook.PolygonAlpSave.address, polygonSigner);
+  const l1BridgeEscrow = IBridgeEscrow__factory.connect(await l1Vault.bridgeEscrow(), ethSigner);
+  const l2BridgeEscrow = IBridgeEscrow__factory.connect(await l2Vault.bridgeEscrow(), polygonSigner);
+  const l2USDC = ERC20__factory.connect(await l2Vault.asset(), polygonSigner);
   return {
     l1Wormhole,
     l2Wormhole,
