@@ -83,7 +83,8 @@ export const testConfig: totalConfig = {
     aave: {
       registry: "",
       incentivesController: "",
-      uniRouter: "",
+      // Needed to make AlpLarge deployment work
+      uniRouter: "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
       rewardToken: "",
       wrappedNative: "",
     },
