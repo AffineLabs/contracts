@@ -444,7 +444,7 @@ contract TwoAssetBasket is
         if (_totalSupply > 0) {
             _price = (vaultValue * (10 ** shareDecimals)) / _totalSupply;
         } else {
-            _price = 100 ** 8;
+            _price = 100e8;
         }
 
         price = Number({num: _price, decimals: 8});
