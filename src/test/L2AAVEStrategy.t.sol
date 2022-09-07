@@ -1,25 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
-import { TestPlus } from "./TestPlus.sol";
-import { stdStorage, StdStorage } from "forge-std/Test.sol";
-import { Deploy } from "./Deploy.sol";
+import {TestPlus} from "./TestPlus.sol";
+import {stdStorage, StdStorage} from "forge-std/Test.sol";
+import {Deploy} from "./Deploy.sol";
 
-import { L2Vault } from "../polygon/L2Vault.sol";
-import { L2AAVEStrategy } from "../polygon/L2AAVEStrategy.sol";
-import { Deploy } from "./Deploy.sol";
+import {L2Vault} from "../polygon/L2Vault.sol";
+import {L2AAVEStrategy} from "../polygon/L2AAVEStrategy.sol";
+import {Deploy} from "./Deploy.sol";
 
 contract AAVEStratTest is TestPlus {
     using stdStorage for StdStorage;
+
     L2Vault vault;
     L2AAVEStrategy strategy;
     // Mumbai USDC that AAVE takes in
     ERC20 usdc = ERC20(0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e);
 
     function setUp() public {
-        vm.createSelectFork("mumbai", 25804436);
+        vm.createSelectFork("mumbai", 25_804_436);
         vault = Deploy.deployL2Vault();
         uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
@@ -34,7 +35,7 @@ contract AAVEStratTest is TestPlus {
             0x5B67676a984807a212b1c59eBFc9B3568a474F0a // wrapped matic address
         );
         vm.prank(governance);
-        vault.addStrategy(strategy, 5_000);
+        vault.addStrategy(strategy, 5000);
     }
 
     function testStrategyMakesMoney() public {

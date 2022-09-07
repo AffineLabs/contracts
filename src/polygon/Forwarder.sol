@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { MinimalForwarder } from "@openzeppelin/contracts/metatx/MinimalForwarder.sol";
+import {MinimalForwarder} from "@openzeppelin/contracts/metatx/MinimalForwarder.sol";
 
 contract Forwarder is MinimalForwarder {
     function executeBatch(ForwardRequest[] calldata requests, bytes calldata signatures) external payable {
@@ -14,7 +14,7 @@ contract Forwarder is MinimalForwarder {
             bytes calldata sig = signatures[start:end];
             start += 65;
             end += 65;
-            (bool success, ) = execute(req, sig);
+            (bool success,) = execute(req, sig);
             require(success, "CALL_FAILED");
         }
     }

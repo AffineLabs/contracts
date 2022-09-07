@@ -1,20 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
-import { TestPlus } from "./TestPlus.sol";
-import { stdStorage, StdStorage } from "forge-std/Test.sol";
-import { Deploy } from "./Deploy.sol";
+import {TestPlus} from "./TestPlus.sol";
+import {stdStorage, StdStorage} from "forge-std/Test.sol";
+import {Deploy} from "./Deploy.sol";
 
-import { L1Vault } from "../ethereum/L1Vault.sol";
-import { ICToken } from "../interfaces/compound/ICToken.sol";
-import { IComptroller } from "../interfaces/compound/IComptroller.sol";
-import { L1CompoundStrategy } from "../ethereum/L1CompoundStrategy.sol";
-import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
+import {L1Vault} from "../ethereum/L1Vault.sol";
+import {ICToken} from "../interfaces/compound/ICToken.sol";
+import {IComptroller} from "../interfaces/compound/IComptroller.sol";
+import {L1CompoundStrategy} from "../ethereum/L1CompoundStrategy.sol";
+import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
 
 contract CompoundStratTest is TestPlus {
     using stdStorage for StdStorage;
+
     ERC20 usdc = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     address uniLikeSwapRouterAddr = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address comptrollerAddr = 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B;
@@ -29,7 +30,7 @@ contract CompoundStratTest is TestPlus {
     uint256 oneCOMP = 1e18;
 
     function setUp() public {
-        vm.createSelectFork("ethereum", 14971385);
+        vm.createSelectFork("ethereum", 14_971_385);
         vault = Deploy.deployL1Vault();
 
         // make vault token equal to the L1 usdc address
@@ -54,7 +55,7 @@ contract CompoundStratTest is TestPlus {
 
     function investHalfOfVaultAssetInCompund() internal {
         changePrank(governance);
-        vault.addStrategy(strategy, 5_000);
+        vault.addStrategy(strategy, 5000);
 
         changePrank(address(vault.bridgeEscrow()));
         // After calling this, 5,000 bps of vault assets will be invested

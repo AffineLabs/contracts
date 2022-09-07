@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
-import { BaseVault } from "./BaseVault.sol";
-import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {BaseVault} from "./BaseVault.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
 /// @notice Base strategy contract
 abstract contract BaseStrategy {
@@ -11,6 +11,7 @@ abstract contract BaseStrategy {
 
     ///@notice The vault which owns this contract
     BaseVault public vault;
+
     modifier onlyVault() {
         require(msg.sender == address(vault), "ONLY_VAULT");
         _;

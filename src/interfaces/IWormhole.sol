@@ -23,20 +23,15 @@ interface IWormhole {
         bytes32 hash;
     }
 
-    function publishMessage(
-        uint32 nonce,
-        bytes memory payload,
-        uint8 consistencyLevel
-    ) external payable returns (uint64 sequence);
+    function publishMessage(uint32 nonce, bytes memory payload, uint8 consistencyLevel)
+        external
+        payable
+        returns (uint64 sequence);
 
     function parseAndVerifyVM(bytes calldata encodedVM)
         external
         view
-        returns (
-            VM memory vm,
-            bool valid,
-            string memory reason
-        );
+        returns (VM memory vm, bool valid, string memory reason);
 
     function nextSequence(address emitter) external view returns (uint64);
 }

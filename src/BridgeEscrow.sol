@@ -1,11 +1,11 @@
 //SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
-import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
-import { IWormhole } from "./interfaces/IWormhole.sol";
-import { IRootChainManager } from "./interfaces/IRootChainManager.sol";
-import { IL1Vault, IL2Vault } from "./interfaces/IVault.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import {IWormhole} from "./interfaces/IWormhole.sol";
+import {IRootChainManager} from "./interfaces/IRootChainManager.sol";
+import {IL1Vault, IL2Vault} from "./interfaces/IVault.sol";
 
 interface IChildERC20 {
     function withdraw(uint256 amount) external;
@@ -28,12 +28,7 @@ contract BridgeEscrow {
         owner = _owner;
     }
 
-    function initialize(
-        address _vault,
-        address _wormholerRouter,
-        ERC20 _token,
-        IRootChainManager manager
-    ) external {
+    function initialize(address _vault, address _wormholerRouter, ERC20 _token, IRootChainManager manager) external {
         require(msg.sender == owner, "ONLY_OWNER");
         require(!initialized, "INIT_DONE");
         vault = _vault;

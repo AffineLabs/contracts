@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { ILendingPoolAddressesProvider } from "./ILendingPoolAddressesProvider.sol";
+import {ILendingPoolAddressesProvider} from "./ILendingPoolAddressesProvider.sol";
 
 interface IProtocolDataProvider {
     struct TokenData {
@@ -65,9 +65,5 @@ interface IProtocolDataProvider {
     function getReserveTokensAddresses(address asset)
         external
         view
-        returns (
-            address aTokenAddress,
-            address stableDebtTokenAddress,
-            address variableDebtTokenAddress
-        );
+        returns (address aTokenAddress, address stableDebtTokenAddress, address variableDebtTokenAddress);
 }

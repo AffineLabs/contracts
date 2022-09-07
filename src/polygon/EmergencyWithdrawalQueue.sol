@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { L2Vault } from "./L2Vault.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {L2Vault} from "./L2Vault.sol";
 
 contract EmergencyWithdrawalQueue is AccessControl {
     /// @notice Struct representing withdrawalRequest stored in each queue node.
@@ -14,6 +14,7 @@ contract EmergencyWithdrawalQueue is AccessControl {
         uint256 pushTime;
     }
     /// @notice Mapping representing the queue.
+
     mapping(uint256 => WithdrawalRequest) queue;
 
     /// @notice Pointer to head of the queue.
@@ -34,16 +35,10 @@ contract EmergencyWithdrawalQueue is AccessControl {
 
     /// @notice Envents
     event EmergencyWithdrawalQueueEnqueue(
-        uint256 indexed pos,
-        address indexed owner,
-        address indexed receiver,
-        uint256 shares
+        uint256 indexed pos, address indexed owner, address indexed receiver, uint256 shares
     );
     event EmergencyWithdrawalQueueDequeue(
-        uint256 indexed pos,
-        address indexed owner,
-        address indexed receiver,
-        uint256 shares
+        uint256 indexed pos, address indexed owner, address indexed receiver, uint256 shares
     );
 
     constructor(address _governance) {
@@ -72,11 +67,7 @@ contract EmergencyWithdrawalQueue is AccessControl {
     }
 
     /// @notice enqueue user withdrawal requests to the queue.
-    function enqueue(
-        address owner,
-        address receiver,
-        uint256 shares
-    ) external onlyRole(OPERATOR_ROLE) {
+    function enqueue(address owner, address receiver, uint256 shares) external onlyRole(OPERATOR_ROLE) {
         tailPtr += 1;
         queue[tailPtr] = WithdrawalRequest(owner, receiver, shares, block.timestamp);
         shareDebt += shares;
@@ -92,18 +83,12 @@ contract EmergencyWithdrawalQueue is AccessControl {
         shareDebt -= withdrawalRequest.shares;
         debtToOwner[withdrawalRequest.owner] -= withdrawalRequest.shares;
         uint256 redeemedAssetAmount = vault.redeemByEmergencyWithdrawalQueue(
-            headPtr,
-            withdrawalRequest.shares,
-            withdrawalRequest.receiver,
-            withdrawalRequest.owner
+            headPtr, withdrawalRequest.shares, withdrawalRequest.receiver, withdrawalRequest.owner
         );
         if (redeemedAssetAmount > 0) {
             emit EmergencyWithdrawalQueueDequeue(
-                headPtr,
-                withdrawalRequest.owner,
-                withdrawalRequest.receiver,
-                withdrawalRequest.shares
-            );
+                headPtr, withdrawalRequest.owner, withdrawalRequest.receiver, withdrawalRequest.shares
+                );
         }
         headPtr += 1;
     }
@@ -113,24 +98,18 @@ contract EmergencyWithdrawalQueue is AccessControl {
         require(size() >= batchSize, "Batch size too big");
         uint256 batchTailPtr = headPtr + batchSize;
         uint256 shareDebtReduction;
-        for (uint256 ptr = headPtr; ptr < batchTailPtr; ) {
+        for (uint256 ptr = headPtr; ptr < batchTailPtr;) {
             WithdrawalRequest memory withdrawalRequest = queue[ptr];
             delete queue[ptr];
             shareDebtReduction += withdrawalRequest.shares;
             debtToOwner[withdrawalRequest.owner] -= withdrawalRequest.shares;
             uint256 redeemedAssetAmount = vault.redeemByEmergencyWithdrawalQueue(
-                ptr,
-                withdrawalRequest.shares,
-                withdrawalRequest.receiver,
-                withdrawalRequest.owner
+                ptr, withdrawalRequest.shares, withdrawalRequest.receiver, withdrawalRequest.owner
             );
             if (redeemedAssetAmount > 0) {
                 emit EmergencyWithdrawalQueueDequeue(
-                    headPtr,
-                    withdrawalRequest.owner,
-                    withdrawalRequest.receiver,
-                    withdrawalRequest.shares
-                );
+                    headPtr, withdrawalRequest.owner, withdrawalRequest.receiver, withdrawalRequest.shares
+                    );
             }
             unchecked {
                 ptr++;
