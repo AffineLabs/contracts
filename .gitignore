@@ -14,6 +14,7 @@ docs/
 # Foundry
 out
 cache
+lcov.info
 
 # Address Book
 addressbook.json
@@ -21,7 +22,7 @@ addressbook.json
 # Other
 .DS_Store
 
-# Openzappelin
+# Openzeppelin
 # Note: Not needed in testing phase, but in prod, probably
-# worth keeping openzap files in VCS.
+# worth keeping openzep files in VCS.
 .openzeppelin
