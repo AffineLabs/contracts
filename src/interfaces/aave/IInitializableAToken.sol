@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { ILendingPool } from "./ILendingPool.sol";
-import { IAaveIncentivesController } from "./IAaveIncentivesController.sol";
+import {ILendingPool} from "./ILendingPool.sol";
+import {IAaveIncentivesController} from "./IAaveIncentivesController.sol";
 
 /**
  * @title IInitializableAToken
  * @notice Interface for the initialize function on AToken
  * @author Aave
- **/
+ *
+ */
 interface IInitializableAToken {
     /**
      * @dev Emitted when an aToken is initialized
@@ -20,7 +21,8 @@ interface IInitializableAToken {
      * @param aTokenName the name of the aToken
      * @param aTokenSymbol the symbol of the aToken
      * @param params A set of encoded parameters for additional initialization
-     **/
+     *
+     */
     event Initialized(
         address indexed underlyingAsset,
         address indexed pool,
@@ -51,5 +53,6 @@ interface IInitializableAToken {
         string calldata aTokenName,
         string calldata aTokenSymbol,
         bytes calldata params
-    ) external;
+    )
+        external;
 }

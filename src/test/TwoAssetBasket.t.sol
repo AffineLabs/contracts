@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
-import { TestPlus } from "./TestPlus.sol";
-import { stdStorage, StdStorage } from "forge-std/Test.sol";
-import { Deploy } from "./Deploy.sol";
-import { MockERC20 } from "./mocks/MockERC20.sol";
+import {TestPlus} from "./TestPlus.sol";
+import {stdStorage, StdStorage} from "forge-std/Test.sol";
+import {Deploy} from "./Deploy.sol";
+import {MockERC20} from "./mocks/MockERC20.sol";
 
-import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
-import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
-import { Dollar } from "../DollarMath.sol";
-import { TwoAssetBasket } from "../polygon/TwoAssetBasket.sol";
-import { Router } from "../polygon/Router.sol";
-import { IERC4626 } from "../interfaces/IERC4626.sol";
-import { ERC4626RouterBase } from "../polygon/ERC4626RouterBase.sol";
+import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
+import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
+import {Dollar} from "../DollarMath.sol";
+import {TwoAssetBasket} from "../polygon/TwoAssetBasket.sol";
+import {Router} from "../polygon/Router.sol";
+import {IERC4626} from "../interfaces/IERC4626.sol";
+import {ERC4626RouterBase} from "../polygon/ERC4626RouterBase.sol";
 
 contract BtcEthBasketTest is TestPlus {
     TwoAssetBasket basket;
@@ -25,7 +25,7 @@ contract BtcEthBasketTest is TestPlus {
     ERC20 weth = ERC20(0x3dd7F3CF122e0460Dba8A75d191b3486752B6A61);
 
     function setUp() public {
-        vm.createSelectFork("mumbai", 27549248);
+        vm.createSelectFork("mumbai", 27_549_248);
 
         basket = Deploy.deployTwoAssetBasket(usdc);
         router = new Router("Alp", 0x52c8e413Ed9E961565D8D1de67e805E81b26C01b);
@@ -104,7 +104,7 @@ contract BtcEthBasketTest is TestPlus {
     function testSlippageCheck() public {
         // The initial deposit gives as many shares as dollars deposited in the vault
         // If we expect 10 shares but only deposit 1 dollar, this will revert
-        uint256 minShares = 10 * 10**18; // We're expecting that we 1 share, but
+        uint256 minShares = 10 * 10 ** 18; // We're expecting that we 1 share, but
         deal(address(usdc), address(this), 1e6);
         usdc.approve(address(router), type(uint256).max);
 
@@ -257,7 +257,7 @@ contract BtcEthBasketTest is TestPlus {
     function testDetailedPrice() public {
         // This function should work even if there is nothing in the vault
         TwoAssetBasket.Number memory price = basket.detailedPrice();
-        assertEq(price.num, 100**8);
+        assertEq(price.num, 100 ** 8);
 
         address user = address(this);
         MockERC20(address(usdc)).mint(user, 2e6);
@@ -266,7 +266,7 @@ contract BtcEthBasketTest is TestPlus {
         basket.deposit(1e6, user);
         MockERC20(address(btc)).mint(address(basket), 1e18);
         TwoAssetBasket.Number memory price2 = basket.detailedPrice();
-        assertGt(price2.num, 10**8);
+        assertGt(price2.num, 10 ** 8);
     }
 
     function testAssetLimit() public {

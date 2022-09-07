@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { TestPlus } from "./TestPlus.sol";
-import { stdStorage, StdStorage } from "forge-std/Test.sol";
-import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+import {TestPlus} from "./TestPlus.sol";
+import {stdStorage, StdStorage} from "forge-std/Test.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-import { L2Vault } from "../polygon/L2Vault.sol";
-import { L2WormholeRouter } from "../polygon/L2WormholeRouter.sol";
-import { BaseStrategy } from "../BaseStrategy.sol";
-import { BridgeEscrow } from "../BridgeEscrow.sol";
-import { EmergencyWithdrawalQueue } from "../polygon/EmergencyWithdrawalQueue.sol";
+import {L2Vault} from "../polygon/L2Vault.sol";
+import {L2WormholeRouter} from "../polygon/L2WormholeRouter.sol";
+import {BaseStrategy} from "../BaseStrategy.sol";
+import {BridgeEscrow} from "../BridgeEscrow.sol";
+import {EmergencyWithdrawalQueue} from "../polygon/EmergencyWithdrawalQueue.sol";
 
-import { Deploy } from "./Deploy.sol";
-import { MockERC20 } from "./mocks/MockERC20.sol";
-import { MockL2Vault } from "./mocks/index.sol";
+import {Deploy} from "./Deploy.sol";
+import {MockERC20} from "./mocks/MockERC20.sol";
+import {MockL2Vault} from "./mocks/index.sol";
 
 contract L2VaultTest is TestPlus {
     using stdStorage for StdStorage;
@@ -35,17 +35,10 @@ contract L2VaultTest is TestPlus {
 
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
     event Withdraw(
-        address indexed caller,
-        address indexed receiver,
-        address indexed owner,
-        uint256 assets,
-        uint256 shares
+        address indexed caller, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
     );
     event EmergencyWithdrawalQueueRequestDropped(
-        uint256 indexed pos,
-        address indexed owner,
-        address indexed receiver,
-        uint256 shares
+        uint256 indexed pos, address indexed owner, address indexed receiver, uint256 shares
     );
 
     function testDeploy() public {
@@ -200,7 +193,8 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.totalAssets(), 1e18 / 2);
     }
 
-    /** CROSS CHAIN REBALANCING
+    /**
+     * CROSS CHAIN REBALANCING
      */
 
     function testReceiveTVL() public {
@@ -343,10 +337,7 @@ contract L2VaultTest is TestPlus {
     }
 
     event EmergencyWithdrawalQueueEnqueue(
-        uint256 indexed pos,
-        address indexed owner,
-        address indexed receiver,
-        uint256 amount
+        uint256 indexed pos, address indexed owner, address indexed receiver, uint256 amount
     );
 
     function testEmergencyWithdrawal(uint128 amountAsset) public {
@@ -580,7 +571,7 @@ contract L2VaultTest is TestPlus {
     function testDetailedPrice() public {
         // This function should work even if there is nothing in the vault
         L2Vault.Number memory price = vault.detailedPrice();
-        assertEq(price.num, 100**vault.decimals());
+        assertEq(price.num, 100 ** vault.decimals());
 
         address user = address(this);
         asset.mint(user, 2e18);
@@ -591,7 +582,7 @@ contract L2VaultTest is TestPlus {
 
         // initial price is $100, but if we increase tvl by two it will be 200
         L2Vault.Number memory price2 = vault.detailedPrice();
-        assertEq(price2.num, 200 * 10**vault.decimals());
+        assertEq(price2.num, 200 * 10 ** vault.decimals());
     }
 
     function testSettingForwarder() public {
