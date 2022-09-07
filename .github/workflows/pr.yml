@@ -58,7 +58,7 @@ jobs:
         minimum-coverage: 10
         artifact-name: code-coverage-report
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        working-directory: ../../
+        working-directory: ./
 
       - name: Run hardhat tests.
         run: yarn test-hh -eth mainnet -p mainnet
