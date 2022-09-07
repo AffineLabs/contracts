@@ -7,7 +7,8 @@ pragma solidity ^0.8.13;
  * - Acting also as factory of proxies and admin of those, so with right to change its implementations
  * - Owned by the Aave Governance
  * @author Aave
- **/
+ *
+ */
 interface ILendingPoolAddressesProvider {
     event MarketIdSet(string newMarketId);
     event LendingPoolUpdated(address indexed newAddress);

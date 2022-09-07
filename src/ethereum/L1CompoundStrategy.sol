@@ -1,20 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
-import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
-import { ICToken } from "../interfaces/compound/ICToken.sol";
-import { IComptroller } from "../interfaces/compound/IComptroller.sol";
+import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
+import {ICToken} from "../interfaces/compound/ICToken.sol";
+import {IComptroller} from "../interfaces/compound/IComptroller.sol";
 
-import { BaseVault } from "../BaseVault.sol";
-import { BaseStrategy } from "../BaseStrategy.sol";
+import {BaseVault} from "../BaseVault.sol";
+import {BaseStrategy} from "../BaseStrategy.sol";
 
 contract L1CompoundStrategy is BaseStrategy {
     using SafeTransferLib for ERC20;
     // Compound protocol contracts
+
     IComptroller public immutable comptroller;
     // Corresponding Compound token (USDC -> cUSDC)
     ICToken public immutable cToken;
@@ -52,8 +53,10 @@ contract L1CompoundStrategy is BaseStrategy {
         asset.safeApprove(address(cToken), type(uint256).max);
     }
 
-    /** BALANCES
-     **************************************************************************/
+    /**
+     * BALANCES
+     *
+     */
 
     function balanceOfAsset() public view override returns (uint256) {
         return asset.balanceOf(address(this));
@@ -71,21 +74,27 @@ contract L1CompoundStrategy is BaseStrategy {
         return cToken.balanceOfUnderlying(address(this));
     }
 
-    /** INVESTMENT
-     **************************************************************************/
+    /**
+     * INVESTMENT
+     *
+     */
     function invest(uint256 amount) external override {
         asset.safeTransferFrom(msg.sender, address(this), amount);
         _depositWant(amount);
     }
 
     function _depositWant(uint256 amount) internal returns (uint256) {
-        if (amount == 0) return 0;
+        if (amount == 0) {
+            return 0;
+        }
         require(cToken.mint(amount) == 0, "_depositWant(): minting cToken failed.");
         return amount;
     }
 
-    /** DIVESTMENT
-     **************************************************************************/
+    /**
+     * DIVESTMENT
+     *
+     */
     function divest(uint256 amount) external override onlyVault returns (uint256) {
         _claimAndSellRewards();
 
@@ -99,7 +108,9 @@ contract L1CompoundStrategy is BaseStrategy {
     }
 
     function _withdrawWant(uint256 amount) internal returns (uint256) {
-        if (amount == 0) return 0;
+        if (amount == 0) {
+            return 0;
+        }
         uint256 balanceOfUnderlying = underlyingBalanceOfCToken();
         uint256 amountToRedeem = amount;
         if (amountToRedeem > balanceOfUnderlying) {
@@ -125,16 +136,14 @@ contract L1CompoundStrategy is BaseStrategy {
         }
 
         router.swapExactTokensForTokens(
-            amountIn,
-            minOut,
-            getTokenOutPathV2(address(rewardToken), address(asset)),
-            address(this),
-            block.timestamp
+            amountIn, minOut, getTokenOutPathV2(address(rewardToken), address(asset)), address(this), block.timestamp
         );
     }
 
-    /** TVL ESTIMATION
-     **************************************************************************/
+    /**
+     * TVL ESTIMATION
+     *
+     */
     function totalLockedValue() public override returns (uint256) {
         uint256 balanceExcludingRewards = balanceOfAsset() + underlyingBalanceOfCToken();
 

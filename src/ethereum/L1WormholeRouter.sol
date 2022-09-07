@@ -1,26 +1,24 @@
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.8.16;
 
-import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import { IWormhole } from "../interfaces/IWormhole.sol";
-import { L1Vault } from "./L1Vault.sol";
-import { WormholeRouter } from "../WormholeRouter.sol";
-import { Constants } from "../Constants.sol";
+import {IWormhole} from "../interfaces/IWormhole.sol";
+import {L1Vault} from "./L1Vault.sol";
+import {WormholeRouter} from "../WormholeRouter.sol";
+import {Constants} from "../Constants.sol";
 
 contract L1WormholeRouter is WormholeRouter, Initializable {
     L1Vault vault;
 
     constructor() {}
 
-    function initialize(
-        IWormhole _wormhole,
-        L1Vault _vault,
-        address _otherLayerRouter,
-        uint16 _otherLayerChainId
-    ) external initializer {
+    function initialize(IWormhole _wormhole, L1Vault _vault, address _otherLayerRouter, uint16 _otherLayerChainId)
+        external
+        initializer
+    {
         wormhole = _wormhole;
         vault = _vault;
         governance = vault.governance();

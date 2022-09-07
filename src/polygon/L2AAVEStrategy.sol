@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
-import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
-import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { ILendingPoolAddressesProvider } from "../interfaces/aave/ILendingPoolAddressesProvider.sol";
-import { IAaveIncentivesController } from "../interfaces/aave/IAaveIncentivesController.sol";
-import { ILendingPool } from "../interfaces/aave/ILendingPool.sol";
-import { IAToken } from "../interfaces/aave/IAToken.sol";
+import {ILendingPoolAddressesProvider} from "../interfaces/aave/ILendingPoolAddressesProvider.sol";
+import {IAaveIncentivesController} from "../interfaces/aave/IAaveIncentivesController.sol";
+import {ILendingPool} from "../interfaces/aave/ILendingPool.sol";
+import {IAToken} from "../interfaces/aave/IAToken.sol";
 
-import { BaseVault } from "../BaseVault.sol";
-import { BaseStrategy } from "../BaseStrategy.sol";
+import {BaseVault} from "../BaseVault.sol";
+import {BaseStrategy} from "../BaseStrategy.sol";
 
 interface ILendingPoolAddressesProviderRegistry {
     function getAddressesProvidersList() external view returns (address[] memory);
@@ -69,8 +69,10 @@ contract L2AAVEStrategy is BaseStrategy {
         ERC20(rewardToken).safeApprove(_router, type(uint256).max);
     }
 
-    /** BALANCES
-     **************************************************************************/
+    /**
+     * BALANCES
+     *
+     */
 
     function balanceOfAsset() public view override returns (uint256) {
         return asset.balanceOf(address(this));
@@ -84,21 +86,27 @@ contract L2AAVEStrategy is BaseStrategy {
         return aToken.balanceOf(address(this));
     }
 
-    /** INVESTMENT
-     **************************************************************************/
+    /**
+     * INVESTMENT
+     *
+     */
     function invest(uint256 amount) external override {
         asset.safeTransferFrom(msg.sender, address(this), amount);
         _depositWant(amount);
     }
 
     function _depositWant(uint256 amount) internal returns (uint256) {
-        if (amount == 0) return 0;
+        if (amount == 0) {
+            return 0;
+        }
         lendingPool.deposit(address(asset), amount, address(this), 0);
         return amount;
     }
 
-    /** DIVESTMENT
-     **************************************************************************/
+    /**
+     * DIVESTMENT
+     *
+     */
     function divest(uint256 amount) external override onlyVault returns (uint256) {
         _claimAndSellRewards();
 
@@ -112,7 +120,9 @@ contract L2AAVEStrategy is BaseStrategy {
     }
 
     function _withdrawWant(uint256 amount) internal returns (uint256) {
-        if (amount == 0) return 0;
+        if (amount == 0) {
+            return 0;
+        }
         lendingPool.withdraw(address(asset), amount, address(this));
         return amount;
     }
@@ -129,19 +139,19 @@ contract L2AAVEStrategy is BaseStrategy {
     }
 
     function _sellRewardTokenForWant(uint256 amountIn, uint256 minOut) internal {
-        if (amountIn == 0) return;
+        if (amountIn == 0) {
+            return;
+        }
 
         router.swapExactTokensForTokens(
-            amountIn,
-            minOut,
-            getTokenOutPathV2(address(rewardToken), address(asset)),
-            address(this),
-            block.timestamp
+            amountIn, minOut, getTokenOutPathV2(address(rewardToken), address(asset)), address(this), block.timestamp
         );
     }
 
-    /** TVL ESTIMATION
-     **************************************************************************/
+    /**
+     * TVL ESTIMATION
+     *
+     */
     function totalLockedValue() public view override returns (uint256) {
         uint256 balanceExcludingRewards = balanceOfAsset() + balanceOfAToken();
 

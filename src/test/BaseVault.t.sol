@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { TestPlus } from "./TestPlus.sol";
-import { stdStorage, StdStorage } from "forge-std/Test.sol";
-import { Deploy } from "./Deploy.sol";
-import { MockERC20 } from "./mocks/MockERC20.sol";
-import { BridgeEscrow } from "../BridgeEscrow.sol";
-import { IWormhole } from "../interfaces/IWormhole.sol";
-import { BaseStrategy } from "../BaseStrategy.sol";
-import { BaseVault } from "../BaseVault.sol";
+import {TestPlus} from "./TestPlus.sol";
+import {stdStorage, StdStorage} from "forge-std/Test.sol";
+import {Deploy} from "./Deploy.sol";
+import {MockERC20} from "./mocks/MockERC20.sol";
+import {BridgeEscrow} from "../BridgeEscrow.sol";
+import {IWormhole} from "../interfaces/IWormhole.sol";
+import {BaseStrategy} from "../BaseStrategy.sol";
+import {BaseVault} from "../BaseVault.sol";
 
-import { TestStrategy } from "./mocks/TestStrategy.sol";
+import {TestStrategy} from "./mocks/TestStrategy.sol";
 
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
 contract BaseVaultLiquidate is BaseVault {
     function liquidate(uint256 amount) public returns (uint256) {
@@ -25,12 +25,10 @@ contract BaseVaultLiquidate is BaseVault {
     // NOTE: If foundry made it easy to mock modifiers or write to packed storage slots
     // (we would like to set `_initializing` to true => see Initializable.sol)
     // then we wouldn't need to do this
-    function baseInitialize(
-        address _governance,
-        ERC20 vaultAsset,
-        address _wormholeRouter,
-        BridgeEscrow _bridgeEscrow
-    ) public override {
+    function baseInitialize(address _governance, ERC20 vaultAsset, address _wormholeRouter, BridgeEscrow _bridgeEscrow)
+        public
+        override
+    {
         governance = _governance;
         _asset = vaultAsset;
         wormholeRouter = _wormholeRouter;
@@ -46,6 +44,7 @@ contract BaseVaultLiquidate is BaseVault {
 
 contract BaseVaultTest is TestPlus {
     using stdStorage for StdStorage;
+
     MockERC20 token;
     BaseVaultLiquidate vault;
     uint8 constant MAX_STRATEGIES = 20;
@@ -80,7 +79,7 @@ contract BaseVaultTest is TestPlus {
         TestStrategy strategy = new TestStrategy(token, vault);
         vault.addStrategy(strategy, 1000);
         assertEq(address(vault.withdrawalQueue(0)), address(strategy));
-        (, uint256 tvlBps, , , ) = vault.strategies(strategy);
+        (, uint256 tvlBps,,,) = vault.strategies(strategy);
         assertEq(tvlBps, 1000);
     }
 
@@ -94,7 +93,7 @@ contract BaseVaultTest is TestPlus {
         vault.removeStrategy(strategy);
         assertTrue(vault.totalBps() == 0);
 
-        (bool isActive, uint256 tvlBps, , , ) = vault.strategies(strategy);
+        (bool isActive, uint256 tvlBps,,,) = vault.strategies(strategy);
 
         assertEq(tvlBps, 0);
         assertTrue(isActive == false);
@@ -190,8 +189,8 @@ contract BaseVaultTest is TestPlus {
         bpsList[1] = 200;
 
         vault.updateStrategyAllocations(strategyList, bpsList);
-        (, uint256 strat1TvlBps, , , ) = vault.strategies(strat1);
-        (, uint256 strat2TvlBps, , , ) = vault.strategies(strat2);
+        (, uint256 strat1TvlBps,,,) = vault.strategies(strat1);
+        (, uint256 strat2TvlBps,,,) = vault.strategies(strat2);
 
         assertEq(strat1TvlBps, 100);
         assertEq(strat2TvlBps, 200);

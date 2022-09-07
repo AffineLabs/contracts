@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IScaledBalanceToken } from "./IScaledBalanceToken.sol";
-import { IInitializableAToken } from "./IInitializableAToken.sol";
-import { IAaveIncentivesController } from "./IAaveIncentivesController.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IScaledBalanceToken} from "./IScaledBalanceToken.sol";
+import {IInitializableAToken} from "./IInitializableAToken.sol";
+import {IAaveIncentivesController} from "./IAaveIncentivesController.sol";
 
 interface IAToken is IERC20, IScaledBalanceToken, IInitializableAToken {
     /**
@@ -12,7 +12,8 @@ interface IAToken is IERC20, IScaledBalanceToken, IInitializableAToken {
      * @param from The address performing the mint
      * @param value The amount being
      * @param index The new liquidity index of the reserve
-     **/
+     *
+     */
     event Mint(address indexed from, uint256 value, uint256 index);
 
     /**
@@ -22,11 +23,7 @@ interface IAToken is IERC20, IScaledBalanceToken, IInitializableAToken {
      * @param index The new liquidity index of the reserve
      * @return `true` if the the previous balance of the user was 0
      */
-    function mint(
-        address user,
-        uint256 amount,
-        uint256 index
-    ) external returns (bool);
+    function mint(address user, uint256 amount, uint256 index) external returns (bool);
 
     /**
      * @dev Emitted after aTokens are burned
@@ -34,7 +31,8 @@ interface IAToken is IERC20, IScaledBalanceToken, IInitializableAToken {
      * @param target The address that will receive the underlying
      * @param value The amount being burned
      * @param index The new liquidity index of the reserve
-     **/
+     *
+     */
     event Burn(address indexed from, address indexed target, uint256 value, uint256 index);
 
     /**
@@ -43,7 +41,8 @@ interface IAToken is IERC20, IScaledBalanceToken, IInitializableAToken {
      * @param to The recipient
      * @param value The amount being transferred
      * @param index The new liquidity index of the reserve
-     **/
+     *
+     */
     event BalanceTransfer(address indexed from, address indexed to, uint256 value, uint256 index);
 
     /**
@@ -52,13 +51,9 @@ interface IAToken is IERC20, IScaledBalanceToken, IInitializableAToken {
      * @param receiverOfUnderlying The address that will receive the underlying
      * @param amount The amount being burned
      * @param index The new liquidity index of the reserve
-     **/
-    function burn(
-        address user,
-        address receiverOfUnderlying,
-        uint256 amount,
-        uint256 index
-    ) external;
+     *
+     */
+    function burn(address user, address receiverOfUnderlying, uint256 amount, uint256 index) external;
 
     /**
      * @dev Mints aTokens to the reserve treasury
@@ -72,12 +67,9 @@ interface IAToken is IERC20, IScaledBalanceToken, IInitializableAToken {
      * @param from The address getting liquidated, current owner of the aTokens
      * @param to The recipient
      * @param value The amount of tokens getting transferred
-     **/
-    function transferOnLiquidation(
-        address from,
-        address to,
-        uint256 value
-    ) external;
+     *
+     */
+    function transferOnLiquidation(address from, address to, uint256 value) external;
 
     /**
      * @dev Transfers the underlying asset to `target`. Used by the LendingPool to transfer
@@ -85,23 +77,27 @@ interface IAToken is IERC20, IScaledBalanceToken, IInitializableAToken {
      * @param user The recipient of the underlying
      * @param amount The amount getting transferred
      * @return The amount transferred
-     **/
+     *
+     */
     function transferUnderlyingTo(address user, uint256 amount) external returns (uint256);
 
     /**
      * @dev Invoked to execute actions on the aToken side after a repayment.
      * @param user The user executing the repayment
      * @param amount The amount getting repaid
-     **/
+     *
+     */
     function handleRepayment(address user, uint256 amount) external;
 
     /**
      * @dev Returns the address of the incentives controller contract
-     **/
+     *
+     */
     function getIncentivesController() external view returns (IAaveIncentivesController);
 
     /**
      * @dev Returns the address of the underlying asset of this aToken (E.g. WETH for aWETH)
-     **/
+     *
+     */
     function UNDERLYING_ASSET_ADDRESS() external view returns (address);
 }

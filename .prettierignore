@@ -7,4 +7,5 @@ node_modules/
 package.json
 typechain/
 dist/
-src/test/test.sol
+src/
+*.sol
