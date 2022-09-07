@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { BaseStrategy } from "../../BaseStrategy.sol";
-import { BaseVault } from "../../BaseVault.sol";
-import { MockERC20 } from "./MockERC20.sol";
+import {BaseStrategy} from "../../BaseStrategy.sol";
+import {BaseVault} from "../../BaseVault.sol";
+import {MockERC20} from "./MockERC20.sol";
 
 contract TestStrategy is BaseStrategy {
     constructor(MockERC20 _token, BaseVault _vault) {

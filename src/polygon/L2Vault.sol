@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
-import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
-import { FixedPointMathLib } from "solmate/src/utils/FixedPointMathLib.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
-import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import { Context } from "@openzeppelin/contracts/utils/Context.sol";
-import { ContextUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { BaseRelayRecipient } from "@opengsn/contracts/src/BaseRelayRecipient.sol";
+import {BaseRelayRecipient} from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
-import { BaseVault } from "../BaseVault.sol";
-import { BridgeEscrow } from "../BridgeEscrow.sol";
-import { DetailedShare } from "./Detailed.sol";
-import { L2WormholeRouter } from "./L2WormholeRouter.sol";
-import { IERC4626 } from "../interfaces/IERC4626.sol";
-import { EmergencyWithdrawalQueue } from "./EmergencyWithdrawalQueue.sol";
+import {BaseVault} from "../BaseVault.sol";
+import {BridgeEscrow} from "../BridgeEscrow.sol";
+import {DetailedShare} from "./Detailed.sol";
+import {L2WormholeRouter} from "./L2WormholeRouter.sol";
+import {IERC4626} from "../interfaces/IERC4626.sol";
+import {EmergencyWithdrawalQueue} from "./EmergencyWithdrawalQueue.sol";
 
 /**
  * @notice An L2 vault. This is a cross-chain vault, i.e. some funds deposited here will be moved to L1 for investment.
@@ -41,8 +41,10 @@ contract L2Vault is
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
     uint256 public L1TotalLockedValue;
 
-    /** FEES
-     **************************************************************************/
+    /**
+     * FEES
+     *
+     */
 
     // Fee charged to vault over a year, number is in bps
     uint256 public managementFee;
@@ -64,12 +66,16 @@ contract L2Vault is
         uint256 feesBps = (duration * managementFee) / SECS_PER_YEAR;
         uint256 numSharesToMint = (feesBps * totalSupply()) / MAX_BPS;
 
-        if (numSharesToMint == 0) return;
+        if (numSharesToMint == 0) {
+            return;
+        }
         _mint(governance, numSharesToMint);
     }
 
-    /** INITIALIZATION
-     **************************************************************************/
+    /**
+     * INITIALIZATION
+     *
+     */
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {}
@@ -84,7 +90,10 @@ contract L2Vault is
         uint256 _l1Ratio,
         uint256 _l2Ratio,
         uint256[2] memory fees
-    ) public initializer {
+    )
+        public
+        initializer
+    {
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
         __Pausable_init();
@@ -107,16 +116,18 @@ contract L2Vault is
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
-    /** META-TRANSACTION SUPPORT
-     **************************************************************************/
-    function _msgSender() internal view override(Context, ContextUpgradeable, BaseRelayRecipient) returns (address) {
+    /**
+     * META-TRANSACTION SUPPORT
+     *
+     */
+    function _msgSender() internal view override (Context, ContextUpgradeable, BaseRelayRecipient) returns (address) {
         return BaseRelayRecipient._msgSender();
     }
 
     function _msgData()
         internal
         view
-        override(Context, ContextUpgradeable, BaseRelayRecipient)
+        override (Context, ContextUpgradeable, BaseRelayRecipient)
         returns (bytes calldata)
     {
         return BaseRelayRecipient._msgData();
@@ -134,11 +145,13 @@ contract L2Vault is
         _setTrustedForwarder(forwarder);
     }
 
-    /** ERC4626 / ERC20 BASICS
-     **************************************************************************/
+    /**
+     * ERC4626 / ERC20 BASICS
+     *
+     */
 
     /// @notice See {IERC4262-asset}
-    function asset() public view override(BaseVault, IERC4626) returns (address assetTokenAddress) {
+    function asset() public view override (BaseVault, IERC4626) returns (address assetTokenAddress) {
         return address(_asset);
     }
 
@@ -156,8 +169,10 @@ contract L2Vault is
         _unpause();
     }
 
-    /** DEPOSIT
-     **************************************************************************/
+    /**
+     * DEPOSIT
+     *
+     */
     /// @notice See {IERC4262-deposit}
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
         // TODO: remove after mainnet alpha
@@ -197,25 +212,23 @@ contract L2Vault is
         depositIntoStrategies();
     }
 
-    /** WITHDRAW / REDEEM
-     **************************************************************************/
+    /**
+     * WITHDRAW / REDEEM
+     *
+     */
 
     EmergencyWithdrawalQueue public emergencyWithdrawalQueue;
 
     event EmergencyWithdrawalQueueRequestDropped(
-        uint256 indexed pos,
-        address indexed owner,
-        address indexed receiver,
-        uint256 shares
+        uint256 indexed pos, address indexed owner, address indexed receiver, uint256 shares
     );
 
     /// @notice Redeem logic when done via emeregency withdrawal queue.
-    function redeemByEmergencyWithdrawalQueue(
-        uint256 pos,
-        uint256 shares,
-        address receiver,
-        address owner
-    ) external whenNotPaused returns (uint256 assets) {
+    function redeemByEmergencyWithdrawalQueue(uint256 pos, uint256 shares, address receiver, address owner)
+        external
+        whenNotPaused
+        returns (uint256 assets)
+    {
         address caller = _msgSender();
         require(caller == address(emergencyWithdrawalQueue), "Only emergency withdrawal queue");
         // Owner doesn't have enough shares. Can happen if owner transfers some ALP token to other
@@ -241,11 +254,7 @@ contract L2Vault is
     }
 
     /// @notice See {IERC4262-redeem}
-    function redeem(
-        uint256 shares,
-        address receiver,
-        address owner
-    ) external whenNotPaused returns (uint256 assets) {
+    function redeem(uint256 shares, address receiver, address owner) external whenNotPaused returns (uint256 assets) {
         require(
             shares + emergencyWithdrawalQueue.debtToOwner(owner) <= balanceOf(owner),
             "Not enough share available in owners balance"
@@ -262,7 +271,9 @@ contract L2Vault is
             // Before pushing a request to emergency withdrawal queue we make sure every request
             // in the queue is valid, so that, when the emergency withdrawal queue calls `redeem` we skip
             // all the checks and execute the burns and transfers.
-            if (caller != owner) _spendAllowance(owner, caller, shares);
+            if (caller != owner) {
+                _spendAllowance(owner, caller, shares);
+            }
             emergencyWithdrawalQueue.enqueue(owner, receiver, shares);
             return 0;
         }
@@ -281,11 +292,11 @@ contract L2Vault is
     }
 
     /// @notice See {IERC4262-withdraw}
-    function withdraw(
-        uint256 assets,
-        address receiver,
-        address owner
-    ) external whenNotPaused returns (uint256 shares) {
+    function withdraw(uint256 assets, address receiver, address owner)
+        external
+        whenNotPaused
+        returns (uint256 shares)
+    {
         shares = previewWithdraw(assets);
         require(
             shares + emergencyWithdrawalQueue.debtToOwner(owner) <= balanceOf(owner),
@@ -302,7 +313,9 @@ contract L2Vault is
             // Before pushing a request to emergency withdrawal queue we make sure every request
             // in the queue is valid, so that, when the emergency withdrawal queue calls `redeem` we skip
             // all the checks and execute the burns and transfers.
-            if (caller != owner) _spendAllowance(owner, caller, shares);
+            if (caller != owner) {
+                _spendAllowance(owner, caller, shares);
+            }
             emergencyWithdrawalQueue.enqueue(owner, receiver, shares);
             return 0;
         }
@@ -321,8 +334,10 @@ contract L2Vault is
         _asset.safeTransfer(governance, assetsFee);
     }
 
-    /** EXCHANGE RATES
-     **************************************************************************/
+    /**
+     * EXCHANGE RATES
+     *
+     */
     enum Rounding {
         Down, // Toward negative infinity
         Up, // Toward infinity
@@ -392,7 +407,7 @@ contract L2Vault is
 
     /// @notice See {IERC4262-previewRedeem}
     function previewRedeem(uint256 shares) public view returns (uint256 assets) {
-        (assets, ) = _previewRedeem(shares);
+        (assets,) = _previewRedeem(shares);
     }
 
     /// @dev  A little helper that gets us the amount of assets to send to the user and governance
@@ -408,8 +423,10 @@ contract L2Vault is
         return feeAmount;
     }
 
-    /** DEPOSIT/WITHDRAWAL LIMITS
-     **************************************************************************/
+    /**
+     * DEPOSIT/WITHDRAWAL LIMITS
+     *
+     */
     /// @notice See {IERC4262-maxDeposit}
     function maxDeposit(address receiver) public pure returns (uint256 maxAssets) {
         receiver;
@@ -432,8 +449,10 @@ contract L2Vault is
         maxAssets = _convertToAssets(balanceOf(owner), Rounding.Down);
     }
 
-    /** CROSS-CHAIN REBALANCING
-     **************************************************************************/
+    /**
+     * CROSS-CHAIN REBALANCING
+     *
+     */
 
     // Represents the amount of tvl (in `token`) that should exist on L1 and L2
     // E.g. if layer1 == 1 and layer2 == 2 then 1/3 of the TVL should be on L1
@@ -475,13 +494,17 @@ contract L2Vault is
         require(msg.sender == wormholeRouter, "Only wormhole router");
 
         // If L1 has received the last transfer we sent it, unlock the L2->L1 bridge
-        if (received && !canTransferToL1) canTransferToL1 = true;
+        if (received && !canTransferToL1) {
+            canTransferToL1 = true;
+        }
 
         // Only rebalance if all cross chain transfers have been settled.
         // If the L1 vault is sending money (!canRequestFromL1), then its TVL could be wrong. Also
         // we don't to accidentally request money again. If (!canTransferToL1), we don't want to accidentally
         // send money when one transfer to L1 is already in progress
-        if (!canTransferToL1 || !canRequestFromL1) revert("Rebalance in progress");
+        if (!canTransferToL1 || !canRequestFromL1) {
+            revert("Rebalance in progress");
+        }
 
         // Update L1TotalLockedValue to match what we received from L1
         L1TotalLockedValue = tvl;
@@ -489,7 +512,9 @@ contract L2Vault is
         (bool invest, uint256 delta) = _computeRebalance();
         // if (delta < rebalanceDelta) return;
         // TODO: use the condition above eventually, this is just for testing
-        if (delta == 0) return;
+        if (delta == 0) {
+            return;
+        }
         _L1L2Rebalance(invest, delta);
     }
 
@@ -551,26 +576,30 @@ contract L2Vault is
         emit ReceiveFromL1(amount);
     }
 
-    /** DETAILED PRICE INFO
-     **************************************************************************/
+    /**
+     * DETAILED PRICE INFO
+     *
+     */
 
     /// @dev The vault has as many decimals as the input token does
     function detailedTVL() external view override returns (Number memory tvl) {
-        tvl = Number({ num: totalAssets(), decimals: decimals() });
+        tvl = Number({num: totalAssets(), decimals: decimals()});
     }
 
     function detailedPrice() external view override returns (Number memory price) {
         // If there are no shares, simply say that the price is 100
-        uint256 rawPrice = totalSupply() > 0 ? (totalAssets() * 10**decimals()) / totalSupply() : 100**decimals();
-        price = Number({ num: rawPrice, decimals: decimals() });
+        uint256 rawPrice = totalSupply() > 0 ? (totalAssets() * 10 ** decimals()) / totalSupply() : 100 ** decimals();
+        price = Number({num: rawPrice, decimals: decimals()});
     }
 
     function detailedTotalSupply() external view override returns (Number memory supply) {
-        supply = Number({ num: totalSupply(), decimals: decimals() });
+        supply = Number({num: totalSupply(), decimals: decimals()});
     }
 
-    /** MAINNET ALPHA TEMP STUFF
-     **************************************************************************/
+    /**
+     * MAINNET ALPHA TEMP STUFF
+     *
+     */
     uint256 assetLimit;
 
     function setAssetLimit(uint256 _assetLimit) external onlyGovernance {
@@ -579,7 +608,7 @@ contract L2Vault is
 
     function tearDown(address[] calldata users) external onlyGovernance {
         uint256 length = users.length;
-        for (uint256 i = 0; i < length; ) {
+        for (uint256 i = 0; i < length;) {
             address user = users[i];
             uint256 shares = balanceOf(user);
             uint256 assets = convertToAssets(shares);

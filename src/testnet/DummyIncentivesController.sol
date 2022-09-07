@@ -4,11 +4,7 @@ pragma solidity ^0.8.13;
 contract DummyIncentivesController {
     constructor() {}
 
-    function claimRewards(
-        address[] calldata assets,
-        uint256 amount,
-        address to
-    ) external pure returns (uint256) {
+    function claimRewards(address[] calldata assets, uint256 amount, address to) external pure returns (uint256) {
         assets;
         amount;
         to;

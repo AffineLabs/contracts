@@ -13,7 +13,9 @@ abstract contract Multicall {
 
             if (!success) {
                 // Next 5 lines from https://ethereum.stackexchange.com/a/83577
-                if (result.length < 68) revert();
+                if (result.length < 68) {
+                    revert();
+                }
                 assembly {
                     result := add(result, 0x04)
                 }

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { Context } from "@openzeppelin/contracts/utils/Context.sol";
-import { EIP712MetaTransaction } from "../../lib/EIP712MetaTransaction.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {EIP712MetaTransaction} from "../../lib/EIP712MetaTransaction.sol";
 
 // A mintable token for easy testing of vaults
 
@@ -11,12 +11,10 @@ import { EIP712MetaTransaction } from "../../lib/EIP712MetaTransaction.sol";
 // The two tokens will be mapped (https://docs.polygon.technology/docs/develop/ethereum-polygon/submit-mapping-request)
 // Note that there are no access controls since these are just testnet contracts
 contract MintableToken is ERC20, EIP712MetaTransaction {
-    constructor(
-        string memory _name,
-        string memory _symbol,
-        uint8 numDecimals,
-        uint256 initialSupply
-    ) ERC20(_name, _symbol) EIP712MetaTransaction(_name, "1") {
+    constructor(string memory _name, string memory _symbol, uint8 numDecimals, uint256 initialSupply)
+        ERC20(_name, _symbol)
+        EIP712MetaTransaction(_name, "1")
+    {
         _mint(msg.sender, initialSupply);
         _decimals = numDecimals;
     }
@@ -27,7 +25,7 @@ contract MintableToken is ERC20, EIP712MetaTransaction {
         return _decimals;
     }
 
-    function _msgSender() internal view override(Context, EIP712MetaTransaction) returns (address) {
+    function _msgSender() internal view override (Context, EIP712MetaTransaction) returns (address) {
         return EIP712MetaTransaction._msgSender();
     }
 

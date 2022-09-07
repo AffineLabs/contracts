@@ -1,13 +1,15 @@
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.8.13;
 
-import { IWormhole } from "./interfaces/IWormhole.sol";
-import { BaseVault } from "./BaseVault.sol";
-import { AffineGovernable } from "./AffineGovernable.sol";
+import {IWormhole} from "./interfaces/IWormhole.sol";
+import {BaseVault} from "./BaseVault.sol";
+import {AffineGovernable} from "./AffineGovernable.sol";
 
 abstract contract WormholeRouter is AffineGovernable {
-    /** WORMHOLE CONFIGURATION
-     **************************************************************************/
+    /**
+     * WORMHOLE CONFIGURATION
+     *
+     */
     address public otherLayerRouter;
     uint16 public otherLayerChainId;
     uint256 public nextValidNonce;
@@ -32,8 +34,10 @@ abstract contract WormholeRouter is AffineGovernable {
         consistencyLevel = _consistencyLevel;
     }
 
-    /** VALIDATION
-     **************************************************************************/
+    /**
+     * VALIDATION
+     *
+     */
     function _validateWormholeMessageEmitter(IWormhole.VM memory vm) internal view {
         require(vm.emitterAddress == bytes32(uint256(uint160(otherLayerRouter))), "Wrong emitter address");
         require(vm.emitterChainId == otherLayerChainId, "Wrong emitter chain");

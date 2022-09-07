@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
-import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
-import { BaseStrategy as Strategy } from "./BaseStrategy.sol";
-import { AffineGovernable } from "./AffineGovernable.sol";
-import { BridgeEscrow } from "./BridgeEscrow.sol";
-import { WormholeRouter } from "./WormholeRouter.sol";
+import {BaseStrategy as Strategy} from "./BaseStrategy.sol";
+import {AffineGovernable} from "./AffineGovernable.sol";
+import {BridgeEscrow} from "./BridgeEscrow.sol";
+import {WormholeRouter} from "./WormholeRouter.sol";
 
 /**
  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding
@@ -21,8 +21,10 @@ import { WormholeRouter } from "./WormholeRouter.sol";
 abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
     using SafeTransferLib for ERC20;
 
-    /** UNDERLYING ASSET AND INITIALIZATION
-     **************************************************************************/
+    /**
+     * UNDERLYING ASSET AND INITIALIZATION
+     *
+     */
 
     /// @notice The token that the vault takes in and gives to strategies, e.g. USDC
     ERC20 internal _asset;
@@ -31,12 +33,11 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         return address(_asset);
     }
 
-    function baseInitialize(
-        address _governance,
-        ERC20 vaultAsset,
-        address _wormholeRouter,
-        BridgeEscrow _bridgeEscrow
-    ) public virtual onlyInitializing {
+    function baseInitialize(address _governance, ERC20 vaultAsset, address _wormholeRouter, BridgeEscrow _bridgeEscrow)
+        public
+        virtual
+        onlyInitializing
+    {
         governance = _governance;
         _asset = vaultAsset;
         wormholeRouter = _wormholeRouter;
@@ -51,8 +52,10 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         lastHarvest = block.timestamp;
     }
 
-    /** CROSS CHAIN REBALANCING
-     **************************************************************************/
+    /**
+     * CROSS CHAIN REBALANCING
+     *
+     */
 
     /**
      * @notice A contract used for sending and receiving messages via wormhole.
@@ -62,8 +65,10 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
     /// @notice A "BridgeEscrow" contract for sending and receiving `token` across a bridge.
     BridgeEscrow public bridgeEscrow;
 
-    /** AUTHENTICATION
-     **************************************************************************/
+    /**
+     * AUTHENTICATION
+     *
+     */
 
     /// @notice Role with authority to call "harvest", i.e. update this vault's tvl
     bytes32 public constant harvesterRole = keccak256("HARVESTER");
@@ -76,14 +81,16 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
      */
     bytes32 public constant rebalancerRole = keccak256("REBALANCER");
 
-    /** WITHDRAWAL QUEUE
-     **************************************************************************/
+    /**
+     * WITHDRAWAL QUEUE
+     *
+     */
 
     uint8 public constant MAX_STRATEGIES = 20;
 
     /**
      * @notice An ordered array of strategies representing the withdrawal queue. The withdrawal queue is used
-     whenever the vault wants to pull money out of strategies (cross-chain rebalancing and user withdrawals)xw
+     * whenever the vault wants to pull money out of strategies (cross-chain rebalancing and user withdrawals)xw
      * @dev The first strategy in the array is withdrawn from first.
      * This is a list of the currently active strategies  (all non-zero addresses are active).
      */
@@ -129,7 +136,8 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         emit WithdrawalQueueIndexesSwapped(msg.sender, index1, index2, newStrategy1, newStrategy2);
     }
 
-    /**@notice Emitted when the withdrawal queue is updated.
+    /**
+     * @notice Emitted when the withdrawal queue is updated.
      * @param user The authorized user who triggered the set.
      * @param replacedWithdrawalQueue The new withdrawal queue.
      */
@@ -151,8 +159,10 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         Strategy indexed newStrategy2
     );
 
-    /** STRATEGIES
-     **************************************************************************/
+    /**
+     * STRATEGIES
+     *
+     */
 
     /// @notice The total amount of underlying tokens held in strategies at the time of the last harvest.
     uint256 public totalStrategyHoldings;
@@ -165,6 +175,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         uint256 totalLoss;
     }
     /// @notice A map of strategy addresses to details about the strategy
+
     mapping(Strategy => StrategyInfo) public strategies;
 
     uint256 public constant MAX_BPS = 10_000;
@@ -183,7 +194,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
      */
     function addStrategy(Strategy strategy, uint256 tvlBps) external onlyGovernance {
         _increaseTVLBps(tvlBps);
-        strategies[strategy] = StrategyInfo({ isActive: true, tvlBps: tvlBps, balance: 0, totalGain: 0, totalLoss: 0 });
+        strategies[strategy] = StrategyInfo({isActive: true, tvlBps: tvlBps, balance: 0, totalGain: 0, totalLoss: 0});
         //  Add strategy to withdrawal queue
         withdrawalQueue[withdrawalQueue.length - 1] = strategy;
         emit StrategyAdded(strategy);
@@ -209,8 +220,9 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         uint256 length = withdrawalQueue.length;
         for (uint256 i = 0; i < length; i++) {
             Strategy strategy = withdrawalQueue[i];
-            if (address(strategy) == address(0)) offset += 1;
-            else if (offset > 0) {
+            if (address(strategy) == address(0)) {
+                offset += 1;
+            } else if (offset > 0) {
                 // idx of first empty value seen takes on value of `strategy`
                 withdrawalQueue[i - offset] = strategy;
                 withdrawalQueue[i] = Strategy(address(0));
@@ -269,8 +281,10 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         }
     }
 
-    /** STRATEGY DEPOSIT/WITHDRAWAL
-     **************************************************************************/
+    /**
+     * STRATEGY DEPOSIT/WITHDRAWAL
+     *
+     */
 
     /**
      * @notice Emitted after the Vault deposits into a strategy contract.
@@ -316,7 +330,9 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         uint256 length = withdrawalQueue.length;
         for (uint256 i = 0; i < length; i++) {
             Strategy strat = withdrawalQueue[i];
-            if (address(strat) == address(0)) break;
+            if (address(strat) == address(0)) {
+                break;
+            }
             depositIntoStrategy(strat, (totalBal * strategies[strat].tvlBps) / MAX_BPS);
         }
     }
@@ -344,8 +360,10 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         return amountWithdrawn;
     }
 
-    /** HARVESTING
-     **************************************************************************/
+    /**
+     * HARVESTING
+     *
+     */
 
     /**
      * @notice A timestamp representing when the most recent harvest occurred.
@@ -408,7 +426,8 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
             unchecked {
                 // Update the total profit accrued while counting losses as zero profit.
                 // Cannot overflow as we already increased total holdings without reverting.
-                totalProfitAccrued += balanceThisHarvest > balanceLastHarvest
+                totalProfitAccrued +=
+                    balanceThisHarvest > balanceLastHarvest
                     ? balanceThisHarvest - balanceLastHarvest // Profits since last harvest.
                     : 0; // If the strategy registered a net loss we don't have any new profit.
             }
@@ -432,7 +451,9 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
      * @dev Profit unlocks uniformly over `lockInterval` seconds after the last harvest
      */
     function lockedProfit() public view virtual returns (uint256) {
-        if (block.timestamp >= lastHarvest + lockInterval) return 0;
+        if (block.timestamp >= lastHarvest + lockInterval) {
+            return 0;
+        }
 
         uint256 unlockedProfit = (maxLockedProfit * (block.timestamp - lastHarvest)) / lockInterval;
         return maxLockedProfit - unlockedProfit;
@@ -462,10 +483,14 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         uint256 length = withdrawalQueue.length;
         for (uint256 i = 0; i < length; i++) {
             Strategy strategy = withdrawalQueue[i];
-            if (address(strategy) == address(0)) break;
+            if (address(strategy) == address(0)) {
+                break;
+            }
 
             uint256 balance = _asset.balanceOf(address(this));
-            if (balance >= amount) break;
+            if (balance >= amount) {
+                break;
+            }
 
             // NOTE: Don't withdraw more than the debt so that Strategy can still
             // continue to work based on the profits it has
@@ -497,7 +522,9 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         uint256 length = withdrawalQueue.length;
         for (uint256 i = 0; i < length; i++) {
             Strategy strategy = withdrawalQueue[i];
-            if (address(strategy) == address(0)) break;
+            if (address(strategy) == address(0)) {
+                break;
+            }
             totalStrategyTVL += strategy.totalLockedValue();
         }
         tvl = _asset.balanceOf(address(this)) + totalStrategyTVL;
@@ -515,7 +542,9 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
 
         for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
             Strategy strategy = withdrawalQueue[i];
-            if (address(strategy) == address(0)) break;
+            if (address(strategy) == address(0)) {
+                break;
+            }
 
             uint256 idealStrategyTVL = (tvl * strategies[strategy].tvlBps) / MAX_BPS;
             uint256 currStrategyTVL = strategy.totalLockedValue();
@@ -530,7 +559,9 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         // Loop through the strategies to invest in, and invest in them
         for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
             uint256 amountToInvest = amountsToInvest[i];
-            if (amountToInvest == 0) continue;
+            if (amountToInvest == 0) {
+                continue;
+            }
 
             Strategy strategy = withdrawalQueue[i];
 

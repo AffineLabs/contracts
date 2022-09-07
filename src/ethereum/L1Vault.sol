@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
-import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-import { Context } from "@openzeppelin/contracts/utils/Context.sol";
-import { ContextUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
-import { IRootChainManager } from "../interfaces/IRootChainManager.sol";
-import { BridgeEscrow } from "../BridgeEscrow.sol";
-import { BaseVault } from "../BaseVault.sol";
-import { L1WormholeRouter } from "./L1WormholeRouter.sol";
+import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
+import {BridgeEscrow} from "../BridgeEscrow.sol";
+import {BaseVault} from "../BaseVault.sol";
+import {L1WormholeRouter} from "./L1WormholeRouter.sol";
 
 contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     using SafeTransferLib for ERC20;
@@ -35,7 +35,10 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         BridgeEscrow _bridgeEscrow,
         IRootChainManager _chainManager,
         address _predicate
-    ) public initializer {
+    )
+        public
+        initializer
+    {
         __UUPSUpgradeable_init();
         __Pausable_init();
         BaseVault.baseInitialize(_governance, _token, _wormholeRouter, _bridgeEscrow);
@@ -43,11 +46,11 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         predicate = _predicate;
     }
 
-    function _msgSender() internal view override(Context, ContextUpgradeable) returns (address) {
+    function _msgSender() internal view override (Context, ContextUpgradeable) returns (address) {
         return Context._msgSender();
     }
 
-    function _msgData() internal view override(Context, ContextUpgradeable) returns (bytes calldata) {
+    function _msgData() internal view override (Context, ContextUpgradeable) returns (bytes calldata) {
         return Context._msgData();
     }
 
@@ -68,7 +71,9 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
 
         // If received == true then the l2-l1 bridge gets unlocked upon message reception in l2
         // Resetting this to false since we haven't received any new transfers from L2 yet
-        if (received) received = false;
+        if (received) {
+            received = false;
+        }
         emit SendTVL(tvl);
     }
 

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
-import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
-import { MintableToken } from "./MintableToken.sol";
-import { BaseStrategy } from "../BaseStrategy.sol";
-import { L2Vault } from "../polygon/L2Vault.sol";
+import {MintableToken} from "./MintableToken.sol";
+import {BaseStrategy} from "../BaseStrategy.sol";
+import {L2Vault} from "../polygon/L2Vault.sol";
 
 contract MintableStrategy is BaseStrategy {
     using SafeTransferLib for ERC20;

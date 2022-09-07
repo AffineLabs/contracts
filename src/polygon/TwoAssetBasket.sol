@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
-import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
-import { FixedPointMathLib } from "solmate/src/utils/FixedPointMathLib.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import { Context } from "@openzeppelin/contracts/utils/Context.sol";
-import { ContextUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
-import { BaseRelayRecipient } from "@opengsn/contracts/src/BaseRelayRecipient.sol";
+import {BaseRelayRecipient} from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
-import { AffineGovernable } from "../AffineGovernable.sol";
-import { IUniLikeSwapRouter } from "../interfaces/IUniLikeSwapRouter.sol";
-import { AggregatorV3Interface } from "../interfaces/AggregatorV3Interface.sol";
-import { Dollar, DollarMath } from "../DollarMath.sol";
-import { DetailedShare } from "./Detailed.sol";
+import {AffineGovernable} from "../AffineGovernable.sol";
+import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
+import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
+import {Dollar, DollarMath} from "../DollarMath.sol";
+import {DetailedShare} from "./Detailed.sol";
 
 contract TwoAssetBasket is
     ERC20Upgradeable,
@@ -51,7 +51,10 @@ contract TwoAssetBasket is
         ERC20[2] memory _tokens,
         uint256[2] memory _ratios,
         AggregatorV3Interface[3] memory _priceFeeds
-    ) public initializer {
+    )
+        public
+        initializer
+    {
         __ERC20_init("Alpine Large", "alpLarge");
         __UUPSUpgradeable_init();
         __Pausable_init();
@@ -79,11 +82,11 @@ contract TwoAssetBasket is
         return "1";
     }
 
-    function _msgSender() internal view override(ContextUpgradeable, BaseRelayRecipient) returns (address) {
+    function _msgSender() internal view override (ContextUpgradeable, BaseRelayRecipient) returns (address) {
         return BaseRelayRecipient._msgSender();
     }
 
-    function _msgData() internal view override(ContextUpgradeable, BaseRelayRecipient) returns (bytes calldata) {
+    function _msgData() internal view override (ContextUpgradeable, BaseRelayRecipient) returns (bytes calldata) {
         return BaseRelayRecipient._msgData();
     }
 
@@ -96,7 +99,7 @@ contract TwoAssetBasket is
     }
 
     function decimals() public view override returns (uint8) {
-        return btc.decimals();
+        return 18;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
@@ -111,15 +114,13 @@ contract TwoAssetBasket is
         _unpause();
     }
 
-    /** DEPOSIT / WITHDRAW
-     **************************************************************************/
+    /**
+     * DEPOSIT / WITHDRAW
+     *
+     */
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
     event Withdraw(
-        address indexed caller,
-        address indexed receiver,
-        address indexed owner,
-        uint256 assets,
-        uint256 shares
+        address indexed caller, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
     );
 
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
@@ -151,25 +152,15 @@ contract TwoAssetBasket is
 
         uint256 btcReceived;
         if (assetsToBtc > 0) {
-            uint256[] memory btcAmounts = uniRouter.swapExactTokensForTokens(
-                assetsToBtc,
-                0,
-                pathBtc,
-                address(this),
-                block.timestamp
-            );
+            uint256[] memory btcAmounts =
+                uniRouter.swapExactTokensForTokens(assetsToBtc, 0, pathBtc, address(this), block.timestamp);
             btcReceived = btcAmounts[1];
         }
 
         uint256 ethReceived;
         if (assetsToEth > 0) {
-            uint256[] memory ethAmounts = uniRouter.swapExactTokensForTokens(
-                assetsToEth,
-                0,
-                pathEth,
-                address(this),
-                block.timestamp
-            );
+            uint256[] memory ethAmounts =
+                uniRouter.swapExactTokensForTokens(assetsToEth, 0, pathEth, address(this), block.timestamp);
             ethReceived = ethAmounts[1];
         }
 
@@ -188,11 +179,11 @@ contract TwoAssetBasket is
         _mint(receiver, shares);
     }
 
-    function withdraw(
-        uint256 assets,
-        address receiver,
-        address owner
-    ) external whenNotPaused returns (uint256 assetsReceived) {
+    function withdraw(uint256 assets, address receiver, address owner)
+        external
+        whenNotPaused
+        returns (uint256 assetsReceived)
+    {
         // Try to get `assets` of `asset` out of vault
         uint256 vaultDollars = Dollar.unwrap(valueOfVault());
 
@@ -215,18 +206,16 @@ contract TwoAssetBasket is
         uint256 numShares = (assetsDollars * totalSupply()) / vaultDollars;
 
         address caller = _msgSender();
-        if (caller != owner) _spendAllowance(owner, caller, numShares);
+        if (caller != owner) {
+            _spendAllowance(owner, caller, numShares);
+        }
         _burn(owner, numShares);
 
         emit Withdraw(_msgSender(), receiver, owner, assetsReceived, numShares);
         asset.safeTransfer(receiver, assetsReceived);
     }
 
-    function redeem(
-        uint256 shares,
-        address receiver,
-        address owner
-    ) external whenNotPaused returns (uint256 assets) {
+    function redeem(uint256 shares, address receiver, address owner) external whenNotPaused returns (uint256 assets) {
         // Convert shares to dollar amounts
 
         // Try to get `assets` of `asset` out of vault
@@ -239,7 +228,9 @@ contract TwoAssetBasket is
         assets = _sell(dollarsFromBtc, dollarsFromEth);
 
         address caller = _msgSender();
-        if (caller != owner) _spendAllowance(owner, caller, shares);
+        if (caller != owner) {
+            _spendAllowance(owner, caller, shares);
+        }
         _burn(owner, shares);
 
         emit Withdraw(_msgSender(), receiver, owner, assets, shares);
@@ -280,8 +271,10 @@ contract TwoAssetBasket is
         }
     }
 
-    /** EXCHANGE RATES
-     **************************************************************************/
+    /**
+     * EXCHANGE RATES
+     *
+     */
 
     // Dollars always have 8 decimals
     using DollarMath for Dollar;
@@ -293,7 +286,7 @@ contract TwoAssetBasket is
 
         AggregatorV3Interface feed = tokenToOracle[token];
 
-        (uint80 roundId, int256 price, , uint256 timestamp, uint80 answeredInRound) = feed.latestRoundData();
+        (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = feed.latestRoundData();
         require(price > 0, "Chainlink price <= 0");
         require(answeredInRound >= roundId, "Chainlink stale data");
         require(timestamp != 0, "Chainlink round not complete");
@@ -306,7 +299,7 @@ contract TwoAssetBasket is
         // If we have 2 ether then return 2 * 1e8 as the dollar value of our balance
 
         uint256 tokenPrice = Dollar.unwrap(_getTokenPrice(token));
-        uint256 dollarValue = (amount * tokenPrice) / (10**token.decimals());
+        uint256 dollarValue = (amount * tokenPrice) / (10 ** token.decimals());
         return Dollar.wrap(dollarValue);
     }
 
@@ -326,7 +319,7 @@ contract TwoAssetBasket is
 
     function _tokensFromDollars(ERC20 token, Dollar amountDollars) internal view returns (uint256) {
         // Convert dollars to tokens with token's amount of decimals
-        uint256 oneToken = 10**token.decimals();
+        uint256 oneToken = 10 ** token.decimals();
 
         uint256 amountDollarsInt = Dollar.unwrap(amountDollars);
         uint256 tokenPrice = Dollar.unwrap(_getTokenPrice(token));
@@ -355,8 +348,9 @@ contract TwoAssetBasket is
         // 1. If Ideal amount is less than current amount then we buy btc (too little btc)
         if (btcDollars < idealBtcDollars) {
             uint256 amountNeeded = idealBtcDollars - btcDollars;
-            if (amountNeeded > assetDollars) dollarsToBtc = assetDollars;
-            else {
+            if (amountNeeded > assetDollars) {
+                dollarsToBtc = assetDollars;
+            } else {
                 // Hit ideal amount of btc
                 dollarsToBtc += amountNeeded;
                 // We've hit the ideal amount of btc, now buy according to the ratios
@@ -402,8 +396,9 @@ contract TwoAssetBasket is
         // 1. If ideal amount is greater than current amount we sell btc (too much btc)
         if (idealBtcDollars < btcDollars) {
             uint256 amountNeeded = btcDollars - idealBtcDollars;
-            if (amountNeeded > assetDollars) dollarsFromBtc = assetDollars;
-            else {
+            if (amountNeeded > assetDollars) {
+                dollarsFromBtc = assetDollars;
+            } else {
                 // Hit ideal amount of btc
                 dollarsFromBtc += amountNeeded;
                 // We've hit the ideal amount of btc, now sell according to the ratios
@@ -426,12 +421,14 @@ contract TwoAssetBasket is
         return (Dollar.wrap(dollarsFromBtc), Dollar.wrap(assetDollars - dollarsFromBtc));
     }
 
-    /** DETAILED PRICE INFO
-     **************************************************************************/
+    /**
+     * DETAILED PRICE INFO
+     *
+     */
 
     function detailedTVL() external view override returns (Number memory tvl) {
         Dollar vaultDollars = valueOfVault();
-        tvl = Number({ num: Dollar.unwrap(vaultDollars), decimals: 8 });
+        tvl = Number({num: Dollar.unwrap(vaultDollars), decimals: 8});
     }
 
     function detailedPrice() external view override returns (Number memory price) {
@@ -445,20 +442,22 @@ contract TwoAssetBasket is
         // Assuming that shareDecimals > 8. TODO: reconsider
         // Price is set to 100 if there are no shares in the vault
         if (_totalSupply > 0) {
-            _price = (vaultValue * (10**shareDecimals)) / _totalSupply;
+            _price = (vaultValue * (10 ** shareDecimals)) / _totalSupply;
         } else {
-            _price = 100**8;
+            _price = 100e8;
         }
 
-        price = Number({ num: _price, decimals: 8 });
+        price = Number({num: _price, decimals: 8});
     }
 
     function detailedTotalSupply() external view override returns (Number memory supply) {
-        supply = Number({ num: totalSupply(), decimals: decimals() });
+        supply = Number({num: totalSupply(), decimals: decimals()});
     }
 
-    /** MAINNET ALPHA TEMP STUFF
-     **************************************************************************/
+    /**
+     * MAINNET ALPHA TEMP STUFF
+     *
+     */
     /// @notice This is actually a dollar amount We don't bother with `Dollar` type because this is external
     uint256 assetLimit;
 
@@ -490,7 +489,7 @@ contract TwoAssetBasket is
         uint256 totalAssets = asset.balanceOf(address(this));
         uint256 numShares = totalSupply();
         uint256 length = users.length;
-        for (uint256 i = 0; i < length; ) {
+        for (uint256 i = 0; i < length;) {
             address user = users[i];
             uint256 shares = balanceOf(user);
 
