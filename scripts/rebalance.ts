@@ -77,6 +77,16 @@ async function getContracts(): Promise<Contracts> {
 }
 
 async function trySendingTVLFromL1(contracts: Contracts): Promise<StepStatus> {
+  let canTransferToL1 = await contracts.l2Vault.canTransferToL1();
+  let canRequestFromL1 = await contracts.l2Vault.canRequestFromL1();
+  let received = await contracts.l1Vault.received();
+  const noRebalanceInProgress = (received && !canTransferToL1) || (canTransferToL1 && canRequestFromL1);
+  if (!noRebalanceInProgress) {
+    return {
+      success: false,
+      message: "Rebalance in progress, no need to send TVL",
+    };
+  }
   let l1WormholeRouterSeq = await contracts.l1Wormhole.nextSequence(contracts.l1WormholeRouter.address);
   let l1WormholeRouterLastSentTVLNonce = l1WormholeRouterSeq.sub(1);
   if (l1WormholeRouterLastSentTVLNonce.gte(await contracts.l2WormholeRouter.nextValidNonce())) {
@@ -85,26 +95,17 @@ async function trySendingTVLFromL1(contracts: Contracts): Promise<StepStatus> {
       message: "Previous TVLs are yet to be received by L2",
     };
   }
-  let canTransferToL1 = await contracts.l2Vault.canTransferToL1();
-  let canRequestFromL1 = await contracts.l2Vault.canRequestFromL1();
-  if (canTransferToL1 && canRequestFromL1) {
-    try {
-      const sendTVLTransaction = await contracts.l1Vault.sendTVL();
-      await sendTVLTransaction.wait();
-      return {
-        success: true,
-        message: "Sent TVL to L2 from L1",
-      };
-    } catch (e) {
-      return {
-        success: false,
-        message: `Sending TVL Failed. Error: ${e}`,
-      };
-    }
-  } else {
+  try {
+    const sendTVLTransaction = await contracts.l1Vault.sendTVL();
+    await sendTVLTransaction.wait();
+    return {
+      success: true,
+      message: "Sent TVL to L2 from L1",
+    };
+  } catch (e) {
     return {
       success: false,
-      message: "Rebalance in progress, no need to send TVL",
+      message: `Sending TVL Failed. Error: ${e}`,
     };
   }
 }
@@ -116,6 +117,13 @@ async function tryReceivingTVLInL2(contracts: Contracts): Promise<StepStatus> {
     return {
       success: false,
       message: "No L1 TVL to be received",
+    };
+  }
+  const canRequestFromL1 = await contracts.l2Vault.canRequestFromL1();
+  if (!canRequestFromL1) {
+    return {
+      success: false,
+      message: "L2 -> L1 rebalance happening, TVL is not expected by L2 at the moment",
     };
   }
   const tvlVAA = await utils.attemptGettingVAA(
@@ -164,15 +172,19 @@ async function getLatestTransferToL1EventTxHash(contracts: Contracts): Promise<s
 
 async function getL2FundTransferMessageProof(contracts: Contracts): Promise<string | undefined> {
   const ecr20TransferEventSig = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
-  const { data: maticAPIResponse } = await axios.get(
-    `${getPolygonAPIURL()}/exit-payload/${await getLatestTransferToL1EventTxHash(
-      contracts,
-    )}?eventSignature=${ecr20TransferEventSig}`,
-  );
-  if ("result" in maticAPIResponse) {
-    return maticAPIResponse.result;
+  try {
+    const { data: maticAPIResponse } = await axios.get(
+      `${getPolygonAPIURL()}/exit-payload/${await getLatestTransferToL1EventTxHash(
+        contracts,
+      )}?eventSignature=${ecr20TransferEventSig}`,
+    );
+    if ("result" in maticAPIResponse) {
+      return maticAPIResponse.result;
+    }
+    return undefined;
+  } catch (e) {
+    return undefined;
   }
-  return undefined;
 }
 
 async function getL2FundTransferReportMessageVAA(contracts: Contracts): Promise<Uint8Array | undefined> {
@@ -337,11 +349,11 @@ async function main() {
   // Setup
   const contracts = await getContracts();
 
-  console.log("Trying to sent TVL from L1 to L2:", await trySendingTVLFromL1(contracts));
+  console.log("Trying to send TVL from L1 to L2:", await trySendingTVLFromL1(contracts));
   console.log("Trying to receive L1 TVL in L2:", await tryReceivingTVLInL2(contracts));
   console.log("Trying to receive fund in L1:", await tryReceivingFundInL1(contracts));
   console.log("Trying to trigger fund transfer from L1 to L2:", await tryTrigerringTransferFromL1(contracts));
-  console.log("Trying clear funds from L2 escrow:", await tryClearingFundsFromL2Escrow(contracts));
+  console.log("Trying to clear funds from L2 escrow:", await tryClearingFundsFromL2Escrow(contracts));
 }
 
 main()
