@@ -47,9 +47,9 @@ jobs:
       # Fuzz tests are included by default
       - name: Check gas snapshots.
         run: yarn snap --check
-      
+
       - name: Generate coverage report
-      run: forge coverage --report lcov
+        run: forge coverage --report lcov
 
       - name: Report code coverage
         uses: zgosalvez/github-actions-report-lcov@v1
