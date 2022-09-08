@@ -240,6 +240,30 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.L1TotalLockedValue(), 120);
     }
 
+    function testLockedTVL() public {
+        assertEq(vault.lockedTVL(), 0);
+
+        // We mint some money so that we don't trigger any actual rebalancing
+        asset.mint(address(vault), 100);
+        vault.setCanTransferToL1(false);
+        vm.startPrank(vault.wormholeRouter());
+        vault.receiveTVL(100, true);
+
+        assertEq(vault.L1TotalLockedValue(), 100);
+        assertEq(vault.lockedTVL(), 100);
+        assertEq(vault.totalAssets(), 100);
+
+        // Using up 50% of lockInterval unlocks 50% of tvl
+        vm.warp(block.timestamp + vault.lockInterval() / 2);
+        assertEq(vault.lockedTVL(), 50);
+        assertEq(vault.totalAssets(), 150);
+
+        // Using up all of lock interval unlocks all of tvl
+        vm.warp(block.timestamp + vault.lockInterval());
+        assertEq(vault.lockedTVL(), 0);
+        assertEq(vault.totalAssets(), 200);
+    }
+
     function testL1ToL2Rebalance() public {
         // Any call to the wormholerouter will do nothing
         vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.requestFunds, (25)), "");
@@ -605,62 +629,5 @@ contract L2VaultTest is TestPlus {
         changePrank(alice);
         vm.expectRevert("Only Governance.");
         vault.setRebalanceDelta(0);
-    }
-
-    function testAssetLimit() public {
-        vm.prank(governance);
-        vault.setAssetLimit(1000);
-
-        asset.mint(address(this), 2000);
-        asset.approve(address(vault), type(uint256).max);
-
-        vault.deposit(500, address(this));
-        assertEq(asset.balanceOf(address(this)), 1500);
-
-        // We only deposit 500 because the limit is 500 and 500 is already in the vault
-        vault.deposit(1000, address(this));
-        assertEq(asset.balanceOf(address(this)), 1000);
-
-        vm.expectRevert("MIN_DEPOSIT_ERR");
-        vault.deposit(200, address(this));
-        assertEq(asset.balanceOf(address(this)), 1000);
-    }
-
-    function testAssetLimitMint() public {
-        vm.prank(governance);
-        vault.setAssetLimit(1000);
-
-        asset.mint(address(this), 2000);
-        asset.approve(address(vault), type(uint256).max);
-
-        vault.mint(5, address(this));
-        assertEq(asset.balanceOf(address(this)), 1500);
-
-        // We only deposit 500 because the limit is 500 and 500 is already in the vault
-        vault.mint(10, address(this));
-        assertEq(asset.balanceOf(address(this)), 1000);
-
-        vm.expectRevert("MIN_DEPOSIT_ERR");
-        vault.mint(20, address(this));
-        assertEq(asset.balanceOf(address(this)), 1000);
-    }
-
-    function testTearDown() public {
-        // Give alice and bob some shares
-        deal(address(vault), alice, 1e18, true);
-        deal(address(vault), bob, 1e18, true);
-
-        deal(address(asset), address(vault), 2e18);
-
-        // Call teardown and make sure they get money back
-        address[] memory users = new address[](2);
-        users[0] = alice;
-        users[1] = bob;
-        vm.prank(governance);
-        vault.tearDown(users);
-
-        assertEq(asset.balanceOf(alice), 1e18);
-        assertEq(asset.balanceOf(bob), 1e18);
-        assertEq(asset.balanceOf(address(vault)), 0);
     }
 }

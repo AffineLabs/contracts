@@ -105,13 +105,12 @@ contract L2Vault is
         rebalanceDelta = 100_000 * _asset.decimals();
         canTransferToL1 = true;
         canRequestFromL1 = true;
+        lastTVLUpdate = block.timestamp;
 
         _setTrustedForwarder(forwarder);
 
         withdrawalFee = fees[0];
         managementFee = fees[1];
-
-        assetLimit = 10_000 * 1e6;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
@@ -175,11 +174,6 @@ contract L2Vault is
      */
     /// @notice See {IERC4262-deposit}
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
-        // TODO: remove after mainnet alpha
-        uint256 tvl = totalAssets();
-        uint256 allowedDepositAmount = tvl > assetLimit ? 0 : assetLimit - tvl;
-        assets = Math.min(allowedDepositAmount, assets);
-
         shares = previewDeposit(assets);
         require(shares > 0, "MIN_DEPOSIT_ERR");
         address caller = _msgSender();
@@ -195,14 +189,6 @@ contract L2Vault is
     /// @notice See {IERC4262-mint}
     function mint(uint256 shares, address receiver) external whenNotPaused returns (uint256 assets) {
         assets = previewMint(shares);
-        // TODO: remove after mainnet alpha
-        uint256 tvl = totalAssets();
-        uint256 allowedDepositAmount = tvl > assetLimit ? 0 : assetLimit - tvl;
-        assets = Math.min(allowedDepositAmount, assets);
-
-        shares = previewDeposit(assets);
-        require(shares > 0, "MIN_DEPOSIT_ERR");
-
         address caller = _msgSender();
 
         _asset.safeTransferFrom(caller, address(this), assets);
@@ -346,7 +332,7 @@ contract L2Vault is
 
     /// @notice See {IERC4262-totalAssets}
     function totalAssets() public view returns (uint256 totalManagedAssets) {
-        return vaultTVL() - lockedProfit() + L1TotalLockedValue;
+        return vaultTVL() + L1TotalLockedValue - lockedProfit() - lockedTVL();
     }
 
     /// @notice See {IERC4262-convertToShares}
@@ -490,6 +476,22 @@ contract L2Vault is
     event TransferToL1(uint256 amount);
     event ReceiveFromL1(uint256 amount);
 
+    /// @notice The last time the tvl was updated. We need this to let L1 tvl updates unlock over time
+    uint256 public lastTVLUpdate;
+
+    /// @notice See maxLockedProfit
+    uint256 public maxLockedTVL;
+
+    /// @notice See lockedProfit. This is the same, except we are profiting from L1 tvl info
+    function lockedTVL() public view returns (uint256) {
+        if (block.timestamp >= lastTVLUpdate + lockInterval) {
+            return 0;
+        }
+
+        uint256 unlockedTVL = (maxLockedTVL * (block.timestamp - lastTVLUpdate)) / lockInterval;
+        return maxLockedTVL - unlockedTVL;
+    }
+
     function receiveTVL(uint256 tvl, bool received) external {
         require(msg.sender == wormholeRouter, "Only wormhole router");
 
@@ -507,6 +509,11 @@ contract L2Vault is
         }
 
         // Update L1TotalLockedValue to match what we received from L1
+        // Any increase in L1's tvl will unlock linearly, just as when harvesting from strategies
+        uint256 oldL1TVL = L1TotalLockedValue;
+        uint256 totalProfit = tvl > oldL1TVL ? tvl - oldL1TVL : 0;
+        maxLockedTVL = lockedTVL() + totalProfit;
+        lastTVLUpdate = block.timestamp;
         L1TotalLockedValue = tvl;
 
         (bool invest, uint256 delta) = _computeRebalance();
@@ -520,7 +527,7 @@ contract L2Vault is
 
     function _computeRebalance() internal view returns (bool, uint256) {
         uint256 numSlices = l1Ratio + l2Ratio;
-        uint256 L1IdealAmount = (l1Ratio * totalAssets()) / numSlices;
+        uint256 L1IdealAmount = (l1Ratio * (vaultTVL() + L1TotalLockedValue)) / numSlices;
 
         bool invest;
         uint256 delta;
@@ -594,33 +601,5 @@ contract L2Vault is
 
     function detailedTotalSupply() external view override returns (Number memory supply) {
         supply = Number({num: totalSupply(), decimals: decimals()});
-    }
-
-    /**
-     * MAINNET ALPHA TEMP STUFF
-     *
-     */
-    uint256 assetLimit;
-
-    function setAssetLimit(uint256 _assetLimit) external onlyGovernance {
-        assetLimit = _assetLimit;
-    }
-
-    function tearDown(address[] calldata users) external onlyGovernance {
-        uint256 length = users.length;
-        for (uint256 i = 0; i < length;) {
-            address user = users[i];
-            uint256 shares = balanceOf(user);
-            uint256 assets = convertToAssets(shares);
-            uint256 amountToSend = Math.min(assets, _asset.balanceOf(address(this)));
-
-            _burn(user, shares);
-            _asset.safeTransfer(user, amountToSend);
-
-            // Assuming that all of our tvl is on L2
-            unchecked {
-                ++i;
-            }
-        }
     }
 }

@@ -38,10 +38,9 @@ contract Deploy is Test {
             1, // l2 ratio
             [uint256(0), uint256(200)] // withdrawal and AUM fees
         );
-        vm.prank(governance);
-        vault.setAssetLimit(type(uint256).max);
 
         escrow.initialize(address(vault), IRootChainManager(address(0)));
+        vm.prank(governance);
         emergencyWithdrawalQueue.linkVault(vault);
     }
 
