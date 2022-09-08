@@ -256,7 +256,7 @@ contract L2VaultTest is TestPlus {
     function testL1ToL2RebalanceWithEmergencyWithdrawalQueueDebt() public {
         // Any call to the wormholerouter will do nothing
         vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.requestFunds, (200)), "");
-        // Simulate having 150 debt to emergency withdrawal queue.
+        // Simulate having 200 debt to emergency withdrawal queue.
         vm.mockCall(
             address(vault.emergencyWithdrawalQueue()),
             abi.encodeCall(EmergencyWithdrawalQueue.totalDebt, ()),
