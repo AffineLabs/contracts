@@ -105,6 +105,7 @@ contract L2Vault is
         rebalanceDelta = 100_000 * _asset.decimals();
         canTransferToL1 = true;
         canRequestFromL1 = true;
+        lastTVLUpdate = block.timestamp;
 
         _setTrustedForwarder(forwarder);
 
@@ -346,7 +347,12 @@ contract L2Vault is
 
     /// @notice See {IERC4262-totalAssets}
     function totalAssets() public view returns (uint256 totalManagedAssets) {
-        return vaultTVL() - lockedProfit() + L1TotalLockedValue;
+        return vaultTVL() + L1TotalLockedValue - lockedProfit() - lockedTVL();
+    }
+
+    /// @notice Like totalAssets, but we exclude tvl unlocking since we aren't using this to price shares
+    function totalAssetsForRebalance() public view returns (uint256 totalManagedAssets) {
+        return vaultTVL() + L1TotalLockedValue - lockedProfit();
     }
 
     /// @notice See {IERC4262-convertToShares}
@@ -490,6 +496,22 @@ contract L2Vault is
     event TransferToL1(uint256 amount);
     event ReceiveFromL1(uint256 amount);
 
+    /// @notice The last time the tvl was updated. We need this to let L1 tvl updates unlock over time
+    uint256 public lastTVLUpdate;
+
+    /// @notice See maxLockedProfit
+    uint256 public maxLockedTVL;
+
+    /// @notice See lockedProfit. This is the same, except we are profiting from L1 tvl info
+    function lockedTVL() public view returns (uint256) {
+        if (block.timestamp >= lastTVLUpdate + lockInterval) {
+            return 0;
+        }
+
+        uint256 unlockedTVL = (maxLockedTVL * (block.timestamp - lastTVLUpdate)) / lockInterval;
+        return maxLockedTVL - unlockedTVL;
+    }
+
     function receiveTVL(uint256 tvl, bool received) external {
         require(msg.sender == wormholeRouter, "Only wormhole router");
 
@@ -507,6 +529,11 @@ contract L2Vault is
         }
 
         // Update L1TotalLockedValue to match what we received from L1
+        // Any increase in L1's tvl will unlock linearly, just as when harvesting from strategies
+        uint256 oldL1TVL = L1TotalLockedValue;
+        uint256 totalProfit = tvl > oldL1TVL ? tvl - oldL1TVL : 0;
+        maxLockedTVL = lockedTVL() + totalProfit;
+        lastTVLUpdate = block.timestamp;
         L1TotalLockedValue = tvl;
 
         (bool invest, uint256 delta) = _computeRebalance();
@@ -520,7 +547,7 @@ contract L2Vault is
 
     function _computeRebalance() internal view returns (bool, uint256) {
         uint256 numSlices = l1Ratio + l2Ratio;
-        uint256 L1IdealAmount = (l1Ratio * totalAssets()) / numSlices;
+        uint256 L1IdealAmount = (l1Ratio * totalAssetsForRebalance()) / numSlices;
 
         bool invest;
         uint256 delta;

@@ -27,7 +27,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
      */
 
     /// @notice The token that the vault takes in and gives to strategies, e.g. USDC
-    ERC20 internal _asset;
+    ERC20 _asset;
 
     function asset() public view virtual returns (address) {
         return address(_asset);

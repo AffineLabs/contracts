@@ -240,6 +240,30 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.L1TotalLockedValue(), 120);
     }
 
+    function testLockedTVL() public {
+        assertEq(vault.lockedTVL(), 0);
+
+        // We mint some money so that we don't trigger any actual rebalancing
+        asset.mint(address(vault), 100);
+        vault.setCanTransferToL1(false);
+        vm.startPrank(vault.wormholeRouter());
+        vault.receiveTVL(100, true);
+
+        assertEq(vault.L1TotalLockedValue(), 100);
+        assertEq(vault.lockedTVL(), 100);
+        assertEq(vault.totalAssets(), 100);
+
+        // Using up 50% of lockInterval unlocks 50% of tvl
+        vm.warp(block.timestamp + vault.lockInterval() / 2);
+        assertEq(vault.lockedTVL(), 50);
+        assertEq(vault.totalAssets(), 150);
+
+        // Using up all of lock interval unlocks all of tvl
+        vm.warp(block.timestamp + vault.lockInterval());
+        assertEq(vault.lockedTVL(), 0);
+        assertEq(vault.totalAssets(), 200);
+    }
+
     function testL1ToL2Rebalance() public {
         // Any call to the wormholerouter will do nothing
         vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.requestFunds, (25)), "");
