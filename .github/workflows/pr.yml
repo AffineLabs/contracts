@@ -44,10 +44,21 @@ jobs:
       - name: Run forge tests.
         run: yarn test
 
-      # Snapshots are buggy https://github.com/foundry-rs/foundry/issues/2959
       # Fuzz tests are included by default
-      # - name: Check gas snapshots.
-      #   run: yarn snap --check
+      - name: Check gas snapshots.
+        run: yarn snap --check
+
+      - name: Generate coverage report
+        run: forge coverage --report lcov
+
+      - name: Report code coverage
+        uses: zgosalvez/github-actions-report-lcov@v1
+        with:
+          coverage-files: lcov.info
+          minimum-coverage: 10
+          artifact-name: code-coverage-report
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: ./
 
       - name: Run hardhat tests.
         run: yarn test-hh -eth mainnet -p mainnet
