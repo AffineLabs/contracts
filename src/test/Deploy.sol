@@ -39,7 +39,6 @@ contract Deploy is Test {
             [uint256(0), uint256(200)] // withdrawal and AUM fees
         );
         vm.prank(governance);
-        vault.setAssetLimit(type(uint256).max);
 
         escrow.initialize(address(vault), address(vault.wormholeRouter()), asset, IRootChainManager(address(0)));
         emergencyWithdrawalQueue.linkVault(vault);
