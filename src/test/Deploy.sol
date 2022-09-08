@@ -17,7 +17,7 @@ import {L2WormholeRouter} from "../polygon/L2WormholeRouter.sol";
 import {EmergencyWithdrawalQueue} from "../polygon/EmergencyWithdrawalQueue.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
-import {MockL2Vault} from "./mocks/index.sol";
+import {MockL2Vault, MockL1Vault} from "./mocks/index.sol";
 
 contract Deploy is Test {
     address governance = makeAddr("governance");
@@ -40,16 +40,16 @@ contract Deploy is Test {
         );
         vm.prank(governance);
 
-        escrow.initialize(address(vault), address(vault.wormholeRouter()), asset, IRootChainManager(address(0)));
+        escrow.initialize(address(vault), IRootChainManager(address(0)));
         emergencyWithdrawalQueue.linkVault(vault);
     }
 
-    function deployL1Vault() internal returns (L1Vault vault) {
+    function deployL1Vault() internal returns (MockL1Vault vault) {
         // For polygon addresses, see
         // solhint-disable-next-line max-line-length
         // https://docs.polygon.technology/docs/develop/ethereum-polygon/pos/deploymenthttps://docs.polygon.technology/docs/develop/ethereum-polygon/pos/deployment
         MockERC20 asset = new MockERC20("Mock", "MT", 6);
-        vault = new L1Vault();
+        vault = new MockL1Vault();
         BridgeEscrow escrow = new BridgeEscrow(address(this));
         IRootChainManager manager = IRootChainManager(0xA0c68C638235ee32657e8f720a23ceC1bFc77C77);
 
@@ -62,7 +62,7 @@ contract Deploy is Test {
             0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf // predicate (eth mainnet)
         );
 
-        escrow.initialize(address(vault), address(vault.wormholeRouter()), asset, manager);
+        escrow.initialize(address(vault), manager);
     }
 
     function deployTwoAssetBasket(ERC20 usdc) internal returns (TwoAssetBasket basket) {
