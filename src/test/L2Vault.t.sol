@@ -263,7 +263,7 @@ contract L2VaultTest is TestPlus {
             abi.encode(200)
         );
 
-        // L2 Vault has 100, L1 Vault has 300. L2 Vault 200 debt to emergency withdrawal queue.
+        // L2 Vault has 100, L1 Vault has 300. L2 Vault has 200 debt to emergency withdrawal queue.
         // That means, L2 Vault currently need 300. 200 for safisfying the emergency withdrawal
         // queue and 100 to have 1:1 ratio with L1 Vault. So, L2 Vault will request 200 from
         // the L1 Vault.
@@ -301,10 +301,7 @@ contract L2VaultTest is TestPlus {
             abi.encode(50)
         );
 
-        // L2 Vault has 200, L1 Vault has 50. L2 Vault 50 debt to emergency withdrawal queue.
-        // That means, L1 Vault currently need 50 to have a TVL of 100. Thus L2 Vault has 150
-        // and it can use 50 to clear the emergency withdrawal queue and have 1:1 ratio between
-        // the layers.
+        // We have a tvl of 200 excluding the withdrawal queue, so each layer gets 100
         asset.mint(address(vault), 200);
         vm.startPrank(vault.wormholeRouter());
         vm.expectCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportTransferredFund, (50)));

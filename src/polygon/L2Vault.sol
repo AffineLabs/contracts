@@ -520,7 +520,10 @@ contract L2Vault is
 
     function _computeRebalance() internal view returns (bool, uint256) {
         uint256 numSlices = l1Ratio + l2Ratio;
-        uint256 L1IdealAmount = (l1Ratio * (totalAssets() - this.emergencyWithdrawalQueue().totalDebt())) / numSlices;
+        // We want to keep enough funds to satisfy emergency withdrawal queue plus l2Ratio of remaining funds
+        // so that we have a l1Ratio:l2Ratio distribution in both layers after emergency withdrawal queue is
+        // satisfied.
+        uint256 L1IdealAmount = (l1Ratio * (totalAssets() - emergencyWithdrawalQueue.totalDebt())) / numSlices;
 
         bool invest;
         uint256 delta;
