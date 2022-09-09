@@ -620,14 +620,4 @@ contract L2VaultTest is TestPlus {
         vm.expectRevert("Only Governance.");
         vault.setTrustedForwarder(address(0));
     }
-
-    function testSettingRebalanceDelta() public {
-        changePrank(governance);
-        vault.setRebalanceDelta(100);
-        assertEq(vault.rebalanceDelta(), 100);
-
-        changePrank(alice);
-        vm.expectRevert("Only Governance.");
-        vault.setRebalanceDelta(0);
-    }
 }
