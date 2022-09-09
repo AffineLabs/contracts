@@ -9,9 +9,10 @@ import {
   BridgeEscrow__factory,
   EmergencyWithdrawalQueue,
   Forwarder,
+  BridgeEscrow,
 } from "../../typechain";
 import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
-import { ETH_GOERLI, POLYGON_MUMBAI } from "../utils/constants/blockchain";
+
 import { address } from "../utils/types";
 import { WormholeRouterContracts } from "./deploy-wormhole-router";
 import { CHAIN_ID_ETH, CHAIN_ID_POLYGON } from "@certusone/wormhole-sdk";
@@ -20,6 +21,8 @@ export interface VaultContracts {
   l1Vault: L1Vault;
   l2Vault: L2Vault;
   emergencyWithdrawalQueue: EmergencyWithdrawalQueue;
+  l1BridgeEscrow: BridgeEscrow;
+  l2BridgeEscrow: BridgeEscrow;
 }
 
 export async function deployVaults(
@@ -75,13 +78,8 @@ export async function deployVaults(
   logContractDeploymentInfo(ethNetworkName, "L1Vault", l1Vault);
 
   // Initialize bridgeEscrow
-  let bridgeEscrow = BridgeEscrow__factory.connect(bridgeEscrowAddr, deployerSigner);
-  let bridgeEscrowInitTx = await bridgeEscrow.initialize(
-    await getContractAddress(l1Vault),
-    wormholeRouters.l1WormholeRouter.address,
-    config.l1.usdc,
-    config.l1.chainManager,
-  );
+  const l1BridgeEscrow = BridgeEscrow__factory.connect(bridgeEscrowAddr, deployerSigner);
+  let bridgeEscrowInitTx = await l1BridgeEscrow.initialize(await getContractAddress(l1Vault), config.l1.chainManager);
   await bridgeEscrowInitTx.wait();
 
   /**
@@ -123,11 +121,9 @@ export async function deployVaults(
   logContractDeploymentInfo(polygonNetworkName, "L2Vault", l2Vault);
 
   // Initialize bridgeEscrow
-  bridgeEscrow = BridgeEscrow__factory.connect(bridgeEscrowAddr, deployerSigner);
-  bridgeEscrowInitTx = await bridgeEscrow.initialize(
+  const l2BridgeEscrow = BridgeEscrow__factory.connect(bridgeEscrowAddr, deployerSigner);
+  bridgeEscrowInitTx = await l2BridgeEscrow.initialize(
     await getContractAddress(l2Vault),
-    wormholeRouters.l2WormholeRouter.address,
-    config.l2.usdc,
     ethers.constants.AddressZero, // there is no root chain manager in polygon
   );
   await bridgeEscrowInitTx.wait();
@@ -150,5 +146,7 @@ export async function deployVaults(
     l1Vault,
     l2Vault,
     emergencyWithdrawalQueue,
+    l1BridgeEscrow,
+    l2BridgeEscrow,
   };
 }
