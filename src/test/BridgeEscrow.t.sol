@@ -6,7 +6,9 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
+import "./mocks/index.sol";
 
+import {L2Vault} from "../polygon/L2Vault.sol";
 import {BridgeEscrow} from "../BridgeEscrow.sol";
 import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
 
@@ -14,10 +16,12 @@ contract BridgeEscrowTest is TestPlus {
     BridgeEscrow escrow;
     address deployer = makeAddr("deployer");
     address owner = makeAddr("owner");
+    MockL2Vault vault;
 
     function setUp() public {
         vm.prank(deployer);
         escrow = new BridgeEscrow(owner);
+        vault = deployL2Vault();
     }
 
     function testDeploy() public {
@@ -27,17 +31,16 @@ contract BridgeEscrowTest is TestPlus {
     function testInitialize() public {
         // Only the owner can init
         vm.expectRevert("ONLY_OWNER");
-        escrow.initialize(address(0), address(0), ERC20(address(0)), IRootChainManager(address(0)));
+        escrow.initialize(address(0), IRootChainManager(address(0)));
 
         // Can init
-        address vault = makeAddr("vault");
-        address wormholeRouter = makeAddr("wormhole_router");
-        ERC20 asset = ERC20(makeAddr("asset"));
+        address wormholeRouter = vault.wormholeRouter();
+        ERC20 asset = ERC20(vault.asset());
         IRootChainManager manager = IRootChainManager(makeAddr("chain_manager"));
         vm.prank(owner);
-        escrow.initialize(vault, wormholeRouter, asset, manager);
+        escrow.initialize(address(vault), manager);
 
-        assertEq(escrow.vault(), vault);
+        assertEq(escrow.vault(), address(vault));
         assertEq(escrow.wormholeRouter(), wormholeRouter);
         assertEq(address(escrow.token()), address(asset));
         assertEq(address(escrow.rootChainManager()), address(manager));
@@ -45,34 +48,43 @@ contract BridgeEscrowTest is TestPlus {
         // Can only initialize once
         vm.prank(owner);
         vm.expectRevert("INIT_DONE");
-        escrow.initialize(vault, wormholeRouter, asset, manager);
-    }
-}
-
-contract DummyL2Vault {
-    uint256 public x;
-
-    constructor() {}
-
-    function afterReceive(uint256 amount) public {
-        amount;
-        x = 2;
+        escrow.initialize(address(vault), manager);
     }
 }
 
 contract L2BridgeEscrowTest is TestPlus {
+    using stdStorage for StdStorage;
+
     BridgeEscrow escrow;
-    address vault;
-    address wormholeRouter = makeAddr("wormhole_router");
+    MockL2Vault vault;
+    address wormholeRouter;
     ERC20 asset = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     IRootChainManager manager = IRootChainManager(makeAddr("chain_manager"));
 
     function setUp() public {
         // Forking here because a mock ERC20 will not have the `withdraw` function
         vm.createSelectFork("polygon", 31_824_532);
-        vault = address(new DummyL2Vault());
+        vault = deployL2Vault();
+        // Set the asset
+        vm.store(
+            address(vault),
+            bytes32(stdstore.target(address(vault)).sig("asset()").find()),
+            bytes32(uint256(uint160(address(asset))))
+        );
+
+        // So we can call "afterReceive" and decrement the total locked value
+        vm.store(
+            address(vault),
+            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(uint256(200))
+        );
+
+        wormholeRouter = vault.wormholeRouter();
         escrow = new BridgeEscrow(address(this));
-        escrow.initialize(vault, wormholeRouter, asset, manager);
+        escrow.initialize(address(vault), manager);
+
+        // Set the bridgeEscrow
+        vault.setBridgeEscrow(escrow);
     }
 
     function testL2Withdraw() public {
@@ -85,7 +97,7 @@ contract L2BridgeEscrowTest is TestPlus {
         deal(address(asset), address(escrow), 100);
 
         // Send money to L1
-        vm.prank(vault);
+        vm.prank(address(vault));
         escrow.l2Withdraw(100);
 
         assertEq(asset.balanceOf(address(escrow)), 0);
@@ -97,12 +109,12 @@ contract L2BridgeEscrowTest is TestPlus {
 
         // Send money to vault (clear funds)
         changePrank(wormholeRouter);
-        vm.expectCall(vault, abi.encodeCall(DummyL2Vault.afterReceive, (100)));
+        vm.expectCall(address(vault), abi.encodeCall(L2Vault.afterReceive, (100)));
         escrow.l2ClearFund(100);
 
-        assertEq(asset.balanceOf(vault), 100);
+        assertEq(asset.balanceOf(address(vault)), 100);
         // afterReceive was called on the vault
-        assertEq(DummyL2Vault(vault).x(), 2);
+        assertEq(vault.canRequestFromL1(), true);
     }
 
     function testL2ClearFundInvariants() public {
@@ -120,29 +132,24 @@ contract L2BridgeEscrowTest is TestPlus {
     }
 }
 
-contract DummyL1Vault {
-    uint256 public x;
-
-    constructor() {}
-
-    function afterReceive() public {
-        x = 1;
-    }
-}
-
 contract L1BridgeEscrowTest is TestPlus {
     BridgeEscrow escrow;
-    address vault;
-    address wormholeRouter = makeAddr("wormhole_router");
+    MockL1Vault vault;
+    address wormholeRouter;
     ERC20 asset;
     IRootChainManager manager = IRootChainManager(makeAddr("chain_manager"));
 
     function setUp() public {
         // Not forking because getting a valid exitProof in l1ClearFund is tricky
-        vault = address(new DummyL1Vault());
-        asset = new MockERC20("Mock Token", "MT", 18);
+        vault = deployL1Vault();
+        asset = ERC20(vault.asset());
+        wormholeRouter = vault.wormholeRouter();
+
         escrow = new BridgeEscrow(address(this));
-        escrow.initialize(vault, wormholeRouter, asset, manager);
+        escrow.initialize(address(vault), manager);
+
+        // Set the bridgeEscrow
+        vault.setBridgeEscrow(escrow);
     }
 
     function testL1ClearFund() public {
@@ -152,14 +159,14 @@ contract L1BridgeEscrowTest is TestPlus {
         // Send money to vault (clear funds)
         // Using an exitProof that is just empty bytes
         changePrank(wormholeRouter);
-        vm.expectCall(vault, abi.encodeCall(DummyL1Vault.afterReceive, ()));
+        vm.expectCall(address(vault), abi.encodeCall(L1Vault.afterReceive, ()));
         bytes memory exitProof;
         vm.mockCall(address(manager), abi.encodeCall(IRootChainManager.exit, (exitProof)), "");
         escrow.l1ClearFund(100, "");
 
-        assertEq(asset.balanceOf(vault), 100);
+        assertEq(asset.balanceOf(address(vault)), 100);
         // afterReceive was called on the vault
-        assertEq(DummyL1Vault(vault).x(), 1);
+        assertTrue(vault.received());
     }
 
     function testL1ClearFundInvariants() public {

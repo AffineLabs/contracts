@@ -20,7 +20,7 @@ describe("Deploy All", async () => {
       config,
     );
     const {
-      vaults: { l1Vault, l2Vault, emergencyWithdrawalQueue },
+      vaults: { l1Vault, l2Vault, emergencyWithdrawalQueue, l1BridgeEscrow, l2BridgeEscrow },
       forwarder,
       wormholeRouters,
       basket,
@@ -35,10 +35,12 @@ describe("Deploy All", async () => {
     expect(forwarderAddr).to.not.equal(ethers.constants.AddressZero);
     expect(forwarderAddr).to.equal(forwarder.address);
 
-    // Check that bridgeEscrow addresses are the same
-    const l1BridgeEscrow = await l1Vault.bridgeEscrow();
-    expect(l1BridgeEscrow).to.be.properAddress;
-    expect(l1BridgeEscrow).to.equal(await l2Vault.bridgeEscrow());
+    // Check that bridgeEscrow addresses are the same + are both initialized correctly
+    expect(l1BridgeEscrow.address).to.equal(l2BridgeEscrow.address);
+    expect(await l1BridgeEscrow.token()).to.equal(await l1Vault.asset());
+    expect(await l1BridgeEscrow.wormholeRouter()).to.equal(await l1Vault.wormholeRouter());
+    expect(await l2BridgeEscrow.token()).to.equal(await l2Vault.asset());
+    expect(await l2BridgeEscrow.wormholeRouter()).to.equal(await l2Vault.wormholeRouter());
 
     // Check wormhole routers
     expect(await l1Vault.wormholeRouter()).to.equal(wormholeRouters.l1WormholeRouter.address);
