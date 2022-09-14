@@ -12,13 +12,14 @@ import {BaseStrategy as Strategy} from "./BaseStrategy.sol";
 import {AffineGovernable} from "./AffineGovernable.sol";
 import {BridgeEscrow} from "./BridgeEscrow.sol";
 import {WormholeRouter} from "./WormholeRouter.sol";
+import {Multicall} from "./external/Multicall.sol";
 
 /**
  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
  * strategy liquidation.
  */
-abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
+abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, Multicall {
     using SafeTransferLib for ERC20;
 
     /**
@@ -231,27 +232,44 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
     }
 
     /**
-     * @notice Remove a strategy
-     * @param strategy The strategy to add
+     * @notice Remove a strategy from the withdrawal queue. Fully divest from the strategy.
+     * @param strategy The strategy to remove
+     * @dev  removeStrategy MUST be called with harvest via multicall. This helps get the most accurate tvl numbers
+     * and allows us to add any realized profits to our lockedProfit
      */
     function removeStrategy(Strategy strategy) external onlyGovernance {
-        // TODO: consider withdrawaing all possible money from a strategy before popping it from withdrawal queue
-        // TODO: decrement totalStrategyHoldings here
-        //  Remove from withdrawal queue
         uint256 length = withdrawalQueue.length;
         for (uint256 i = 0; i < length; i++) {
-            if (strategy == withdrawalQueue[i]) {
-                strategies[strategy].isActive = false;
-
-                uint256 oldBps = strategies[strategy].tvlBps;
-                totalBps -= oldBps;
-                strategies[strategy].tvlBps = 0;
-
-                withdrawalQueue[i] = Strategy(address(0));
-                emit StrategyRemoved(strategy);
-                _organizeWithdrawalQueue();
-                break;
+            if (strategy != withdrawalQueue[i]) {
+                continue;
             }
+
+            StrategyInfo storage stratInfo = strategies[strategy];
+            stratInfo.isActive = false;
+
+            // The vault can re-allocate bps to a new strategy
+            totalBps -= stratInfo.tvlBps;
+            stratInfo.tvlBps = 0;
+
+            // Remove strategy from withdrawal queue
+            withdrawalQueue[i] = Strategy(address(0));
+            emit StrategyRemoved(strategy);
+            _organizeWithdrawalQueue();
+
+            // Take all money out of strategy.
+            uint256 amountWithdrawn = strategy.divest(type(uint256).max);
+            uint256 oldBal = stratInfo.balance;
+            totalStrategyHoldings -= oldBal;
+            stratInfo.balance = 0;
+
+            // In this case, we've made a profit since we extracted more money than we thought we had
+            // This increases the vaultTVL. In order to avoid frontrunning, we unlock this profit as in harvest()
+            // NOTE: Updating maxLockedProfit this way is fine since removeStrategy will always be called with harvest()
+            // via multicall
+            if (amountWithdrawn > oldBal) {
+                maxLockedProfit += oldBal - amountWithdrawn;
+            }
+            break;
         }
     }
 

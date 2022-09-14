@@ -20,8 +20,9 @@ contract TestStrategy is BaseStrategy {
     }
 
     function divest(uint256 amount) public override returns (uint256) {
-        asset.transfer(address(vault), amount);
-        return amount;
+        uint256 amountToSend = amount > balanceOfAsset() ? balanceOfAsset() : amount;
+        asset.transfer(address(vault), amountToSend);
+        return amountToSend;
     }
 
     function totalLockedValue() public view override returns (uint256) {
