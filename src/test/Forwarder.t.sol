@@ -78,13 +78,15 @@ contract ForwardTest is TestPlus {
         token.approve(address(vault), type(uint256).max);
 
         // get transaction data for a deposit of 1 usdc to L2Vault
-        MinimalForwarder.ForwardRequest memory req1 =
-            MinimalForwarder.ForwardRequest(user, address(vault), 0, 15e6, 0, abi.encodeCall(vault.deposit, (1e6, user)));
+        MinimalForwarder.ForwardRequest memory req1 = MinimalForwarder.ForwardRequest(
+            user, address(vault), 0, 15e6, 0, abi.encodeCall(vault.deposit, (1e6, user))
+        );
         bytes32 reqStructHash1 = getHashedReq(req1);
 
         // get transaction data for another deposit (this one has a nonce of 1)
-        MinimalForwarder.ForwardRequest memory req2 =
-            MinimalForwarder.ForwardRequest(user, address(vault), 0, 15e6, 1, abi.encodeCall(vault.deposit, (1e6, user)));
+        MinimalForwarder.ForwardRequest memory req2 = MinimalForwarder.ForwardRequest(
+            user, address(vault), 0, 15e6, 1, abi.encodeCall(vault.deposit, (1e6, user))
+        );
         bytes32 reqStructHash2 = getHashedReq(req2);
 
         bytes32 domainSeparator = getDomainSeparator(address(forwarder));
@@ -110,11 +112,13 @@ contract ForwardTest is TestPlus {
         token.approve(address(basket), type(uint256).max);
 
         // get transaction data for a deposit of 1 usdc to L2Vault
-        MinimalForwarder.ForwardRequest memory req1 =
-            MinimalForwarder.ForwardRequest(user, address(vault), 0, 15e6, 0, abi.encodeCall(vault.deposit, (1e6, user)));
+        MinimalForwarder.ForwardRequest memory req1 = MinimalForwarder.ForwardRequest(
+            user, address(vault), 0, 15e6, 0, abi.encodeCall(vault.deposit, (1e6, user))
+        );
 
-        MinimalForwarder.ForwardRequest memory req2 =
-            MinimalForwarder.ForwardRequest(user, address(basket), 0, 15e6, 1, abi.encodeCall(basket.deposit, (1e6, user)));
+        MinimalForwarder.ForwardRequest memory req2 = MinimalForwarder.ForwardRequest(
+            user, address(basket), 0, 15e6, 1, abi.encodeCall(basket.deposit, (1e6, user))
+        );
 
         bytes32 domainSeparator = getDomainSeparator(address(forwarder));
         // sign data

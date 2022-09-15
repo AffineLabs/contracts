@@ -112,7 +112,8 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         vm.expectEmit(false, false, false, false);
         emit EmergencyWithdrawalQueueDequeue(1, bob, alice, 1000);
         vm.expectCall(
-            address(vault), abi.encodeWithSelector(L2Vault.redeemByEmergencyWithdrawalQueue.selector, 1, 1000, alice, bob)
+            address(vault),
+            abi.encodeWithSelector(L2Vault.redeemByEmergencyWithdrawalQueue.selector, 1, 1000, alice, bob)
         );
         emergencyWithdrawalQueue.dequeue();
         assertEq(emergencyWithdrawalQueue.size(), 2);
@@ -120,12 +121,14 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         vm.expectEmit(false, false, false, false);
         emit EmergencyWithdrawalQueueDequeue(2, alice, bob, 2000);
         vm.expectCall(
-            address(vault), abi.encodeWithSelector(L2Vault.redeemByEmergencyWithdrawalQueue.selector, 2, 2000, bob, alice)
+            address(vault),
+            abi.encodeWithSelector(L2Vault.redeemByEmergencyWithdrawalQueue.selector, 2, 2000, bob, alice)
         );
         vm.expectEmit(false, false, false, false);
         emit EmergencyWithdrawalQueueDequeue(3, bob, alice, 3000);
         vm.expectCall(
-            address(vault), abi.encodeWithSelector(L2Vault.redeemByEmergencyWithdrawalQueue.selector, 3, 3000, alice, bob)
+            address(vault),
+            abi.encodeWithSelector(L2Vault.redeemByEmergencyWithdrawalQueue.selector, 3, 3000, alice, bob)
         );
         emergencyWithdrawalQueue.dequeueBatch(2);
         assertEq(emergencyWithdrawalQueue.size(), 0);
