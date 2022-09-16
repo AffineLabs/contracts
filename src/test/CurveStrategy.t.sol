@@ -10,6 +10,7 @@ import {Deploy} from "./Deploy.sol";
 import {L1Vault} from "../ethereum/L1Vault.sol";
 import {CurveStrategy} from "../ethereum/CurveStrategy.sol";
 import {I3CrvMetaPoolZap} from "../interfaces/IMetaPoolZap.sol";
+import {ILiquidityGauge} from "../interfaces/ILiquidityGauge.sol";
 
 contract CurveStratTest is TestPlus {
     using stdStorage for StdStorage;
@@ -29,8 +30,11 @@ contract CurveStratTest is TestPlus {
             bytes32(uint256(uint160(address(usdc))))
         );
 
-        strategy =
-        new CurveStrategy(vault, ERC20(0x5a6A4D54456819380173272A5E8E9B9904BdF41B), I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359), 2);
+        strategy = new CurveStrategy(vault, 
+                         ERC20(0x5a6A4D54456819380173272A5E8E9B9904BdF41B),
+                         I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359), 
+                         2,
+                         ILiquidityGauge(0xd8b712d29381748dB89c36BCa0138d7c75866ddF));
     }
 
     function testCanMintLpTokens() public {
@@ -55,5 +59,14 @@ contract CurveStratTest is TestPlus {
 
         assertTrue(amountDivested == 1e6);
         assertTrue(usdc.balanceOf(address(vault)) == 1e6);
+    }
+
+    function testCanDepositInGauge() public {
+        deal(address(strategy.metaPool()), address(strategy), 1e18);
+        strategy.depositInGauge();
+        vm.warp(block.timestamp + 5 days);
+        uint256 crvRewards = strategy.gauge().claimable_tokens(address(strategy));
+        emit log_named_uint("rewards: ", crvRewards);
+        assertTrue(crvRewards > 0);
     }
 }
