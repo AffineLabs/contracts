@@ -12,9 +12,9 @@ contract CurveStrategy is BaseStrategy {
     using SafeTransferLib for ERC20;
 
     I3CrvMetaPoolZap public immutable zapper;
-    address public immutable metaPool;
+    ERC20 public immutable metaPool;
 
-    constructor(BaseVault _vault, address _metaPool, I3CrvMetaPoolZap _zapper) {
+    constructor(BaseVault _vault, ERC20 _metaPool, I3CrvMetaPoolZap _zapper) {
         vault = _vault;
         asset = ERC20(vault.asset());
 
@@ -22,9 +22,9 @@ contract CurveStrategy is BaseStrategy {
         zapper = _zapper;
 
         asset.safeApprove(address(zapper), type(uint256).max);
+        metaPool.safeApprove(address(zapper), type(uint256).max);
     }
 
-    //
     function invest(uint256 amount) external override {
         asset.safeTransferFrom(msg.sender, address(this), amount);
         _deposit(amount);
@@ -36,11 +36,13 @@ contract CurveStrategy is BaseStrategy {
         // In this particular metapool, the 1st, 2nd, and 3rd indices are for DAI, USDC, and USDT
         uint256[4] memory depositAmounts = [0, 0, assets, 0];
         // Infinite slippage is probably bad
-        zapper.add_liquidity(metaPool, depositAmounts, 0);
+        zapper.add_liquidity(address(metaPool), depositAmounts, 0);
     }
 
-    function divest(uint256 amount) external override onlyVault returns (uint256) {
-        return 1;
+    function divest(uint256 assets) external override onlyVault returns (uint256) {
+        zapper.remove_liquidity_one_coin(address(metaPool), metaPool.balanceOf(address(this)), 2, 0);
+        asset.safeTransfer(address(vault), assets);
+        return assets;
     }
 
     function balanceOfAsset() public view override returns (uint256) {
@@ -48,6 +50,6 @@ contract CurveStrategy is BaseStrategy {
     }
 
     function totalLockedValue() external override returns (uint256) {
-        return balanceOfAsset() + zapper.calc_withdraw_one_coin(metaPool, ERC20(metaPool).balanceOf(address(this)), 2);
+        return balanceOfAsset() + zapper.calc_withdraw_one_coin(address(metaPool), metaPool.balanceOf(address(this)), 2);
     }
 }

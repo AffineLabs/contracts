@@ -30,7 +30,7 @@ contract CurveStratTest is TestPlus {
         );
 
         strategy =
-        new CurveStrategy(vault, 0x5a6A4D54456819380173272A5E8E9B9904BdF41B, I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359));
+        new CurveStrategy(vault, ERC20(0x5a6A4D54456819380173272A5E8E9B9904BdF41B), I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359));
     }
 
     function testCanMintLpTokens() public {
@@ -44,5 +44,16 @@ contract CurveStratTest is TestPlus {
         assertGt(ERC20(strategy.metaPool()).balanceOf(address(strategy)), 0);
         emit log_named_uint("strat tvl: ", strategy.totalLockedValue());
         assertApproxEqRel(strategy.totalLockedValue(), 1e6, 1e18);
+    }
+
+    function testCanDivest() public {
+        // One lp token is worth more than a dollar
+        deal(address(strategy.metaPool()), address(strategy), 1e18);
+
+        vm.prank(address(vault));
+        uint256 amountDivested = strategy.divest(1e6);
+
+        assertTrue(amountDivested == 1e6);
+        assertTrue(usdc.balanceOf(address(vault)) == 1e6);
     }
 }
