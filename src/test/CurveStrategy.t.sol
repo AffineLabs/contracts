@@ -30,7 +30,7 @@ contract CurveStratTest is TestPlus {
         );
 
         strategy =
-        new CurveStrategy(vault, ERC20(0x5a6A4D54456819380173272A5E8E9B9904BdF41B), I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359));
+        new CurveStrategy(vault, ERC20(0x5a6A4D54456819380173272A5E8E9B9904BdF41B), I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359), 2);
     }
 
     function testCanMintLpTokens() public {

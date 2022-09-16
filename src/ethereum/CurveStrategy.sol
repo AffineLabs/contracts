@@ -13,13 +13,16 @@ contract CurveStrategy is BaseStrategy {
 
     I3CrvMetaPoolZap public immutable zapper;
     ERC20 public immutable metaPool;
+    /// @notice The index assigned to `asset` in the metapool
+    int128 public immutable assetIndex;
 
-    constructor(BaseVault _vault, ERC20 _metaPool, I3CrvMetaPoolZap _zapper) {
+    constructor(BaseVault _vault, ERC20 _metaPool, I3CrvMetaPoolZap _zapper, int128 _assetIndex) {
         vault = _vault;
         asset = ERC20(vault.asset());
 
         metaPool = _metaPool;
         zapper = _zapper;
+        assetIndex = _assetIndex;
 
         asset.safeApprove(address(zapper), type(uint256).max);
         metaPool.safeApprove(address(zapper), type(uint256).max);
@@ -40,7 +43,7 @@ contract CurveStrategy is BaseStrategy {
     }
 
     function divest(uint256 assets) external override onlyVault returns (uint256) {
-        zapper.remove_liquidity_one_coin(address(metaPool), metaPool.balanceOf(address(this)), 2, 0);
+        zapper.remove_liquidity_one_coin(address(metaPool), metaPool.balanceOf(address(this)), assetIndex, 0);
         asset.safeTransfer(address(vault), assets);
         return assets;
     }
@@ -50,6 +53,7 @@ contract CurveStrategy is BaseStrategy {
     }
 
     function totalLockedValue() external override returns (uint256) {
-        return balanceOfAsset() + zapper.calc_withdraw_one_coin(address(metaPool), metaPool.balanceOf(address(this)), 2);
+        return balanceOfAsset()
+            + zapper.calc_withdraw_one_coin(address(metaPool), metaPool.balanceOf(address(this)), assetIndex);
     }
 }
