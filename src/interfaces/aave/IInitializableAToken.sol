@@ -53,6 +53,5 @@ interface IInitializableAToken {
         string calldata aTokenName,
         string calldata aTokenSymbol,
         bytes calldata params
-    )
-        external;
+    ) external;
 }

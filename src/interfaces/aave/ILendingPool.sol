@@ -276,8 +276,7 @@ interface ILendingPool {
         address user,
         uint256 debtToCover,
         bool receiveAToken
-    )
-        external;
+    ) external;
 
     /**
      * @dev Allows smartcontracts to access the liquidity of the pool within one transaction,
@@ -305,8 +304,7 @@ interface ILendingPool {
         address onBehalfOf,
         bytes calldata params,
         uint16 referralCode
-    )
-        external;
+    ) external;
 
     /**
      * @dev Returns the user account data across all the reserves
@@ -337,8 +335,7 @@ interface ILendingPool {
         address stableDebtAddress,
         address variableDebtAddress,
         address interestRateStrategyAddress
-    )
-        external;
+    ) external;
 
     function setReserveInterestRateStrategyAddress(address reserve, address rateStrategyAddress) external;
 
@@ -389,8 +386,7 @@ interface ILendingPool {
         uint256 amount,
         uint256 balanceFromAfter,
         uint256 balanceToBefore
-    )
-        external;
+    ) external;
 
     function getReservesList() external view returns (address[] memory);
 
