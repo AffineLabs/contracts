@@ -90,10 +90,7 @@ contract L2Vault is
         uint256 _l1Ratio,
         uint256 _l2Ratio,
         uint256[2] memory fees
-    )
-        public
-        initializer
-    {
+    ) public initializer {
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
         __Pausable_init();

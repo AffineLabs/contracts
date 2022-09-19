@@ -51,10 +51,7 @@ contract TwoAssetBasket is
         ERC20[2] memory _tokens,
         uint256[2] memory _ratios,
         AggregatorV3Interface[3] memory _priceFeeds
-    )
-        public
-        initializer
-    {
+    ) public initializer {
         __ERC20_init("Alpine Large", "alpLarge");
         __UUPSUpgradeable_init();
         __Pausable_init();
