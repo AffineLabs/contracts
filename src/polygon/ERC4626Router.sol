@@ -27,11 +27,7 @@ contract ERC4626Router is ERC4626RouterBase {
         uint256 amount,
         uint256 maxSharesIn,
         uint256 minSharesOut
-    )
-        external
-        payable
-        returns (uint256 sharesOut)
-    {
+    ) external payable returns (uint256 sharesOut) {
         withdraw(fromVault, address(this), amount, maxSharesIn);
         return deposit(toVault, to, amount, minSharesOut);
     }
