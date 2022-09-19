@@ -533,7 +533,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
      */
     function _assessFees() internal virtual {}
 
-    function liveTVL() internal returns (uint256 tvl) {
+    function _liveTVL() internal returns (uint256 tvl) {
         uint256 totalStrategyTVL;
 
         // Loop through withdrawal queue and add up totalLockedValue
@@ -550,7 +550,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
 
     /// @notice  Rebalance strategies according to given tvl bps
     function rebalance() external onlyRole(harvesterRole) {
-        uint256 tvl = liveTVL();
+        uint256 tvl = _liveTVL();
 
         // Loop through all strategies. Divesting from those whose tvl is too high,
         // Invest in those whose tvl is too low
@@ -577,12 +577,16 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         // Loop through the strategies to invest in, and invest in them
         for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
             uint256 amountToInvest = amountsToInvest[i];
-            if (amountToInvest == 0) {
-                continue;
-            }
+            if (amountToInvest == 0) continue;
+
+            // We aren't guaranteed that the vault has `amounToInvest` since there can be slippage
+            // when divesting from strategies
+            // NOTE: Strategies closer to the start of the queue are more likely to get the exact
+            // amount of money needed
+            amountToInvest = Math.min(amountToInvest, _asset.balanceOf(address(this)));
+            if (amountToInvest == 0) break;
 
             Strategy strategy = withdrawalQueue[i];
-
             _asset.safeApprove(address(strategy), amountToInvest);
             strategy.invest(amountToInvest);
         }
