@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+yarn lint
+yarn tsc
 yarn format:fix
-yarn test
 yarn snap
 git add --all
