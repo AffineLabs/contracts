@@ -4,6 +4,7 @@ pragma solidity ^0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
@@ -61,7 +62,34 @@ contract CurveStrategy is BaseStrategy, Ownable {
         zapper.add_liquidity(address(metaPool), depositAmounts, 0);
     }
 
+    function depositInGauge() external onlyOwner {
+        gauge.deposit(metaPool.balanceOf(address(this)));
+    }
+
     function divest(uint256 assets) external override onlyVault returns (uint256) {
+        _withdraw(assets);
+
+        uint256 amountToSend = Math.min(asset.balanceOf(address(this)), assets);
+        asset.safeTransfer(address(vault), amountToSend);
+        return amountToSend;
+    }
+
+    /**
+     * @notice Withdraw from crv and try to increase balance of `asset` to `assets`.
+     * @dev Useful in the case that we want to do multiple withdrawals ahead of a big divestment from the vault. Doing the
+     * withdrawals manually (in chunks) will give us less slippage
+     */
+    function withdrawAssets(uint256 assets) external onlyOwner {
+        _withdraw(assets);
+    }
+
+    /// @notice Try to increase balance of `asset` to `assets`.
+    function _withdraw(uint256 assets) internal {
+        uint256 currAssets = asset.balanceOf(address(this));
+        if (currAssets >= assets) {
+            return;
+        }
+
         // Sell rewards if we have at least 10 CRV tokens
         uint256 crvBal = gauge.claimable_tokens(address(this));
 
@@ -73,12 +101,6 @@ contract CurveStrategy is BaseStrategy, Ownable {
             router.swapExactTokensForTokens(crvBal, 0, path, address(this), block.timestamp);
         }
 
-        uint256 currAssets = asset.balanceOf(address(this));
-        if (currAssets >= assets) {
-            asset.safeTransfer(address(vault), assets);
-            return assets;
-        }
-
         // Only divest the amount that you have to
         uint256 assetsToDivest = assets - currAssets;
         uint256[4] memory withdrawAmounts = [0, 0, assetsToDivest, 0];
@@ -86,19 +108,10 @@ contract CurveStrategy is BaseStrategy, Ownable {
         // If the amount  of lp tokens is greater than we have, simply burn the max amount of tokens
         try zapper.remove_liquidity_imbalance(address(metaPool), withdrawAmounts, metaPool.balanceOf(address(this))) {
             // We successfully withdrew `assetsToDivest` and our balance is now `assets`
-            asset.safeTransfer(address(vault), assets);
-            return assets;
         } catch (bytes memory) {
             // We didn't have enough lp tokens to withdraw `assetsToDivest`. So we just burn all of our lp shares
             zapper.remove_liquidity_one_coin(address(metaPool), metaPool.balanceOf(address(this)), assetIndex, 0);
-            uint256 bal = asset.balanceOf(address(this));
-            asset.safeTransfer(address(vault), bal);
-            return bal;
         }
-    }
-
-    function depositInGauge() external onlyOwner {
-        gauge.deposit(metaPool.balanceOf(address(this)));
     }
 
     function balanceOfAsset() public view override returns (uint256) {
@@ -106,7 +119,20 @@ contract CurveStrategy is BaseStrategy, Ownable {
     }
 
     function totalLockedValue() external override returns (uint256) {
-        return balanceOfAsset()
+        // Get amount of `asset` we would get if we sold all of our curve
+        uint256 crvBal = gauge.claimable_tokens(address(this));
+
+        uint256 assetsFromCrv;
+        if (crvBal > 0) {
+            address[] memory path = new address[](2);
+            path[0] = address(crv);
+            path[1] = address(asset);
+
+            uint256[] memory amounts = router.getAmountsOut(crvBal, path);
+            assetsFromCrv = amounts[amounts.length - 1];
+        }
+
+        return balanceOfAsset() + assetsFromCrv
             + zapper.calc_withdraw_one_coin(address(metaPool), metaPool.balanceOf(address(this)), assetIndex);
     }
 }
