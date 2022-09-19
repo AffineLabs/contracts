@@ -19,7 +19,7 @@ contract TestStrategy is BaseStrategy {
         asset.transferFrom(address(vault), address(this), amount);
     }
 
-    function divest(uint256 amount) public override returns (uint256) {
+    function divest(uint256 amount) public virtual override returns (uint256) {
         uint256 amountToSend = amount > balanceOfAsset() ? balanceOfAsset() : amount;
         asset.transfer(address(vault), amountToSend);
         return amountToSend;
@@ -27,5 +27,15 @@ contract TestStrategy is BaseStrategy {
 
     function totalLockedValue() public view override returns (uint256) {
         return balanceOfAsset();
+    }
+}
+
+contract TestStrategyDivestSlippage is TestStrategy {
+    constructor(MockERC20 _token, BaseVault _vault) TestStrategy(_token, _vault) {}
+
+    function divest(uint256 amount) public virtual override returns (uint256) {
+        uint256 amountToSend = amount > balanceOfAsset() ? balanceOfAsset() : amount;
+        asset.transfer(address(vault), amountToSend / 2);
+        return amountToSend;
     }
 }

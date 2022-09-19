@@ -238,11 +238,8 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
      * and allows us to add any realized profits to our lockedProfit
      */
     function removeStrategy(Strategy strategy) external onlyGovernance {
-        uint256 length = withdrawalQueue.length;
-        for (uint256 i = 0; i < length; i++) {
-            if (strategy != withdrawalQueue[i]) {
-                continue;
-            }
+        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
+            if (strategy != withdrawalQueue[i]) continue;
 
             StrategyInfo storage stratInfo = strategies[strategy];
             stratInfo.isActive = false;
@@ -579,7 +576,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
             uint256 amountToInvest = amountsToInvest[i];
             if (amountToInvest == 0) continue;
 
-            // We aren't guaranteed that the vault has `amounToInvest` since there can be slippage
+            // We aren't guaranteed that the vault has `amountToInvest` since there can be slippage
             // when divesting from strategies
             // NOTE: Strategies closer to the start of the queue are more likely to get the exact
             // amount of money needed
