@@ -302,64 +302,56 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
     /**
      * @notice Emitted after the Vault deposits into a strategy contract.
      * @param strategy The strategy that was deposited into.
-     * @param tokenAmount The amount of underlying tokens that were deposited.
+     * @param assets The amount of underlying tokens that were deposited.
      */
-    event StrategyDeposit(Strategy indexed strategy, uint256 tokenAmount);
+    event StrategyDeposit(Strategy indexed strategy, uint256 assets);
 
     /**
      * @notice Emitted after the Vault withdraws funds from a strategy contract.
      * @param strategy The strategy that was withdrawn from.
-     * @param tokenAmount The amount of underlying tokens that were withdrawn.
+     * @param assets The amount of underlying tokens that were withdrawn.
      */
-    event StrategyWithdrawal(Strategy indexed strategy, uint256 tokenAmount);
-
-    /**
-     * @notice Deposit a specific amount of token into a trusted strategy.
-     * @param strategy The strategy to deposit into.
-     * @param tokenAmount The amount of underlying tokens to deposit.
-     */
-    function depositIntoStrategy(Strategy strategy, uint256 tokenAmount) internal {
-        // Increase totalStrategyHoldings to account for the deposit.
-        totalStrategyHoldings += tokenAmount;
-
-        unchecked {
-            // Without this the next harvest would count the deposit as profit.
-            // Cannot overflow as the balance of one strategy can't exceed the sum of all.
-            strategies[strategy].balance += tokenAmount;
-        }
-
-        // Approve tokenAmount to the strategy so we can deposit.
-        _asset.safeApprove(address(strategy), tokenAmount);
-
-        // Deposit into the strategy, will revert upon failure
-        strategy.invest(tokenAmount);
-        emit StrategyDeposit(strategy, tokenAmount);
-    }
+    event StrategyWithdrawal(Strategy indexed strategy, uint256 assets);
 
     /// @notice Deposit entire balance of `token` into strategies according to each strategies' `tvlBps`.
-    function depositIntoStrategies() internal {
+    function _depositIntoStrategies() internal {
         uint256 totalBal = _asset.balanceOf(address(this));
         // All non-zero strategies are active
-        uint256 length = withdrawalQueue.length;
-        for (uint256 i = 0; i < length; i++) {
-            Strategy strat = withdrawalQueue[i];
-            if (address(strat) == address(0)) {
+        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
+            Strategy strategy = withdrawalQueue[i];
+            if (address(strategy) == address(0)) {
                 break;
             }
-            depositIntoStrategy(strat, (totalBal * strategies[strat].tvlBps) / MAX_BPS);
+
+            uint256 assets = (totalBal * strategies[strategy].tvlBps) / MAX_BPS;
+            // Increase totalStrategyHoldings to account for the deposit.
+            totalStrategyHoldings += assets;
+
+            unchecked {
+                // Without this the next harvest would count the deposit as profit.
+                // Cannot overflow as the balance of one strategy can't exceed the sum of all.
+                strategies[strategy].balance += assets;
+            }
+
+            // Approve assets to the strategy so we can deposit.
+            _asset.safeApprove(address(strategy), assets);
+
+            // Deposit into the strategy, will revert upon failure
+            strategy.invest(assets);
+            emit StrategyDeposit(strategy, assets);
         }
     }
 
     /**
      * @notice Withdraw a specific amount of underlying tokens from a strategy.
-     * @dev This will not revert if the tokenAmount is not withdrawn. It could potentially withdraw nothing.
+     * @dev This will not revert if the assets is not withdrawn. It could potentially withdraw nothing.
      * @param strategy The strategy to withdraw from.
-     * @param tokenAmount  The amount of underlying tokens to withdraw.
+     * @param assets  The amount of underlying tokens to withdraw.
      * @return The amount of underlying tokens withdrawn from the strategy.
      */
-    function withdrawFromStrategy(Strategy strategy, uint256 tokenAmount) internal returns (uint256) {
+    function withdrawFromStrategy(Strategy strategy, uint256 assets) internal returns (uint256) {
         // Withdraw from the strategy
-        uint256 amountWithdrawn = strategy.divest(tokenAmount);
+        uint256 amountWithdrawn = strategy.divest(assets);
         // Without this the next harvest would count the withdrawal as a loss.
         strategies[strategy].balance -= amountWithdrawn;
 
