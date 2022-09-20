@@ -39,7 +39,7 @@ contract L2Vault is
     using FixedPointMathLib for uint256;
 
     // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
-    uint256 public L1TotalLockedValue;
+    uint256 public l1TotalLockedValue;
 
     /**
      * FEES
@@ -84,7 +84,7 @@ contract L2Vault is
         address _governance,
         ERC20 _token,
         address _wormholeRouter,
-        BridgeEscrow _BridgeEscrow,
+        BridgeEscrow _bridgeEscrow,
         EmergencyWithdrawalQueue _emergencyWithdrawalQueue,
         address forwarder,
         uint256 _l1Ratio,
@@ -94,7 +94,7 @@ contract L2Vault is
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
         __Pausable_init();
-        BaseVault.baseInitialize(_governance, _token, _wormholeRouter, _BridgeEscrow);
+        BaseVault.baseInitialize(_governance, _token, _wormholeRouter, _bridgeEscrow);
 
         emergencyWithdrawalQueue = _emergencyWithdrawalQueue;
         l1Ratio = _l1Ratio;
@@ -237,10 +237,7 @@ contract L2Vault is
 
     /// @notice See {IERC4262-redeem}
     function redeem(uint256 shares, address receiver, address owner) external whenNotPaused returns (uint256 assets) {
-        require(
-            shares + emergencyWithdrawalQueue.debtToOwner(owner) <= balanceOf(owner),
-            "Not enough share available in owners balance"
-        );
+        require(shares + emergencyWithdrawalQueue.debtToOwner(owner) <= balanceOf(owner), "L2Vault: min shares");
         (uint256 assetsToUser, uint256 assetsFee) = _previewRedeem(shares);
         assets = assetsToUser;
 
@@ -280,10 +277,7 @@ contract L2Vault is
         returns (uint256 shares)
     {
         shares = previewWithdraw(assets);
-        require(
-            shares + emergencyWithdrawalQueue.debtToOwner(owner) <= balanceOf(owner),
-            "Not enough share available in owners balance"
-        );
+        require(shares + emergencyWithdrawalQueue.debtToOwner(owner) <= balanceOf(owner), "L2Vault: min shares");
 
         address caller = _msgSender();
 
@@ -328,7 +322,7 @@ contract L2Vault is
 
     /// @notice See {IERC4262-totalAssets}
     function totalAssets() public view returns (uint256 totalManagedAssets) {
-        return vaultTVL() + L1TotalLockedValue - lockedProfit() - lockedTVL();
+        return vaultTVL() + l1TotalLockedValue - lockedProfit() - lockedTVL();
     }
 
     /// @notice See {IERC4262-convertToShares}
@@ -490,19 +484,19 @@ contract L2Vault is
             revert("Rebalance in progress");
         }
 
-        // Update L1TotalLockedValue to match what we received from L1
+        // Update l1TotalLockedValue to match what we received from L1
         // Any increase in L1's tvl will unlock linearly, just as when harvesting from strategies
-        uint256 oldL1TVL = L1TotalLockedValue;
+        uint256 oldL1TVL = l1TotalLockedValue;
         uint256 totalProfit = tvl > oldL1TVL ? tvl - oldL1TVL : 0;
         maxLockedTVL = lockedTVL() + totalProfit;
         lastTVLUpdate = block.timestamp;
-        L1TotalLockedValue = tvl;
+        l1TotalLockedValue = tvl;
 
         (bool invest, uint256 delta) = _computeRebalance();
         if (delta == 0) {
             return;
         }
-        _L1L2Rebalance(invest, delta);
+        _l1L2Rebalance(invest, delta);
     }
 
     function _computeRebalance() internal view returns (bool, uint256) {
@@ -510,21 +504,21 @@ contract L2Vault is
         // We want to keep enough funds to satisfy emergency withdrawal queue plus l2Ratio of remaining funds
         // so that we have a l1Ratio:l2Ratio distribution in both layers after emergency withdrawal queue is
         // satisfied.
-        uint256 L1IdealAmount =
-            (l1Ratio * (vaultTVL() + L1TotalLockedValue - emergencyWithdrawalQueue.totalDebt())) / numSlices;
+        uint256 l1IdealAmount =
+            (l1Ratio * (vaultTVL() + l1TotalLockedValue - emergencyWithdrawalQueue.totalDebt())) / numSlices;
 
         bool invest;
         uint256 delta;
-        if (L1IdealAmount >= L1TotalLockedValue) {
+        if (l1IdealAmount >= l1TotalLockedValue) {
             invest = true;
-            delta = L1IdealAmount - L1TotalLockedValue;
+            delta = l1IdealAmount - l1TotalLockedValue;
         } else {
-            delta = L1TotalLockedValue - L1IdealAmount;
+            delta = l1TotalLockedValue - l1IdealAmount;
         }
         return (invest, delta);
     }
 
-    function _L1L2Rebalance(bool invest, uint256 amount) internal {
+    function _l1L2Rebalance(bool invest, uint256 amount) internal {
         if (invest) {
             // Increase balance of `token` to `delta` by withdrawing from strategies.
             // Then transfer `amount` of `token` to L1.
@@ -546,7 +540,7 @@ contract L2Vault is
         // Update bridge state and L1 TVL
         // It's important to update this number now so that totalAssets() returns a smaller number
         canTransferToL1 = false;
-        L1TotalLockedValue += amount;
+        l1TotalLockedValue += amount;
 
         // Let L1 know how much money we sent
         L2WormholeRouter(wormholeRouter).reportTransferredFund(amount);
@@ -562,7 +556,7 @@ contract L2Vault is
 
     function afterReceive(uint256 amount) external {
         require(_msgSender() == address(bridgeEscrow), "Only L2 BridgeEscrow.");
-        L1TotalLockedValue -= amount;
+        l1TotalLockedValue -= amount;
         canRequestFromL1 = true;
         emit ReceiveFromL1(amount);
     }

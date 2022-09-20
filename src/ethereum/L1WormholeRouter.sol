@@ -55,7 +55,7 @@ contract L1WormholeRouter is WormholeRouter, Initializable {
         _validateWormholeMessageEmitter(vm);
         nextValidNonce = vm.nonce + 1;
         (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
-        require(msgType == Constants.L2_FUND_TRANSFER_REPORT);
+        require(msgType == Constants.L2_FUND_TRANSFER_REPORT, "WR: bad msg type");
 
         vault.bridgeEscrow().l1ClearFund(amount, data);
         emit TransferFromL2(amount);
@@ -71,7 +71,7 @@ contract L1WormholeRouter is WormholeRouter, Initializable {
         _validateWormholeMessageEmitter(vm);
         nextValidNonce = vm.nonce + 1;
         (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
-        require(msgType == Constants.L2_FUND_REQUEST);
+        require(msgType == Constants.L2_FUND_REQUEST, "WR: bad msg type");
 
         L1Vault(address(vault)).processFundRequest(amount);
     }
