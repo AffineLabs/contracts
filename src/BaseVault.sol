@@ -172,8 +172,6 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         bool isActive;
         uint256 tvlBps;
         uint256 balance;
-        uint256 totalGain;
-        uint256 totalLoss;
     }
     /// @notice A map of strategy addresses to details about the strategy
 
@@ -195,7 +193,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
      */
     function addStrategy(Strategy strategy, uint256 tvlBps) external onlyGovernance {
         _increaseTVLBps(tvlBps);
-        strategies[strategy] = StrategyInfo({isActive: true, tvlBps: tvlBps, balance: 0, totalGain: 0, totalLoss: 0});
+        strategies[strategy] = StrategyInfo({isActive: true, tvlBps: tvlBps, balance: 0});
         //  Add strategy to withdrawal queue
         withdrawalQueue[withdrawalQueue.length - 1] = strategy;
         emit StrategyAdded(strategy);
@@ -507,17 +505,11 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
                 break;
             }
 
-            // NOTE: Don't withdraw more than the debt so that Strategy can still
-            // continue to work based on the profits it has
             uint256 amountNeeded = amount - balance;
             amountNeeded = Math.min(amountNeeded, strategies[strategy].balance);
 
             // Force withdraw of token from strategy
             uint256 withdrawn = withdrawFromStrategy(strategy, amountNeeded);
-
-            // update debts, amountLiquidated
-            // Reduce the Strategy's debt by the amount withdrawn ("realized returns")
-            // NOTE: This doesn't add to totalGain as it's not earned by "normal means"
             amountLiquidated += withdrawn;
         }
         emit Liquidation(amount, amountLiquidated);
@@ -530,24 +522,9 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
      */
     function _assessFees() internal virtual {}
 
-    function _liveTVL() internal returns (uint256 tvl) {
-        uint256 totalStrategyTVL;
-
-        // Loop through withdrawal queue and add up totalLockedValue
-        uint256 length = withdrawalQueue.length;
-        for (uint256 i = 0; i < length; i++) {
-            Strategy strategy = withdrawalQueue[i];
-            if (address(strategy) == address(0)) {
-                break;
-            }
-            totalStrategyTVL += strategy.totalLockedValue();
-        }
-        tvl = _asset.balanceOf(address(this)) + totalStrategyTVL;
-    }
-
     /// @notice  Rebalance strategies according to given tvl bps
     function rebalance() external onlyRole(harvesterRole) {
-        uint256 tvl = _liveTVL();
+        uint256 tvl = vaultTVL();
 
         // Loop through all strategies. Divesting from those whose tvl is too high,
         // Invest in those whose tvl is too low
