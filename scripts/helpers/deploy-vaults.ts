@@ -61,6 +61,8 @@ export async function deployVaults(
   const l1VaultFactory = await ethers.getContractFactory("L1Vault");
 
   // Deploy vault
+  // Unsafeallow is okay because we only delegatecall into the current contract
+  // See https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable#potentially-unsafe-operations for more
   const l1Vault = (await upgrades.deployProxy(
     l1VaultFactory,
     [
@@ -71,7 +73,7 @@ export async function deployVaults(
       config.l1.chainManager,
       config.l1.ERC20Predicate,
     ],
-    { kind: "uups" },
+    { kind: "uups", unsafeAllow: ["delegatecall"] },
   )) as L1Vault;
   await l1Vault.deployed();
   await addToAddressBookAndDefender(ethNetworkName, `EthAlpSave`, "L1Vault", l1Vault);
@@ -112,7 +114,7 @@ export async function deployVaults(
       1,
       [config.l2.withdrawFee, config.l2.managementFee],
     ],
-    { kind: "uups" },
+    { kind: "uups", unsafeAllow: ["delegatecall"] },
   )) as L2Vault;
   await l2Vault.deployed();
 
