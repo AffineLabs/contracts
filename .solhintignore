@@ -5,3 +5,6 @@ cache/
 coverage/
 node_modules/
 typechain/
+src/test
+src/testnet
+src/external/Multicall.sol

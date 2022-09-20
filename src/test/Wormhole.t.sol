@@ -146,10 +146,10 @@ contract L2WormholeRouterTest is TestPlus {
         // Make sure that bridgEscrow has funds to send to the vault
         deal(vault.asset(), address(vault.bridgeEscrow()), l1TransferAmount);
 
-        // Make sure that L1TotalLockedValue is above amount being transferred to L2 (or else we get an underflow)
+        // Make sure that l1TotalLockedValue is above amount being transferred to L2 (or else we get an underflow)
         vm.store(
             address(vault),
-            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(l1TransferAmount))
         );
 
@@ -192,7 +192,7 @@ contract L2WormholeRouterTest is TestPlus {
         IWormhole.VM memory vaa2;
         vaa2.nonce = 10;
 
-        // Make sure that L1TotalLockedValue is above amount being transferred to L2 (or else we get an underflow)
+        // Make sure that l1TotalLockedValue is above amount being transferred to L2 (or else we get an underflow)
         vm.store(
             address(router),
             bytes32(stdstore.target(address(router)).sig("nextValidNonce()").find()),

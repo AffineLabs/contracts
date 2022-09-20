@@ -75,7 +75,7 @@ contract L2BridgeEscrowTest is TestPlus {
         // So we can call "afterReceive" and decrement the total locked value
         vm.store(
             address(vault),
-            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(200))
         );
 
