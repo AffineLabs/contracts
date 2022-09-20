@@ -6,7 +6,11 @@ contract AffineGovernable {
     address public governance;
 
     modifier onlyGovernance() {
-        require(msg.sender == governance, "Only Governance.");
+        _onlyGovernance();
         _;
+    }
+
+    function _onlyGovernance() internal view {
+        require(msg.sender == governance, "Only Governance.");
     }
 }
