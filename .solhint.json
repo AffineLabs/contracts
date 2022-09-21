@@ -1,6 +1,11 @@
 {
-  "extends": "solhint:default",
+  "extends": "solhint:recommended",
   "rules": {
-    "max-line-length": "off"
+    "max-line-length": "off",
+    "compiler-version": ["error", "^0.8.0"],
+    "state-visibility": "off",
+    "not-rely-on-time": "off",
+    "no-empty-blocks": "off",
+    "func-visibility": ["warn", { "ignoreConstructors": true }]
   }
 }

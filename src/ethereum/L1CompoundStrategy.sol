@@ -87,7 +87,7 @@ contract L1CompoundStrategy is BaseStrategy {
         if (amount == 0) {
             return 0;
         }
-        require(cToken.mint(amount) == 0, "_depositWant(): minting cToken failed.");
+        require(cToken.mint(amount) == 0, "CompStrat: mint failed");
         return amount;
     }
 
@@ -180,17 +180,17 @@ contract L1CompoundStrategy is BaseStrategy {
 
     // This function will choose  a path of [A, B] if either A or B is WETH (or equivalent on other EVM chains)
     // If neither is WETH, then it gives a path of [A, WETH, B]
-    function getTokenOutPathV2(address _token_in, address _token_out) internal view returns (address[] memory _path) {
-        bool is_wrapped_native = _token_in == address(wrappedNative) || _token_out == address(wrappedNative);
+    function getTokenOutPathV2(address inToken, address outToken) internal view returns (address[] memory _path) {
+        bool isWrappedNative = inToken == address(wrappedNative) || outToken == address(wrappedNative);
 
-        _path = new address[](is_wrapped_native ? 2 : 3);
-        _path[0] = _token_in;
+        _path = new address[](isWrappedNative ? 2 : 3);
+        _path[0] = inToken;
 
-        if (is_wrapped_native) {
-            _path[1] = _token_out;
+        if (isWrappedNative) {
+            _path[1] = outToken;
         } else {
             _path[1] = address(wrappedNative);
-            _path[2] = _token_out;
+            _path[2] = outToken;
         }
     }
 }

@@ -51,7 +51,7 @@ contract EmergencyWithdrawalQueue is AccessControl {
         if (!hasRole(DEFAULT_ADMIN_ROLE, _msgSender())) {
             require(address(vault) == address(0), "Vault is already linked");
         }
-        require(_vault.emergencyWithdrawalQueue() == this);
+        require(_vault.emergencyWithdrawalQueue() == this, "EWQ: bad vault");
         _grantRole(OPERATOR_ROLE, address(_vault));
         vault = _vault;
     }

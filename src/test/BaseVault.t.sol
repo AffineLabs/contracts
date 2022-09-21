@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+
 import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
+import {TestStrategy, TestStrategyDivestSlippage} from "./mocks/TestStrategy.sol";
+
 import {BridgeEscrow} from "../BridgeEscrow.sol";
 import {IWormhole} from "../interfaces/IWormhole.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
 import {BaseVault} from "../BaseVault.sol";
-
-import {TestStrategy} from "./mocks/TestStrategy.sol";
-
-import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
 contract BaseVaultLiquidate is BaseVault {
     function liquidate(uint256 amount) public returns (uint256) {
@@ -79,7 +79,7 @@ contract BaseVaultTest is TestPlus {
         TestStrategy strategy = new TestStrategy(token, vault);
         vault.addStrategy(strategy, 1000);
         assertEq(address(vault.withdrawalQueue(0)), address(strategy));
-        (, uint256 tvlBps,,,) = vault.strategies(strategy);
+        (, uint256 tvlBps,) = vault.strategies(strategy);
         assertEq(tvlBps, 1000);
     }
 
@@ -93,11 +93,33 @@ contract BaseVaultTest is TestPlus {
         vault.removeStrategy(strategy);
         assertTrue(vault.totalBps() == 0);
 
-        (bool isActive, uint256 tvlBps,,,) = vault.strategies(strategy);
+        (bool isActive, uint256 tvlBps,) = vault.strategies(strategy);
 
         assertEq(tvlBps, 0);
         assertTrue(isActive == false);
         assertEq(address(vault.withdrawalQueue(0)), address(0));
+    }
+
+    function testRemoveStrategyAndDivest() public {
+        // Add strategy
+        TestStrategy strategy = new TestStrategy(token, vault);
+        vault.addStrategy(strategy, 1000);
+
+        // Give strategy money
+        token.mint(address(strategy), 1000);
+
+        // Harvest
+        BaseStrategy[] memory strategies = new BaseStrategy[](1);
+        strategies[0] = strategy;
+        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        vault.harvest(strategies);
+
+        // Divest (make sure divest is called on the strategy)
+        vm.expectCall(address(strategy), abi.encodeCall(BaseStrategy.divest, (type(uint256).max)));
+        vault.removeStrategy(strategy);
+
+        // The vault removed all money from the strategy
+        assertTrue(token.balanceOf(address(strategy)) == 0);
     }
 
     function testGetWithdrawalQueue() public {
@@ -167,10 +189,45 @@ contract BaseVaultTest is TestPlus {
         token.mint(address(strat1), 4000);
         token.mint(address(strat2), 6000);
 
+        // Harvest
+        BaseStrategy[] memory strategies = new BaseStrategy[](2);
+        strategies[0] = strat1;
+        strategies[1] = strat2;
+        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        vault.harvest(strategies);
+
         vault.rebalance();
 
         assertTrue(token.balanceOf(address(strat1)) == 6000);
         assertTrue(token.balanceOf(address(strat2)) == 4000);
+    }
+
+    function testRebalanceWithSlippage() public {
+        // If we lose money when divesting from strategies, then we might have to
+        // to send a truncated amount to one of the strategies in need of assets
+
+        BaseStrategy strat1 = new TestStrategy(token, vault);
+        BaseStrategy strat2 = new TestStrategyDivestSlippage(token, vault);
+
+        vault.addStrategy(strat1, 6000);
+        vault.addStrategy(strat2, 4000);
+
+        // strat1 should have 6000 and strat2 should have 4000.
+        // Since strat2.divest(2000) will only divest 1000, we'll end up with 5000 in each strat
+        token.mint(address(strat1), 4000);
+        token.mint(address(strat2), 6000);
+
+        // Harvest
+        BaseStrategy[] memory strategies = new BaseStrategy[](2);
+        strategies[0] = strat1;
+        strategies[1] = strat2;
+        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        vault.harvest(strategies);
+
+        vault.rebalance();
+
+        assertTrue(token.balanceOf(address(strat1)) == 5000);
+        assertTrue(token.balanceOf(address(strat2)) == 5000);
     }
 
     function testUpdateStrategyAllocations() public {
@@ -189,8 +246,8 @@ contract BaseVaultTest is TestPlus {
         bpsList[1] = 200;
 
         vault.updateStrategyAllocations(strategyList, bpsList);
-        (, uint256 strat1TvlBps,,,) = vault.strategies(strat1);
-        (, uint256 strat2TvlBps,,,) = vault.strategies(strat2);
+        (, uint256 strat1TvlBps,) = vault.strategies(strat1);
+        (, uint256 strat2TvlBps,) = vault.strategies(strat2);
 
         assertEq(strat1TvlBps, 100);
         assertEq(strat2TvlBps, 200);

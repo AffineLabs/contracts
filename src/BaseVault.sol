@@ -12,13 +12,14 @@ import {BaseStrategy as Strategy} from "./BaseStrategy.sol";
 import {AffineGovernable} from "./AffineGovernable.sol";
 import {BridgeEscrow} from "./BridgeEscrow.sol";
 import {WormholeRouter} from "./WormholeRouter.sol";
+import {Multicall} from "./external/Multicall.sol";
 
 /**
  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
  * strategy liquidation.
  */
-abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
+abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, Multicall {
     using SafeTransferLib for ERC20;
 
     /**
@@ -171,8 +172,6 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         bool isActive;
         uint256 tvlBps;
         uint256 balance;
-        uint256 totalGain;
-        uint256 totalLoss;
     }
     /// @notice A map of strategy addresses to details about the strategy
 
@@ -194,7 +193,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
      */
     function addStrategy(Strategy strategy, uint256 tvlBps) external onlyGovernance {
         _increaseTVLBps(tvlBps);
-        strategies[strategy] = StrategyInfo({isActive: true, tvlBps: tvlBps, balance: 0, totalGain: 0, totalLoss: 0});
+        strategies[strategy] = StrategyInfo({isActive: true, tvlBps: tvlBps, balance: 0});
         //  Add strategy to withdrawal queue
         withdrawalQueue[withdrawalQueue.length - 1] = strategy;
         emit StrategyAdded(strategy);
@@ -231,27 +230,41 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
     }
 
     /**
-     * @notice Remove a strategy
-     * @param strategy The strategy to add
+     * @notice Remove a strategy from the withdrawal queue. Fully divest from the strategy.
+     * @param strategy The strategy to remove
+     * @dev  removeStrategy MUST be called with harvest via multicall. This helps get the most accurate tvl numbers
+     * and allows us to add any realized profits to our lockedProfit
      */
     function removeStrategy(Strategy strategy) external onlyGovernance {
-        // TODO: consider withdrawaing all possible money from a strategy before popping it from withdrawal queue
-        // TODO: decrement totalStrategyHoldings here
-        //  Remove from withdrawal queue
-        uint256 length = withdrawalQueue.length;
-        for (uint256 i = 0; i < length; i++) {
-            if (strategy == withdrawalQueue[i]) {
-                strategies[strategy].isActive = false;
+        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
+            if (strategy != withdrawalQueue[i]) continue;
 
-                uint256 oldBps = strategies[strategy].tvlBps;
-                totalBps -= oldBps;
-                strategies[strategy].tvlBps = 0;
+            StrategyInfo storage stratInfo = strategies[strategy];
+            stratInfo.isActive = false;
 
-                withdrawalQueue[i] = Strategy(address(0));
-                emit StrategyRemoved(strategy);
-                _organizeWithdrawalQueue();
-                break;
+            // The vault can re-allocate bps to a new strategy
+            totalBps -= stratInfo.tvlBps;
+            stratInfo.tvlBps = 0;
+
+            // Remove strategy from withdrawal queue
+            withdrawalQueue[i] = Strategy(address(0));
+            emit StrategyRemoved(strategy);
+            _organizeWithdrawalQueue();
+
+            // Take all money out of strategy.
+            uint256 amountWithdrawn = strategy.divest(type(uint256).max);
+            uint256 oldBal = stratInfo.balance;
+            totalStrategyHoldings -= oldBal;
+            stratInfo.balance = 0;
+
+            // In this case, we've made a profit since we extracted more money than we thought we had
+            // This increases the vaultTVL. In order to avoid frontrunning, we unlock this profit as in harvest()
+            // NOTE: Updating maxLockedProfit this way is fine since removeStrategy will always be called with harvest()
+            // via multicall
+            if (amountWithdrawn > oldBal) {
+                maxLockedProfit += oldBal - amountWithdrawn;
             }
+            break;
         }
     }
 
@@ -289,64 +302,56 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
     /**
      * @notice Emitted after the Vault deposits into a strategy contract.
      * @param strategy The strategy that was deposited into.
-     * @param tokenAmount The amount of underlying tokens that were deposited.
+     * @param assets The amount of underlying tokens that were deposited.
      */
-    event StrategyDeposit(Strategy indexed strategy, uint256 tokenAmount);
+    event StrategyDeposit(Strategy indexed strategy, uint256 assets);
 
     /**
      * @notice Emitted after the Vault withdraws funds from a strategy contract.
      * @param strategy The strategy that was withdrawn from.
-     * @param tokenAmount The amount of underlying tokens that were withdrawn.
+     * @param assets The amount of underlying tokens that were withdrawn.
      */
-    event StrategyWithdrawal(Strategy indexed strategy, uint256 tokenAmount);
-
-    /**
-     * @notice Deposit a specific amount of token into a trusted strategy.
-     * @param strategy The strategy to deposit into.
-     * @param tokenAmount The amount of underlying tokens to deposit.
-     */
-    function depositIntoStrategy(Strategy strategy, uint256 tokenAmount) internal {
-        // Increase totalStrategyHoldings to account for the deposit.
-        totalStrategyHoldings += tokenAmount;
-
-        unchecked {
-            // Without this the next harvest would count the deposit as profit.
-            // Cannot overflow as the balance of one strategy can't exceed the sum of all.
-            strategies[strategy].balance += tokenAmount;
-        }
-
-        // Approve tokenAmount to the strategy so we can deposit.
-        _asset.safeApprove(address(strategy), tokenAmount);
-
-        // Deposit into the strategy, will revert upon failure
-        strategy.invest(tokenAmount);
-        emit StrategyDeposit(strategy, tokenAmount);
-    }
+    event StrategyWithdrawal(Strategy indexed strategy, uint256 assets);
 
     /// @notice Deposit entire balance of `token` into strategies according to each strategies' `tvlBps`.
-    function depositIntoStrategies() internal {
+    function _depositIntoStrategies() internal {
         uint256 totalBal = _asset.balanceOf(address(this));
         // All non-zero strategies are active
-        uint256 length = withdrawalQueue.length;
-        for (uint256 i = 0; i < length; i++) {
-            Strategy strat = withdrawalQueue[i];
-            if (address(strat) == address(0)) {
+        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
+            Strategy strategy = withdrawalQueue[i];
+            if (address(strategy) == address(0)) {
                 break;
             }
-            depositIntoStrategy(strat, (totalBal * strategies[strat].tvlBps) / MAX_BPS);
+
+            uint256 assets = (totalBal * strategies[strategy].tvlBps) / MAX_BPS;
+            // Increase totalStrategyHoldings to account for the deposit.
+            totalStrategyHoldings += assets;
+
+            unchecked {
+                // Without this the next harvest would count the deposit as profit.
+                // Cannot overflow as the balance of one strategy can't exceed the sum of all.
+                strategies[strategy].balance += assets;
+            }
+
+            // Approve assets to the strategy so we can deposit.
+            _asset.safeApprove(address(strategy), assets);
+
+            // Deposit into the strategy, will revert upon failure
+            strategy.invest(assets);
+            emit StrategyDeposit(strategy, assets);
         }
     }
 
     /**
      * @notice Withdraw a specific amount of underlying tokens from a strategy.
-     * @dev This will not revert if the tokenAmount is not withdrawn. It could potentially withdraw nothing.
+     * @dev This will not revert if the assets is not withdrawn. It could potentially withdraw nothing.
      * @param strategy The strategy to withdraw from.
-     * @param tokenAmount  The amount of underlying tokens to withdraw.
+     * @param assets  The amount of underlying tokens to withdraw.
      * @return The amount of underlying tokens withdrawn from the strategy.
      */
-    function withdrawFromStrategy(Strategy strategy, uint256 tokenAmount) internal returns (uint256) {
+    function withdrawFromStrategy(Strategy strategy, uint256 assets) internal returns (uint256) {
         // Withdraw from the strategy
-        uint256 amountWithdrawn = strategy.divest(tokenAmount);
+        uint256 amountWithdrawn = strategy.divest(assets);
         // Without this the next harvest would count the withdrawal as a loss.
         strategies[strategy].balance -= amountWithdrawn;
 
@@ -492,17 +497,11 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
                 break;
             }
 
-            // NOTE: Don't withdraw more than the debt so that Strategy can still
-            // continue to work based on the profits it has
             uint256 amountNeeded = amount - balance;
             amountNeeded = Math.min(amountNeeded, strategies[strategy].balance);
 
             // Force withdraw of token from strategy
             uint256 withdrawn = withdrawFromStrategy(strategy, amountNeeded);
-
-            // update debts, amountLiquidated
-            // Reduce the Strategy's debt by the amount withdrawn ("realized returns")
-            // NOTE: This doesn't add to totalGain as it's not earned by "normal means"
             amountLiquidated += withdrawn;
         }
         emit Liquidation(amount, amountLiquidated);
@@ -515,24 +514,9 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
      */
     function _assessFees() internal virtual {}
 
-    function liveTVL() internal returns (uint256 tvl) {
-        uint256 totalStrategyTVL;
-
-        // Loop through withdrawal queue and add up totalLockedValue
-        uint256 length = withdrawalQueue.length;
-        for (uint256 i = 0; i < length; i++) {
-            Strategy strategy = withdrawalQueue[i];
-            if (address(strategy) == address(0)) {
-                break;
-            }
-            totalStrategyTVL += strategy.totalLockedValue();
-        }
-        tvl = _asset.balanceOf(address(this)) + totalStrategyTVL;
-    }
-
     /// @notice  Rebalance strategies according to given tvl bps
     function rebalance() external onlyRole(harvesterRole) {
-        uint256 tvl = liveTVL();
+        uint256 tvl = vaultTVL();
 
         // Loop through all strategies. Divesting from those whose tvl is too high,
         // Invest in those whose tvl is too low
@@ -559,12 +543,16 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         // Loop through the strategies to invest in, and invest in them
         for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
             uint256 amountToInvest = amountsToInvest[i];
-            if (amountToInvest == 0) {
-                continue;
-            }
+            if (amountToInvest == 0) continue;
+
+            // We aren't guaranteed that the vault has `amountToInvest` since there can be slippage
+            // when divesting from strategies
+            // NOTE: Strategies closer to the start of the queue are more likely to get the exact
+            // amount of money needed
+            amountToInvest = Math.min(amountToInvest, _asset.balanceOf(address(this)));
+            if (amountToInvest == 0) break;
 
             Strategy strategy = withdrawalQueue[i];
-
             _asset.safeApprove(address(strategy), amountToInvest);
             strategy.invest(amountToInvest);
         }

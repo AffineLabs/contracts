@@ -210,7 +210,7 @@ contract L2VaultTest is TestPlus {
         vault.receiveTVL(100, true);
 
         assertEq(vault.canTransferToL1(), true);
-        assertEq(vault.L1TotalLockedValue(), 100);
+        assertEq(vault.l1TotalLockedValue(), 100);
 
         // If one of the bridge vars is locked, we just revert
         // canRequestFromL1 is false, canTransferToL1 is true
@@ -237,7 +237,7 @@ contract L2VaultTest is TestPlus {
         vault.receiveTVL(120, true);
 
         assertEq(vault.canTransferToL1(), true);
-        assertEq(vault.L1TotalLockedValue(), 120);
+        assertEq(vault.l1TotalLockedValue(), 120);
     }
 
     function testLockedTVL() public {
@@ -249,7 +249,7 @@ contract L2VaultTest is TestPlus {
         vm.startPrank(vault.wormholeRouter());
         vault.receiveTVL(100, true);
 
-        assertEq(vault.L1TotalLockedValue(), 100);
+        assertEq(vault.l1TotalLockedValue(), 100);
         assertEq(vault.lockedTVL(), 100);
         assertEq(vault.totalAssets(), 100);
 
@@ -418,7 +418,7 @@ contract L2VaultTest is TestPlus {
         asset.burn(address(vault), amountAsset);
         vm.store(
             address(vault),
-            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(amountAsset))
         );
 
@@ -435,7 +435,7 @@ contract L2VaultTest is TestPlus {
         asset.mint(address(vault), amountAsset);
         vm.store(
             address(vault),
-            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(0))
         );
         vault.emergencyWithdrawalQueue().dequeue();
@@ -453,7 +453,7 @@ contract L2VaultTest is TestPlus {
         asset.burn(address(vault), amountAsset);
         vm.store(
             address(vault),
-            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(amountAsset))
         );
 
@@ -470,7 +470,7 @@ contract L2VaultTest is TestPlus {
         asset.mint(address(vault), amountAsset);
         vm.store(
             address(vault),
-            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(0))
         );
 
@@ -492,7 +492,7 @@ contract L2VaultTest is TestPlus {
         asset.burn(address(vault), halfUSDC);
         vm.store(
             address(vault),
-            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(halfUSDC))
         );
 
@@ -519,7 +519,7 @@ contract L2VaultTest is TestPlus {
         asset.mint(address(vault), halfUSDC);
         vm.store(
             address(vault),
-            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(0))
         );
 
@@ -538,7 +538,7 @@ contract L2VaultTest is TestPlus {
         asset.burn(address(vault), oneUSDC);
         vm.store(
             address(vault),
-            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(oneUSDC))
         );
         // Triggier emergency withdrawal queue enqueue.
@@ -548,11 +548,11 @@ contract L2VaultTest is TestPlus {
         asset.mint(address(vault), oneUSDC);
         vm.store(
             address(vault),
-            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(0))
         );
 
-        vm.expectRevert("Not enough share available in owners balance");
+        vm.expectRevert("L2Vault: min shares");
         // At this point alice can withdraw at most half usdc. So trying to withdraw
         // half usdc + 1 should fail.
         vault.withdraw(halfUSDC + 1, alice, alice);
@@ -575,7 +575,7 @@ contract L2VaultTest is TestPlus {
         asset.burn(address(vault), oneUSDC);
         vm.store(
             address(vault),
-            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(oneUSDC))
         );
         // Triggier emergency withdrawal queue enqueue.
@@ -585,11 +585,11 @@ contract L2VaultTest is TestPlus {
         asset.mint(address(vault), oneUSDC);
         vm.store(
             address(vault),
-            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(0))
         );
 
-        vm.expectRevert("Not enough share available in owners balance");
+        vm.expectRevert("L2Vault: min shares");
         // At this point alice can redeem at most half usdc worth of vault token. So trying
         // to redeem half usdc worth of vault token + 1 should fail.
         vault.redeem(halfUSDCInShare + 1, alice, alice);
@@ -611,7 +611,7 @@ contract L2VaultTest is TestPlus {
         asset.burn(address(vault), halfUSDC);
         vm.store(
             address(vault),
-            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(halfUSDC))
         );
 
@@ -624,7 +624,7 @@ contract L2VaultTest is TestPlus {
         asset.mint(address(vault), halfUSDC);
         vm.store(
             address(vault),
-            bytes32(stdstore.target(address(vault)).sig("L1TotalLockedValue()").find()),
+            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(0))
         );
 
