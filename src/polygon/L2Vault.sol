@@ -179,7 +179,7 @@ contract L2Vault is
         emit Deposit(caller, receiver, assets, shares);
 
         // deposit entire balance of `_asset` into strategies
-        depositIntoStrategies();
+        _depositIntoStrategies();
     }
 
     /// @notice See {IERC4262-mint}
@@ -191,7 +191,7 @@ contract L2Vault is
         _mint(receiver, shares);
         emit Deposit(caller, receiver, assets, shares);
 
-        depositIntoStrategies();
+        _depositIntoStrategies();
     }
 
     /**

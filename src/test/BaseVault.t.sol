@@ -79,7 +79,7 @@ contract BaseVaultTest is TestPlus {
         TestStrategy strategy = new TestStrategy(token, vault);
         vault.addStrategy(strategy, 1000);
         assertEq(address(vault.withdrawalQueue(0)), address(strategy));
-        (, uint256 tvlBps,,,) = vault.strategies(strategy);
+        (, uint256 tvlBps,) = vault.strategies(strategy);
         assertEq(tvlBps, 1000);
     }
 
@@ -93,7 +93,7 @@ contract BaseVaultTest is TestPlus {
         vault.removeStrategy(strategy);
         assertTrue(vault.totalBps() == 0);
 
-        (bool isActive, uint256 tvlBps,,,) = vault.strategies(strategy);
+        (bool isActive, uint256 tvlBps,) = vault.strategies(strategy);
 
         assertEq(tvlBps, 0);
         assertTrue(isActive == false);
@@ -189,6 +189,13 @@ contract BaseVaultTest is TestPlus {
         token.mint(address(strat1), 4000);
         token.mint(address(strat2), 6000);
 
+        // Harvest
+        BaseStrategy[] memory strategies = new BaseStrategy[](2);
+        strategies[0] = strat1;
+        strategies[1] = strat2;
+        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        vault.harvest(strategies);
+
         vault.rebalance();
 
         assertTrue(token.balanceOf(address(strat1)) == 6000);
@@ -209,6 +216,13 @@ contract BaseVaultTest is TestPlus {
         // Since strat2.divest(2000) will only divest 1000, we'll end up with 5000 in each strat
         token.mint(address(strat1), 4000);
         token.mint(address(strat2), 6000);
+
+        // Harvest
+        BaseStrategy[] memory strategies = new BaseStrategy[](2);
+        strategies[0] = strat1;
+        strategies[1] = strat2;
+        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        vault.harvest(strategies);
 
         vault.rebalance();
 
@@ -232,8 +246,8 @@ contract BaseVaultTest is TestPlus {
         bpsList[1] = 200;
 
         vault.updateStrategyAllocations(strategyList, bpsList);
-        (, uint256 strat1TvlBps,,,) = vault.strategies(strat1);
-        (, uint256 strat2TvlBps,,,) = vault.strategies(strat2);
+        (, uint256 strat1TvlBps,) = vault.strategies(strat1);
+        (, uint256 strat2TvlBps,) = vault.strategies(strat2);
 
         assertEq(strat1TvlBps, 100);
         assertEq(strat2TvlBps, 200);
