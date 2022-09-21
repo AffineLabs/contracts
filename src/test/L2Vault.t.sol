@@ -389,7 +389,7 @@ contract L2VaultTest is TestPlus {
                 "AccessControl: account ",
                 Strings.toHexString(uint160(alice), 20),
                 " is missing role ",
-                Strings.toHexString(uint256(vault.harvesterRole()), 32)
+                Strings.toHexString(uint256(vault.guardianRole()), 32)
             )
         );
 

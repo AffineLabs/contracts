@@ -60,7 +60,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
 
     event SendTVL(uint256 tvl);
 
-    function sendTVL() external onlyRole(rebalancerRole) {
+    function sendTVL() external {
         uint256 tvl = vaultTVL();
 
         // Report TVL to L2.

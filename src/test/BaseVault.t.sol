@@ -38,7 +38,6 @@ contract BaseVaultLiquidate is BaseVault {
         // governance has the admin role and can grant/remove a role to any account
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
         _grantRole(harvesterRole, governance);
-        _grantRole(queueOperatorRole, governance);
     }
 }
 
