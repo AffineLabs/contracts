@@ -207,7 +207,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         uint256 offset;
 
         uint256 length = withdrawalQueue.length;
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i = 0; i < length; ++i) {
             Strategy strategy = withdrawalQueue[i];
             if (address(strategy) == address(0)) {
                 offset += 1;
@@ -226,7 +226,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
      * and allows us to add any realized profits to our lockedProfit
      */
     function removeStrategy(Strategy strategy) external onlyGovernance {
-        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
+        for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
             if (strategy != withdrawalQueue[i]) continue;
 
             StrategyInfo storage stratInfo = strategies[strategy];
@@ -267,7 +267,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         external
         onlyRole(harvesterRole)
     {
-        for (uint256 i = 0; i < strategyList.length; i++) {
+        for (uint256 i = 0; i < strategyList.length; ++i) {
             // Get the strategy at the current index.
             Strategy strategy = strategyList[i];
 
@@ -307,7 +307,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
     function _depositIntoStrategies() internal {
         uint256 totalBal = _asset.balanceOf(address(this));
         // All non-zero strategies are active
-        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
+        for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
             Strategy strategy = withdrawalQueue[i];
             if (address(strategy) == address(0)) {
                 break;
@@ -398,7 +398,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         uint256 totalProfitAccrued;
 
         // Will revert if any of the specified strategies are untrusted.
-        for (uint256 i = 0; i < strategyList.length; i++) {
+        for (uint256 i = 0; i < strategyList.length; ++i) {
             // Get the strategy at the current index.
             Strategy strategy = strategyList[i];
 
@@ -475,7 +475,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
     function _liquidate(uint256 amount) internal returns (uint256) {
         uint256 amountLiquidated;
         uint256 length = withdrawalQueue.length;
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i = 0; i < length; ++i) {
             Strategy strategy = withdrawalQueue[i];
             if (address(strategy) == address(0)) {
                 break;
@@ -513,7 +513,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         // MAX_STRATEGIES is always equal to withdrawalQueue.length
         uint256[MAX_STRATEGIES] memory amountsToInvest;
 
-        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
+        for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
             Strategy strategy = withdrawalQueue[i];
             if (address(strategy) == address(0)) {
                 break;
@@ -530,7 +530,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         }
 
         // Loop through the strategies to invest in, and invest in them
-        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
+        for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
             uint256 amountToInvest = amountsToInvest[i];
             if (amountToInvest == 0) continue;
 

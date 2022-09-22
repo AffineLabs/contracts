@@ -9,7 +9,7 @@ contract Forwarder is MinimalForwarder {
         uint256 start = 0;
         uint256 end = 65;
 
-        for (uint256 i = 0; i < requests.length; i++) {
+        for (uint256 i = 0; i < requests.length; ++i) {
             ForwardRequest calldata req = requests[i];
             bytes calldata sig = signatures[start:end];
             start += 65;
