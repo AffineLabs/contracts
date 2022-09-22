@@ -4,8 +4,9 @@ pragma solidity ^0.8.13;
 import {IWormhole} from "./interfaces/IWormhole.sol";
 import {BaseVault} from "./BaseVault.sol";
 import {AffineGovernable} from "./AffineGovernable.sol";
+import {OwnedInitializable} from "./Initializable.sol";
 
-abstract contract WormholeRouter is AffineGovernable {
+abstract contract WormholeRouter is AffineGovernable, OwnedInitializable {
     /**
      * WORMHOLE CONFIGURATION
      *

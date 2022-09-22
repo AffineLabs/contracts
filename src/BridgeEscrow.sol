@@ -20,7 +20,6 @@ contract BridgeEscrow {
     address public vault;
     ERC20 public token;
     IRootChainManager public rootChainManager;
-    bool public initialized;
     address public wormholeRouter;
 
     address public owner;
@@ -31,12 +30,11 @@ contract BridgeEscrow {
 
     function initialize(address _vault, IRootChainManager manager) external {
         require(msg.sender == owner, "ONLY_OWNER");
-        require(!initialized, "INIT_DONE");
+        require(address(vault) == address(0), "INIT_DONE");
         vault = _vault;
         wormholeRouter = BaseVault(_vault).wormholeRouter();
         token = ERC20(BaseVault(_vault).asset());
         rootChainManager = manager;
-        initialized = true;
     }
 
     // Transfer to L1
