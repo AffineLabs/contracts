@@ -77,9 +77,6 @@ contract L2Vault is
      *
      */
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {}
-
     function initialize(
         address _governance,
         ERC20 _token,

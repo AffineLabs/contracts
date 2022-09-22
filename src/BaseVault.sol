@@ -49,7 +49,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         // governance has the admin role and can grant/remove a role to any account
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
         _grantRole(harvesterRole, governance);
-        lastHarvest = block.timestamp;
+        lastHarvest = uint128(block.timestamp);
     }
 
     /**
@@ -252,7 +252,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
             // NOTE: Updating maxLockedProfit this way is fine since removeStrategy will always be called with harvest()
             // via multicall
             if (amountWithdrawn > oldBal) {
-                maxLockedProfit += oldBal - amountWithdrawn;
+                maxLockedProfit += uint128(oldBal - amountWithdrawn);
             }
             break;
         }
@@ -365,11 +365,11 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
      * @dev Since the time since the last harvest is used to calculate management fees, this is set
      * to `block.timestamp` (instead of 0) during initialization.
      */
-    uint256 public lastHarvest;
+    uint128 public lastHarvest;
     /// @notice The amount of profit *originally* locked after harvesting from a strategy
-    uint256 public maxLockedProfit;
+    uint128 public maxLockedProfit;
     /// @notice Amount of time in seconds that profit takes to fully unlock. See lockedProfit().
-    uint256 public constant lockInterval = 3 hours;
+    uint256 public constant lockInterval = 24 hours;
     uint256 public constant SECS_PER_YEAR = 365 days;
 
     /**
@@ -428,14 +428,14 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         }
 
         // Update max unlocked profit based on any remaining locked profit plus new profit.
-        maxLockedProfit = lockedProfit() + totalProfitAccrued;
+        maxLockedProfit = uint128(lockedProfit() + totalProfitAccrued);
 
         // Set strategy holdings to our new total.
         totalStrategyHoldings = newTotalStrategyHoldings;
 
         // Assess fees (using old lastHarvest) and update the last harvest timestamp.
         _assessFees();
-        lastHarvest = block.timestamp;
+        lastHarvest = uint128(block.timestamp);
 
         emit Harvest(msg.sender, strategyList);
     }
