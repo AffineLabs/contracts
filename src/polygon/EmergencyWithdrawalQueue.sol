@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
-import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {L2Vault} from "./L2Vault.sol";
 
-contract EmergencyWithdrawalQueue is AccessControl {
+contract EmergencyWithdrawalQueue {
     /// @notice Struct representing withdrawalRequest stored in each queue node.
     struct WithdrawalRequest {
         address owner;
@@ -22,8 +20,6 @@ contract EmergencyWithdrawalQueue is AccessControl {
     /// @notice Pointer to tail of the queue.
     uint256 public tailPtr = 0;
 
-    /// @notice Queue Admin role.
-    bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR");
     /// @notice Address of Alpine vault.
     L2Vault public vault;
 
@@ -41,18 +37,16 @@ contract EmergencyWithdrawalQueue is AccessControl {
         uint256 indexed pos, address indexed owner, address indexed receiver, uint256 shares
     );
 
-    constructor(address _governance) {
-        _grantRole(DEFAULT_ADMIN_ROLE, _governance);
+    address immutable deployer;
+
+    constructor() {
+        deployer = msg.sender;
     }
 
-    function linkVault(L2Vault _vault) public {
-        // This will give the governance ability to link vault. Others won't
-        // be able to re-link vaults once it is set.
-        if (!hasRole(DEFAULT_ADMIN_ROLE, _msgSender())) {
-            require(address(vault) == address(0), "Vault is already linked");
-        }
-        require(_vault.emergencyWithdrawalQueue() == this, "EWQ: bad vault");
-        _grantRole(OPERATOR_ROLE, address(_vault));
+    function linkVault(L2Vault _vault) external {
+        // Only governance can link vault
+        require(msg.sender == deployer, "EWQ: only owner");
+        require(address(vault) == address(0), "EWQ: init done");
         vault = _vault;
     }
 
@@ -67,7 +61,8 @@ contract EmergencyWithdrawalQueue is AccessControl {
     }
 
     /// @notice enqueue user withdrawal requests to the queue.
-    function enqueue(address owner, address receiver, uint256 shares) external onlyRole(OPERATOR_ROLE) {
+    function enqueue(address owner, address receiver, uint256 shares) external {
+        require(msg.sender == address(vault), "EWQ: only vault");
         tailPtr += 1;
         queue[tailPtr] = WithdrawalRequest(owner, receiver, shares, block.timestamp);
         shareDebt += shares;

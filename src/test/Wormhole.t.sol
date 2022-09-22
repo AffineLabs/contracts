@@ -27,7 +27,7 @@ contract L2WormholeRouterTest is TestPlus {
 
     L2WormholeRouter router;
     L2Vault vault;
-    address rebalancer = governance;
+    address rebalancer = makeAddr("randomAddr");
 
     function setUp() public {
         vm.createSelectFork("polygon", 31_824_532);
@@ -166,11 +166,6 @@ contract L2WormholeRouterTest is TestPlus {
     }
 
     function testReceiveFundsInvariants() public {
-        // You must have the rebalancer role to call receiveFunds
-        vm.prank(alice);
-        vm.expectRevert("Only Rebalancer");
-        router.receiveFunds("VAA_FROM_L1_TRANSFER");
-
         // If wormhole says the vaa is bad, we revert
         // Mock call to wormhole.parseAndVerifyVM()
         IWormhole.VM memory vaa;
@@ -229,15 +224,6 @@ contract L2WormholeRouterTest is TestPlus {
 
         assertEq(router.nextValidNonce(), 1);
     }
-
-    function testReceiveTVLInvariants() public {
-        // You must have the rebalancer role to call this receiveTVL
-        vm.prank(alice);
-        vm.expectRevert("Only Rebalancer");
-        router.receiveFunds("foo");
-
-        // The other invariants are the same as receiveFunds()
-    }
 }
 
 contract L1WormholeRouterTest is TestPlus {
@@ -245,7 +231,7 @@ contract L1WormholeRouterTest is TestPlus {
 
     L1WormholeRouter router;
     L1Vault vault;
-    address rebalancer = governance;
+    address rebalancer = makeAddr("randomAddr");
 
     function setUp() public {
         vm.createSelectFork("ethereum", 14_971_385);
@@ -298,11 +284,6 @@ contract L1WormholeRouterTest is TestPlus {
     }
 
     function testReceiveFunds() public {
-        // Only invariant is that the vault is the only caller
-        vm.prank(alice);
-        vm.expectRevert("Only Rebalancer");
-        router.receiveFunds("", "");
-
         uint256 l2TransferAmount = 500;
 
         // Mock call to wormhole.parseAndVerifyVM()
@@ -327,10 +308,6 @@ contract L1WormholeRouterTest is TestPlus {
     }
 
     function testReceiveFundRequest() public {
-        vm.prank(alice);
-        vm.expectRevert("Only Rebalancer");
-        router.receiveFundRequest("");
-
         // Mock call to wormhole.parseAndVerifyVM()
         uint256 requestAmount = 200;
         IWormhole.VM memory vaa;

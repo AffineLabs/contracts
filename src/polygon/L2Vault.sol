@@ -103,6 +103,7 @@ contract L2Vault is
         canRequestFromL1 = true;
         lastTVLUpdate = block.timestamp;
 
+        _grantRole(guardianRole, _governance);
         _setTrustedForwarder(forwarder);
 
         withdrawalFee = fees[0];
@@ -154,13 +155,15 @@ contract L2Vault is
         return _asset.decimals();
     }
 
+    bytes32 public constant guardianRole = keccak256("GUARDIAN");
+
     /// @notice Pause the contract
-    function pause() external onlyRole(harvesterRole) {
+    function pause() external onlyRole(guardianRole) {
         _pause();
     }
 
     /// @notice Unpause the contract
-    function unpause() external onlyRole(harvesterRole) {
+    function unpause() external onlyRole(guardianRole) {
         _unpause();
     }
 

@@ -48,8 +48,6 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         // governance has the admin role and can grant/remove a role to any account
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
         _grantRole(harvesterRole, governance);
-        _grantRole(queueOperatorRole, governance);
-        _grantRole(rebalancerRole, governance);
         lastHarvest = block.timestamp;
     }
 
@@ -73,14 +71,6 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
 
     /// @notice Role with authority to call "harvest", i.e. update this vault's tvl
     bytes32 public constant harvesterRole = keccak256("HARVESTER");
-    /// @notice Role with authority to set mutate the withdrawal queue
-    bytes32 public constant queueOperatorRole = keccak256("QUEUE_OPERATOR");
-
-    /**
-     * @notice Role with authority to call functions related to cross-chain rebalancing. Examples
-     * include sendTVL, receiveTVL, etc.
-     */
-    bytes32 public constant rebalancerRole = keccak256("REBALANCER");
 
     /**
      * WITHDRAWAL QUEUE
@@ -110,7 +100,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
      * @notice Sets a new withdrawal queue.
      * @param newQueue The new withdrawal queue.
      */
-    function setWithdrawalQueue(Strategy[MAX_STRATEGIES] calldata newQueue) external onlyRole(queueOperatorRole) {
+    function setWithdrawalQueue(Strategy[MAX_STRATEGIES] calldata newQueue) external onlyGovernance {
         // Ensure the new queue is not larger than the maximum queue size.
         require(newQueue.length <= MAX_STRATEGIES, "QUEUE_TOO_BIG");
 
@@ -125,7 +115,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
      * @param index1 One index involved in the swap
      * @param index2 The other index involved in the swap.
      */
-    function swapWithdrawalQueueIndexes(uint256 index1, uint256 index2) external onlyRole(queueOperatorRole) {
+    function swapWithdrawalQueueIndexes(uint256 index1, uint256 index2) external onlyGovernance {
         // Get the (soon to be) new strategies at each index.
         Strategy newStrategy2 = withdrawalQueue[index1];
         Strategy newStrategy1 = withdrawalQueue[index2];
@@ -275,7 +265,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
      */
     function updateStrategyAllocations(Strategy[] calldata strategyList, uint256[] calldata strategyBps)
         external
-        onlyGovernance
+        onlyRole(harvesterRole)
     {
         for (uint256 i = 0; i < strategyList.length; i++) {
             // Get the strategy at the current index.

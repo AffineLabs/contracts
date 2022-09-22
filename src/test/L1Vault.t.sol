@@ -39,10 +39,6 @@ contract L1VaultTest is TestPlus {
     }
 
     function testSendTVL() public {
-        // Grant rebalancer role to random user
-        changePrank(governance);
-        vault.grantRole(vault.rebalancerRole(), alice);
-
         // user can call sendTVL
         changePrank(alice);
         vault.sendTVL();

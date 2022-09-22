@@ -34,14 +34,14 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         emergencyWithdrawalQueue = vault.emergencyWithdrawalQueue();
     }
 
-    function testOnlyGovernanceCanReLinkVault() external {
-        vm.startPrank(vault.governance());
-        // Governance can link vault.
-        emergencyWithdrawalQueue.linkVault(vault);
+    function testOnlyDeployerCanLinkVault() external {
+        // We can only init once
+        vm.expectRevert("EWQ: init done");
+        emergencyWithdrawalQueue.linkVault(L2Vault(makeAddr("new_vault")));
 
         changePrank(alice);
-        // Anyone other than governance trying to re-link should throw error.
-        vm.expectRevert(bytes("Vault is already linked"));
+        // Anyone other than governance trying to link should throw error.
+        vm.expectRevert("EWQ: only owner");
         emergencyWithdrawalQueue.linkVault(vault);
     }
 
@@ -58,16 +58,7 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
     }
 
     function testEnqueueOnlyVaultCanEnqueue() external {
-        vm.expectRevert(
-            bytes(
-                abi.encodePacked(
-                    "AccessControl: account ",
-                    ConvertLib.toString(address(this)),
-                    " is missing role ",
-                    ConvertLib.toString(keccak256("OPERATOR"))
-                )
-            )
-        );
+        vm.expectRevert("EWQ: only vault");
         // Only vault should be able to enqueue.
         emergencyWithdrawalQueue.enqueue(bob, alice, 1000);
     }
