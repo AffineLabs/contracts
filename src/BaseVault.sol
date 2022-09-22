@@ -12,7 +12,7 @@ import {BaseStrategy as Strategy} from "./BaseStrategy.sol";
 import {AffineGovernable} from "./AffineGovernable.sol";
 import {BridgeEscrow} from "./BridgeEscrow.sol";
 import {WormholeRouter} from "./WormholeRouter.sol";
-import {Multicall} from "./external/Multicall.sol";
+import {Multicallable} from "solady/src/utils/Multicallable.sol";
 import {uncheckedInc} from "./Unchecked.sol";
 
 /**
@@ -20,7 +20,7 @@ import {uncheckedInc} from "./Unchecked.sol";
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
  * strategy liquidation.
  */
-abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, Multicall {
+abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, Multicallable {
     using SafeTransferLib for ERC20;
 
     /**

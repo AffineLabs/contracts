@@ -3,11 +3,11 @@ pragma solidity ^0.8.13;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {IERC4626} from "../interfaces/IERC4626.sol";
-import {Multicall} from "../external/Multicall.sol";
+import {Multicallable} from "solady/src/utils/Multicallable.sol";
 import {BaseRelayRecipient} from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
 /// @title ERC4626 Router Base Contract
-abstract contract ERC4626RouterBase is Multicall, BaseRelayRecipient {
+abstract contract ERC4626RouterBase is Multicallable, BaseRelayRecipient {
     using SafeTransferLib for ERC20;
 
     error MinAmountError();
