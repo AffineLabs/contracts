@@ -61,7 +61,7 @@ contract BaseVaultTest is TestPlus {
     }
 
     function testHarvest() public {
-        BaseStrategy newStrategy1 = new TestStrategy(token, vault);
+        BaseStrategy newStrategy1 = new TestStrategy(vault);
         vault.addStrategy(newStrategy1, 1000);
         token.mint(address(newStrategy1), 1000);
         assertTrue(newStrategy1.balanceOfAsset() != 0);
@@ -75,7 +75,7 @@ contract BaseVaultTest is TestPlus {
     }
 
     function testStrategyAddition() public {
-        TestStrategy strategy = new TestStrategy(token, vault);
+        TestStrategy strategy = new TestStrategy(vault);
         vault.addStrategy(strategy, 1000);
         assertEq(address(vault.withdrawalQueue(0)), address(strategy));
         (, uint256 tvlBps,) = vault.strategies(strategy);
@@ -84,7 +84,7 @@ contract BaseVaultTest is TestPlus {
 
     function testStrategyRemoval() public {
         // Adding a strategy increases our totalBps
-        TestStrategy strategy = new TestStrategy(token, vault);
+        TestStrategy strategy = new TestStrategy(vault);
         vault.addStrategy(strategy, 1000);
         assertEq(vault.totalBps(), 1000);
 
@@ -101,7 +101,7 @@ contract BaseVaultTest is TestPlus {
 
     function testRemoveStrategyAndDivest() public {
         // Add strategy
-        TestStrategy strategy = new TestStrategy(token, vault);
+        TestStrategy strategy = new TestStrategy(vault);
         vault.addStrategy(strategy, 1000);
 
         // Give strategy money
@@ -123,7 +123,7 @@ contract BaseVaultTest is TestPlus {
 
     function testGetWithdrawalQueue() public {
         for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
-            vault.addStrategy(new TestStrategy(token, vault), 10);
+            vault.addStrategy(new TestStrategy(vault), 10);
         }
         for (uint256 i = 0; i < vault.MAX_STRATEGIES(); ++i) {
             assertTrue(vault.getWithdrawalQueue()[i] == vault.withdrawalQueue(i));
@@ -143,7 +143,7 @@ contract BaseVaultTest is TestPlus {
     function testSetWithdrawalQueue() public {
         BaseStrategy[MAX_STRATEGIES] memory newQueue;
         for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
-            newQueue[i] = new TestStrategy(token, vault);
+            newQueue[i] = new TestStrategy(vault);
         }
         vault.setWithdrawalQueue(newQueue);
         for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
@@ -152,8 +152,8 @@ contract BaseVaultTest is TestPlus {
     }
 
     function testSwapWithdrawalQueue() public {
-        vault.addStrategy(new TestStrategy(token, vault), 1000);
-        vault.addStrategy(new TestStrategy(token, vault), 2000);
+        vault.addStrategy(new TestStrategy(vault), 1000);
+        vault.addStrategy(new TestStrategy(vault), 2000);
         BaseStrategy newStrategy1 = vault.withdrawalQueue(0);
         BaseStrategy newStrategy2 = vault.withdrawalQueue(1);
         vm.expectEmit(true, true, true, true);
@@ -164,7 +164,7 @@ contract BaseVaultTest is TestPlus {
     }
 
     function testLiquidate() public {
-        BaseStrategy newStrategy1 = new TestStrategy(token, vault);
+        BaseStrategy newStrategy1 = new TestStrategy(vault);
         token.mint(address(newStrategy1), 10);
         vault.addStrategy(newStrategy1, 10);
         BaseStrategy[] memory strategies = new BaseStrategy[](1);
@@ -177,8 +177,8 @@ contract BaseVaultTest is TestPlus {
     }
 
     function testRebalance() public {
-        BaseStrategy strat1 = new TestStrategy(token, vault);
-        BaseStrategy strat2 = new TestStrategy(token, vault);
+        BaseStrategy strat1 = new TestStrategy(vault);
+        BaseStrategy strat2 = new TestStrategy(vault);
 
         vault.addStrategy(strat1, 6000);
         vault.addStrategy(strat2, 4000);
@@ -205,8 +205,8 @@ contract BaseVaultTest is TestPlus {
         // If we lose money when divesting from strategies, then we might have to
         // to send a truncated amount to one of the strategies in need of assets
 
-        BaseStrategy strat1 = new TestStrategy(token, vault);
-        BaseStrategy strat2 = new TestStrategyDivestSlippage(token, vault);
+        BaseStrategy strat1 = new TestStrategy(vault);
+        BaseStrategy strat2 = new TestStrategyDivestSlippage(vault);
 
         vault.addStrategy(strat1, 6000);
         vault.addStrategy(strat2, 4000);
@@ -230,8 +230,8 @@ contract BaseVaultTest is TestPlus {
     }
 
     function testUpdateStrategyAllocations() public {
-        BaseStrategy strat1 = new TestStrategy(token, vault);
-        BaseStrategy strat2 = new TestStrategy(token, vault);
+        BaseStrategy strat1 = new TestStrategy(vault);
+        BaseStrategy strat2 = new TestStrategy(vault);
 
         vault.addStrategy(strat1, 5000);
         vault.addStrategy(strat2, 5000);

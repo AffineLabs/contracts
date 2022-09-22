@@ -61,7 +61,7 @@ contract L1VaultTest is TestPlus {
     }
 
     function testafterReceive() public {
-        BaseStrategy newStrategy1 = new TestStrategy(asset, vault);
+        BaseStrategy newStrategy1 = new TestStrategy(vault);
 
         changePrank(governance);
         vault.addStrategy(newStrategy1, 1);
@@ -78,7 +78,7 @@ contract L1VaultTest is TestPlus {
     function testLockedProfit() public {
         changePrank(governance);
 
-        BaseStrategy newStrategy1 = new TestStrategy(asset, vault);
+        BaseStrategy newStrategy1 = new TestStrategy(vault);
         vault.addStrategy(newStrategy1, 1000);
 
         deal(address(asset), address(newStrategy1), 1000, true);

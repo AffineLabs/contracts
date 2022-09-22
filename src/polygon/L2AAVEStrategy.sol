@@ -47,9 +47,7 @@ contract L2AAVEStrategy is BaseStrategy {
         address _router,
         address _rewardToken,
         address _wrappedNative
-    ) {
-        vault = _vault;
-        asset = ERC20(vault.asset());
+    ) BaseStrategy(_vault) {
         address[] memory providers = ILendingPoolAddressesProviderRegistry(_registry).getAddressesProvidersList();
         address pool = ILendingPoolAddressesProvider(providers[providers.length - 1]).getLendingPool();
         lendingPool = ILendingPool(pool);

@@ -32,10 +32,7 @@ contract CurveStrategy is BaseStrategy, Ownable {
         ILiquidityGauge _gauge,
         IUniLikeSwapRouter _router,
         ERC20 _crv
-    ) {
-        vault = _vault;
-        asset = ERC20(vault.asset());
-
+    ) BaseStrategy(_vault) {
         metaPool = _metaPool;
         zapper = _zapper;
         assetIndex = _assetIndex;

@@ -40,9 +40,7 @@ contract L1CompoundStrategy is BaseStrategy {
         IUniLikeSwapRouter _router,
         address _rewardToken,
         address _wrappedNative
-    ) {
-        vault = _vault;
-        asset = ERC20(vault.asset());
+    ) BaseStrategy(_vault) {
         cToken = _cToken;
         comptroller = _comptroller;
 

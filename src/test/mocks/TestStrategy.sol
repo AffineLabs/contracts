@@ -6,10 +6,7 @@ import {BaseVault} from "../../BaseVault.sol";
 import {MockERC20} from "./MockERC20.sol";
 
 contract TestStrategy is BaseStrategy {
-    constructor(MockERC20 _token, BaseVault _vault) {
-        asset = _token;
-        vault = _vault;
-    }
+    constructor(BaseVault _vault) BaseStrategy(_vault) {}
 
     function balanceOfAsset() public view override returns (uint256) {
         return asset.balanceOf(address(this));
@@ -31,7 +28,7 @@ contract TestStrategy is BaseStrategy {
 }
 
 contract TestStrategyDivestSlippage is TestStrategy {
-    constructor(MockERC20 _token, BaseVault _vault) TestStrategy(_token, _vault) {}
+    constructor(BaseVault _vault) TestStrategy(_vault) {}
 
     function divest(uint256 amount) public virtual override returns (uint256) {
         uint256 amountToSend = amount > balanceOfAsset() ? balanceOfAsset() : amount;
