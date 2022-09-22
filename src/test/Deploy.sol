@@ -25,7 +25,7 @@ contract Deploy is Test {
     function deployL2Vault() internal returns (MockL2Vault vault) {
         MockERC20 asset = new MockERC20("Mock", "MT", 6);
         vault = new MockL2Vault();
-        EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(governance);
+        EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue();
         BridgeEscrow escrow = new BridgeEscrow(address(this));
         vault.initialize(
             governance, // governance
@@ -40,7 +40,6 @@ contract Deploy is Test {
         );
 
         escrow.initialize(address(vault), IRootChainManager(address(0)));
-        vm.prank(governance);
         emergencyWithdrawalQueue.linkVault(vault);
     }
 

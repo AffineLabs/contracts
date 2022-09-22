@@ -37,15 +37,16 @@ contract EmergencyWithdrawalQueue {
         uint256 indexed pos, address indexed owner, address indexed receiver, uint256 shares
     );
 
-    address immutable governance;
+    address immutable deployer;
 
-    constructor(address _governance) {
-        governance = _governance;
+    constructor() {
+        deployer = msg.sender;
     }
 
     function linkVault(L2Vault _vault) external {
         // Only governance can link vault
-        require(msg.sender == governance, "EWQ: only governance");
+        require(msg.sender == deployer, "EWQ: only owner");
+        require(address(vault) == address(0), "EWQ: init done");
         vault = _vault;
     }
 

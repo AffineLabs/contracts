@@ -34,14 +34,14 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         emergencyWithdrawalQueue = vault.emergencyWithdrawalQueue();
     }
 
-    function testOnlyGovernanceCanReLinkVault() external {
-        vm.startPrank(vault.governance());
-        // Governance can link vault.
-        emergencyWithdrawalQueue.linkVault(vault);
+    function testOnlyDeployerCanLinkVault() external {
+        // We can only init once
+        vm.expectRevert("EWQ: init done");
+        emergencyWithdrawalQueue.linkVault(L2Vault(makeAddr("new_vault")));
 
         changePrank(alice);
         // Anyone other than governance trying to link should throw error.
-        vm.expectRevert("EWQ: only governance");
+        vm.expectRevert("EWQ: only owner");
         emergencyWithdrawalQueue.linkVault(vault);
     }
 
