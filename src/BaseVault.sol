@@ -431,8 +431,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
             unchecked {
                 // Update the total profit accrued while counting losses as zero profit.
                 // Cannot overflow as we already increased total holdings without reverting.
-                totalProfitAccrued +=
-                    balanceThisHarvest > balanceLastHarvest
+                totalProfitAccrued += balanceThisHarvest > balanceLastHarvest
                     ? balanceThisHarvest - balanceLastHarvest // Profits since last harvest.
                     : 0; // If the strategy registered a net loss we don't have any new profit.
             }
