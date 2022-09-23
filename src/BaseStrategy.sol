@@ -9,8 +9,13 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 abstract contract BaseStrategy {
     using SafeTransferLib for ERC20;
 
+    constructor(BaseVault _vault) {
+        vault = _vault;
+        asset = ERC20(_vault.asset());
+    }
+
     ///@notice The vault which owns this contract
-    BaseVault public vault;
+    BaseVault public immutable vault;
 
     modifier onlyVault() {
         require(msg.sender == address(vault), "ONLY_VAULT");
@@ -18,7 +23,7 @@ abstract contract BaseStrategy {
     }
 
     /// @notice Returns the underlying ERC20 asset the strategy accepts.
-    ERC20 public asset;
+    ERC20 public immutable asset;
 
     /// @notice Strategy's balance of underlying asset.
     /// @return Strategy's balance.

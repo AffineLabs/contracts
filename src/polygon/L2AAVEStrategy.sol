@@ -3,10 +3,9 @@ pragma solidity ^0.8.13;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
-
-import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
+import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
 import {ILendingPoolAddressesProvider} from "../interfaces/aave/ILendingPoolAddressesProvider.sol";
 import {IAaveIncentivesController} from "../interfaces/aave/IAaveIncentivesController.sol";
 import {ILendingPool} from "../interfaces/aave/ILendingPool.sol";
@@ -36,7 +35,6 @@ contract L2AAVEStrategy is BaseStrategy {
     // Router for swapping reward tokens to `asset`
     IUniLikeSwapRouter public immutable router;
 
-    uint256 public minRewardToSell = 1e15;
     uint256 public constant MAX_BPS = 1e4;
     uint256 public constant PESSIMISM_FACTOR = 1000;
 
@@ -47,9 +45,7 @@ contract L2AAVEStrategy is BaseStrategy {
         address _router,
         address _rewardToken,
         address _wrappedNative
-    ) {
-        vault = _vault;
-        asset = ERC20(vault.asset());
+    ) BaseStrategy(_vault) {
         address[] memory providers = ILendingPoolAddressesProviderRegistry(_registry).getAddressesProvidersList();
         address pool = ILendingPoolAddressesProvider(providers[providers.length - 1]).getLendingPool();
         lendingPool = ILendingPool(pool);
@@ -130,21 +126,16 @@ contract L2AAVEStrategy is BaseStrategy {
     function _claimAndSellRewards() internal {
         incentivesController.claimRewards(getAaveAssets(), type(uint256).max, address(this));
 
-        if (rewardToken != address(asset)) {
-            uint256 rewardTokenBalance = balanceOfRewardToken();
-            if (rewardTokenBalance >= minRewardToSell) {
-                _sellRewardTokenForWant(rewardTokenBalance, 0);
-            }
-        }
-    }
-
-    function _sellRewardTokenForWant(uint256 amountIn, uint256 minOut) internal {
-        if (amountIn == 0) {
-            return;
-        }
+        // Sell reward tokens if we have "1" of them. This only makes sense if the reward token has 18 decimals
+        uint256 rewardTokenBalance = balanceOfRewardToken();
+        if (rewardTokenBalance < 1e18) return;
 
         router.swapExactTokensForTokens(
-            amountIn, minOut, getTokenOutPathV2(address(rewardToken), address(asset)), address(this), block.timestamp
+            rewardTokenBalance,
+            0,
+            getTokenOutPathV2(address(rewardToken), address(asset)),
+            address(this),
+            block.timestamp
         );
     }
 

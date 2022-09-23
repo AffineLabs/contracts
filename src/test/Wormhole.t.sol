@@ -17,6 +17,8 @@ import {Constants} from "../Constants.sol";
 
 // This contract exists solely to test the internal view
 contract MockRouter is L2WormholeRouter {
+    constructor(IWormhole _wormhole) L2WormholeRouter(_wormhole) {}
+
     function validateWormholeMessageEmitter(IWormhole.VM memory vm) public view {
         return _validateWormholeMessageEmitter(vm);
     }
@@ -29,31 +31,23 @@ contract L2WormholeRouterTest is TestPlus {
     L2Vault vault;
     address rebalancer = makeAddr("randomAddr");
 
+    IWormhole wormhole;
+
     function setUp() public {
         vm.createSelectFork("polygon", 31_824_532);
         vault = Deploy.deployL2Vault();
         router = L2WormholeRouter(vault.wormholeRouter());
-
-        // See https://book.wormhole.com/reference/contracts.html for addresses
-        router.initialize(IWormhole(0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7), vault, address(0), uint16(0));
+        wormhole = router.wormhole();
+        router.initialize(vault, address(0), uint16(0));
     }
 
     function testReinitializeFails() public {
         address maliciousWormhole = makeAddr("maliciousWormhole");
         vm.expectRevert("Initializable: contract is already initialized");
-        router.initialize(IWormhole(maliciousWormhole), vault, address(0), uint16(0));
+        router.initialize(vault, address(0), uint16(0));
     }
 
     function testWormholeConfigUpdates() public {
-        // update wormhole address
-        changePrank(governance);
-        router.setWormhole(IWormhole(address(this)));
-        assertEq(address(router.wormhole()), address(this));
-
-        changePrank(alice);
-        vm.expectRevert("Only Governance.");
-        router.setWormhole(IWormhole(address(0)));
-
         // update consistencyLevel
         changePrank(governance);
         router.setConsistencyLevel(100);
@@ -82,10 +76,10 @@ contract L2WormholeRouterTest is TestPlus {
     }
 
     function testMessageValidation() public {
-        MockRouter mockRouter = new MockRouter();
+        MockRouter mockRouter = new MockRouter(wormhole);
         uint16 emitter = uint16(1);
         address otherLayerRouter = makeAddr("otherLayerRouter");
-        mockRouter.initialize(IWormhole(address(0)), vault, otherLayerRouter, emitter);
+        mockRouter.initialize(vault, otherLayerRouter, emitter);
 
         IWormhole.VM memory vaa;
         vaa.emitterChainId = emitter;
@@ -239,13 +233,13 @@ contract L1WormholeRouterTest is TestPlus {
         router = L1WormholeRouter(vault.wormholeRouter());
 
         // See https://book.wormhole.com/reference/contracts.html for addresses
-        router.initialize(IWormhole(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B), vault, address(0), uint16(0));
+        router.initialize(vault, address(0), uint16(0));
     }
 
     function testReinitializeFails() public {
         address maliciousWormhole = makeAddr("maliciousWormhole");
         vm.expectRevert("Initializable: contract is already initialized");
-        router.initialize(IWormhole(maliciousWormhole), vault, address(0), uint16(0));
+        router.initialize(vault, address(0), uint16(0));
     }
 
     function testReportTVL() public {

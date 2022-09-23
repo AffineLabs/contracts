@@ -77,9 +77,6 @@ contract L2Vault is
      *
      */
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {}
-
     function initialize(
         address _governance,
         ERC20 _token,
@@ -103,7 +100,7 @@ contract L2Vault is
         canRequestFromL1 = true;
         lastTVLUpdate = block.timestamp;
 
-        _grantRole(guardianRole, _governance);
+        _grantRole(GUARDIAN_ROLE, _governance);
         _setTrustedForwarder(forwarder);
 
         withdrawalFee = fees[0];
@@ -155,15 +152,15 @@ contract L2Vault is
         return _asset.decimals();
     }
 
-    bytes32 public constant guardianRole = keccak256("GUARDIAN");
+    bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN");
 
     /// @notice Pause the contract
-    function pause() external onlyRole(guardianRole) {
+    function pause() external onlyRole(GUARDIAN_ROLE) {
         _pause();
     }
 
     /// @notice Unpause the contract
-    function unpause() external onlyRole(guardianRole) {
+    function unpause() external onlyRole(GUARDIAN_ROLE) {
         _unpause();
     }
 

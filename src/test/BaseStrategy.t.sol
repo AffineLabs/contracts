@@ -19,7 +19,7 @@ contract BaseStrategyTest is TestPlus {
     function setUp() public {
         rewardToken = new MockERC20("Mock Token", "MT", 18);
         BaseVault vault = Deploy.deployL2Vault();
-        strategy = new TestStrategy(MockERC20(vault.asset()), vault);
+        strategy = new TestStrategy( vault);
     }
 
     function testSweep() public {

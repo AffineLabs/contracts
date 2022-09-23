@@ -12,14 +12,15 @@ import {BaseStrategy as Strategy} from "./BaseStrategy.sol";
 import {AffineGovernable} from "./AffineGovernable.sol";
 import {BridgeEscrow} from "./BridgeEscrow.sol";
 import {WormholeRouter} from "./WormholeRouter.sol";
-import {Multicall} from "./external/Multicall.sol";
+import {Multicallable} from "solady/src/utils/Multicallable.sol";
+import {uncheckedInc} from "./Unchecked.sol";
 
 /**
  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
  * strategy liquidation.
  */
-abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, Multicall {
+abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, Multicallable {
     using SafeTransferLib for ERC20;
 
     /**
@@ -48,7 +49,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         // governance has the admin role and can grant/remove a role to any account
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
         _grantRole(harvesterRole, governance);
-        lastHarvest = block.timestamp;
+        lastHarvest = uint128(block.timestamp);
     }
 
     /**
@@ -206,8 +207,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         // number or empty values we've seen iterating from left to right
         uint256 offset;
 
-        uint256 length = withdrawalQueue.length;
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i = 0; i < MAX_STRATEGIES; i = uncheckedInc(i)) {
             Strategy strategy = withdrawalQueue[i];
             if (address(strategy) == address(0)) {
                 offset += 1;
@@ -226,7 +226,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
      * and allows us to add any realized profits to our lockedProfit
      */
     function removeStrategy(Strategy strategy) external onlyGovernance {
-        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
+        for (uint256 i = 0; i < MAX_STRATEGIES; i = uncheckedInc(i)) {
             if (strategy != withdrawalQueue[i]) continue;
 
             StrategyInfo storage stratInfo = strategies[strategy];
@@ -252,7 +252,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
             // NOTE: Updating maxLockedProfit this way is fine since removeStrategy will always be called with harvest()
             // via multicall
             if (amountWithdrawn > oldBal) {
-                maxLockedProfit += oldBal - amountWithdrawn;
+                maxLockedProfit += uint128(oldBal - amountWithdrawn);
             }
             break;
         }
@@ -267,7 +267,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         external
         onlyRole(harvesterRole)
     {
-        for (uint256 i = 0; i < strategyList.length; i++) {
+        for (uint256 i = 0; i < strategyList.length; i = uncheckedInc(i)) {
             // Get the strategy at the current index.
             Strategy strategy = strategyList[i];
 
@@ -307,7 +307,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
     function _depositIntoStrategies() internal {
         uint256 totalBal = _asset.balanceOf(address(this));
         // All non-zero strategies are active
-        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
+        for (uint256 i = 0; i < MAX_STRATEGIES; i = uncheckedInc(i)) {
             Strategy strategy = withdrawalQueue[i];
             if (address(strategy) == address(0)) {
                 break;
@@ -365,11 +365,11 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
      * @dev Since the time since the last harvest is used to calculate management fees, this is set
      * to `block.timestamp` (instead of 0) during initialization.
      */
-    uint256 public lastHarvest;
+    uint128 public lastHarvest;
     /// @notice The amount of profit *originally* locked after harvesting from a strategy
-    uint256 public maxLockedProfit;
+    uint128 public maxLockedProfit;
     /// @notice Amount of time in seconds that profit takes to fully unlock. See lockedProfit().
-    uint256 public constant lockInterval = 3 hours;
+    uint256 public constant lockInterval = 24 hours;
     uint256 public constant SECS_PER_YEAR = 365 days;
 
     /**
@@ -398,7 +398,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         uint256 totalProfitAccrued;
 
         // Will revert if any of the specified strategies are untrusted.
-        for (uint256 i = 0; i < strategyList.length; i++) {
+        for (uint256 i = 0; i < strategyList.length; i = uncheckedInc(i)) {
             // Get the strategy at the current index.
             Strategy strategy = strategyList[i];
 
@@ -428,14 +428,14 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         }
 
         // Update max unlocked profit based on any remaining locked profit plus new profit.
-        maxLockedProfit = lockedProfit() + totalProfitAccrued;
+        maxLockedProfit = uint128(lockedProfit() + totalProfitAccrued);
 
         // Set strategy holdings to our new total.
         totalStrategyHoldings = newTotalStrategyHoldings;
 
         // Assess fees (using old lastHarvest) and update the last harvest timestamp.
         _assessFees();
-        lastHarvest = block.timestamp;
+        lastHarvest = uint128(block.timestamp);
 
         emit Harvest(msg.sender, strategyList);
     }
@@ -475,7 +475,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
     function _liquidate(uint256 amount) internal returns (uint256) {
         uint256 amountLiquidated;
         uint256 length = withdrawalQueue.length;
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i = 0; i < length; i = uncheckedInc(i)) {
             Strategy strategy = withdrawalQueue[i];
             if (address(strategy) == address(0)) {
                 break;
@@ -513,7 +513,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         // MAX_STRATEGIES is always equal to withdrawalQueue.length
         uint256[MAX_STRATEGIES] memory amountsToInvest;
 
-        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
+        for (uint256 i = 0; i < MAX_STRATEGIES; i = uncheckedInc(i)) {
             Strategy strategy = withdrawalQueue[i];
             if (address(strategy) == address(0)) {
                 break;
@@ -530,7 +530,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         }
 
         // Loop through the strategies to invest in, and invest in them
-        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
+        for (uint256 i = 0; i < MAX_STRATEGIES; i = uncheckedInc(i)) {
             uint256 amountToInvest = amountsToInvest[i];
             if (amountToInvest == 0) continue;
 

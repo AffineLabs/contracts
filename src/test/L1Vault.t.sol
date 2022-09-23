@@ -35,7 +35,7 @@ contract L1VaultTest is TestPlus {
         vm.store(address(vault), bytes32(slot), assetAddr);
         asset = MockERC20(vault.asset());
 
-        L1WormholeRouter(vault.wormholeRouter()).initialize(wormhole, vault, address(0), 1);
+        L1WormholeRouter(vault.wormholeRouter()).initialize(vault, address(0), 1);
     }
 
     function testSendTVL() public {
@@ -61,7 +61,7 @@ contract L1VaultTest is TestPlus {
     }
 
     function testafterReceive() public {
-        BaseStrategy newStrategy1 = new TestStrategy(asset, vault);
+        BaseStrategy newStrategy1 = new TestStrategy(vault);
 
         changePrank(governance);
         vault.addStrategy(newStrategy1, 1);
@@ -78,7 +78,7 @@ contract L1VaultTest is TestPlus {
     function testLockedProfit() public {
         changePrank(governance);
 
-        BaseStrategy newStrategy1 = new TestStrategy(asset, vault);
+        BaseStrategy newStrategy1 = new TestStrategy(vault);
         vault.addStrategy(newStrategy1, 1000);
 
         deal(address(asset), address(newStrategy1), 1000, true);
