@@ -11,6 +11,7 @@ import {L1Vault} from "../ethereum/L1Vault.sol";
 import {BridgeEscrow} from "../BridgeEscrow.sol";
 import {TwoAssetBasket} from "../polygon/TwoAssetBasket.sol";
 import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
+import {IWormhole} from "../interfaces/IWormhole.sol";
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 import {L1WormholeRouter} from "../ethereum/L1WormholeRouter.sol";
 import {L2WormholeRouter} from "../polygon/L2WormholeRouter.sol";
@@ -30,7 +31,8 @@ contract Deploy is Test {
         vault.initialize(
             governance, // governance
             asset, // asset
-            address(new L2WormholeRouter()),
+            // See https://book.wormhole.com/reference/contracts.html for address
+            address(new L2WormholeRouter(IWormhole(0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7))),
             escrow,
             emergencyWithdrawalQueue,
             address(0), // forwarder
@@ -55,7 +57,7 @@ contract Deploy is Test {
         vault.initialize(
             governance, // governance
             asset, // asset
-            address(new L1WormholeRouter()),
+            address(new L1WormholeRouter(IWormhole(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B))),
             escrow,
             manager, // chain manager
             0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf // predicate (eth mainnet)

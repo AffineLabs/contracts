@@ -7,14 +7,15 @@ import {WormholeRouter} from "../WormholeRouter.sol";
 import {Constants} from "../Constants.sol";
 
 contract L1WormholeRouter is WormholeRouter {
+    constructor(IWormhole _wormhole) WormholeRouter(_wormhole) {}
+
     L1Vault vault;
 
-    function initialize(IWormhole _wormhole, L1Vault _vault, address _otherLayerRouter, uint16 _otherLayerChainId)
+    function initialize(L1Vault _vault, address _otherLayerRouter, uint16 _otherLayerChainId)
         external
         initializer
         onlyDeployer
     {
-        wormhole = _wormhole;
         vault = _vault;
         governance = vault.governance();
         otherLayerRouter = _otherLayerRouter;

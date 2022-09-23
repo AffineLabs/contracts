@@ -35,7 +35,7 @@ contract L1VaultTest is TestPlus {
         vm.store(address(vault), bytes32(slot), assetAddr);
         asset = MockERC20(vault.asset());
 
-        L1WormholeRouter(vault.wormholeRouter()).initialize(wormhole, vault, address(0), 1);
+        L1WormholeRouter(vault.wormholeRouter()).initialize(vault, address(0), 1);
     }
 
     function testSendTVL() public {
