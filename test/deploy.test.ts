@@ -42,16 +42,22 @@ describe("Deploy All", async () => {
     expect(await l2BridgeEscrow.token()).to.equal(await l2Vault.asset());
     expect(await l2BridgeEscrow.wormholeRouter()).to.equal(await l2Vault.wormholeRouter());
 
-    // Check wormhole routers
-    expect(await l1Vault.wormholeRouter()).to.equal(wormholeRouters.l1WormholeRouter.address);
-    expect(await l2Vault.wormholeRouter()).to.equal(wormholeRouters.l2WormholeRouter.address);
-
     // Check emergency withdrawal queue deployment
     expect(await l2Vault.emergencyWithdrawalQueue()).to.equal(emergencyWithdrawalQueue.address);
     expect(await emergencyWithdrawalQueue.vault()).to.equal(l2Vault.address);
 
     expect(await wormholeRouters.l1WormholeRouter.wormhole()).to.equal(config.l1.wormhole);
     expect(await wormholeRouters.l2WormholeRouter.wormhole()).to.equal(config.l2.wormhole);
+
+    // Check wormhole routers
+    expect(await wormholeRouters.l1WormholeRouter.wormhole()).to.equal(config.l1.wormhole);
+    expect(await wormholeRouters.l2WormholeRouter.wormhole()).to.equal(config.l2.wormhole);
+
+    expect(await l1Vault.wormholeRouter()).to.equal(wormholeRouters.l1WormholeRouter.address);
+    expect(await l2Vault.wormholeRouter()).to.equal(wormholeRouters.l2WormholeRouter.address);
+
+    expect(await l1Vault.wormholeRouter()).to.equal(wormholeRouters.l1WormholeRouter.address);
+    expect(await l2Vault.wormholeRouter()).to.equal(wormholeRouters.l2WormholeRouter.address);
 
     expect(await wormholeRouters.l1WormholeRouter.otherLayerRouter()).to.equal(
       wormholeRouters.l2WormholeRouter.address,

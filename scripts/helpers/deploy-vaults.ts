@@ -132,13 +132,11 @@ export async function deployVaults(
 
   // Initialize wormhole routers
   await wormholeRouters.l1WormholeRouter.initialize(
-    config.l1.wormhole,
     l1Vault.address,
     wormholeRouters.l2WormholeRouter.address,
     CHAIN_ID_POLYGON,
   );
   await wormholeRouters.l2WormholeRouter.initialize(
-    config.l2.wormhole,
     l2Vault.address,
     wormholeRouters.l1WormholeRouter.address,
     CHAIN_ID_ETH,

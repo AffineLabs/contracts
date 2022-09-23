@@ -29,7 +29,7 @@ export async function deployAll(
 ): Promise<AllContracts> {
   const forwarder = await deployForwarder(polygonNetworkName);
   const router = await deployRouter(polygonNetworkName, forwarder);
-  const wormholeRouters = await deployWormholeRouters(ethNetworkName, polygonNetworkName);
+  const wormholeRouters = await deployWormholeRouters(config, ethNetworkName, polygonNetworkName);
   const vaults = await deployVaults(
     l1Governance,
     l2Governance,

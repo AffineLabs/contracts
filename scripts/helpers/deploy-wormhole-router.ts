@@ -2,8 +2,8 @@ import { ethers } from "hardhat";
 import hre from "hardhat";
 import { logContractDeploymentInfo } from "../utils/bc-explorer-links";
 import { L1WormholeRouter, L2WormholeRouter } from "../../typechain";
-import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
-import { ETH_GOERLI, POLYGON_MUMBAI } from "../utils/constants/blockchain";
+import { addToAddressBookAndDefender } from "../utils/export";
+import { totalConfig } from "../utils/config";
 
 export interface WormholeRouterContracts {
   l1WormholeRouter: L1WormholeRouter;
@@ -11,6 +11,7 @@ export interface WormholeRouterContracts {
 }
 
 export async function deployWormholeRouters(
+  config: totalConfig,
   ethNetworkName: string,
   polygonNetworkName: string,
 ): Promise<WormholeRouterContracts> {
@@ -21,7 +22,7 @@ export async function deployWormholeRouters(
   console.log("about to deploy l1 wormhole router");
   hre.changeNetwork(ethNetworkName);
   const l1WormholeRouterFactory = await ethers.getContractFactory("L1WormholeRouter");
-  const l1WormholeRouter = (await l1WormholeRouterFactory.deploy()) as L1WormholeRouter;
+  const l1WormholeRouter = (await l1WormholeRouterFactory.deploy(config.l1.wormhole)) as L1WormholeRouter;
   await l1WormholeRouter.deployed();
   await addToAddressBookAndDefender(
     ethNetworkName,
@@ -39,7 +40,7 @@ export async function deployWormholeRouters(
    * */
   hre.changeNetwork(polygonNetworkName);
   const l2WormholeRouterFactory = await ethers.getContractFactory("L2WormholeRouter");
-  const l2WormholeRouter = (await l2WormholeRouterFactory.deploy()) as L2WormholeRouter;
+  const l2WormholeRouter = (await l2WormholeRouterFactory.deploy(config.l2.wormhole)) as L2WormholeRouter;
   await l2WormholeRouter.deployed();
   await addToAddressBookAndDefender(
     polygonNetworkName,
