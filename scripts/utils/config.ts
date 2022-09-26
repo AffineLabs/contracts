@@ -10,6 +10,7 @@ export interface l1Config {
   usdc: address;
   wormhole: address;
   create2Deployer: address;
+  create3Deployer: address;
   governance: address;
   compound: {
     cToken: address;
@@ -24,6 +25,7 @@ export interface l2Config {
   usdc: address;
   wormhole: address;
   create2Deployer: address;
+  create3Deployer: address;
   weth: address;
   wbtc: address;
   feeds: {
@@ -54,7 +56,8 @@ export const testConfig: totalConfig = {
     governance: "0xdbA49884464689800BF95C7BbD50eBA0DA0F67b9",
     usdc: "0xb465fBFE1678fF41CD3D749D54d2ee2CfABE06F3",
     wormhole: "0x706abc4E45D419950511e474C7B9Ed348A4a716c",
-    create2Deployer: "0x7F4eD93f8Da2A07008de3f87759d220e2f7B8C40", // Testnet create2 deployer contract deployed by Affine
+    create2Deployer: "0x7F4eD93f8Da2A07008de3f87759d220e2f7B8C40", // Testnet create2 deployer contract deployed by Affine,
+    create3Deployer: "0x5eE23B0201e1637c080cDeF6605B30957e4675EE",
     chainManager: "0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74",
     ERC20Predicate: "0x37c3bfC05d5ebF9EBb3FF80ce0bd0133Bf221BC8",
     compound: {
@@ -70,6 +73,7 @@ export const testConfig: totalConfig = {
     usdc: "0x8f7116CA03AEB48547d0E2EdD3Faa73bfB232538",
     wormhole: "0x0CBE91CF822c73C2315FB05100C2F714765d5c20",
     create2Deployer: "0x7F4eD93f8Da2A07008de3f87759d220e2f7B8C40",
+    create3Deployer: "0x7ec96D742E121007476d7b0098E3D1EEfBd8BE48",
     governance: "0xCBF0C1bA68D22666ef01069b1a42CcC1F0281A9C",
     withdrawFee: 50,
     managementFee: 200,
@@ -98,7 +102,8 @@ export const mainnetConfig: totalConfig = {
     ERC20Predicate: "0x9923263fA127b3d1484cFD649df8f1831c2A74e4",
     usdc: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     wormhole: "0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B",
-    create2Deployer: "0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2", // warning: This can be paused by the owner
+    create2Deployer: "0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2", // warning: This can be paused by the owner,
+    create3Deployer: "0x10A4aA784D2bE45e6e67B909c5cf7E588aA7A257",
     governance: "0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e",
     compound: {
       cToken: "0x39AA39c021dfbaE8faC545936693aC917d5E7563",
@@ -113,6 +118,7 @@ export const mainnetConfig: totalConfig = {
     usdc: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
     wormhole: "0x0CBE91CF822c73C2315FB05100C2F714765d5c20",
     create2Deployer: "0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2",
+    create3Deployer: "0x5185fe072f9eE947bF017C7854470e11C2cFb32a",
     governance: "0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0",
     withdrawFee: 0,
     managementFee: 0,

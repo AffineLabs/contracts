@@ -5,8 +5,6 @@ async function deployAllGoerliMumbai(): Promise<AllContracts> {
   console.log("eth: ", process.env.ETH_NETWORK);
   console.log("polygon: ", process.env.POLYGON_NETWORK);
   return deployAll(
-    testConfig.l1.governance,
-    testConfig.l2.governance,
     process.env.ETH_NETWORK || "eth-goerli-fork",
     process.env.POLYGON_NETWORK || "polygon-mumbai-fork",
     testConfig,

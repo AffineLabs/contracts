@@ -25,19 +25,13 @@ contract BaseVaultLiquidate is BaseVault {
     // NOTE: If foundry made it easy to mock modifiers or write to packed storage slots
     // (we would like to set `_initializing` to true => see Initializable.sol)
     // then we wouldn't need to do this
-    function baseInitialize(address _governance, ERC20 vaultAsset, address _wormholeRouter, BridgeEscrow _bridgeEscrow)
-        public
-        override
-    {
-        governance = _governance;
-        _asset = vaultAsset;
-        wormholeRouter = _wormholeRouter;
-        bridgeEscrow = _bridgeEscrow;
-
-        // All roles use the default admin role
-        // governance has the admin role and can grant/remove a role to any account
-        _grantRole(DEFAULT_ADMIN_ROLE, governance);
-        _grantRole(harvesterRole, governance);
+    function baseInitializeMock(
+        address _governance,
+        ERC20 vaultAsset,
+        address _wormholeRouter,
+        BridgeEscrow _bridgeEscrow
+    ) external {
+        baseInitialize(_governance, vaultAsset, _wormholeRouter, _bridgeEscrow);
     }
 }
 
@@ -52,7 +46,7 @@ contract BaseVaultTest is TestPlus {
         token = new MockERC20("Mock", "MT", 18);
         vault = new BaseVaultLiquidate();
 
-        vault.baseInitialize(
+        vault.baseInitializeMock(
             address(this), // governance
             token, // token
             address(0),

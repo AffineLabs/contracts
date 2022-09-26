@@ -17,20 +17,12 @@ contract BridgeEscrow {
 
     // Number of transactions sent by opposite vault to wormhole contract on opposite chain
     int32 public vaultNonce = -1;
-    address public vault;
-    ERC20 public token;
-    IRootChainManager public rootChainManager;
-    address public wormholeRouter;
+    address public immutable vault;
+    ERC20 public immutable token;
+    IRootChainManager public immutable rootChainManager;
+    address public immutable wormholeRouter;
 
-    address public owner;
-
-    constructor(address _owner) {
-        owner = _owner;
-    }
-
-    function initialize(address _vault, IRootChainManager manager) external {
-        require(msg.sender == owner, "ONLY_OWNER");
-        require(address(vault) == address(0), "INIT_DONE");
+    constructor(address _vault, IRootChainManager manager) {
         vault = _vault;
         wormholeRouter = BaseVault(_vault).wormholeRouter();
         token = ERC20(BaseVault(_vault).asset());
