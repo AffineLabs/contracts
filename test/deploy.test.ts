@@ -35,8 +35,8 @@ describe("Deploy All", async () => {
 
     // Check that bridgeEscrow addresses are the same + are both initialized correctly
     expect(l1BridgeEscrow.address).to.equal(l2BridgeEscrow.address);
-    console.log("bruidgeEscrow  l1 code: ", await l1BridgeEscrow.provider.getCode(l1BridgeEscrow.address));
-    console.log("bruidgeEscrow  l2 code: ", await l2BridgeEscrow.provider.getCode(l2BridgeEscrow.address));
+    console.log("bridgeEscrow  l1 code: ", await l1BridgeEscrow.provider.getCode(l1BridgeEscrow.address));
+    console.log("bridgeEscrow  l2 code: ", await l2BridgeEscrow.provider.getCode(l2BridgeEscrow.address));
     expect(await l1BridgeEscrow.token()).to.equal(await l1Vault.asset());
     expect(await l1BridgeEscrow.wormholeRouter()).to.equal(await l1Vault.wormholeRouter());
     console.log("l2 stuff is below");

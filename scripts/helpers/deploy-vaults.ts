@@ -74,8 +74,8 @@ export async function deployVaults(
   // bytecode concat constructor params
   let bridgeEscrowCreationCode = ethers.utils.hexConcat([escrowFactory.bytecode, constructorParams]);
 
-  let stagindDeployTx = await create3.deploy(escrowSalt, bridgeEscrowCreationCode, 0);
-  await stagindDeployTx.wait();
+  let escrowTx = await create3.deploy(escrowSalt, bridgeEscrowCreationCode, 0);
+  await escrowTx.wait();
   const l1BridgeEscrow = BridgeEscrow__factory.connect(escrowAddr, deployerSigner);
 
   /**
@@ -87,7 +87,7 @@ export async function deployVaults(
   create3 = Create3Deployer__factory.connect(config.l2.create3Deployer, deployerSigner);
 
   // Get ewq address
-  const ewqBytes = ethers.utils.hexZeroPad(`0x${Date.now().toString()}`, 32);
+  const ewqBytes = ethers.utils.hexZeroPad(`0x${(Date.now() + 30).toString()}`, 32);
   const ewqSalt = ethers.utils.keccak256(ewqBytes);
   const ewqAddress = await create3.getDeployed(ewqSalt);
 
@@ -121,10 +121,9 @@ export async function deployVaults(
   );
   // bytecode concat constructor params
   bridgeEscrowCreationCode = ethers.utils.hexConcat([escrowFactory.bytecode, constructorParams]);
-  console.log("l2 creation code: ", { bridgeEscrowCreationCode });
 
-  stagindDeployTx = await create3.deploy(escrowSalt, bridgeEscrowCreationCode, 0, { gasLimit: 15e6 });
-  await stagindDeployTx.wait();
+  escrowTx = await create3.deploy(escrowSalt, bridgeEscrowCreationCode, 0);
+  await escrowTx.wait();
   const l2BridgeEscrow = BridgeEscrow__factory.connect(escrowAddr, deployerSigner);
 
   // Deploy EWQ
