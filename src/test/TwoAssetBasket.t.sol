@@ -19,7 +19,6 @@ import {ERC4626RouterBase} from "../polygon/ERC4626RouterBase.sol";
 contract BtcEthBasketTest is TestPlus {
     TwoAssetBasket basket;
     Router router;
-    // NOTE: using mumbai addresses
     ERC20 usdc = ERC20(0x8f7116CA03AEB48547d0E2EdD3Faa73bfB232538);
     ERC20 btc = ERC20(0xc8BA1fdaf17c1f16C68778fde5f78F3D37cD1509);
     ERC20 weth = ERC20(0x3dd7F3CF122e0460Dba8A75d191b3486752B6A61);
@@ -101,29 +100,41 @@ contract BtcEthBasketTest is TestPlus {
         emit log_named_uint("TotalSupplyOfVault: ", basket.totalSupply());
     }
 
-    function testSlippageCheck() public {
+    function testDepositSlippage() public {
         // The initial deposit gives as many shares as dollars deposited in the vault
         // If we expect 10 shares but only deposit 1 dollar, this will revert
-        uint256 minShares = 10 * 10 ** 18; // We're expecting that we 1 share, but
+        uint256 minShares = 10 * 10 ** 18;
         deal(address(usdc), address(this), 1e6);
-        usdc.approve(address(router), type(uint256).max);
-
-        // basket.deposit will now return 0 shares as the number minted.
-        // Mocking calls to basket does not work in `forge 0.2.0 (92427e7 2022-04-23T00:07:30.015620+00:00`
-        // vm.mockCall(
-        //     address(basket),
-        //     abi.encodeWithSelector(basket.deposit.selector, 100, address(this)),
-        //     abi.encode(1)
-        // );
-
-        // Since we can't mock the call to basket.deposit, router will actually have to call basket.deposit
-        vm.prank(address(router));
         usdc.approve(address(basket), type(uint256).max);
-        usdc.transfer(address(router), 1e6);
-        vm.expectRevert(ERC4626RouterBase.MinSharesError.selector);
-        router.deposit(IERC4626(address(basket)), address(this), 1e6, minShares);
 
-        // TODO: add test for withdrawal check once this mocking works again
+        vm.expectRevert("TAB: min shares");
+        basket.deposit(1e6, address(this), minShares);
+
+        basket.deposit(1e6, address(this), 0);
+    }
+
+    function testWithdrawSlippage() public {
+        deal(address(usdc), address(this), 1e6);
+        usdc.approve(address(basket), type(uint256).max);
+
+        basket.deposit(1e6, address(this), 0);
+
+        vm.expectRevert("TAB: max shares");
+        basket.withdraw(1e6, address(this), address(this), 0);
+
+        basket.withdraw(1e6, address(this), address(this), type(uint256).max);
+    }
+
+    function testRedeemSlippage() public {
+        deal(address(usdc), address(this), 1e6);
+        usdc.approve(address(basket), type(uint256).max);
+
+        uint256 shares = basket.deposit(1e6, address(this), 0);
+
+        vm.expectRevert("TAB: min assets");
+        basket.redeem(shares - 10, address(this), address(this), type(uint256).max);
+
+        basket.redeem(shares, address(this), address(this), 0);
     }
 
     function testBuySplitsFuzz(uint256 balBtc, uint256 balEth) public {

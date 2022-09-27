@@ -118,7 +118,16 @@ contract TwoAssetBasket is
         address indexed caller, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
     );
 
-    function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
+    function deposit(uint256 assets, address receiver) external returns (uint256 shares) {
+        shares = _deposit(assets, receiver);
+    }
+
+    function deposit(uint256 assets, address receiver, uint256 minSharesOut) external returns (uint256 shares) {
+        shares = _deposit(assets, receiver);
+        require(shares > minSharesOut, "TAB: min shares");
+    }
+
+    function _deposit(uint256 assets, address receiver) internal whenNotPaused returns (uint256 shares) {
         // Get current amounts of btc/eth (in dollars) => 8 decimals
         uint256 vaultDollars = Dollar.unwrap(valueOfVault());
 
@@ -165,10 +174,22 @@ contract TwoAssetBasket is
         _mint(receiver, shares);
     }
 
-    function withdraw(uint256 assets, address receiver, address owner)
+    function withdraw(uint256 assets, address receiver, address owner, uint256 maxSharesBurned)
         external
+        returns (uint256 shares)
+    {
+        shares = _withdraw(assets, receiver, owner);
+        require(shares < maxSharesBurned, "TAB: max shares");
+    }
+
+    function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares) {
+        shares = _withdraw(assets, receiver, owner);
+    }
+
+    function _withdraw(uint256 assets, address receiver, address owner)
+        internal
         whenNotPaused
-        returns (uint256 assetsReceived)
+        returns (uint256 shares)
     {
         // Try to get `assets` of `asset` out of vault
         uint256 vaultDollars = Dollar.unwrap(valueOfVault());
@@ -176,7 +197,7 @@ contract TwoAssetBasket is
         // Get dollar amounts of btc and eth to sell
         (Dollar dollarsFromBtc, Dollar dollarsFromEth) = _getSellSplits(assets);
 
-        assetsReceived = _sell(dollarsFromBtc, dollarsFromEth);
+        uint256 assetsReceived = _sell(dollarsFromBtc, dollarsFromEth);
 
         // NOTE: The user eats the slippage and trading fees. E.g. if you request $10 you may only get $9 out
 
@@ -189,19 +210,31 @@ contract TwoAssetBasket is
 
         // Convert from Dollar for easy calculations
         uint256 assetsDollars = Dollar.unwrap(_valueOfToken(asset, assets));
-        uint256 numShares = (assetsDollars * totalSupply()) / vaultDollars;
+        shares = (assetsDollars * totalSupply()) / vaultDollars;
 
         address caller = _msgSender();
         if (caller != owner) {
-            _spendAllowance(owner, caller, numShares);
+            _spendAllowance(owner, caller, shares);
         }
-        _burn(owner, numShares);
+        _burn(owner, shares);
 
-        emit Withdraw(_msgSender(), receiver, owner, assetsReceived, numShares);
+        emit Withdraw(_msgSender(), receiver, owner, assetsReceived, shares);
         asset.safeTransfer(receiver, assetsReceived);
     }
 
-    function redeem(uint256 shares, address receiver, address owner) external whenNotPaused returns (uint256 assets) {
+    function redeem(uint256 shares, address receiver, address owner, uint256 minAssetsOut)
+        external
+        returns (uint256 assets)
+    {
+        assets = _redeem(shares, receiver, owner);
+        require(assets > minAssetsOut, "TAB: min assets");
+    }
+
+    function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets) {
+        assets = _redeem(shares, receiver, owner);
+    }
+
+    function _redeem(uint256 shares, address receiver, address owner) internal whenNotPaused returns (uint256 assets) {
         // Convert shares to dollar amounts
 
         // Try to get `assets` of `asset` out of vault
@@ -235,7 +268,7 @@ contract TwoAssetBasket is
         if (Dollar.unwrap(dollarsFromBtc) > 0) {
             uint256[] memory btcAmounts = uniRouter.swapExactTokensForTokens(
                 // asset token => dollars => btc conversion
-                _tokensFromDollars(btc, dollarsFromBtc),
+                Math.min(_tokensFromDollars(btc, dollarsFromBtc), btc.balanceOf(address(this))),
                 0,
                 pathBtc,
                 address(this),
@@ -247,7 +280,7 @@ contract TwoAssetBasket is
         if (Dollar.unwrap(dollarsFromEth) > 0) {
             uint256[] memory ethAmounts = uniRouter.swapExactTokensForTokens(
                 // asset token => dollars => eth conversion
-                _tokensFromDollars(weth, dollarsFromEth),
+                Math.min(_tokensFromDollars(weth, dollarsFromEth), weth.balanceOf(address(this))),
                 0,
                 pathEth,
                 address(this),
