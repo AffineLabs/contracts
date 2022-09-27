@@ -120,9 +120,7 @@ export async function deployVaults(
     [l2Vault.address, ethers.constants.AddressZero],
   );
   // bytecode concat constructor params
-  bridgeEscrowCreationCode = ethers.utils.hexConcat([escrowFactory.bytecode, constructorParams]);
-
-  escrowTx = await create3.deploy(escrowSalt, bridgeEscrowCreationCode, 0);
+  escrowTx = await create3.deploy(escrowSalt, ethers.utils.hexConcat([escrowFactory.bytecode, constructorParams]), 0);
   await escrowTx.wait();
   const l2BridgeEscrow = BridgeEscrow__factory.connect(escrowAddr, deployerSigner);
 

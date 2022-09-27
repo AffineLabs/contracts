@@ -17,7 +17,9 @@ import {Constants} from "../Constants.sol";
 
 // This contract exists solely to test the internal view
 contract MockRouter is L2WormholeRouter {
-    constructor(IWormhole _wormhole) L2WormholeRouter(_wormhole) {}
+    constructor(L2Vault _vault, IWormhole _wormhole, uint16 _otherLayerChainId)
+        L2WormholeRouter(_vault, _wormhole, _otherLayerChainId)
+    {}
 
     function validateWormholeMessageEmitter(IWormhole.VM memory vm) public view {
         return _validateWormholeMessageEmitter(vm);
@@ -38,13 +40,6 @@ contract L2WormholeRouterTest is TestPlus {
         vault = Deploy.deployL2Vault();
         router = L2WormholeRouter(vault.wormholeRouter());
         wormhole = router.wormhole();
-        router.initialize(vault, address(0), uint16(0));
-    }
-
-    function testReinitializeFails() public {
-        address maliciousWormhole = makeAddr("maliciousWormhole");
-        vm.expectRevert("Initializable: contract is already initialized");
-        router.initialize(vault, address(0), uint16(0));
     }
 
     function testWormholeConfigUpdates() public {
@@ -76,10 +71,8 @@ contract L2WormholeRouterTest is TestPlus {
     }
 
     function testMessageValidation() public {
-        MockRouter mockRouter = new MockRouter(wormhole);
+        MockRouter mockRouter = new MockRouter(vault, wormhole, uint16(1));
         uint16 emitter = uint16(1);
-        address otherLayerRouter = makeAddr("otherLayerRouter");
-        mockRouter.initialize(vault, otherLayerRouter, emitter);
 
         IWormhole.VM memory vaa;
         vaa.emitterChainId = emitter;
@@ -89,15 +82,14 @@ contract L2WormholeRouterTest is TestPlus {
 
         IWormhole.VM memory vaa1;
         vaa1.emitterChainId = uint16(0);
-        vaa1.emitterAddress = bytes32(uint256(uint160(otherLayerRouter)));
-        emit log_named_bytes32("left padded addr: ", bytes32(uint256(uint160(otherLayerRouter))));
+        vaa1.emitterAddress = bytes32(uint256(uint160(address(mockRouter))));
         vm.expectRevert("Wrong emitter chain");
         mockRouter.validateWormholeMessageEmitter(vaa1);
 
         // This will work
         IWormhole.VM memory goodVaa;
         goodVaa.emitterChainId = emitter;
-        goodVaa.emitterAddress = bytes32(uint256(uint160(otherLayerRouter)));
+        goodVaa.emitterAddress = bytes32(uint256(uint160(address(mockRouter))));
         mockRouter.validateWormholeMessageEmitter(goodVaa);
     }
 
@@ -231,15 +223,6 @@ contract L1WormholeRouterTest is TestPlus {
         vm.createSelectFork("ethereum", 14_971_385);
         vault = Deploy.deployL1Vault();
         router = L1WormholeRouter(vault.wormholeRouter());
-
-        // See https://book.wormhole.com/reference/contracts.html for addresses
-        router.initialize(vault, address(0), uint16(0));
-    }
-
-    function testReinitializeFails() public {
-        address maliciousWormhole = makeAddr("maliciousWormhole");
-        vm.expectRevert("Initializable: contract is already initialized");
-        router.initialize(vault, address(0), uint16(0));
     }
 
     function testReportTVL() public {

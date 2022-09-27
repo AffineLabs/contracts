@@ -11,6 +11,9 @@ import {L2Vault} from "../polygon/L2Vault.sol";
 import {L2AAVEStrategy} from "../polygon/L2AAVEStrategy.sol";
 import {Deploy} from "./Deploy.sol";
 
+import {Create3Deployer} from "../Create3Deployer.sol";
+import {BridgeEscrow} from "../BridgeEscrow.sol";
+
 contract AAVEStratTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -19,23 +22,35 @@ contract AAVEStratTest is TestPlus {
     // Mumbai USDC that AAVE takes in
     ERC20 usdc = ERC20(0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e);
 
+    
+
     function setUp() public {
-        vm.createSelectFork("mumbai", 25_804_436);
+        vm.createSelectFork("polygon", 33647841);
         vault = Deploy.deployL2Vault();
         uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
         vm.store(address(vault), bytes32(slot), tokenAddr);
 
-        strategy = new L2AAVEStrategy(
-            vault,
-            0xE6ef11C967898F9525D550014FDEdCFAB63536B5, // aave adress provider registry
-            0x0a1AB7aea4314477D40907412554d10d30A0503F, // dummy incentives controller
-            0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff, // quickswap router on mumbai
-            0x5B67676a984807a212b1c59eBFc9B3568a474F0a, // reward token -> wrapped matic
-            0x5B67676a984807a212b1c59eBFc9B3568a474F0a // wrapped matic address
+        // strategy = new L2AAVEStrategy(
+        //     vault,
+        //     0xE6ef11C967898F9525D550014FDEdCFAB63536B5, // aave adress provider registry
+        //     0x0a1AB7aea4314477D40907412554d10d30A0503F, // dummy incentives controller
+        //     0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff, // quickswap router on mumbai
+        //     0x5B67676a984807a212b1c59eBFc9B3568a474F0a, // reward token -> wrapped matic
+        //     0x5B67676a984807a212b1c59eBFc9B3568a474F0a // wrapped matic address
+        // );
+        // vm.prank(governance);
+        // vault.addStrategy(strategy, 5000);
+    }
+
+    function testTemp() public {
+        Create3Deployer deployer1 = Create3Deployer(0x5185fe072f9eE947bF017C7854470e11C2cFb32a);
+        bytes32 salt = keccak256("who that");
+    
+        address escrow = deployer1.deploy(
+            salt, abi.encodePacked(type(BridgeEscrow).creationCode, abi.encode(address(vault), address(0))), 0
         );
-        vm.prank(governance);
-        vault.addStrategy(strategy, 5000);
+        emit log_named_address("token addr in escrow", address(BridgeEscrow(escrow).token()));
     }
 
     function testStrategyMakesMoney() public {

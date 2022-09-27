@@ -21,7 +21,7 @@ contract EmergencyWithdrawalQueue {
     uint256 public tailPtr = 0;
 
     /// @notice Address of Alpine vault.
-    L2Vault immutable public vault;
+    L2Vault public immutable vault;
 
     /// @notice Debt in shares unit.
     uint256 public shareDebt;
@@ -35,11 +35,11 @@ contract EmergencyWithdrawalQueue {
     );
     event EmergencyWithdrawalQueueDequeue(
         uint256 indexed pos, address indexed owner, address indexed receiver, uint256 shares
-    );    
-    constructor(L2Vault _vault) {
-            vault = _vault;
-    }
+    );
 
+    constructor(L2Vault _vault) {
+        vault = _vault;
+    }
 
     /// @notice current size of the queue
     function size() public view returns (uint256) {
