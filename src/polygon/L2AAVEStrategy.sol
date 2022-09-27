@@ -128,7 +128,9 @@ contract L2AAVEStrategy is BaseStrategy {
 
         // Sell reward tokens if we have "1" of them. This only makes sense if the reward token has 18 decimals
         uint256 rewardTokenBalance = balanceOfRewardToken();
-        if (rewardTokenBalance < 1e18) return;
+        if (rewardTokenBalance < 1e18) {
+            return;
+        }
 
         router.swapExactTokensForTokens(
             rewardTokenBalance,
