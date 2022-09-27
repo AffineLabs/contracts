@@ -15,7 +15,7 @@ import {IConvexClaimZap} from "../interfaces/convex/IConvexClaimZap.sol";
 import {IConvexCrvRewards} from "../interfaces/convex/IConvexCrvRewards.sol";
 import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
 
-contract CurveStratTest is TestPlus {
+contract ConvexUSDCStratTest is TestPlus {
     using stdStorage for StdStorage;
 
     ERC20 usdc = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
@@ -56,9 +56,9 @@ contract CurveStratTest is TestPlus {
 
     function testCanDivest() public {
         // One lp token is worth more than a dollar
-        deal(address(usdc), address(this), 1e6);
+        deal(address(usdc), address(this), 2e6);
         usdc.approve(address(strategy), type(uint256).max);
-        strategy.invest(1e6);
+        strategy.invest(2e6);
 
         vm.prank(address(vault));
         strategy.divest(1e6);

@@ -130,7 +130,7 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
             router.swapExactTokensForTokens(cvxBal, 0, cvxPath, address(this), block.timestamp);
         }
 
-        convexRewardContract.withdrawAllAndUnwrap(false);
+        convexRewardContract.withdrawAllAndUnwrap(true);
 
         // Only divest the amount that you have to
         uint256 assetsToDivest = assets - currAssets;
@@ -144,7 +144,9 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
             curveZapper.remove_liquidity_one_coin(curveLpToken.balanceOf(address(this)), ASSET_INDEX, 0);
         }
 
-        convexBooster.depositAll(convexPid, true);
+        if (curveLpToken.balanceOf(address(this)) > 0) {
+            convexBooster.depositAll(convexPid, true);
+        }
     }
 
     function balanceOfAsset() public view override returns (uint256) {

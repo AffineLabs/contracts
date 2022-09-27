@@ -2,5 +2,5 @@
 pragma solidity ^0.8.13;
 
 interface IConvexCrvRewards {
-    function withdrawAllAndUnwrap(bool claim) external returns(bool);
+    function withdrawAllAndUnwrap(bool claim) external;
 }
