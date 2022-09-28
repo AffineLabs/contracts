@@ -55,7 +55,6 @@ contract ConvexUSDCStratTest is TestPlus {
     }
 
     function testCanDivest() public {
-        // One lp token is worth more than a dollar
         deal(address(usdc), address(this), 2e6);
         usdc.approve(address(strategy), type(uint256).max);
         strategy.invest(2e6);
@@ -64,5 +63,17 @@ contract ConvexUSDCStratTest is TestPlus {
         strategy.divest(1e6);
         emit log_named_uint("vault usdc: ", usdc.balanceOf(address(vault)));
         assert(usdc.balanceOf(address(vault)) == 1e6);
+    }
+
+    function testRewards() public {
+        deal(address(usdc), address(this), 1e12);
+        usdc.approve(address(strategy), type(uint256).max);
+        strategy.invest(1e12);
+
+        uint256 prevTVL = strategy.totalLockedValue();
+        vm.warp(block.timestamp + 365 days);
+
+        uint256 newTVL = strategy.totalLockedValue();
+        assertGt(newTVL, prevTVL);
     }
 }
