@@ -33,7 +33,7 @@ async function sendFunds() {
     await tx.wait();
 
     // Buy $5000 alpSave
-    tx = await alpLarge.deposit(oneUsdc.mul(5_000), user);
+    tx = await alpLarge["deposit(uint256,address)"](oneUsdc.mul(5_000), user);
     await tx.wait();
     console.log(
       "user bals: ",
