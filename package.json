@@ -17,7 +17,7 @@
     "lint:fix": "solhint --fix src/**/*.sol",
     "format": "prettier --check \"**/*.{ts,js}\" && forge fmt --check",
     "format:fix": "prettier --write \"**/*.{ts,js}\" && forge fmt",
-    "postinstall": "yarn build-hh",
+    "postinstall": "yarn build-hh && forge install",
     "prepare": "husky install"
   },
   "author": "Alpine",
