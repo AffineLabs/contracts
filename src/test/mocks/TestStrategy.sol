@@ -8,10 +8,6 @@ import {MockERC20} from "./MockERC20.sol";
 contract TestStrategy is BaseStrategy {
     constructor(BaseVault _vault) BaseStrategy(_vault) {}
 
-    function balanceOfAsset() public view override returns (uint256) {
-        return asset.balanceOf(address(this));
-    }
-
     function invest(uint256 amount) public override {
         asset.transferFrom(address(vault), address(this), amount);
     }

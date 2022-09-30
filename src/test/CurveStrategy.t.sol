@@ -11,7 +11,7 @@ import {L1Vault} from "../ethereum/L1Vault.sol";
 import {CurveStrategy} from "../ethereum/CurveStrategy.sol";
 import {I3CrvMetaPoolZap} from "../interfaces/IMetaPoolZap.sol";
 import {ILiquidityGauge} from "../interfaces/ILiquidityGauge.sol";
-import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 contract CurveStratTest is TestPlus {
     using stdStorage for StdStorage;
@@ -36,7 +36,7 @@ contract CurveStratTest is TestPlus {
                          I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359), 
                          2,
                          ILiquidityGauge(0xd8b712d29381748dB89c36BCa0138d7c75866ddF),
-                         IUniLikeSwapRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D),
+                         IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D),
                          ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52)
                          );
     }
