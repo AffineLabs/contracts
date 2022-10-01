@@ -39,21 +39,20 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         slippageTolerance = _slippageTolerance;
         longPercentage = _longPct;
 
-        borrowAssetFeed = _borrowAssetFeed;
         borrowAsset = _borrowAsset;
+        borrowAssetFeed = _borrowAssetFeed;
+
+        router = _router;
+        abPair = ERC20(_factory.getPair(address(asset), address(borrowAsset)));
 
         address[] memory providers = _registry.getAddressesProvidersList();
         ILendingPoolAddressesProvider provider = ILendingPoolAddressesProvider(providers[providers.length - 1]);
         lendingPool = ILendingPool(provider.getLendingPool());
-        // TODO: Can lending pool provide both aToken and debtToken (variable)
-        // https://docs.aave.com/developers/v/2.0/the-core-protocol/addresses-provider#getaddress
-        (,, address _debtToken) = IProtocolDataProvider(provider.getAddress(bytes32(uint256(1))))
-            .getReserveTokensAddresses(address(borrowAsset));
-        debtToken = ERC20(_debtToken);
+        debtToken = ERC20(lendingPool.getReserveData(address(borrowAsset)).variableDebtTokenAddress);
         aToken = ERC20(lendingPool.getReserveData(address(asset)).aTokenAddress);
 
-        router = _router;
-        abPair = ERC20(_factory.getPair(address(asset), address(borrowAsset)));
+        asset.safeApprove(address(lendingPool), type(uint256).max);
+        aToken.safeApprove(address(lendingPool), type(uint256).max);
         asset.safeApprove(address(_router), type(uint256).max);
         borrowAsset.safeApprove(address(_router), type(uint256).max);
     }
@@ -143,12 +142,10 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
 
         // https://docs.aave.com/developers/v/2.0/the-core-protocol/lendingpool#borrow
         // assetsToDeposit has price uints `asset`, price has units `asset / borrowAsset` ratio. so we divide by price
-        // Scaling price down since `asset` only has six decimals: https://docs.chain.link/docs/data-feeds/price-feeds/
+        // Scaling `asset` to 8 decimals since chainlink provides 8: https://docs.chain.link/docs/data-feeds/price-feeds/
         // TODO: handle both cases (assetDecimals > priceDecimals as well)
-        // Also adding an extra 12 decimals to get to 18 decimals that WMATIC has
-        uint256 borrowAssetsDeposited = (assetsToDeposit / (uint256(price) / 1e2)) * 1e12;
-
-        lendingPool.borrow(address(borrowAsset), borrowAssetsDeposited.mulDivDown(3, 4), 2, 0, msg.sender);
+        uint256 borrowAssetsDeposited = (assetsToDeposit * 1e2 * 1e18) / (uint256(price));
+        lendingPool.borrow(address(borrowAsset), borrowAssetsDeposited.mulDivDown(3, 4), 2, 0, address(this));
 
         // Provide liquidity on uniswap
         // TODO: make slippage parameterizable by caller
