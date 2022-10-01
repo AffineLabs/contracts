@@ -21,6 +21,7 @@ contract DeltaNeutralTest is TestPlus {
     ERC20 usdc = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     ERC20 abPair;
     ERC20 asset;
+    ERC20 borrowAsset;
 
     function setUp() public {
         vm.createSelectFork("polygon", 31_824_532);
@@ -45,6 +46,7 @@ contract DeltaNeutralTest is TestPlus {
 
         abPair = strategy.abPair();
         asset = usdc;
+        borrowAsset = strategy.borrowAsset();
     }
 
     function testCreatePosition() public {
@@ -75,5 +77,20 @@ contract DeltaNeutralTest is TestPlus {
         emit log_named_uint("assetsLP: ", assetsLP);
         emit log_named_uint("assetsInAAve: ", assetsInAAve * 2);
         assertApproxEqRel(assetsLP, assetsInAAve * 2, 0.01e18);
+    }
+
+    function testEndPosition() public {
+        deal(address(asset), address(strategy), 1000e6);
+        strategy.startPosition();
+
+        vm.expectRevert("Ownable: caller is not the owner");
+        vm.prank(alice);
+        strategy.endPosition();
+
+        strategy.endPosition();
+
+        assertApproxEqRel(asset.balanceOf(address(strategy)), 1000e6, 0.02e18);
+        assertEq(borrowAsset.balanceOf(address(strategy)), 0);
+        assertEq(abPair.balanceOf(address(strategy)), 0);
     }
 }

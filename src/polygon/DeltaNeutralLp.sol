@@ -51,10 +51,16 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         debtToken = ERC20(lendingPool.getReserveData(address(borrowAsset)).variableDebtTokenAddress);
         aToken = ERC20(lendingPool.getReserveData(address(asset)).aTokenAddress);
 
+        // Depositing/withdrawing/repaying debt from lendingPool
         asset.safeApprove(address(lendingPool), type(uint256).max);
         aToken.safeApprove(address(lendingPool), type(uint256).max);
+        borrowAsset.safeApprove(address(lendingPool), type(uint256).max);
+
+        // To trade usdc/matic
         asset.safeApprove(address(_router), type(uint256).max);
         borrowAsset.safeApprove(address(_router), type(uint256).max);
+        // To remove liquidity
+        abPair.safeApprove(address(_router), type(uint256).max);
     }
 
     function balanceOfAsset() public view override returns (uint256) {
@@ -199,14 +205,12 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         router.removeLiquidity(
             address(asset), address(borrowAsset), abPair.balanceOf(address(this)), 0, 0, address(this), block.timestamp
         );
-        // Buy enough matic to pay back debt
 
-        // Get current debt
+        // Buy enough matic to pay back debt
         uint256 debt = debtToken.balanceOf(address(this));
-        // Pay back debt
         uint256 bBal = borrowAsset.balanceOf(address(this));
-        uint256 maticToBuy = debt - bBal > 0 ? debt - bBal : 0;
-        uint256 maticToSell = bBal - debt > 0 ? bBal - debt : 0;
+        uint256 maticToBuy = debt > bBal ? debt - bBal : 0;
+        uint256 maticToSell = bBal > debt ? bBal - debt : 0;
 
         if (maticToBuy > 0) {
             address[] memory path = new address[](2);
@@ -223,6 +227,9 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
             path[1] = address(asset);
             router.swapExactTokensForTokens(maticToSell, 0, path, address(this), block.timestamp);
         }
+
+        // Repay debt
+        lendingPool.repay(address(borrowAsset), debt, 2, address(this));
 
         // Withdraw from aave
         lendingPool.withdraw(address(asset), aToken.balanceOf(address(this)), address(this));
