@@ -78,7 +78,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         path[0] = address(borrowAsset);
         path[1] = address(asset);
 
-        uint256[] memory amounts = router.getAmountsOut(amountB, path);
+        uint256[] memory amounts = router.getAmountsOut({amountIn: amountB, path: path});
         assets = amounts[1];
     }
 
@@ -143,7 +143,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         // .75x = Total - x => 1.75x = Total => x = Total / 1.75 => Total * 4/7
         // Deposit asset in aave
         uint256 assetsToDeposit = (assets - assetsToMatic).mulDivDown(4, 7);
-        lendingPool.deposit(address(asset), assetsToDeposit, address(this), 0);
+        lendingPool.deposit({asset: address(asset), amount: assetsToDeposit, onBehalfOf: address(this), referralCode: 0});
 
         // Convert assetsToDeposit into `borrowAsset` (e.g. WMATIC) units
         (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = borrowAssetFeed.latestRoundData();
@@ -156,29 +156,41 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         // Scaling `asset` to 8 decimals since chainlink provides 8: https://docs.chain.link/docs/data-feeds/price-feeds/
         // TODO: handle both cases (assetDecimals > priceDecimals as well)
         uint256 borrowAssetsDeposited = (assetsToDeposit * 1e2 * 1e18) / (uint256(price));
-        lendingPool.borrow(address(borrowAsset), borrowAssetsDeposited.mulDivDown(3, 4), 2, 0, address(this));
+        lendingPool.borrow({
+            asset: address(borrowAsset),
+            amount: borrowAssetsDeposited.mulDivDown(3, 4),
+            interestRateMode: 2,
+            referralCode: 0,
+            onBehalfOf: address(this)
+        });
 
         // Provide liquidity on uniswap
         // TODO: make slippage parameterizable by caller
         uint256 bBal = borrowAsset.balanceOf(address(this));
         uint256 aBal = assets - assetsToMatic - assetsToDeposit;
-        router.addLiquidity(
-            address(asset),
-            address(borrowAsset),
-            aBal,
-            bBal,
-            aBal.mulDivDown(98, 100),
-            bBal.mulDivDown(98, 100),
-            address(this),
-            block.timestamp
-        );
+        router.addLiquidity({
+            tokenA: address(asset),
+            tokenB: address(borrowAsset),
+            amountADesired: aBal,
+            amountBDesired: bBal,
+            amountAMin: aBal.mulDivDown(98, 100),
+            amountBMin: bBal.mulDivDown(98, 100),
+            to: address(this),
+            deadline: block.timestamp
+        });
 
         // Buy Matic. The strat now holds only lp tokens and a little bit of matic
         address[] memory path = new address[](2);
         path[0] = address(asset);
         path[1] = address(borrowAsset);
 
-        router.swapExactTokensForTokens(assetsToMatic, 0, path, address(this), block.timestamp);
+        router.swapExactTokensForTokens({
+            amountIn: assetsToMatic,
+            amountOutMin: 0,
+            path: path,
+            to: address(this),
+            deadline: block.timestamp
+        });
     }
 
     /// @dev This strategy should be put at the end of the WQ so that we rarely divest from it. Divestment
@@ -207,9 +219,15 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
 
         // Remove liquidity
         // TODO: handle slippage
-        router.removeLiquidity(
-            address(asset), address(borrowAsset), abPair.balanceOf(address(this)), 0, 0, address(this), block.timestamp
-        );
+        router.removeLiquidity({
+            tokenA: address(asset),
+            tokenB: address(borrowAsset),
+            liquidity: abPair.balanceOf(address(this)),
+            amountAMin: 0,
+            amountBMin: 0,
+            to: address(this),
+            deadline: block.timestamp
+        });
 
         // Buy enough matic to pay back debt
         uint256 debt = debtToken.balanceOf(address(this));
@@ -222,21 +240,31 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
             path[0] = address(asset);
             path[1] = address(borrowAsset);
 
-            router.swapTokensForExactTokens(
-                maticToBuy, asset.balanceOf(address(this)), path, address(this), block.timestamp
-            );
+            router.swapTokensForExactTokens({
+                amountOut: maticToBuy,
+                amountInMax: asset.balanceOf(address(this)),
+                path: path,
+                to: address(this),
+                deadline: block.timestamp
+            });
         }
         if (maticToSell > 0) {
             address[] memory path = new address[](2);
             path[0] = address(borrowAsset);
             path[1] = address(asset);
-            router.swapExactTokensForTokens(maticToSell, 0, path, address(this), block.timestamp);
+            router.swapExactTokensForTokens({
+                amountIn: maticToSell,
+                amountOutMin: 0,
+                path: path,
+                to: address(this),
+                deadline: block.timestamp
+            });
         }
 
         // Repay debt
-        lendingPool.repay(address(borrowAsset), debt, 2, address(this));
+        lendingPool.repay({asset: address(borrowAsset), amount: debt, rateMode: 2, onBehalfOf: address(this)});
 
         // Withdraw from aave
-        lendingPool.withdraw(address(asset), aToken.balanceOf(address(this)), address(this));
+        lendingPool.withdraw({asset: address(asset), amount: aToken.balanceOf(address(this)), to: address(this)});
     }
 }
