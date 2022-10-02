@@ -69,6 +69,11 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
 
     /// @notice Convert `borrowAsset` (e.g. MATIC) to `asset` (e.g. USDC)
     function _borrowToAsset(uint256 amountB) internal view returns (uint256 assets) {
+        if (amountB == 0) {
+            assets = 0;
+            return assets;
+        }
+
         address[] memory path = new address[](2);
         path[0] = address(borrowAsset);
         path[1] = address(asset);

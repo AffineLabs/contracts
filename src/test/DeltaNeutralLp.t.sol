@@ -63,6 +63,7 @@ contract DeltaNeutralTest is TestPlus {
         uint256 amountMatic = amounts[1];
 
         strategy.startPosition();
+        assertFalse(strategy.canStartNewPos());
 
         // I got the right amount of matic
         assertApproxEqAbs(amountMatic, strategy.borrowAsset().balanceOf(address(strategy)), 1e18);
@@ -89,8 +90,37 @@ contract DeltaNeutralTest is TestPlus {
 
         strategy.endPosition();
 
+        assertTrue(strategy.canStartNewPos());
+
         assertApproxEqRel(asset.balanceOf(address(strategy)), 1000e6, 0.02e18);
         assertEq(borrowAsset.balanceOf(address(strategy)), 0);
         assertEq(abPair.balanceOf(address(strategy)), 0);
+    }
+
+    function testTVL() public {
+        assertEq(strategy.totalLockedValue(), 0);
+        deal(address(asset), address(strategy), 1000e6);
+        strategy.startPosition();
+
+        assertApproxEqRel(strategy.totalLockedValue(), 1000e6, 0.02e18);
+    }
+
+    function testDivest() public {
+        // If there's no position active, we just send our current balance
+        deal(address(asset), address(strategy), 1);
+        vm.prank(address(vault));
+        strategy.divest(1);
+        assertEq(asset.balanceOf(address(vault)), 1);
+
+        deal(address(asset), address(strategy), 1000e6);
+        strategy.startPosition();
+
+        // We unwind position if there is a one
+        vm.prank(address(vault));
+        strategy.divest(type(uint256).max);
+
+        assertTrue(strategy.canStartNewPos());
+        assertEq(strategy.totalLockedValue(), 0);
+        assertApproxEqRel(asset.balanceOf(address(vault)), 1000e6, 0.02e18);
     }
 }
