@@ -51,7 +51,7 @@ contract CurveStratTest is TestPlus {
 
         assertGt(ERC20(strategy.metaPool()).balanceOf(address(strategy)), 0);
         emit log_named_uint("strat tvl: ", strategy.totalLockedValue());
-        assertApproxEqRel(strategy.totalLockedValue(), 1e6, 1e18);
+        assertApproxEqRel(strategy.totalLockedValue(), 1e6, 0.1e18);
     }
 
     function testCanDivest() public {
