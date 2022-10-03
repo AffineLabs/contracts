@@ -227,7 +227,9 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
      */
     function removeStrategy(Strategy strategy) external onlyGovernance {
         for (uint256 i = 0; i < MAX_STRATEGIES; i = uncheckedInc(i)) {
-            if (strategy != withdrawalQueue[i]) continue;
+            if (strategy != withdrawalQueue[i]) {
+                continue;
+            }
 
             StrategyInfo storage stratInfo = strategies[strategy];
             stratInfo.isActive = false;
@@ -532,14 +534,18 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
         // Loop through the strategies to invest in, and invest in them
         for (uint256 i = 0; i < MAX_STRATEGIES; i = uncheckedInc(i)) {
             uint256 amountToInvest = amountsToInvest[i];
-            if (amountToInvest == 0) continue;
+            if (amountToInvest == 0) {
+                continue;
+            }
 
             // We aren't guaranteed that the vault has `amountToInvest` since there can be slippage
             // when divesting from strategies
             // NOTE: Strategies closer to the start of the queue are more likely to get the exact
             // amount of money needed
             amountToInvest = Math.min(amountToInvest, _asset.balanceOf(address(this)));
-            if (amountToInvest == 0) break;
+            if (amountToInvest == 0) {
+                break;
+            }
 
             Strategy strategy = withdrawalQueue[i];
             _asset.safeApprove(address(strategy), amountToInvest);
