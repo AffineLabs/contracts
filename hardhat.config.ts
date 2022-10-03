@@ -2,19 +2,14 @@ import { config as dotenvConfig } from "dotenv";
 import { resolve, join, sep } from "path";
 dotenvConfig({ path: resolve(__dirname, "./.env") });
 
-import { HardhatUserConfig } from "hardhat/types";
-import { NetworkUserConfig } from "hardhat/types";
+import { HardhatUserConfig, NetworkUserConfig } from "hardhat/types";
 
-import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
 import "@nomiclabs/hardhat-ethers";
-import "@nomiclabs/hardhat-waffle";
 
 import "@nomiclabs/hardhat-etherscan";
 import "hardhat-change-network";
-import "hardhat-gas-reporter";
 import "hardhat-abi-exporter";
-import "hardhat-contract-sizer";
 import "@primitivefi/hardhat-dodoc";
 import "@openzeppelin/hardhat-upgrades";
 import "@openzeppelin/hardhat-defender";
@@ -111,11 +106,7 @@ const config: HardhatUserConfig = {
       polygonMumbai: POLYGONSCAN_API_KEY,
     },
   },
-  gasReporter: {
-    currency: "USD",
-    gasPrice: 100,
-    enabled: process.env.REPORT_GAS ? true : false,
-  },
+
   typechain: {
     outDir: "typechain",
     target: "ethers-v5",
@@ -132,9 +123,7 @@ const config: HardhatUserConfig = {
     // We use both Openzeppelin and solmate ERC20, so exporting abi will throw "duplicate output destination" error
     except: [":ERC20$"],
   },
-  contractSizer: {
-    only: ["Vault|BridgeEscrow"],
-  },
+
   dodoc: {
     include: ["src"],
     exclude: ["test"],

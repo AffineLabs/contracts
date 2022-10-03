@@ -136,6 +136,9 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
             router.swapExactTokensForTokens(cvxBal, 0, cvxPath, address(this), block.timestamp);
         }
 
+        // TODO: Find a way to not withdraw all and depositing back the leftover.
+        // Calculate what amount is needed to facilitate the withdrawal of desired amount of
+        // assets.
         convexRewardContract.withdrawAllAndUnwrap(true);
 
         // Only divest the amount that you have to
