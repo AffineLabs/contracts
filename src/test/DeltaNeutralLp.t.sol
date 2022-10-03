@@ -7,8 +7,8 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import {IUniswapV2Router01} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
-import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
 
 import {L2Vault} from "../polygon/L2Vault.sol";
 import {DeltaNeutralLp, ILendingPoolAddressesProviderRegistry} from "../polygon/DeltaNeutralLp.sol";
@@ -37,7 +37,7 @@ contract DeltaNeutralTest is TestPlus {
         ILendingPoolAddressesProviderRegistry(0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19),
         ERC20(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270),
         AggregatorV3Interface(0xAB594600376Ec9fD91F8e885dADF0CE036862dE0),
-        IUniLikeSwapRouter(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506), // sushiswap
+        IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506), // sushiswap
         IUniswapV2Factory(0xc35DADB65012eC5796536bD9864eD8773aBc74C4) // sushiswap
         );
 

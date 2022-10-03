@@ -11,7 +11,7 @@ import {L1Vault} from "../ethereum/L1Vault.sol";
 import {ICToken} from "../interfaces/compound/ICToken.sol";
 import {IComptroller} from "../interfaces/compound/IComptroller.sol";
 import {L1CompoundStrategy} from "../ethereum/L1CompoundStrategy.sol";
-import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 contract CompoundStratTest is TestPlus {
     using stdStorage for StdStorage;
@@ -42,7 +42,7 @@ contract CompoundStratTest is TestPlus {
             vault,
             ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563), // cToken
             IComptroller(comptrollerAddr), // Comptroller
-            IUniLikeSwapRouter(uniLikeSwapRouterAddr), // sushiswap router in eth mainnet
+            IUniswapV2Router02(uniLikeSwapRouterAddr), // sushiswap router in eth mainnet
             0xc00e94Cb662C3520282E6f5717214004A7f26888, // reward token -> comp token
             0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 // wrapped eth address
         );

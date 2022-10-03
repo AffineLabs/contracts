@@ -15,7 +15,7 @@ import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Cont
 import {BaseRelayRecipient} from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
 import {AffineGovernable} from "../AffineGovernable.sol";
-import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 import {Dollar, DollarMath} from "../DollarMath.sol";
 import {DetailedShare} from "./Detailed.sol";
@@ -38,7 +38,7 @@ contract TwoAssetBasket is
 
     uint256[2] public ratios;
 
-    IUniLikeSwapRouter public uniRouter;
+    IUniswapV2Router02 public uniRouter;
 
     // These must be USD price feeds for btc and weth
     mapping(ERC20 => AggregatorV3Interface) public tokenToOracle;
@@ -46,7 +46,7 @@ contract TwoAssetBasket is
     function initialize(
         address _governance,
         address forwarder,
-        IUniLikeSwapRouter _uniRouter,
+        IUniswapV2Router02 _uniRouter,
         ERC20 _asset,
         ERC20[2] memory _tokens,
         uint256[2] memory _ratios,

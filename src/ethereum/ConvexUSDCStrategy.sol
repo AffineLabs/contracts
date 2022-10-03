@@ -12,7 +12,7 @@ import {ICurveUSDCStableSwapZap} from "../interfaces/curve/ICurveUSDCStableSwapZ
 import {IConvexBooster} from "../interfaces/convex/IConvexBooster.sol";
 import {IConvexClaimZap} from "../interfaces/convex/IConvexClaimZap.sol";
 import {IConvexCrvRewards} from "../interfaces/convex/IConvexCrvRewards.sol";
-import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 contract ConvexUSDCStrategy is BaseStrategy, Ownable {
     using SafeTransferLib for ERC20;
@@ -39,7 +39,7 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
     IConvexCrvRewards public immutable convexRewardContract;
     address[] public convexRewardContracts;
 
-    IUniLikeSwapRouter public immutable router;
+    IUniswapV2Router02 public immutable router;
     ERC20 public immutable crv;
     ERC20 public immutable cvx;
 
@@ -50,7 +50,7 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
         IConvexBooster _convexBooster,
         IConvexClaimZap _convexClaimZap,
         IConvexCrvRewards _convexRewardContract,
-        IUniLikeSwapRouter _router
+        IUniswapV2Router02 _router
     ) BaseStrategy(_vault) {
         curveZapper = _curveZapper;
         curveLpToken = ERC20(curveZapper.lp_token());
@@ -156,10 +156,6 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
         if (curveLpToken.balanceOf(address(this)) > 0) {
             convexBooster.depositAll(convexPid, true);
         }
-    }
-
-    function balanceOfAsset() public view override returns (uint256) {
-        return asset.balanceOf(address(this));
     }
 
     function totalLockedValue() external override returns (uint256) {

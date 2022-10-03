@@ -7,19 +7,18 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
-import {ILendingPoolAddressesProvider} from "../interfaces/aave/ILendingPoolAddressesProvider.sol";
-import {ILendingPool} from "../interfaces/aave/ILendingPool.sol";
-import {IProtocolDataProvider} from "../interfaces/aave/IProtocolDataProvider.sol";
-import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
+import {
+    ILendingPoolAddressesProviderRegistry,
+    ILendingPoolAddressesProvider,
+    ILendingPool,
+    IProtocolDataProvider
+} from "../interfaces/aave.sol";
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
-
-interface ILendingPoolAddressesProviderRegistry {
-    function getAddressesProvidersList() external view returns (address[] memory);
-}
 
 contract DeltaNeutralLp is BaseStrategy, Ownable {
     using SafeTransferLib for ERC20;
@@ -32,7 +31,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         ILendingPoolAddressesProviderRegistry _registry,
         ERC20 _borrowAsset,
         AggregatorV3Interface _borrowAssetFeed,
-        IUniLikeSwapRouter _router,
+        IUniswapV2Router02 _router,
         IUniswapV2Factory _factory
     ) BaseStrategy(_vault) {
         canStartNewPos = true;
@@ -61,10 +60,6 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         borrowAsset.safeApprove(address(_router), type(uint256).max);
         // To remove liquidity
         abPair.safeApprove(address(_router), type(uint256).max);
-    }
-
-    function balanceOfAsset() public view override returns (uint256) {
-        return asset.balanceOf(address(this));
     }
 
     /// @notice Convert `borrowAsset` (e.g. MATIC) to `asset` (e.g. USDC)
@@ -110,7 +105,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
     /// @notice Fixed point number describing the percentage of the position with which to go long. 1e18 = 1 = 100%
     uint256 public longPercentage;
 
-    IUniLikeSwapRouter public immutable router;
+    IUniswapV2Router02 public immutable router;
     /// @notice The address of the Uniswap Lp token (the asset-borrowAsset pair)
     ERC20 public immutable abPair;
 

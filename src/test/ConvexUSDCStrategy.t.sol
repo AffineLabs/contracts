@@ -13,7 +13,7 @@ import {ICurveUSDCStableSwapZap} from "../interfaces/curve/ICurveUSDCStableSwapZ
 import {IConvexBooster} from "../interfaces/convex/IConvexBooster.sol";
 import {IConvexClaimZap} from "../interfaces/convex/IConvexClaimZap.sol";
 import {IConvexCrvRewards} from "../interfaces/convex/IConvexCrvRewards.sol";
-import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 contract ConvexUSDCStratTest is TestPlus {
     using stdStorage for StdStorage;
@@ -39,7 +39,7 @@ contract ConvexUSDCStratTest is TestPlus {
             IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31),
             IConvexClaimZap(0xDd49A93FDcae579AE50B4b9923325e9e335ec82B),
             IConvexCrvRewards(0x7e880867363A7e321f5d260Cade2B0Bb2F717B02),
-            IUniLikeSwapRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D)
+            IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D)
         );
     }
 
