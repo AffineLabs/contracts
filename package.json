@@ -63,7 +63,6 @@
     "yarn-upgrade-all": "^0.7.0"
   },
   "dependencies": {
-    "@aave/protocol-v2": "^1.0.1",
     "@certusone/wormhole-sdk": "^0.1.4",
     "@improbable-eng/grpc-web-node-http-transport": "^0.15.0",
     "@opengsn/contracts": "^2.2.5",

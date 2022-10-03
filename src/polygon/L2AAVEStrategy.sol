@@ -6,17 +6,16 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-import {ILendingPoolAddressesProvider} from "../interfaces/aave/ILendingPoolAddressesProvider.sol";
-import {IAaveIncentivesController} from "../interfaces/aave/IAaveIncentivesController.sol";
-import {ILendingPool} from "../interfaces/aave/ILendingPool.sol";
-import {IAToken} from "../interfaces/aave/IAToken.sol";
+import {
+    ILendingPoolAddressesProviderRegistry,
+    ILendingPoolAddressesProvider,
+    IAaveIncentivesController,
+    ILendingPool,
+    IAToken
+} from "../interfaces/aave.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
-
-interface ILendingPoolAddressesProviderRegistry {
-    function getAddressesProvidersList() external view returns (address[] memory);
-}
 
 contract L2AAVEStrategy is BaseStrategy {
     using SafeTransferLib for ERC20;
