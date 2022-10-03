@@ -9,7 +9,7 @@ import {Deploy} from "./Deploy.sol";
 
 import {L1Vault} from "../ethereum/L1Vault.sol";
 import {ConvexUSDCStrategy} from "../ethereum/ConvexUSDCStrategy.sol";
-import {IUSDCMetaPoolZap} from "../interfaces/IMetaPoolZap.sol";
+import {ICurveUSDCStableSwapZap} from "../interfaces/curve/ICurveUSDCStableSwapZap.sol";
 import {IConvexBooster} from "../interfaces/convex/IConvexBooster.sol";
 import {IConvexClaimZap} from "../interfaces/convex/IConvexClaimZap.sol";
 import {IConvexCrvRewards} from "../interfaces/convex/IConvexCrvRewards.sol";
@@ -34,7 +34,7 @@ contract ConvexUSDCStratTest is TestPlus {
         );
         strategy = new ConvexUSDCStrategy(
             vault, 
-            IUSDCMetaPoolZap(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
+            ICurveUSDCStableSwapZap(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
             100,
             IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31),
             IConvexClaimZap(0xDd49A93FDcae579AE50B4b9923325e9e335ec82B),
@@ -50,8 +50,12 @@ contract ConvexUSDCStratTest is TestPlus {
         usdc.approve(address(strategy), type(uint256).max);
         strategy.invest(1e6);
 
-        emit log_named_uint("strat tvl: ", strategy.totalLockedValue());
-        assertApproxEqRel(strategy.totalLockedValue(), 1e6, 1e18);
+        uint256 rewardTokenBalance = strategy.convexPoolCrvRewardsToken().balanceOf(address(strategy));
+        assertGt(rewardTokenBalance, 0);
+
+        uint256 tvl = strategy.totalLockedValue();
+        emit log_named_uint("strat tvl: ", tvl);
+        assertApproxEqRel(tvl, 1e6, 1e18);
     }
 
     function testCanDivest() public {
@@ -75,5 +79,7 @@ contract ConvexUSDCStratTest is TestPlus {
 
         uint256 newTVL = strategy.totalLockedValue();
         assertGt(newTVL, prevTVL);
+        assertGt(strategy.cvx().balanceOf(address(strategy)), 0);
+        assertGt(strategy.crv().balanceOf(address(strategy)), 0);
     }
 }

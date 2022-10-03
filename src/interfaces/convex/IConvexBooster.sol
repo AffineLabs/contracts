@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.13;
 
+// See https://docs.convexfinance.com/convexfinanceintegration/booster
 struct PoolInfo {
     address lptoken;
     address token;

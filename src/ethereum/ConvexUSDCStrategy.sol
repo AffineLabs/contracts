@@ -8,7 +8,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
-import {IUSDCMetaPoolZap} from "../interfaces/IMetaPoolZap.sol";
+import {ICurveUSDCStableSwapZap} from "../interfaces/curve/ICurveUSDCStableSwapZap.sol";
 import {IConvexBooster} from "../interfaces/convex/IConvexBooster.sol";
 import {IConvexClaimZap} from "../interfaces/convex/IConvexClaimZap.sol";
 import {IConvexCrvRewards} from "../interfaces/convex/IConvexCrvRewards.sol";
@@ -17,29 +17,35 @@ import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
 contract ConvexUSDCStrategy is BaseStrategy, Ownable {
     using SafeTransferLib for ERC20;
 
+    // Asset index of USDC during deposit and withdraw.
     int128 public constant ASSET_INDEX = 1;
-    uint256 public constant CRV_SWAP_THRESHOLD = 10e18; // 10 CRV
+    uint256 public constant CRV_SWAP_THRESHOLD = 1e17; // 0.1 CRV
     uint256 public constant CVX_SWAP_THRESHOLD = 10e18; // 10 CVX
 
-    IUSDCMetaPoolZap public immutable curveZapper;
+    // https://curve.readthedocs.io/exchange-deposits.html#curve-stableswap-exchange-deposit-contracts
+    ICurveUSDCStableSwapZap public immutable curveZapper;
     ERC20 public immutable curveLpToken;
 
+    // Reward token issued by convex
     ERC20 public immutable convexPoolCrvRewardsToken;
+    // Pool ID of the convex pool.
     uint256 public immutable convexPid;
+    // Convex booster contract address. Used for depositing.
     IConvexBooster public immutable convexBooster;
+    // Claim Zap contract. This contract is used for claiming rewards for staking
+    // curve LP tokens to convex pools.
     IConvexClaimZap public immutable convexClaimZap;
+    // Reward contact address consumed by the convexClaimZap contract.
     IConvexCrvRewards public immutable convexRewardContract;
     address[] public convexRewardContracts;
 
     IUniLikeSwapRouter public immutable router;
     ERC20 public immutable crv;
-    address[] public crvPath = new address[](2);
     ERC20 public immutable cvx;
-    address[] public cvxPath = new address[](2);
 
     constructor(
         BaseVault _vault,
-        IUSDCMetaPoolZap _curveZapper,
+        ICurveUSDCStableSwapZap _curveZapper,
         uint256 _convexPid,
         IConvexBooster _convexBooster,
         IConvexClaimZap _convexClaimZap,
@@ -60,16 +66,8 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
         crv = ERC20(convexClaimZap.crv());
         cvx = ERC20(convexClaimZap.cvx());
 
-        crvPath[0] = address(crv);
-        crvPath[1] = address(asset);
-
-        cvxPath[0] = address(cvx);
-        cvxPath[1] = address(asset);
-
         asset.safeApprove(address(curveZapper), type(uint256).max);
         curveLpToken.safeApprove(address(convexBooster), type(uint256).max);
-        crv.safeApprove(address(convexClaimZap), type(uint256).max);
-        cvx.safeApprove(address(convexClaimZap), type(uint256).max);
     }
 
     function invest(uint256 amount) external override {
@@ -79,7 +77,7 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
     }
 
     function _deposit(uint256 assets) internal {
-        // e.g. in a FRAX-USDC metapool, the 0 index is for FRAX and the index 1 is for USDC.
+        // e.g. in a FRAX-USDC stableswap pool, the 0 index is for FRAX and the index 1 is for USDC.
         uint256[2] memory depositAmounts = [0, assets];
         // TODO: reconsider infinite slippage.
         curveZapper.add_liquidity(depositAmounts, 0);
@@ -119,12 +117,20 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
         _claimAllRewards();
 
         // Sell crv rewards if we have at least CRV_SWAP_THRESHOLD tokens
+        address[] memory crvPath = new address[](2);
+        crvPath[0] = address(crv);
+        crvPath[1] = address(asset);
+
         uint256 crvBal = crv.balanceOf(address(this));
         if (crvBal >= CRV_SWAP_THRESHOLD) {
             router.swapExactTokensForTokens(crvBal, 0, crvPath, address(this), block.timestamp);
         }
 
         // Sell cvx rewards if we have at least CVX_SWAP_THRESHOLD tokens
+        address[] memory cvxPath = new address[](2);
+        cvxPath[0] = address(cvx);
+        cvxPath[1] = address(asset);
+
         uint256 cvxBal = cvx.balanceOf(address(this));
         if (cvxBal >= CVX_SWAP_THRESHOLD) {
             router.swapExactTokensForTokens(cvxBal, 0, cvxPath, address(this), block.timestamp);
@@ -159,15 +165,21 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
         uint256 assetsFromCrv;
         uint256 crvBal = crv.balanceOf(address(this));
         if (crvBal >= CRV_SWAP_THRESHOLD) {
-            uint256[] memory amounts = router.getAmountsOut(crvBal, crvPath);
-            assetsFromCrv = amounts[amounts.length - 1];
+            address[] memory crvPath = new address[](2);
+            crvPath[0] = address(crv);
+            crvPath[1] = address(asset);
+            uint256[] memory crvAmounts = router.getAmountsOut(crvBal, crvPath);
+            assetsFromCrv = crvAmounts[crvAmounts.length - 1];
         }
 
         uint256 assetsFromCvx;
         uint256 cvxBal = cvx.balanceOf(address(this));
         if (cvxBal >= CVX_SWAP_THRESHOLD) {
-            uint256[] memory amounts = router.getAmountsOut(cvxBal, cvxPath);
-            assetsFromCvx = amounts[amounts.length - 1];
+            address[] memory cvxPath = new address[](2);
+            cvxPath[0] = address(cvx);
+            cvxPath[1] = address(asset);
+            uint256[] memory cvxAmounts = router.getAmountsOut(cvxBal, cvxPath);
+            assetsFromCvx = cvxAmounts[cvxAmounts.length - 1];
         }
 
         return balanceOfAsset() + assetsFromCrv + assetsFromCvx
