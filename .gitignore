@@ -15,6 +15,7 @@ docs/
 out
 cache
 lcov.info
+broadcast
 
 # Address Book
 addressbook.json
