@@ -44,7 +44,7 @@ contract L2WormholeRouterTest is TestPlus {
 
     function testWormholeConfigUpdates() public {
         // update consistencyLevel
-        changePrank(governance);
+        changePrank(router.governance());
         router.setConsistencyLevel(100);
         assertEq(router.consistencyLevel(), 100);
 
@@ -76,7 +76,7 @@ contract L2WormholeRouterTest is TestPlus {
 
         IWormhole.VM memory vaa;
         vaa.emitterChainId = emitter;
-        vaa.emitterAddress = bytes32(uint256(uint160(address(0))));
+        vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
         vm.expectRevert("Wrong emitter address");
         mockRouter.validateWormholeMessageEmitter(vaa);
 
@@ -117,6 +117,7 @@ contract L2WormholeRouterTest is TestPlus {
         IWormhole.VM memory vaa;
         vaa.nonce = 20;
         vaa.payload = abi.encode(Constants.L1_FUND_TRANSFER_REPORT, l1TransferAmount);
+        vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
 
         bool valid = true;
         string memory reason = "";
@@ -155,6 +156,7 @@ contract L2WormholeRouterTest is TestPlus {
         // If wormhole says the vaa is bad, we revert
         // Mock call to wormhole.parseAndVerifyVM()
         IWormhole.VM memory vaa;
+        vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
         bool valid = false;
         string memory reason = "Reason string from wormhole contract";
 
@@ -172,6 +174,7 @@ contract L2WormholeRouterTest is TestPlus {
         // If the nonce is old, we revert
         IWormhole.VM memory vaa2;
         vaa2.nonce = 10;
+        vaa2.emitterAddress = bytes32(uint256(uint160(address(router))));
 
         // Make sure that l1TotalLockedValue is above amount being transferred to L2 (or else we get an underflow)
         vm.store(
@@ -197,6 +200,7 @@ contract L2WormholeRouterTest is TestPlus {
 
         IWormhole.VM memory vaa;
         vaa.payload = abi.encode(Constants.L1_TVL, tvl, received);
+        vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
 
         vm.mockCall(
             address(router.wormhole()),
@@ -267,6 +271,7 @@ contract L1WormholeRouterTest is TestPlus {
         IWormhole.VM memory vaa;
         vaa.nonce = 2;
         vaa.payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, l2TransferAmount);
+        vaa.emitterAddress = bytes32(uint(uint160(address(router))));
 
         bytes memory fakeVAA = bytes("VAA_FROM_L2_TRANSFER");
         vm.mockCall(
@@ -289,6 +294,7 @@ contract L1WormholeRouterTest is TestPlus {
         uint256 requestAmount = 200;
         IWormhole.VM memory vaa;
         vaa.payload = abi.encode(Constants.L2_FUND_REQUEST, requestAmount);
+        vaa.emitterAddress = bytes32(uint(uint160(address(router))));
 
         bytes memory fakeVAA = bytes("L2_FUND_REQ");
         vm.mockCall(
@@ -296,7 +302,7 @@ contract L1WormholeRouterTest is TestPlus {
         );
 
         // We call processFundRequest
-        // We mock the call to the above function since we it is tested separately
+        // We mock the call to the above function since it is tested separately
         bytes memory processData = abi.encodeCall(vault.processFundRequest, (requestAmount));
         vm.mockCall(address(vault), processData, "");
         vm.expectCall(address(vault), processData);
