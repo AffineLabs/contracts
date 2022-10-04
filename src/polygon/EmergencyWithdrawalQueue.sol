@@ -21,7 +21,7 @@ contract EmergencyWithdrawalQueue {
     uint256 public tailPtr = 0;
 
     /// @notice Address of Alpine vault.
-    L2Vault public vault;
+    L2Vault public immutable vault;
 
     /// @notice Debt in shares unit.
     uint256 public shareDebt;
@@ -37,16 +37,7 @@ contract EmergencyWithdrawalQueue {
         uint256 indexed pos, address indexed owner, address indexed receiver, uint256 shares
     );
 
-    address immutable deployer;
-
-    constructor() {
-        deployer = msg.sender;
-    }
-
-    function linkVault(L2Vault _vault) external {
-        // Only governance can link vault
-        require(msg.sender == deployer, "EWQ: only owner");
-        require(address(vault) == address(0), "EWQ: init done");
+    constructor(L2Vault _vault) {
         vault = _vault;
     }
 

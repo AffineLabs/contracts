@@ -21,24 +21,17 @@ export interface AllContracts {
 }
 
 export async function deployAll(
-  l1Governance: address,
-  l2Governance: address,
   ethNetworkName: string,
   polygonNetworkName: string,
   config: totalConfig,
 ): Promise<AllContracts> {
   const forwarder = await deployForwarder(polygonNetworkName);
   const router = await deployRouter(polygonNetworkName, forwarder);
-  const wormholeRouters = await deployWormholeRouters(config, ethNetworkName, polygonNetworkName);
-  const vaults = await deployVaults(
-    l1Governance,
-    l2Governance,
-    ethNetworkName,
-    polygonNetworkName,
-    config,
-    wormholeRouters,
-    forwarder,
-  );
+
+  const vaults = await deployVaults(ethNetworkName, polygonNetworkName, config, forwarder);
+
+  const wormholeRouters = await deployWormholeRouters(config, vaults, ethNetworkName, polygonNetworkName);
+
   const strategies = config.mainnet
     ? await deployStrategies(ethNetworkName, polygonNetworkName, vaults, config)
     : undefined;

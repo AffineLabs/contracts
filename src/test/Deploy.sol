@@ -16,6 +16,7 @@ import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 import {L1WormholeRouter} from "../ethereum/L1WormholeRouter.sol";
 import {L2WormholeRouter} from "../polygon/L2WormholeRouter.sol";
 import {EmergencyWithdrawalQueue} from "../polygon/EmergencyWithdrawalQueue.sol";
+import {Create3Deployer} from "../Create3Deployer.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockL2Vault, MockL1Vault} from "./mocks/index.sol";
@@ -24,15 +25,20 @@ contract Deploy is Test {
     address governance = makeAddr("governance");
 
     function deployL2Vault() internal returns (MockL2Vault vault) {
+        Create3Deployer create3 = new Create3Deployer();
+
         MockERC20 asset = new MockERC20("Mock", "MT", 6);
         vault = new MockL2Vault();
-        EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue();
-        BridgeEscrow escrow = new BridgeEscrow(address(this));
+
+        // TODO: actually use create3
+        EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(vault);
+        BridgeEscrow escrow = new BridgeEscrow(address(vault),  IRootChainManager(address(0)));
+
         vault.initialize(
             governance, // governance
             asset, // asset
             // See https://book.wormhole.com/reference/contracts.html for address
-            address(new L2WormholeRouter(IWormhole(0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7))),
+            address(new L2WormholeRouter(vault, IWormhole(0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7), uint16(0))),
             escrow,
             emergencyWithdrawalQueue,
             address(0), // forwarder
@@ -40,9 +46,6 @@ contract Deploy is Test {
             1, // l2 ratio
             [uint256(0), uint256(200)] // withdrawal and AUM fees
         );
-
-        escrow.initialize(address(vault), IRootChainManager(address(0)));
-        emergencyWithdrawalQueue.linkVault(vault);
     }
 
     function deployL1Vault() internal returns (MockL1Vault vault) {
@@ -51,19 +54,18 @@ contract Deploy is Test {
         // https://docs.polygon.technology/docs/develop/ethereum-polygon/pos/deploymenthttps://docs.polygon.technology/docs/develop/ethereum-polygon/pos/deployment
         MockERC20 asset = new MockERC20("Mock", "MT", 6);
         vault = new MockL1Vault();
-        BridgeEscrow escrow = new BridgeEscrow(address(this));
+
         IRootChainManager manager = IRootChainManager(0xA0c68C638235ee32657e8f720a23ceC1bFc77C77);
+        BridgeEscrow escrow = new BridgeEscrow(address(vault), manager);
 
         vault.initialize(
             governance, // governance
             asset, // asset
-            address(new L1WormholeRouter(IWormhole(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B))),
+            address(new L1WormholeRouter(vault, IWormhole(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B), uint16(0))),
             escrow,
             manager, // chain manager
             0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf // predicate (eth mainnet)
         );
-
-        escrow.initialize(address(vault), manager);
     }
 
     function deployTwoAssetBasket(ERC20 usdc) internal returns (TwoAssetBasket basket) {

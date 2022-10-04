@@ -12,46 +12,6 @@ import {L2Vault} from "../polygon/L2Vault.sol";
 import {BridgeEscrow} from "../BridgeEscrow.sol";
 import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
 
-contract BridgeEscrowTest is TestPlus {
-    BridgeEscrow escrow;
-    address deployer = makeAddr("deployer");
-    address owner = makeAddr("owner");
-    MockL2Vault vault;
-
-    function setUp() public {
-        vm.prank(deployer);
-        escrow = new BridgeEscrow(owner);
-        vault = deployL2Vault();
-    }
-
-    function testDeploy() public {
-        assertEq(owner, escrow.owner());
-    }
-
-    function testInitialize() public {
-        // Only the owner can init
-        vm.expectRevert("ONLY_OWNER");
-        escrow.initialize(address(0), IRootChainManager(address(0)));
-
-        // Can init
-        address wormholeRouter = vault.wormholeRouter();
-        ERC20 asset = ERC20(vault.asset());
-        IRootChainManager manager = IRootChainManager(makeAddr("chain_manager"));
-        vm.prank(owner);
-        escrow.initialize(address(vault), manager);
-
-        assertEq(escrow.vault(), address(vault));
-        assertEq(escrow.wormholeRouter(), wormholeRouter);
-        assertEq(address(escrow.token()), address(asset));
-        assertEq(address(escrow.rootChainManager()), address(manager));
-
-        // Can only initialize once
-        vm.prank(owner);
-        vm.expectRevert("INIT_DONE");
-        escrow.initialize(address(vault), manager);
-    }
-}
-
 contract L2BridgeEscrowTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -80,8 +40,7 @@ contract L2BridgeEscrowTest is TestPlus {
         );
 
         wormholeRouter = vault.wormholeRouter();
-        escrow = new BridgeEscrow(address(this));
-        escrow.initialize(address(vault), manager);
+        escrow = new BridgeEscrow(address(vault), manager);
 
         // Set the bridgeEscrow
         vault.setBridgeEscrow(escrow);
@@ -145,8 +104,7 @@ contract L1BridgeEscrowTest is TestPlus {
         asset = ERC20(vault.asset());
         wormholeRouter = vault.wormholeRouter();
 
-        escrow = new BridgeEscrow(address(this));
-        escrow.initialize(address(vault), manager);
+        escrow = new BridgeEscrow(address(vault), manager);
 
         // Set the bridgeEscrow
         vault.setBridgeEscrow(escrow);

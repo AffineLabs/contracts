@@ -49,11 +49,7 @@ function executeScript(
   // If we should fork, start up some hardhat nodes
   process.env = { ...process.env, ETH_NETWORK: `${ethNetwork}-fork`, POLYGON_NETWORK: `${polygonNetwork}-fork` };
   const { result } = concurrently(
-    [
-      `yarn hardhat node --fork ${ethUrl}`,
-      `yarn hardhat node --fork ${polygonUrl} --port 8546`,
-      `${hhCommand} ${script}`,
-    ],
+    [`anvil --fork-url ${ethUrl}`, `anvil --fork-url ${polygonUrl} --port 8546`, `${hhCommand} ${script}`],
     { successCondition: "first", killOthers: ["failure", "failure", "success"] },
   );
   result.then(

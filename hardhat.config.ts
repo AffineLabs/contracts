@@ -63,7 +63,6 @@ function createNetworkConfig(network: ethNetwork | polygonNetwork, type: "eth" |
   const forkConfig: NetworkUserConfig = {
     ...networkConfig,
     url: `http://localhost:${forkPort}`,
-    chainId: ethChainIds.hardhat,
   };
   return { [`${type}-${network}`]: networkConfig, [`${type}-${network}-fork`]: forkConfig };
 }

@@ -20,7 +20,7 @@ import {uncheckedInc} from "./Unchecked.sol";
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
  * strategy liquidation.
  */
-abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, Multicallable {
+abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
     using SafeTransferLib for ERC20;
 
     /**
@@ -36,9 +36,8 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable, M
     }
 
     function baseInitialize(address _governance, ERC20 vaultAsset, address _wormholeRouter, BridgeEscrow _bridgeEscrow)
-        public
+        internal
         virtual
-        onlyInitializing
     {
         governance = _governance;
         _asset = vaultAsset;

@@ -91,7 +91,7 @@ contract L2Vault is
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
         __Pausable_init();
-        BaseVault.baseInitialize(_governance, _token, _wormholeRouter, _bridgeEscrow);
+        baseInitialize(_governance, _token, _wormholeRouter, _bridgeEscrow);
 
         emergencyWithdrawalQueue = _emergencyWithdrawalQueue;
         l1Ratio = _l1Ratio;

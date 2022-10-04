@@ -17,7 +17,9 @@ import {Constants} from "../Constants.sol";
 
 // This contract exists solely to test the internal view
 contract MockRouter is L2WormholeRouter {
-    constructor(IWormhole _wormhole) L2WormholeRouter(_wormhole) {}
+    constructor(L2Vault _vault, IWormhole _wormhole, uint16 _otherLayerChainId)
+        L2WormholeRouter(_vault, _wormhole, _otherLayerChainId)
+    {}
 
     function validateWormholeMessageEmitter(IWormhole.VM memory vm) public view {
         return _validateWormholeMessageEmitter(vm);
@@ -38,18 +40,11 @@ contract L2WormholeRouterTest is TestPlus {
         vault = Deploy.deployL2Vault();
         router = L2WormholeRouter(vault.wormholeRouter());
         wormhole = router.wormhole();
-        router.initialize(vault, address(0), uint16(0));
-    }
-
-    function testReinitializeFails() public {
-        address maliciousWormhole = makeAddr("maliciousWormhole");
-        vm.expectRevert("Initializable: contract is already initialized");
-        router.initialize(vault, address(0), uint16(0));
     }
 
     function testWormholeConfigUpdates() public {
         // update consistencyLevel
-        changePrank(governance);
+        changePrank(router.governance());
         router.setConsistencyLevel(100);
         assertEq(router.consistencyLevel(), 100);
 
@@ -76,28 +71,25 @@ contract L2WormholeRouterTest is TestPlus {
     }
 
     function testMessageValidation() public {
-        MockRouter mockRouter = new MockRouter(wormhole);
+        MockRouter mockRouter = new MockRouter(vault, wormhole, uint16(1));
         uint16 emitter = uint16(1);
-        address otherLayerRouter = makeAddr("otherLayerRouter");
-        mockRouter.initialize(vault, otherLayerRouter, emitter);
 
         IWormhole.VM memory vaa;
         vaa.emitterChainId = emitter;
-        vaa.emitterAddress = bytes32(uint256(uint160(address(0))));
+        vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
         vm.expectRevert("Wrong emitter address");
         mockRouter.validateWormholeMessageEmitter(vaa);
 
         IWormhole.VM memory vaa1;
         vaa1.emitterChainId = uint16(0);
-        vaa1.emitterAddress = bytes32(uint256(uint160(otherLayerRouter)));
-        emit log_named_bytes32("left padded addr: ", bytes32(uint256(uint160(otherLayerRouter))));
+        vaa1.emitterAddress = bytes32(uint256(uint160(address(mockRouter))));
         vm.expectRevert("Wrong emitter chain");
         mockRouter.validateWormholeMessageEmitter(vaa1);
 
         // This will work
         IWormhole.VM memory goodVaa;
         goodVaa.emitterChainId = emitter;
-        goodVaa.emitterAddress = bytes32(uint256(uint160(otherLayerRouter)));
+        goodVaa.emitterAddress = bytes32(uint256(uint160(address(mockRouter))));
         mockRouter.validateWormholeMessageEmitter(goodVaa);
     }
 
@@ -125,6 +117,7 @@ contract L2WormholeRouterTest is TestPlus {
         IWormhole.VM memory vaa;
         vaa.nonce = 20;
         vaa.payload = abi.encode(Constants.L1_FUND_TRANSFER_REPORT, l1TransferAmount);
+        vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
 
         bool valid = true;
         string memory reason = "";
@@ -163,6 +156,7 @@ contract L2WormholeRouterTest is TestPlus {
         // If wormhole says the vaa is bad, we revert
         // Mock call to wormhole.parseAndVerifyVM()
         IWormhole.VM memory vaa;
+        vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
         bool valid = false;
         string memory reason = "Reason string from wormhole contract";
 
@@ -180,6 +174,7 @@ contract L2WormholeRouterTest is TestPlus {
         // If the nonce is old, we revert
         IWormhole.VM memory vaa2;
         vaa2.nonce = 10;
+        vaa2.emitterAddress = bytes32(uint256(uint160(address(router))));
 
         // Make sure that l1TotalLockedValue is above amount being transferred to L2 (or else we get an underflow)
         vm.store(
@@ -205,6 +200,7 @@ contract L2WormholeRouterTest is TestPlus {
 
         IWormhole.VM memory vaa;
         vaa.payload = abi.encode(Constants.L1_TVL, tvl, received);
+        vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
 
         vm.mockCall(
             address(router.wormhole()),
@@ -231,15 +227,6 @@ contract L1WormholeRouterTest is TestPlus {
         vm.createSelectFork("ethereum", 14_971_385);
         vault = Deploy.deployL1Vault();
         router = L1WormholeRouter(vault.wormholeRouter());
-
-        // See https://book.wormhole.com/reference/contracts.html for addresses
-        router.initialize(vault, address(0), uint16(0));
-    }
-
-    function testReinitializeFails() public {
-        address maliciousWormhole = makeAddr("maliciousWormhole");
-        vm.expectRevert("Initializable: contract is already initialized");
-        router.initialize(vault, address(0), uint16(0));
     }
 
     function testReportTVL() public {
@@ -284,6 +271,7 @@ contract L1WormholeRouterTest is TestPlus {
         IWormhole.VM memory vaa;
         vaa.nonce = 2;
         vaa.payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, l2TransferAmount);
+        vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
 
         bytes memory fakeVAA = bytes("VAA_FROM_L2_TRANSFER");
         vm.mockCall(
@@ -306,6 +294,7 @@ contract L1WormholeRouterTest is TestPlus {
         uint256 requestAmount = 200;
         IWormhole.VM memory vaa;
         vaa.payload = abi.encode(Constants.L2_FUND_REQUEST, requestAmount);
+        vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
 
         bytes memory fakeVAA = bytes("L2_FUND_REQ");
         vm.mockCall(
@@ -313,7 +302,7 @@ contract L1WormholeRouterTest is TestPlus {
         );
 
         // We call processFundRequest
-        // We mock the call to the above function since we it is tested separately
+        // We mock the call to the above function since it is tested separately
         bytes memory processData = abi.encodeCall(vault.processFundRequest, (requestAmount));
         vm.mockCall(address(vault), processData, "");
         vm.expectCall(address(vault), processData);

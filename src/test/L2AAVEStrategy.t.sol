@@ -11,6 +11,9 @@ import {L2Vault} from "../polygon/L2Vault.sol";
 import {L2AAVEStrategy} from "../polygon/L2AAVEStrategy.sol";
 import {Deploy} from "./Deploy.sol";
 
+import {Create3Deployer} from "../Create3Deployer.sol";
+import {BridgeEscrow} from "../BridgeEscrow.sol";
+
 contract AAVEStratTest is TestPlus {
     using stdStorage for StdStorage;
 

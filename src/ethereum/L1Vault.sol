@@ -26,8 +26,6 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     // https://github.com/maticnetwork/pos-portal/blob/88dbf0a88fd68fa11f7a3b9d36629930f6b93a05/contracts/root/RootChainManager/RootChainManager.sol#L267
     address public predicate;
 
-    constructor() {}
-
     function initialize(
         address _governance,
         ERC20 _token,
@@ -38,7 +36,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     ) public initializer {
         __UUPSUpgradeable_init();
         __Pausable_init();
-        BaseVault.baseInitialize(_governance, _token, _wormholeRouter, _bridgeEscrow);
+        baseInitialize(_governance, _token, _wormholeRouter, _bridgeEscrow);
         chainManager = _chainManager;
         predicate = _predicate;
     }

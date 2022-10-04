@@ -26,13 +26,7 @@ const { expect } = chai;
  */
 it("Eth-Matic Fund Transfer Integration Test L2 -> L1", async () => {
   let [governance] = await ethers.getSigners();
-  const allContracts = await deployAll(
-    governance.address,
-    governance.address,
-    ETH_NETWORK_NAME,
-    POLYGON_NETWORK_NAME,
-    testConfig,
-  );
+  const allContracts = await deployAll(ETH_NETWORK_NAME, POLYGON_NETWORK_NAME, testConfig);
 
   const { l1Vault, l2Vault } = allContracts.vaults;
   const { l1WormholeRouter, l2WormholeRouter } = allContracts.wormholeRouters;
