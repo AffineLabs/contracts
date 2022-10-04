@@ -8,7 +8,7 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 
-import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 import {Dollar} from "../DollarMath.sol";
 import {TwoAssetBasket} from "../polygon/TwoAssetBasket.sol";
@@ -19,7 +19,6 @@ import {ERC4626RouterBase} from "../polygon/ERC4626RouterBase.sol";
 contract BtcEthBasketTest is TestPlus {
     TwoAssetBasket basket;
     Router router;
-    // NOTE: using mumbai addresses
     ERC20 usdc = ERC20(0x8f7116CA03AEB48547d0E2EdD3Faa73bfB232538);
     ERC20 btc = ERC20(0xc8BA1fdaf17c1f16C68778fde5f78F3D37cD1509);
     ERC20 weth = ERC20(0x3dd7F3CF122e0460Dba8A75d191b3486752B6A61);
@@ -101,29 +100,41 @@ contract BtcEthBasketTest is TestPlus {
         emit log_named_uint("TotalSupplyOfVault: ", basket.totalSupply());
     }
 
-    function testSlippageCheck() public {
+    function testDepositSlippage() public {
         // The initial deposit gives as many shares as dollars deposited in the vault
         // If we expect 10 shares but only deposit 1 dollar, this will revert
-        uint256 minShares = 10 * 10 ** 18; // We're expecting that we 1 share, but
+        uint256 minShares = 10 * 10 ** 18;
         deal(address(usdc), address(this), 1e6);
-        usdc.approve(address(router), type(uint256).max);
-
-        // basket.deposit will now return 0 shares as the number minted.
-        // Mocking calls to basket does not work in `forge 0.2.0 (92427e7 2022-04-23T00:07:30.015620+00:00`
-        // vm.mockCall(
-        //     address(basket),
-        //     abi.encodeWithSelector(basket.deposit.selector, 100, address(this)),
-        //     abi.encode(1)
-        // );
-
-        // Since we can't mock the call to basket.deposit, router will actually have to call basket.deposit
-        vm.prank(address(router));
         usdc.approve(address(basket), type(uint256).max);
-        usdc.transfer(address(router), 1e6);
-        vm.expectRevert(ERC4626RouterBase.MinSharesError.selector);
-        router.deposit(IERC4626(address(basket)), address(this), 1e6, minShares);
 
-        // TODO: add test for withdrawal check once this mocking works again
+        vm.expectRevert("TAB: min shares");
+        basket.deposit(1e6, address(this), minShares);
+
+        basket.deposit(1e6, address(this), 0);
+    }
+
+    function testWithdrawSlippage() public {
+        deal(address(usdc), address(this), 1e6);
+        usdc.approve(address(basket), type(uint256).max);
+
+        basket.deposit(1e6, address(this), 0);
+
+        vm.expectRevert("TAB: max shares");
+        basket.withdraw(1e6, address(this), address(this), 0);
+
+        basket.withdraw(1e6, address(this), address(this), type(uint256).max);
+    }
+
+    function testRedeemSlippage() public {
+        deal(address(usdc), address(this), 1e6);
+        usdc.approve(address(basket), type(uint256).max);
+
+        uint256 shares = basket.deposit(1e6, address(this), 0);
+
+        vm.expectRevert("TAB: min assets");
+        basket.redeem(shares - 10, address(this), address(this), type(uint256).max);
+
+        basket.redeem(shares, address(this), address(this), 0);
     }
 
     function testBuySplitsFuzz(uint256 balBtc, uint256 balEth) public {
@@ -267,59 +278,5 @@ contract BtcEthBasketTest is TestPlus {
         MockERC20(address(btc)).mint(address(basket), 1e18);
         TwoAssetBasket.Number memory price2 = basket.detailedPrice();
         assertGt(price2.num, 10 ** 8);
-    }
-
-    function testAssetLimit() public {
-        mockUSDCPrice();
-
-        vm.prank(governance);
-        basket.setAssetLimit(1000 * 1e8);
-
-        deal(address(usdc), address(this), 2000e6, false);
-        usdc.approve(address(basket), type(uint256).max);
-
-        basket.deposit(500e6, address(this));
-        assertEq(usdc.balanceOf(address(this)), 1500e6);
-
-        // We only deposit 500 because the limit is 500 and 500 is already in the vault
-        basket.deposit(1000e6, address(this));
-        uint256 newUsdcBal = usdc.balanceOf(address(this));
-        // We have to approximate since not exactly $500 dollars enters vault do to uniswap trade
-        assertApproxEqRel(newUsdcBal, 1000e6, 1e18 / 2);
-
-        uint256 shares = basket.deposit(200e6, address(this));
-        assertEq(shares, 0);
-        assertEq(usdc.balanceOf(address(this)), newUsdcBal);
-    }
-
-    function testTearDown() public {
-        // Give alice and bob some shares
-        deal(address(basket), alice, 1e18, true);
-        deal(address(basket), bob, 1e18, true);
-
-        // give the vault some bitcoin and ether
-        deal(address(btc), address(basket), 1e18);
-        deal(address(weth), address(basket), 10e18);
-
-        // Call teardown and make sure they get money back
-        address[] memory users = new address[](2);
-        users[0] = alice;
-        users[1] = bob;
-
-        vm.startPrank(governance);
-        basket.prepareForTeardown();
-        assertTrue(basket.paused()); // We pause deposit/withdrawals before calling tearDown
-        basket.tearDown(users);
-
-        // alice and bob got usdc (they also get the same amount)
-        assertTrue(usdc.balanceOf(alice) > 0);
-        assertEq(usdc.balanceOf(alice), usdc.balanceOf(bob));
-
-        // There's truncation since we round down, so we might have some dust left
-        assertApproxEqAbs(usdc.balanceOf(address(basket)), 0, 10);
-
-        // We dumped all btc and weth
-        assertEq(btc.balanceOf(address(basket)), 0);
-        assertEq(weth.balanceOf(address(basket)), 0);
     }
 }

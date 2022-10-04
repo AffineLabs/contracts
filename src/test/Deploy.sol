@@ -10,7 +10,7 @@ import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
 import {L1Vault} from "../ethereum/L1Vault.sol";
 import {BridgeEscrow} from "../BridgeEscrow.sol";
 import {TwoAssetBasket} from "../polygon/TwoAssetBasket.sol";
-import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {IWormhole} from "../interfaces/IWormhole.sol";
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 import {L1WormholeRouter} from "../ethereum/L1WormholeRouter.sol";
@@ -75,7 +75,7 @@ contract Deploy is Test {
         basket.initialize(
             governance, // governance,
             address(0), // forwarder
-            IUniLikeSwapRouter(address(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506)), // sushiswap router
+            IUniswapV2Router02(address(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506)), // sushiswap router
             usdc, // mintable usdc
             // WBTC AND WETH
             [btc, weth],
@@ -87,7 +87,5 @@ contract Deploy is Test {
                 AggregatorV3Interface(0x0715A7794a1dc8e42615F059dD6e406A6594651A)
             ]
         );
-        vm.prank(governance);
-        basket.setAssetLimit(type(uint256).max);
     }
 }

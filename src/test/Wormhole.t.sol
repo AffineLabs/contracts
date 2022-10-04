@@ -271,7 +271,7 @@ contract L1WormholeRouterTest is TestPlus {
         IWormhole.VM memory vaa;
         vaa.nonce = 2;
         vaa.payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, l2TransferAmount);
-        vaa.emitterAddress = bytes32(uint(uint160(address(router))));
+        vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
 
         bytes memory fakeVAA = bytes("VAA_FROM_L2_TRANSFER");
         vm.mockCall(
@@ -294,7 +294,7 @@ contract L1WormholeRouterTest is TestPlus {
         uint256 requestAmount = 200;
         IWormhole.VM memory vaa;
         vaa.payload = abi.encode(Constants.L2_FUND_REQUEST, requestAmount);
-        vaa.emitterAddress = bytes32(uint(uint160(address(router))));
+        vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
 
         bytes memory fakeVAA = bytes("L2_FUND_REQ");
         vm.mockCall(

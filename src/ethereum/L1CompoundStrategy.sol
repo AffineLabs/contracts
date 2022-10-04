@@ -5,7 +5,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {ICToken} from "../interfaces/compound/ICToken.sol";
 import {IComptroller} from "../interfaces/compound/IComptroller.sol";
 
@@ -26,7 +26,7 @@ contract L1CompoundStrategy is BaseStrategy {
     address public immutable wrappedNative;
 
     // Router for swapping reward tokens to `asset`
-    IUniLikeSwapRouter public immutable router;
+    IUniswapV2Router02 public immutable router;
 
     uint256 public constant MAX_BPS = 1e4;
     uint256 public constant PESSIMISM_FACTOR = 1000;
@@ -35,7 +35,7 @@ contract L1CompoundStrategy is BaseStrategy {
         BaseVault _vault,
         ICToken _cToken,
         IComptroller _comptroller,
-        IUniLikeSwapRouter _router,
+        IUniswapV2Router02 _router,
         address _rewardToken,
         address _wrappedNative
     ) BaseStrategy(_vault) {
@@ -53,10 +53,6 @@ contract L1CompoundStrategy is BaseStrategy {
      * BALANCES
      *
      */
-
-    function balanceOfAsset() public view override returns (uint256) {
-        return asset.balanceOf(address(this));
-    }
 
     function balanceOfRewardToken() public view returns (uint256) {
         return ERC20(rewardToken).balanceOf(address(this));
@@ -120,7 +116,9 @@ contract L1CompoundStrategy is BaseStrategy {
 
         // Sell reward tokens if we have "1" of them. This only makes sense if the reward token has 18 decimals
         uint256 rewardTokenBalance = balanceOfRewardToken();
-        if (rewardTokenBalance < 1e18) return;
+        if (rewardTokenBalance < 1e18) {
+            return;
+        }
 
         router.swapExactTokensForTokens(
             rewardTokenBalance,

@@ -10,7 +10,7 @@ import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
 import {I3CrvMetaPoolZap} from "../interfaces/IMetaPoolZap.sol";
 import {ILiquidityGauge} from "../interfaces/ILiquidityGauge.sol";
-import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 contract CurveStrategy is BaseStrategy, Ownable {
     using SafeTransferLib for ERC20;
@@ -21,7 +21,7 @@ contract CurveStrategy is BaseStrategy, Ownable {
     int128 public immutable assetIndex;
     ILiquidityGauge public immutable gauge;
 
-    IUniLikeSwapRouter public immutable router;
+    IUniswapV2Router02 public immutable router;
     ERC20 public immutable crv;
 
     constructor(
@@ -30,7 +30,7 @@ contract CurveStrategy is BaseStrategy, Ownable {
         I3CrvMetaPoolZap _zapper,
         int128 _assetIndex,
         ILiquidityGauge _gauge,
-        IUniLikeSwapRouter _router,
+        IUniswapV2Router02 _router,
         ERC20 _crv
     ) BaseStrategy(_vault) {
         metaPool = _metaPool;
@@ -109,10 +109,6 @@ contract CurveStrategy is BaseStrategy, Ownable {
             // We didn't have enough lp tokens to withdraw `assetsToDivest`. So we just burn all of our lp shares
             zapper.remove_liquidity_one_coin(address(metaPool), metaPool.balanceOf(address(this)), assetIndex, 0);
         }
-    }
-
-    function balanceOfAsset() public view override returns (uint256) {
-        return asset.balanceOf(address(this));
     }
 
     function totalLockedValue() external override returns (uint256) {

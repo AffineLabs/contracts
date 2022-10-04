@@ -5,18 +5,17 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import {IUniLikeSwapRouter} from "../interfaces/IUniLikeSwapRouter.sol";
-import {ILendingPoolAddressesProvider} from "../interfaces/aave/ILendingPoolAddressesProvider.sol";
-import {IAaveIncentivesController} from "../interfaces/aave/IAaveIncentivesController.sol";
-import {ILendingPool} from "../interfaces/aave/ILendingPool.sol";
-import {IAToken} from "../interfaces/aave/IAToken.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import {
+    ILendingPoolAddressesProviderRegistry,
+    ILendingPoolAddressesProvider,
+    IAaveIncentivesController,
+    ILendingPool,
+    IAToken
+} from "../interfaces/aave.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
-
-interface ILendingPoolAddressesProviderRegistry {
-    function getAddressesProvidersList() external view returns (address[] memory);
-}
 
 contract L2AAVEStrategy is BaseStrategy {
     using SafeTransferLib for ERC20;
@@ -33,7 +32,7 @@ contract L2AAVEStrategy is BaseStrategy {
     IAToken public immutable aToken;
 
     // Router for swapping reward tokens to `asset`
-    IUniLikeSwapRouter public immutable router;
+    IUniswapV2Router02 public immutable router;
 
     uint256 public constant MAX_BPS = 1e4;
     uint256 public constant PESSIMISM_FACTOR = 1000;
@@ -55,7 +54,7 @@ contract L2AAVEStrategy is BaseStrategy {
 
         incentivesController = IAaveIncentivesController(_incentives);
 
-        router = IUniLikeSwapRouter(_router);
+        router = IUniswapV2Router02(_router);
         rewardToken = _rewardToken;
         wrappedNative = _wrappedNative;
 
@@ -69,10 +68,6 @@ contract L2AAVEStrategy is BaseStrategy {
      * BALANCES
      *
      */
-
-    function balanceOfAsset() public view override returns (uint256) {
-        return asset.balanceOf(address(this));
-    }
 
     function balanceOfRewardToken() public view returns (uint256) {
         return ERC20(rewardToken).balanceOf(address(this));
@@ -128,7 +123,9 @@ contract L2AAVEStrategy is BaseStrategy {
 
         // Sell reward tokens if we have "1" of them. This only makes sense if the reward token has 18 decimals
         uint256 rewardTokenBalance = balanceOfRewardToken();
-        if (rewardTokenBalance < 1e18) return;
+        if (rewardTokenBalance < 1e18) {
+            return;
+        }
 
         router.swapExactTokensForTokens(
             rewardTokenBalance,

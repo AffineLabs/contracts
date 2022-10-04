@@ -26,8 +26,10 @@ abstract contract BaseStrategy {
     ERC20 public immutable asset;
 
     /// @notice Strategy's balance of underlying asset.
-    /// @return Strategy's balance.
-    function balanceOfAsset() external view virtual returns (uint256);
+    /// @return assets Strategy's balance.
+    function balanceOfAsset() public view returns (uint256 assets) {
+        assets = asset.balanceOf(address(this));
+    }
 
     /// @notice Deposit vault's underlying asset into strategy.
     /// @param amount The amount to invest.

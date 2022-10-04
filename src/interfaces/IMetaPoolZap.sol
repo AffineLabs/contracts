@@ -8,7 +8,7 @@ interface I3CrvMetaPoolZap {
         external
         returns (uint256);
 
-    function remove_liquidity_one_coin(address _pool, uint256 _burn_amount, int128, uint256 _min_amount)
+    function remove_liquidity_one_coin(address _pool, uint256 _burn_amount, int128 i, uint256 _min_amount)
         external
         returns (uint256);
 

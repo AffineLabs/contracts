@@ -41,7 +41,6 @@ contract AAVEStratTest is TestPlus {
         vault.addStrategy(strategy, 5000);
     }
 
-
     function testStrategyMakesMoney() public {
         // Vault deposits half of its tvl into the strategy
         // Give us (this contract) 1 USDC. Deposit into vault.

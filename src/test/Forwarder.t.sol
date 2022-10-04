@@ -14,6 +14,11 @@ import {MinimalForwarder} from "@openzeppelin/contracts/metatx/MinimalForwarder.
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 import {Deploy} from "./Deploy.sol";
 
+// Because of https://github.com/ethereum/solidity/issues/3556
+abstract contract MockBasket {
+    function deposit(uint256 assets, address receiver) external returns (uint256 shares) {}
+}
+
 contract ForwardTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -117,7 +122,7 @@ contract ForwardTest is TestPlus {
         );
 
         MinimalForwarder.ForwardRequest memory req2 = MinimalForwarder.ForwardRequest(
-            user, address(basket), 0, 15e6, 1, abi.encodeCall(basket.deposit, (1e6, user))
+            user, address(basket), 0, 15e6, 1, abi.encodeCall(MockBasket.deposit, (1e6, user))
         );
 
         bytes32 domainSeparator = getDomainSeparator(address(forwarder));
