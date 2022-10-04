@@ -97,7 +97,21 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
 
     uint32 public currentPosition;
     bool public canStartNewPos;
-    mapping(uint256 => uint256) public getPositionTime;
+
+    struct PositionOpenInfo {
+        uint256 assetBalance; // asset balance when opening a position.
+        uint256 chainlinkRoundID; // Chainlink RoundID when the position was opened.
+        uint256 blockNumber; // Block number when the position was opened.
+    }
+
+    mapping(uint256 => PositionOpenInfo) positionOpenData; // Info when position i was being opened.
+
+    struct PositionCloseInfo {
+        uint256 assetBalance; // asset balance when closing a position.
+        uint256 blockNumber; // Block number when the position was closed.
+    }
+
+    mapping(uint256 => PositionCloseInfo) positionCloseData; // Info when position i was being closed.
 
     event PositionStart(uint32 indexed position, uint256 timestamp);
 
@@ -125,7 +139,6 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         require(canStartNewPos, "DNLP: position is active");
         uint32 newPositionId = currentPosition + 1;
         currentPosition = newPositionId;
-        getPositionTime[newPositionId] = block.timestamp;
         canStartNewPos = false;
         emit PositionStart(newPositionId, block.timestamp);
 
@@ -145,6 +158,9 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         require(price > 0, "Chainlink price <= 0");
         require(answeredInRound >= roundId, "Chainlink stale data");
         require(timestamp != 0, "Chainlink round not complete");
+
+        // Update position open data
+        positionOpenData[newPositionId] = PositionOpenInfo(assets, roundId, block.number);
 
         // https://docs.aave.com/developers/v/2.0/the-core-protocol/lendingpool#borrow
         // assetsToDeposit has price uints `asset`, price has units `asset / borrowAsset` ratio. so we divide by price
@@ -261,5 +277,8 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
 
         // Withdraw from aave
         lendingPool.withdraw({asset: address(asset), amount: aToken.balanceOf(address(this)), to: address(this)});
+
+        // Update closing data
+        positionCloseData[currentPosition] = PositionCloseInfo(asset.balanceOf(address(this)), block.number);
     }
 }
