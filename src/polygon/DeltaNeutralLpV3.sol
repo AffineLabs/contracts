@@ -6,8 +6,8 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
-import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 
 import {
     ILendingPoolAddressesProviderRegistry,
@@ -31,8 +31,9 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         ILendingPoolAddressesProviderRegistry _registry,
         ERC20 _borrowAsset,
         AggregatorV3Interface _borrowAssetFeed,
-        IUniswapV2Router02 _router,
-        IUniswapV2Factory _factory
+        ISwapRouter _router,
+        INonfungiblePositionManager _lpManager,
+        uint24 _fee
     ) BaseStrategy(_vault) {
         canStartNewPos = true;
         slippageTolerance = _slippageTolerance;
@@ -42,7 +43,8 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         borrowAssetFeed = _borrowAssetFeed;
 
         router = _router;
-        abPair = ERC20(_factory.getPair(address(asset), address(borrowAsset)));
+        lpManager = _lpManager;
+        poolFee = _fee;
 
         address[] memory providers = _registry.getAddressesProvidersList();
         ILendingPoolAddressesProvider provider = ILendingPoolAddressesProvider(providers[providers.length - 1]);
@@ -59,7 +61,6 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         asset.safeApprove(address(_router), type(uint256).max);
         borrowAsset.safeApprove(address(_router), type(uint256).max);
         // To remove liquidity
-        abPair.safeApprove(address(_router), type(uint256).max);
     }
 
     /// @notice Convert `borrowAsset` (e.g. MATIC) to `asset` (e.g. USDC)
@@ -69,23 +70,29 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
             return assets;
         }
 
-        address[] memory path = new address[](2);
-        path[0] = address(borrowAsset);
-        path[1] = address(asset);
+        uint256 price = _getPrice();
 
-        uint256[] memory amounts = router.getAmountsOut({amountIn: amountB, path: path});
-        assets = amounts[1];
+        // The first divisition gets rid of the decimals of wmatic. The second converts dollars to usdc
+        // TODO: make this work for any set of decimals
+        assets = (amountB * price) / (1e18 * 1e2);
+    }
+
+    function _getPrice() internal view returns (uint256 priceOfBorrowAsset) {
+        (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = borrowAssetFeed.latestRoundData();
+        require(price > 0, "Chainlink price <= 0");
+        require(answeredInRound >= roundId, "Chainlink stale data");
+        require(timestamp != 0, "Chainlink round not complete");
+
+        priceOfBorrowAsset = uint256(price);
     }
 
     function totalLockedValue() public view override returns (uint256) {
         // The below are all in units of `asset`
         // balanceOfAsset + balanceOfMatic + aToken value + Uni Lp value - debt
         // lp tokens * (total assets) / total lp tokens
-
         uint256 assetsMatic = _borrowToAsset(borrowAsset.balanceOf(address(this)));
 
-        uint256 assetsLP =
-            abPair.balanceOf(address(this)).mulDivDown(asset.balanceOf(address(abPair)) * 2, abPair.totalSupply());
+        uint256 assetsLP;
 
         uint256 assetsDebt = _borrowToAsset(debtToken.balanceOf(address(this)));
         return balanceOfAsset() + assetsMatic + aToken.balanceOf(address(this)) + assetsLP - assetsDebt;
@@ -105,9 +112,13 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
     /// @notice Fixed point number describing the percentage of the position with which to go long. 1e18 = 1 = 100%
     uint256 public longPercentage;
 
-    IUniswapV2Router02 public immutable router;
-    /// @notice The address of the Uniswap Lp token (the asset-borrowAsset pair)
-    ERC20 public immutable abPair;
+    /// @notice The router used for swaps
+    ISwapRouter public immutable router;
+    INonfungiblePositionManager public immutable lpManager;
+    /// @notice The pool's fee. We need this to identify the pool.
+    uint24 public immutable poolFee;
+    uint256 public lpId;
+    uint128 public lpLiquidity;
 
     /// @notice The asset we want to borrow, e.g. WMATIC
     ERC20 public immutable borrowAsset;
@@ -141,16 +152,12 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         lendingPool.deposit({asset: address(asset), amount: assetsToDeposit, onBehalfOf: address(this), referralCode: 0});
 
         // Convert assetsToDeposit into `borrowAsset` (e.g. WMATIC) units
-        (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = borrowAssetFeed.latestRoundData();
-        require(price > 0, "Chainlink price <= 0");
-        require(answeredInRound >= roundId, "Chainlink stale data");
-        require(timestamp != 0, "Chainlink round not complete");
-
-        // https://docs.aave.com/developers/v/2.0/the-core-protocol/lendingpool#borrow
-        // assetsToDeposit has price uints `asset`, price has units `asset / borrowAsset` ratio. so we divide by price
+        // assetsToDeposit has price units `asset`, price has units `asset / borrowAsset` ratio. so we divide by price
         // Scaling `asset` to 8 decimals since chainlink provides 8: https://docs.chain.link/docs/data-feeds/price-feeds/
         // TODO: handle both cases (assetDecimals > priceDecimals as well)
-        uint256 borrowAssetsDeposited = (assetsToDeposit * 1e2 * 1e18) / (uint256(price));
+        uint256 borrowAssetsDeposited = (assetsToDeposit * 1e2 * 1e18) / _getPrice();
+
+        // https://docs.aave.com/developers/v/2.0/the-core-protocol/lendingpool#borrow
         lendingPool.borrow({
             asset: address(borrowAsset),
             amount: borrowAssetsDeposited.mulDivDown(3, 4),
@@ -160,32 +167,17 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         });
 
         // Provide liquidity on uniswap
-        // TODO: make slippage parameterizable by caller
+        // TODO: make slippage parameterizable by caller, using min/max ticks for now
         uint256 bBal = borrowAsset.balanceOf(address(this));
         uint256 aBal = assets - assetsToMatic - assetsToDeposit;
-        router.addLiquidity({
-            tokenA: address(asset),
-            tokenB: address(borrowAsset),
-            amountADesired: aBal,
-            amountBDesired: bBal,
-            amountAMin: aBal.mulDivDown(98, 100),
-            amountBMin: bBal.mulDivDown(98, 100),
-            to: address(this),
-            deadline: block.timestamp
-        });
+        _addLiquidity(aBal, bBal, aBal.mulDivDown(98, 100), bBal.mulDivDown(98, 100), -887_272, -(-887_272));
 
         // Buy Matic. After this trade, the strat now holds only lp tokens and a little bit of matic
         address[] memory path = new address[](2);
         path[0] = address(asset);
         path[1] = address(borrowAsset);
 
-        router.swapExactTokensForTokens({
-            amountIn: assetsToMatic,
-            amountOutMin: 0,
-            path: path,
-            to: address(this),
-            deadline: block.timestamp
-        });
+        _swapExactSingle(asset, borrowAsset, assetsToMatic, 0);
     }
 
     /// @dev This strategy should be put at the end of the WQ so that we rarely divest from it. Divestment
@@ -214,15 +206,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
 
         // Remove liquidity
         // TODO: handle slippage
-        router.removeLiquidity({
-            tokenA: address(asset),
-            tokenB: address(borrowAsset),
-            liquidity: abPair.balanceOf(address(this)),
-            amountAMin: 0,
-            amountBMin: 0,
-            to: address(this),
-            deadline: block.timestamp
-        });
+        _removeLiquidity(0, 0);
 
         // Buy enough matic to pay back debt
         uint256 debt = debtToken.balanceOf(address(this));
@@ -235,25 +219,14 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
             path[0] = address(asset);
             path[1] = address(borrowAsset);
 
-            router.swapTokensForExactTokens({
-                amountOut: maticToBuy,
-                amountInMax: asset.balanceOf(address(this)),
-                path: path,
-                to: address(this),
-                deadline: block.timestamp
-            });
+            _swapExactOutputSingle(asset, borrowAsset, maticToBuy, type(uint256).max);
         }
         if (maticToSell > 0) {
             address[] memory path = new address[](2);
             path[0] = address(borrowAsset);
             path[1] = address(asset);
-            router.swapExactTokensForTokens({
-                amountIn: maticToSell,
-                amountOutMin: 0,
-                path: path,
-                to: address(this),
-                deadline: block.timestamp
-            });
+
+            _swapExactSingle(borrowAsset, asset, maticToSell, 0);
         }
 
         // Repay debt
@@ -261,5 +234,74 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
 
         // Withdraw from aave
         lendingPool.withdraw({asset: address(asset), amount: aToken.balanceOf(address(this)), to: address(this)});
+    }
+
+    function _addLiquidity(
+        uint256 amountA,
+        uint256 amountB,
+        uint256 amountAMin,
+        uint256 amountBMin,
+        int24 minTick,
+        int24 maxTick
+    ) internal {
+        INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
+            token0: address(asset),
+            token1: address(borrowAsset),
+            fee: poolFee,
+            tickLower: minTick,
+            tickUpper: maxTick,
+            amount0Desired: amountA,
+            amount1Desired: amountB,
+            amount0Min: amountAMin,
+            amount1Min: amountBMin,
+            recipient: address(this),
+            deadline: block.timestamp
+        });
+        (uint256 tokenId, uint128 liquidity,,) = lpManager.mint(params);
+        lpId = tokenId;
+        lpLiquidity = lpLiquidity;
+    }
+
+    function _removeLiquidity(uint256 amountAMin, uint256 amountBMin) internal {
+        INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
+            .DecreaseLiquidityParams({
+            tokenId: lpId,
+            liquidity: lpLiquidity,
+            amount0Min: amountAMin,
+            amount1Min: amountBMin,
+            deadline: block.timestamp
+        });
+        lpManager.decreaseLiquidity(params);
+    }
+
+    function _swapExactSingle(ERC20 from, ERC20 to, uint256 amountIn, uint256 amountOutMinimum) internal {
+        // Do a single swap
+        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
+            tokenIn: address(from),
+            tokenOut: address(to),
+            fee: poolFee,
+            recipient: msg.sender,
+            deadline: block.timestamp,
+            amountIn: amountIn,
+            amountOutMinimum: amountOutMinimum,
+            sqrtPriceLimitX96: 0
+        });
+
+        router.exactInputSingle(params);
+    }
+
+    function _swapExactOutputSingle(ERC20 from, ERC20 to, uint256 amountOut, uint256 amountInMaximum) internal {
+        ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams({
+            tokenIn: address(from),
+            tokenOut: address(to),
+            fee: poolFee,
+            recipient: msg.sender,
+            deadline: block.timestamp,
+            amountOut: amountOut,
+            amountInMaximum: amountInMaximum,
+            sqrtPriceLimitX96: 0
+        });
+
+        router.exactOutputSingle(params);
     }
 }
