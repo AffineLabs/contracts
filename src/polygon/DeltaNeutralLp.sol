@@ -98,21 +98,6 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
     uint32 public currentPosition;
     bool public canStartNewPos;
 
-    struct PositionOpenInfo {
-        uint256 assetBalance; // asset balance when opening a position.
-        uint256 chainlinkRoundID; // Chainlink RoundID when the position was opened.
-        uint256 blockNumber; // Block number when the position was opened.
-    }
-
-    mapping(uint256 => PositionOpenInfo) positionOpenData; // Info when position i was being opened.
-
-    struct PositionCloseInfo {
-        uint256 assetBalance; // asset balance when closing a position.
-        uint256 blockNumber; // Block number when the position was closed.
-    }
-
-    mapping(uint256 => PositionCloseInfo) positionCloseData; // Info when position i was being closed.
-
     event PositionStart(uint32 indexed position, uint256 assetBalance, uint256 chainlinkRoundId, uint256 timestamp);
 
     uint256 public slippageTolerance;
