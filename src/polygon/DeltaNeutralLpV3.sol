@@ -8,6 +8,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import {
     ILendingPoolAddressesProviderRegistry,
@@ -33,6 +34,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         AggregatorV3Interface _borrowAssetFeed,
         ISwapRouter _router,
         INonfungiblePositionManager _lpManager,
+        IUniswapV3Pool _pool,
         uint24 _fee
     ) BaseStrategy(_vault) {
         canStartNewPos = true;
@@ -44,6 +46,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
 
         router = _router;
         lpManager = _lpManager;
+        pool = _pool;
         poolFee = _fee;
 
         address[] memory providers = _registry.getAddressesProvidersList();
@@ -60,7 +63,10 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         // To trade usdc/matic
         asset.safeApprove(address(_router), type(uint256).max);
         borrowAsset.safeApprove(address(_router), type(uint256).max);
-        // To remove liquidity
+
+        // To add liquidity
+        asset.safeApprove(address(_lpManager), type(uint).max);
+        borrowAsset.safeApprove(address(_lpManager), type(uint).max);
     }
 
     /// @notice Convert `borrowAsset` (e.g. MATIC) to `asset` (e.g. USDC)
@@ -86,16 +92,39 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         priceOfBorrowAsset = uint256(price);
     }
 
-    function totalLockedValue() public view override returns (uint256) {
+    function totalLockedValue() public override returns (uint256) {
         // The below are all in units of `asset`
         // balanceOfAsset + balanceOfMatic + aToken value + Uni Lp value - debt
         // lp tokens * (total assets) / total lp tokens
+
         uint256 assetsMatic = _borrowToAsset(borrowAsset.balanceOf(address(this)));
 
-        uint256 assetsLP;
+        // Calculate fees earned. We could calculate how much we are owed using code similar to this:
+        // https://github.com/Uniswap/v3-periphery/blob/a0e0e5817528f0b810583c04feea17b696a16755/contracts/NonfungiblePositionManager.sol#L334-L347
+        // But the feeGrowthInside{0,1}LastX128 numbers are old unless you mint/burn some liquidity
+
+        // So we simply "poke" the position (increaseLiquidity using zero input tokens) and let uniswap update our fees for us
+        INonfungiblePositionManager.IncreaseLiquidityParams memory params = INonfungiblePositionManager
+            .IncreaseLiquidityParams({
+            tokenId: lpId,
+            amount0Desired: 0,
+            amount1Desired: 0,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: block.timestamp
+        });
+        lpManager.increaseLiquidity(params);
+
+        // TODO: Figure out if `asset` is `token0` of the pool in the constructor
+        // These amounts owed include both the amount of tokens we have and the amount of fees we've earned
+        (,,,,,,,,,, uint128 tokensOwed0, uint128 tokensOwed1) = lpManager.positions(lpId);
+        uint256 assetInLp = address(asset) == pool.token0() ? tokensOwed0 : tokensOwed1;
+        uint256 borrowAssetInLp =
+            address(asset) == pool.token0() ? _borrowToAsset(tokensOwed1) : _borrowToAsset(tokensOwed1);
+        uint256 assetsLp = assetInLp + borrowAssetInLp;
 
         uint256 assetsDebt = _borrowToAsset(debtToken.balanceOf(address(this)));
-        return balanceOfAsset() + assetsMatic + aToken.balanceOf(address(this)) + assetsLP - assetsDebt;
+        return balanceOfAsset() + assetsMatic + aToken.balanceOf(address(this)) + assetsLp - assetsDebt;
     }
 
     function invest(uint256 amount) external override {
@@ -117,6 +146,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
     INonfungiblePositionManager public immutable lpManager;
     /// @notice The pool's fee. We need this to identify the pool.
     uint24 public immutable poolFee;
+    IUniswapV3Pool public immutable pool;
     uint256 public lpId;
     uint128 public lpLiquidity;
 
@@ -236,6 +266,17 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         lendingPool.withdraw({asset: address(asset), amount: aToken.balanceOf(address(this)), to: address(this)});
     }
 
+    function _collectFees() internal {
+        INonfungiblePositionManager.CollectParams memory params = INonfungiblePositionManager.CollectParams({
+            tokenId: lpId,
+            recipient: address(this),
+            amount0Max: type(uint128).max,
+            amount1Max: type(uint128).max
+        });
+
+        lpManager.collect(params);
+    }
+
     function _addLiquidity(
         uint256 amountA,
         uint256 amountB,
@@ -259,7 +300,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         });
         (uint256 tokenId, uint128 liquidity,,) = lpManager.mint(params);
         lpId = tokenId;
-        lpLiquidity = lpLiquidity;
+        lpLiquidity = liquidity;
     }
 
     function _removeLiquidity(uint256 amountAMin, uint256 amountBMin) internal {
@@ -272,6 +313,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
             deadline: block.timestamp
         });
         lpManager.decreaseLiquidity(params);
+        // TODO: burn NFT
     }
 
     function _swapExactSingle(ERC20 from, ERC20 to, uint256 amountIn, uint256 amountOutMinimum) internal {
