@@ -97,9 +97,8 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
 
     uint32 public currentPosition;
     bool public canStartNewPos;
-    mapping(uint256 => uint256) public getPositionTime;
 
-    event PositionStart(uint32 indexed position, uint256 timestamp);
+    event PositionStart(uint32 indexed position, uint256 assetBalance, uint256 chainlinkRoundId, uint256 timestamp);
 
     uint256 public slippageTolerance;
     /// @notice Fixed point number describing the percentage of the position with which to go long. 1e18 = 1 = 100%
@@ -125,9 +124,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         require(canStartNewPos, "DNLP: position is active");
         uint32 newPositionId = currentPosition + 1;
         currentPosition = newPositionId;
-        getPositionTime[newPositionId] = block.timestamp;
         canStartNewPos = false;
-        emit PositionStart(newPositionId, block.timestamp);
 
         // Some amount of the assets will be used to buy matic at the end of this function
         uint256 assets = asset.balanceOf(address(this));
@@ -145,6 +142,8 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         require(price > 0, "Chainlink price <= 0");
         require(answeredInRound >= roundId, "Chainlink stale data");
         require(timestamp != 0, "Chainlink round not complete");
+
+        emit PositionStart(newPositionId, assets, roundId, block.timestamp);
 
         // https://docs.aave.com/developers/v/2.0/the-core-protocol/lendingpool#borrow
         // assetsToDeposit has price uints `asset`, price has units `asset / borrowAsset` ratio. so we divide by price
@@ -200,7 +199,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         return amountToSend;
     }
 
-    event PositionEnd(uint32 indexed position, uint256 timestamp);
+    event PositionEnd(uint32 indexed position, uint256 assetBalance, uint256 timestamp);
 
     function endPosition() external onlyOwner {
         _endPosition();
@@ -210,7 +209,6 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         // Set position metadata
         require(!canStartNewPos, "DNLP: position is inactive");
         canStartNewPos = true;
-        emit PositionEnd(currentPosition, block.timestamp);
 
         // Remove liquidity
         // TODO: handle slippage
@@ -261,5 +259,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
 
         // Withdraw from aave
         lendingPool.withdraw({asset: address(asset), amount: aToken.balanceOf(address(this)), to: address(this)});
+
+        emit PositionEnd(currentPosition, asset.balanceOf(address(this)), block.timestamp);
     }
 }
