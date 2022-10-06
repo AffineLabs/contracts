@@ -21,7 +21,7 @@ import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
 
-contract DeltaNeutralLp is BaseStrategy, Ownable {
+contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -34,8 +34,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         AggregatorV3Interface _borrowAssetFeed,
         ISwapRouter _router,
         INonfungiblePositionManager _lpManager,
-        IUniswapV3Pool _pool,
-        uint24 _fee
+        IUniswapV3Pool _pool
     ) BaseStrategy(_vault) {
         canStartNewPos = true;
         slippageTolerance = _slippageTolerance;
@@ -47,7 +46,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         router = _router;
         lpManager = _lpManager;
         pool = _pool;
-        poolFee = _fee;
+        poolFee = _pool.fee();
 
         address[] memory providers = _registry.getAddressesProvidersList();
         ILendingPoolAddressesProvider provider = ILendingPoolAddressesProvider(providers[providers.length - 1]);
@@ -65,8 +64,8 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         borrowAsset.safeApprove(address(_router), type(uint256).max);
 
         // To add liquidity
-        asset.safeApprove(address(_lpManager), type(uint).max);
-        borrowAsset.safeApprove(address(_lpManager), type(uint).max);
+        asset.safeApprove(address(_lpManager), type(uint256).max);
+        borrowAsset.safeApprove(address(_lpManager), type(uint256).max);
     }
 
     /// @notice Convert `borrowAsset` (e.g. MATIC) to `asset` (e.g. USDC)
@@ -104,24 +103,27 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         // But the feeGrowthInside{0,1}LastX128 numbers are old unless you mint/burn some liquidity
 
         // So we simply "poke" the position (increaseLiquidity using zero input tokens) and let uniswap update our fees for us
-        INonfungiblePositionManager.IncreaseLiquidityParams memory params = INonfungiblePositionManager
-            .IncreaseLiquidityParams({
-            tokenId: lpId,
-            amount0Desired: 0,
-            amount1Desired: 0,
-            amount0Min: 0,
-            amount1Min: 0,
-            deadline: block.timestamp
-        });
-        lpManager.increaseLiquidity(params);
+        uint256 assetsLp;
+        if (lpId != 0) {
+            INonfungiblePositionManager.IncreaseLiquidityParams memory params = INonfungiblePositionManager
+                .IncreaseLiquidityParams({
+                tokenId: lpId,
+                amount0Desired: 0,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp
+            });
+            lpManager.increaseLiquidity(params);
 
-        // TODO: Figure out if `asset` is `token0` of the pool in the constructor
-        // These amounts owed include both the amount of tokens we have and the amount of fees we've earned
-        (,,,,,,,,,, uint128 tokensOwed0, uint128 tokensOwed1) = lpManager.positions(lpId);
-        uint256 assetInLp = address(asset) == pool.token0() ? tokensOwed0 : tokensOwed1;
-        uint256 borrowAssetInLp =
-            address(asset) == pool.token0() ? _borrowToAsset(tokensOwed1) : _borrowToAsset(tokensOwed1);
-        uint256 assetsLp = assetInLp + borrowAssetInLp;
+            // TODO: Figure out if `asset` is `token0` of the pool in the constructor
+            // These amounts owed include both the amount of tokens we have and the amount of fees we've earned
+            (,,,,,,,,,, uint128 tokensOwed0, uint128 tokensOwed1) = lpManager.positions(lpId);
+            uint256 assetInLp = address(asset) == pool.token0() ? tokensOwed0 : tokensOwed1;
+            uint256 borrowAssetInLp =
+                address(asset) == pool.token0() ? _borrowToAsset(tokensOwed1) : _borrowToAsset(tokensOwed1);
+            assetsLp = assetInLp + borrowAssetInLp;
+        }
 
         uint256 assetsDebt = _borrowToAsset(debtToken.balanceOf(address(this)));
         return balanceOfAsset() + assetsMatic + aToken.balanceOf(address(this)) + assetsLp - assetsDebt;
@@ -200,7 +202,8 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         // TODO: make slippage parameterizable by caller, using min/max ticks for now
         uint256 bBal = borrowAsset.balanceOf(address(this));
         uint256 aBal = assets - assetsToMatic - assetsToDeposit;
-        _addLiquidity(aBal, bBal, aBal.mulDivDown(98, 100), bBal.mulDivDown(98, 100), -887_272, -(-887_272));
+        (,int24 tick,,,,,) = pool.slot0();
+        _addLiquidity(aBal, bBal, 0, 0,  tick - pool.tickSpacing() * 10, tick + pool.tickSpacing() * 10);
 
         // Buy Matic. After this trade, the strat now holds only lp tokens and a little bit of matic
         address[] memory path = new address[](2);
@@ -314,6 +317,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         });
         lpManager.decreaseLiquidity(params);
         // TODO: burn NFT
+        lpLiquidity = 0;
     }
 
     function _swapExactSingle(ERC20 from, ERC20 to, uint256 amountIn, uint256 amountOutMinimum) internal {
