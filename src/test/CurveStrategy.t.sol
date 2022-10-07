@@ -9,8 +9,7 @@ import {Deploy} from "./Deploy.sol";
 
 import {L1Vault} from "../ethereum/L1Vault.sol";
 import {CurveStrategy} from "../ethereum/CurveStrategy.sol";
-import {I3CrvMetaPoolZap} from "../interfaces/IMetaPoolZap.sol";
-import {ILiquidityGauge} from "../interfaces/ILiquidityGauge.sol";
+import {I3CrvMetaPoolZap, ILiquidityGauge} from "../interfaces/curve.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 contract CurveStratTest is TestPlus {

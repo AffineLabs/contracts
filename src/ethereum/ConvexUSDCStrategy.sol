@@ -8,10 +8,8 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
-import {ICurveUSDCStableSwapZap} from "../interfaces/curve/ICurveUSDCStableSwapZap.sol";
-import {IConvexBooster} from "../interfaces/convex/IConvexBooster.sol";
-import {IConvexClaimZap} from "../interfaces/convex/IConvexClaimZap.sol";
-import {IConvexCrvRewards} from "../interfaces/convex/IConvexCrvRewards.sol";
+import {ICurvePool} from "../interfaces/curve.sol";
+import {IConvexBooster, IConvexRewards} from "../interfaces/convex.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 contract ConvexUSDCStrategy is BaseStrategy, Ownable {
@@ -23,21 +21,15 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
     uint256 public constant CVX_SWAP_THRESHOLD = 10e18; // 10 CVX
 
     // https://curve.readthedocs.io/exchange-deposits.html#curve-stableswap-exchange-deposit-contracts
-    ICurveUSDCStableSwapZap public immutable curveZapper;
+    ICurvePool public immutable curvePool;
     ERC20 public immutable curveLpToken;
 
-    // Reward token issued by convex
-    ERC20 public immutable convexPoolCrvRewardsToken;
-    // Pool ID of the convex pool.
+    /// @notice Id of the curve pool (used by convex booster).
     uint256 public immutable convexPid;
-    // Convex booster contract address. Used for depositing.
+    // Convex booster contract address. Used for depositing curve lp tokens.
     IConvexBooster public immutable convexBooster;
-    // Claim Zap contract. This contract is used for claiming rewards for staking
-    // curve LP tokens to convex pools.
-    IConvexClaimZap public immutable convexClaimZap;
-    // Reward contact address consumed by the convexClaimZap contract.
-    IConvexCrvRewards public immutable convexRewardContract;
-    address[] public convexRewardContracts;
+    /// @notice BaseRewardPool address
+    IConvexRewards public immutable cvxRewarder;
 
     IUniswapV2Router02 public immutable router;
     ERC20 public immutable crv;
@@ -45,28 +37,25 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
 
     constructor(
         BaseVault _vault,
-        ICurveUSDCStableSwapZap _curveZapper,
+        ICurvePool _curvePool,
         uint256 _convexPid,
         IConvexBooster _convexBooster,
-        IConvexClaimZap _convexClaimZap,
-        IConvexCrvRewards _convexRewardContract,
+        ERC20 _cvx,
         IUniswapV2Router02 _router
     ) BaseStrategy(_vault) {
-        curveZapper = _curveZapper;
-        curveLpToken = ERC20(curveZapper.lp_token());
-
+        curvePool = _curvePool;
         convexPid = _convexPid;
         convexBooster = _convexBooster;
-        convexPoolCrvRewardsToken = ERC20(convexBooster.poolInfo(convexPid).crvRewards);
-        convexClaimZap = _convexClaimZap;
-        convexRewardContract = _convexRewardContract;
-        convexRewardContracts.push(address(convexRewardContract));
+
+        IConvexBooster.PoolInfo memory poolInfo = convexBooster.poolInfo(_convexPid);
+        cvxRewarder = IConvexRewards(poolInfo.crvRewards);
+        curveLpToken = ERC20(poolInfo.lptoken);
 
         router = _router;
-        crv = ERC20(convexClaimZap.crv());
-        cvx = ERC20(convexClaimZap.cvx());
+        crv = ERC20(convexBooster.crv());
+        cvx = _cvx;
 
-        asset.safeApprove(address(curveZapper), type(uint256).max);
+        asset.safeApprove(address(curvePool), type(uint256).max);
         curveLpToken.safeApprove(address(convexBooster), type(uint256).max);
     }
 
@@ -80,7 +69,7 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
         // e.g. in a FRAX-USDC stableswap pool, the 0 index is for FRAX and the index 1 is for USDC.
         uint256[2] memory depositAmounts = [0, assets];
         // TODO: reconsider infinite slippage.
-        curveZapper.add_liquidity(depositAmounts, 0);
+        curvePool.add_liquidity(depositAmounts, 0);
     }
 
     function divest(uint256 assets) external override onlyVault returns (uint256) {
@@ -101,10 +90,7 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
     }
 
     function _claimAllRewards() internal {
-        address[] memory emptyAddressArray;
-        convexClaimZap.claimRewards(
-            convexRewardContracts, emptyAddressArray, emptyAddressArray, emptyAddressArray, 0, 0, 0, 0, 0
-        );
+        cvxRewarder.getReward();
     }
 
     /// @notice Try to increase balance of `asset` to `assets`.
@@ -136,21 +122,21 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
             router.swapExactTokensForTokens(cvxBal, 0, cvxPath, address(this), block.timestamp);
         }
 
-        // TODO: Find a way to not withdraw all and depositing back the leftover.
         // Calculate what amount is needed to facilitate the withdrawal of desired amount of
         // assets.
-        convexRewardContract.withdrawAllAndUnwrap(true);
+        // TODO: Find a way to not withdraw all curve lp tokens from convex
+        cvxRewarder.withdrawAllAndUnwrap(true);
 
         // Only divest the amount that you have to
         uint256 assetsToDivest = assets - currAssets;
         uint256[2] memory withdrawAmounts = [0, assetsToDivest];
 
         // If the amount  of lp tokens is greater than we have, simply burn the max amount of tokens
-        try curveZapper.remove_liquidity_imbalance(withdrawAmounts, curveLpToken.balanceOf(address(this))) {
+        try curvePool.remove_liquidity_imbalance(withdrawAmounts, curveLpToken.balanceOf(address(this))) {
             // We successfully withdrew `assetsToDivest` and our balance is now `assets`
         } catch (bytes memory) {
             // We didn't have enough lp tokens to withdraw `assetsToDivest`. So we just burn all of our lp shares
-            curveZapper.remove_liquidity_one_coin(curveLpToken.balanceOf(address(this)), ASSET_INDEX, 0);
+            curvePool.remove_liquidity_one_coin(curveLpToken.balanceOf(address(this)), ASSET_INDEX, 0);
         }
 
         if (curveLpToken.balanceOf(address(this)) > 0) {
@@ -182,6 +168,6 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
         }
 
         return balanceOfAsset() + assetsFromCrv + assetsFromCvx
-            + curveZapper.calc_withdraw_one_coin(convexPoolCrvRewardsToken.balanceOf(address(this)), ASSET_INDEX);
+            + curvePool.calc_withdraw_one_coin(cvxRewarder.balanceOf(address(this)), ASSET_INDEX);
     }
 }

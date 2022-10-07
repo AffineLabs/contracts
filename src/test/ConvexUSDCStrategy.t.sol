@@ -9,10 +9,8 @@ import {Deploy} from "./Deploy.sol";
 
 import {L1Vault} from "../ethereum/L1Vault.sol";
 import {ConvexUSDCStrategy} from "../ethereum/ConvexUSDCStrategy.sol";
-import {ICurveUSDCStableSwapZap} from "../interfaces/curve/ICurveUSDCStableSwapZap.sol";
-import {IConvexBooster} from "../interfaces/convex/IConvexBooster.sol";
-import {IConvexClaimZap} from "../interfaces/convex/IConvexClaimZap.sol";
-import {IConvexCrvRewards} from "../interfaces/convex/IConvexCrvRewards.sol";
+import {ICurvePool} from "../interfaces/curve.sol";
+import {IConvexBooster, IConvexRewards} from "../interfaces/convex.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 contract ConvexUSDCStratTest is TestPlus {
@@ -34,11 +32,10 @@ contract ConvexUSDCStratTest is TestPlus {
         );
         strategy = new ConvexUSDCStrategy(
             vault, 
-            ICurveUSDCStableSwapZap(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
+            ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
             100,
             IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31),
-            IConvexClaimZap(0xDd49A93FDcae579AE50B4b9923325e9e335ec82B),
-            IConvexCrvRewards(0x7e880867363A7e321f5d260Cade2B0Bb2F717B02),
+                    ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B),
             IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D)
         );
     }
@@ -50,7 +47,9 @@ contract ConvexUSDCStratTest is TestPlus {
         usdc.approve(address(strategy), type(uint256).max);
         strategy.invest(1e6);
 
-        uint256 rewardTokenBalance = strategy.convexPoolCrvRewardsToken().balanceOf(address(strategy));
+        // This is not a rewards token balance. This just tells us how much cvxcrvFRAX we've deposited
+        // into the rewards contract
+        uint256 rewardTokenBalance = strategy.cvxRewarder().balanceOf(address(strategy));
         assertGt(rewardTokenBalance, 0);
 
         uint256 tvl = strategy.totalLockedValue();

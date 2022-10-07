@@ -8,8 +8,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
-import {I3CrvMetaPoolZap} from "../interfaces/IMetaPoolZap.sol";
-import {ILiquidityGauge} from "../interfaces/ILiquidityGauge.sol";
+import {I3CrvMetaPoolZap, ILiquidityGauge} from "../interfaces/curve.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 contract CurveStrategy is BaseStrategy, Ownable {
