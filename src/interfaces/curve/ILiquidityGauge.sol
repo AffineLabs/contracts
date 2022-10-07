@@ -6,6 +6,7 @@ pragma solidity ^0.8.16;
 interface ILiquidityGauge {
     function deposit(uint256 _value) external;
     function claimable_tokens(address addr) external returns (uint256);
+    function claim_rewards() external;
 }
 
 /*  solhint-disable func-name-mixedcase, var-name-mixedcase */
