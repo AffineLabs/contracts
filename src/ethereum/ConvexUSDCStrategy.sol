@@ -55,8 +55,13 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
         crv = ERC20(convexBooster.crv());
         cvx = _cvx;
 
+        // For deposing `asset` into curv and depositing curve lp tokens into convex
         asset.safeApprove(address(curvePool), type(uint256).max);
         curveLpToken.safeApprove(address(convexBooster), type(uint256).max);
+
+        // For trading cvx and crv
+        crv.safeApprove(address(router), type(uint256).max);
+        cvx.safeApprove(address(router), type(uint256).max);
     }
 
     function invest(uint256 amount) external override {
@@ -121,15 +126,19 @@ contract ConvexUSDCStrategy is BaseStrategy, Ownable {
         if (cvxBal >= CVX_SWAP_THRESHOLD) {
             router.swapExactTokensForTokens(cvxBal, 0, cvxPath, address(this), block.timestamp);
         }
+        currAssets = asset.balanceOf(address(this));
+        if (currAssets >= assets) {
+            return;
+        }
+
+        // Only divest the amount that you have to
+        uint256 assetsToDivest = assets - currAssets;
+        uint256[2] memory withdrawAmounts = [0, assetsToDivest];
 
         // Calculate what amount is needed to facilitate the withdrawal of desired amount of
         // assets.
         // TODO: Find a way to not withdraw all curve lp tokens from convex
         cvxRewarder.withdrawAllAndUnwrap(true);
-
-        // Only divest the amount that you have to
-        uint256 assetsToDivest = assets - currAssets;
-        uint256[2] memory withdrawAmounts = [0, assetsToDivest];
 
         // If the amount  of lp tokens is greater than we have, simply burn the max amount of tokens
         try curvePool.remove_liquidity_imbalance(withdrawAmounts, curveLpToken.balanceOf(address(this))) {
