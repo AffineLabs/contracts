@@ -5,26 +5,25 @@ import { readAddressBook } from "./utils/export";
 const ETH_NETWORK_NAME = process.env.ETH_NETWORK || "";
 const POLYGON_NETWORK_NAME = process.env.POLYGON_NETWORK || "";
 
-export async function deployCrvStrat() {
+export async function deployCvxStrat() {
   hre.changeNetwork(ETH_NETWORK_NAME);
   const addressBook = await readAddressBook("v1.0-alpha");
 
-  const factory = await ethers.getContractFactory("CurveStrategy");
+  const factory = await ethers.getContractFactory("ConvexStrategy");
   const strategy = await factory.deploy(
     addressBook.EthAlpSave.address,
-    "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
-    "0xA79828DF1850E8a3A3064576f380D90aECDD3359",
-    2,
-    "0xd8b712d29381748dB89c36BCa0138d7c75866ddF",
+    "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2",
+    100,
+    "0xF403C135812408BFbE8713b5A23a04b3D48AAE31",
+    "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
     "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
-    "0xD533a949740bb3306d119CC777fa900bA034cd52",
   );
   await strategy.deployed();
 }
 
-deployCrvStrat()
+deployCvxStrat()
   .then(() => {
-    console.log("Crv strat deployed.");
+    console.log("Cvx strat deployed.");
     process.exit(0);
   })
   .catch((error: Error) => {
