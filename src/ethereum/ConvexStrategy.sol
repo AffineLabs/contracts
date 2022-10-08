@@ -17,8 +17,8 @@ contract ConvexStrategy is BaseStrategy, Ownable {
 
     // Asset index of USDC during deposit and withdraw.
     int128 public constant ASSET_INDEX = 1;
-    uint256 public constant CRV_SWAP_THRESHOLD = 1e17; // 0.1 CRV
-    uint256 public constant CVX_SWAP_THRESHOLD = 10e18; // 10 CVX
+    uint256 public constant CRV_SWAP_THRESHOLD = 5e18; // 1 CRV
+    uint256 public constant CVX_SWAP_THRESHOLD = 1e18; // 1 CVX
     address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     // https://curve.readthedocs.io/exchange-deposits.html#curve-stableswap-exchange-deposit-contracts

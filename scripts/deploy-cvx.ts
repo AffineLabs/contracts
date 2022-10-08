@@ -12,11 +12,11 @@ export async function deployCvxStrat() {
   const factory = await ethers.getContractFactory("ConvexStrategy");
   const strategy = await factory.deploy(
     addressBook.EthAlpSave.address,
-    "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2",
-    100,
-    "0xF403C135812408BFbE8713b5A23a04b3D48AAE31",
-    "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
-    "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+    "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2", // frax-usdc curve pool
+    100, // convex id for the vurve pool
+    "0xF403C135812408BFbE8713b5A23a04b3D48AAE31", // booster
+    "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B", // cvx
+    "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D", // uniswap router
   );
   await strategy.deployed();
 }
