@@ -2,16 +2,18 @@
 pragma solidity ^0.8.13;
 
 // See https://docs.convexfinance.com/convexfinanceintegration/booster
-struct PoolInfo {
-    address lptoken;
-    address token;
-    address gauge;
-    address crvRewards;
-    address stash;
-    bool shutdown;
-}
 
 interface IConvexBooster {
+    struct PoolInfo {
+        address lptoken;
+        address token;
+        address gauge;
+        address crvRewards;
+        address stash;
+        bool shutdown;
+    }
+
     function poolInfo(uint256 _pid) external returns (PoolInfo memory);
     function depositAll(uint256 _pid, bool _stake) external returns (bool);
+    function crv() external returns (address);
 }

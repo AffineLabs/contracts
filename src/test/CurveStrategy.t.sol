@@ -9,8 +9,7 @@ import {Deploy} from "./Deploy.sol";
 
 import {L1Vault} from "../ethereum/L1Vault.sol";
 import {CurveStrategy} from "../ethereum/CurveStrategy.sol";
-import {I3CrvMetaPoolZap} from "../interfaces/IMetaPoolZap.sol";
-import {ILiquidityGauge} from "../interfaces/ILiquidityGauge.sol";
+import {I3CrvMetaPoolZap, ILiquidityGauge} from "../interfaces/curve.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 contract CurveStratTest is TestPlus {
@@ -48,6 +47,7 @@ contract CurveStratTest is TestPlus {
 
         usdc.approve(address(strategy), type(uint256).max);
         strategy.invest(1e6);
+        strategy.deposit(1e6, 0);
 
         assertGt(ERC20(strategy.metaPool()).balanceOf(address(strategy)), 0);
         emit log_named_uint("strat tvl: ", strategy.totalLockedValue());
@@ -72,5 +72,31 @@ contract CurveStratTest is TestPlus {
         uint256 crvRewards = strategy.gauge().claimable_tokens(address(strategy));
         emit log_named_uint("crv rewards: ", crvRewards);
         assertTrue(crvRewards > 0);
+    }
+
+    function testCanSellRewards() public {
+        deal(address(strategy.crv()), address(strategy), 1e18 * 100);
+
+        strategy.withdrawAssets(100, 0, 0);
+
+        // We have usdc
+        assertTrue(usdc.balanceOf(address(strategy)) > 0);
+        // We sold all of our crv
+        assertEq(strategy.crv().balanceOf(address(strategy)), 0);
+    }
+
+    function testCanSlip() public {
+        deal(address(usdc), address(strategy), 100e6);
+
+        vm.expectRevert();
+        strategy.deposit(100e6, type(uint256).max);
+
+        strategy.deposit(100e6, 0);
+
+        vm.expectRevert();
+        // If we set minAssetsFromLp too high, we won't be able to withdraw
+        strategy.withdrawAssets(type(uint256).max, 0, type(uint256).max);
+
+        strategy.withdrawAssets(type(uint256).max, 0, 0);
     }
 }
