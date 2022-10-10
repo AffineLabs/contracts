@@ -15,7 +15,6 @@ import {ILendingPoolAddressesProviderRegistry} from "../interfaces/aave.sol";
 import {L2Vault} from "../polygon/L2Vault.sol";
 import {DeltaNeutralLpV3} from "../polygon/DeltaNeutralLpV3.sol";
 
-
 contract DeltaNeutralV3Test is TestPlus {
     using stdStorage for StdStorage;
 
@@ -37,11 +36,11 @@ contract DeltaNeutralV3Test is TestPlus {
         0.05e18,
         0.001e18,
         ILendingPoolAddressesProviderRegistry(0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19),
-        ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619), // wrapped ether for now....
-        AggregatorV3Interface(0xF9680D99D6C9589e2a93a78A04A279e509205945), // eth/usd price feed
+        ERC20(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270), // wrapped matic
+        AggregatorV3Interface(0xAB594600376Ec9fD91F8e885dADF0CE036862dE0), // matic/usd price feed
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
-        IUniswapV3Pool(0x45dDa9cb7c25131DF268515131f647d726f50608) // WETH/USDC
+        IUniswapV3Pool(0xA374094527e1673A86dE625aa59517c5dE346d32) // WMATIC/USDC
         );
 
         vm.prank(governance);
@@ -60,14 +59,13 @@ contract DeltaNeutralV3Test is TestPlus {
         assertFalse(strategy.canStartNewPos());
 
         // I got the right amount of matic
-        assertApproxEqAbs(900e18, strategy.borrowAsset().balanceOf(address(strategy)), 0.05e18);
+        // assertApproxEqAbs(900e18, strategy.borrowAsset().balanceOf(address(strategy)), 0.05e18);
 
         // I have the right amount of aUSDC
         assertEq(strategy.aToken().balanceOf(address(strategy)), (startAssets - assetsToMatic) * 4 / 7);
 
-        // I have the right amount of uniswap lp tokens
-        (,,,,,,,,,, uint128 tokensOwed0, uint128 tokensOwed1) = strategy.lpManager().positions(strategy.lpId());
-        uint256 assetsLP = address(asset) == strategy.pool().token0() ? tokensOwed0 : tokensOwed1;
+        // I put the correct amount of money into uniswap pool
+        uint256 assetsLP = strategy.valueOfLpPosition();
         uint256 assetsInAAve = strategy.aToken().balanceOf(address(strategy)) * 3 / 4;
         emit log_named_uint("assetsLP: ", assetsLP);
         emit log_named_uint("assetsInAAve: ", assetsInAAve);

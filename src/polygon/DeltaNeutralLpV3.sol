@@ -8,6 +8,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import {PositionValue} from "@uniswap/v3-periphery/contracts/libraries/PositionValue.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import {
@@ -47,6 +48,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         lpManager = _lpManager;
         pool = _pool;
         poolFee = _pool.fee();
+        assetIsToken0 = pool.token0() == address(asset);
 
         address[] memory providers = _registry.getAddressesProvidersList();
         ILendingPoolAddressesProvider provider = ILendingPoolAddressesProvider(providers[providers.length - 1]);
@@ -91,39 +93,24 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         priceOfBorrowAsset = uint256(price);
     }
 
-    function totalLockedValue() public override returns (uint256) {
+    function valueOfLpPosition() public view returns (uint256 assetsLp) {
+        if (lpId == 0) return assetsLp;
+        (uint160 sqrtPriceX96,,,,,,) = pool.slot0();
+        // Assume asset is token0
+        (uint256 assetsInLp, uint256 borrowAssetsInLp) = PositionValue.total(lpManager, lpId, sqrtPriceX96);
+        // Flip the amounts is asset is not token0
+        if (!assetIsToken0) (borrowAssetsInLp, assetsInLp) = (assetsInLp, borrowAssetsInLp);
+        assetsLp = assetsInLp + _borrowToAsset(borrowAssetsInLp);
+    }
+
+    function totalLockedValue() public view override returns (uint256) {
         // The below are all in units of `asset`
         // balanceOfAsset + balanceOfMatic + aToken value + Uni Lp value - debt
         // lp tokens * (total assets) / total lp tokens
-
         uint256 assetsMatic = _borrowToAsset(borrowAsset.balanceOf(address(this)));
 
-        // Calculate fees earned. We could calculate how much we are owed using code similar to this:
-        // https://github.com/Uniswap/v3-periphery/blob/a0e0e5817528f0b810583c04feea17b696a16755/contracts/NonfungiblePositionManager.sol#L334-L347
-        // But the feeGrowthInside{0,1}LastX128 numbers are old unless you mint/burn some liquidity
-
-        // So we simply "poke" the position (increaseLiquidity using zero input tokens) and let uniswap update our fees for us
-        uint256 assetsLp;
-        if (lpId != 0) {
-            INonfungiblePositionManager.IncreaseLiquidityParams memory params = INonfungiblePositionManager
-                .IncreaseLiquidityParams({
-                tokenId: lpId,
-                amount0Desired: 0,
-                amount1Desired: 0,
-                amount0Min: 0,
-                amount1Min: 0,
-                deadline: block.timestamp
-            });
-            lpManager.increaseLiquidity(params);
-
-            // TODO: Figure out if `asset` is `token0` of the pool in the constructor
-            // These amounts owed include both the amount of tokens we have and the amount of fees we've earned
-            (,,,,,,,,,, uint128 tokensOwed0, uint128 tokensOwed1) = lpManager.positions(lpId);
-            uint256 assetInLp = address(asset) == pool.token0() ? tokensOwed0 : tokensOwed1;
-            uint256 borrowAssetInLp =
-                address(asset) == pool.token0() ? _borrowToAsset(tokensOwed1) : _borrowToAsset(tokensOwed1);
-            assetsLp = assetInLp + borrowAssetInLp;
-        }
+        // Get value of uniswap lp position
+        uint256 assetsLp = valueOfLpPosition();
 
         uint256 assetsDebt = _borrowToAsset(debtToken.balanceOf(address(this)));
         return balanceOfAsset() + assetsMatic + aToken.balanceOf(address(this)) + assetsLp - assetsDebt;
@@ -149,6 +136,8 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
     /// @notice The pool's fee. We need this to identify the pool.
     uint24 public immutable poolFee;
     IUniswapV3Pool public immutable pool;
+    /// @notice True if `asset` is pool.token0();
+    bool public immutable assetIsToken0;
     uint256 public lpId;
     uint128 public lpLiquidity;
 
@@ -200,12 +189,12 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
 
         // Provide liquidity on uniswap
         // TODO: make slippage parameterizable by caller, using min/max ticks for now
-        uint256 bBal = borrowAsset.balanceOf(address(this));
         uint256 aBal = assets - assetsToMatic - assetsToDeposit;
-        (,int24 tick,,,,,) = pool.slot0();
-        _addLiquidity(aBal, bBal, 0, 0,  tick - pool.tickSpacing() * 10, tick + pool.tickSpacing() * 10);
+        uint256 bBal = borrowAsset.balanceOf(address(this));
+        (, int24 tick,,,,,) = pool.slot0();
+        _addLiquidity(aBal, bBal, 0, 0, tick - pool.tickSpacing() * 20, tick + pool.tickSpacing() * 20);
 
-        // Buy Matic. After this trade, the strat now holds only lp tokens and a little bit of matic
+        // Buy WMATIC. After this trade, the strat now holds an lp NFT and a little bit of WMATIC
         address[] memory path = new address[](2);
         path[0] = address(asset);
         path[1] = address(borrowAsset);
@@ -269,15 +258,9 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         lendingPool.withdraw({asset: address(asset), amount: aToken.balanceOf(address(this)), to: address(this)});
     }
 
-    function _collectFees() internal {
-        INonfungiblePositionManager.CollectParams memory params = INonfungiblePositionManager.CollectParams({
-            tokenId: lpId,
-            recipient: address(this),
-            amount0Max: type(uint128).max,
-            amount1Max: type(uint128).max
-        });
-
-        lpManager.collect(params);
+    function _convertToAB(uint256 assets, uint256 borrowAssets) internal view returns (uint256, uint256) {
+        if (assetIsToken0) return (assets, borrowAssets);
+        else return (borrowAssets, assets);
     }
 
     function _addLiquidity(
@@ -288,16 +271,18 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         int24 minTick,
         int24 maxTick
     ) internal {
+        (uint256 amount0, uint256 amount1) = _convertToAB(amountA, amountB);
+        (uint256 amount0Min, uint256 amount1Min) = _convertToAB(amountAMin, amountBMin);
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
-            token0: address(asset),
-            token1: address(borrowAsset),
+            token0: assetIsToken0 ? address(asset) : address(borrowAsset),
+            token1: assetIsToken0 ? address(borrowAsset) : address(asset),
             fee: poolFee,
             tickLower: minTick,
             tickUpper: maxTick,
-            amount0Desired: amountA,
-            amount1Desired: amountB,
-            amount0Min: amountAMin,
-            amount1Min: amountBMin,
+            amount0Desired: amount0,
+            amount1Desired: amount1,
+            amount0Min: amount0Min,
+            amount1Min: amount1Min,
             recipient: address(this),
             deadline: block.timestamp
         });
@@ -307,12 +292,13 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
     }
 
     function _removeLiquidity(uint256 amountAMin, uint256 amountBMin) internal {
+        (uint256 amount0Min, uint256 amount1Min) = _convertToAB(amountAMin, amountBMin);
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
             .DecreaseLiquidityParams({
             tokenId: lpId,
             liquidity: lpLiquidity,
-            amount0Min: amountAMin,
-            amount1Min: amountBMin,
+            amount0Min: amount0Min,
+            amount1Min: amount1Min,
             deadline: block.timestamp
         });
         lpManager.decreaseLiquidity(params);
