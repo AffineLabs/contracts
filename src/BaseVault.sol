@@ -62,6 +62,20 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
     /// @notice A "BridgeEscrow" contract for sending and receiving `token` across a bridge.
     BridgeEscrow public bridgeEscrow;
 
+    /**
+     * @notice Set wormhole router address.
+     */
+    function setWormholeRouter(address _wormholeRouter) external onlyGovernance {
+        wormholeRouter = _wormholeRouter;
+    }
+
+    /**
+     * @notice Set bridge escrow address.
+     */
+    function setBridgeEscrow(address _bridgeEscrow) external onlyGovernance {
+        bridgeEscrow = BridgeEscrow(_bridgeEscrow);
+    }
+
     /** AUTHENTICATION
      **************************************************************************/
 

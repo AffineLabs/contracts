@@ -107,7 +107,7 @@ export const mainnetConfig: totalConfig = {
   l2: {
     // See https://docs.polygon.technology/docs/develop/ethereum-polygon/pos/deployment for more addresses
     usdc: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
-    wormhole: "0x0CBE91CF822c73C2315FB05100C2F714765d5c20",
+    wormhole: "0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7",
     create2Deployer: "0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2",
     governance: "0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0",
     withdrawFee: 0,
