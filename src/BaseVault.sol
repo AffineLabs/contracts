@@ -126,22 +126,23 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         emit WithdrawalQueueSet(msg.sender, newQueue);
     }
 
+    // NOTE: disabling to reduce code size. Use `setWithdrawalQueue` instead.
     /**
      * @notice Swaps two indexes in the withdrawal queue.
      * @param index1 One index involved in the swap
      * @param index2 The other index involved in the swap.
      */
-    function swapWithdrawalQueueIndexes(uint256 index1, uint256 index2) external onlyRole(queueOperatorRole) {
-        // Get the (soon to be) new strategies at each index.
-        Strategy newStrategy2 = withdrawalQueue[index1];
-        Strategy newStrategy1 = withdrawalQueue[index2];
+    // function swapWithdrawalQueueIndexes(uint256 index1, uint256 index2) external onlyRole(queueOperatorRole) {
+    //     // Get the (soon to be) new strategies at each index.
+    //     Strategy newStrategy2 = withdrawalQueue[index1];
+    //     Strategy newStrategy1 = withdrawalQueue[index2];
 
-        // Swap the strategies at both indexes.
-        withdrawalQueue[index1] = newStrategy1;
-        withdrawalQueue[index2] = newStrategy2;
+    //     // Swap the strategies at both indexes.
+    //     withdrawalQueue[index1] = newStrategy1;
+    //     withdrawalQueue[index2] = newStrategy2;
 
-        emit WithdrawalQueueIndexesSwapped(msg.sender, index1, index2, newStrategy1, newStrategy2);
-    }
+    //     emit WithdrawalQueueIndexesSwapped(msg.sender, index1, index2, newStrategy1, newStrategy2);
+    // }
 
     /**@notice Emitted when the withdrawal queue is updated.
      * @param user The authorized user who triggered the set.
