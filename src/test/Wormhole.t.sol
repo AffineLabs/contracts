@@ -17,8 +17,8 @@ import {Constants} from "../Constants.sol";
 
 // This contract exists solely to test the internal view
 contract MockRouter is L2WormholeRouter {
-    constructor(L2Vault _vault, IWormhole _wormhole, uint16 _otherLayerChainId)
-        L2WormholeRouter(_vault, _wormhole, _otherLayerChainId)
+    constructor(L2Vault _vault, IWormhole _wormhole, uint16 _otherLayerWormholeChainId)
+        L2WormholeRouter(_vault, _wormhole, _otherLayerWormholeChainId)
     {}
 
     function validateWormholeMessageEmitter(IWormhole.VM memory vm) public view {

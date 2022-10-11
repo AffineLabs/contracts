@@ -9,8 +9,8 @@ import {Constants} from "../Constants.sol";
 contract L1WormholeRouter is WormholeRouter {
     L1Vault vault;
 
-    constructor(L1Vault _vault, IWormhole _wormhole, uint16 _otherLayerChainId)
-        WormholeRouter(_wormhole, _otherLayerChainId)
+    constructor(L1Vault _vault, IWormhole _wormhole, uint16 _otherLayerWormholeChainId)
+        WormholeRouter(_wormhole, _otherLayerWormholeChainId)
     {
         vault = _vault;
         governance = vault.governance();
