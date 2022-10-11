@@ -4,8 +4,8 @@ import { mainnetConfig } from "./utils/config";
 import { ICreate2Deployer__factory, BridgeEscrow__factory, L1WormholeRouter, L2WormholeRouter } from "../typechain";
 import { CHAIN_ID_ETH, CHAIN_ID_POLYGON } from "@certusone/wormhole-sdk";
 
-const ETH_ALP_SAVE = "0x8C1445315a5345E1406b13DE8178Afc6Fa1c6B2E"; // "0x7331aD312BAF6CFb127a84DbA077b72295cFEB28";
-const POLYGON_ALP_SAVE = "0x086afAa8b35E0DAE1A779103A1A48fC2E05Ab928"; // "0xaB4ea6763fb78f1DdAB34101ccb460c1768B4f3A";
+const ETH_ALP_SAVE = "0x7331aD312BAF6CFb127a84DbA077b72295cFEB28";
+const POLYGON_ALP_SAVE = "0xaB4ea6763fb78f1DdAB34101ccb460c1768B4f3A";
 
 async function deployNewWHRouterAndBridgeEscrow() {
   const bridgeEscrowCode = BridgeEscrow__factory.bytecode;
@@ -15,7 +15,7 @@ async function deployNewWHRouterAndBridgeEscrow() {
   const constructorParams = ethers.utils.defaultAbiCoder.encode(["address"], [deployerSignerAddress]);
   const bridgeEscrowCreationCode = ethers.utils.hexConcat([bridgeEscrowCode, constructorParams]);
 
-  hre.changeNetwork("eth-goerli");
+  hre.changeNetwork("eth-mainnet");
   const [ethDeployerSigner] = await ethers.getSigners();
   const ethCreate2 = ICreate2Deployer__factory.connect(mainnetConfig.l1.create2Deployer, ethDeployerSigner);
   console.log("[Eth] Deploying bridge escrow");
@@ -32,7 +32,7 @@ async function deployNewWHRouterAndBridgeEscrow() {
   console.log("[Eth] Deploy Alp Save");
   const ethAlpSaveImpl = await ethAlpSaveImplFactory.deploy();
 
-  hre.changeNetwork("polygon-mumbai");
+  hre.changeNetwork("polygon-mainnet");
   const [polygonDeployerSigner] = await ethers.getSigners();
   const polygonCreate2 = ICreate2Deployer__factory.connect(mainnetConfig.l2.create2Deployer, polygonDeployerSigner);
   console.log("[Polygon] Deploying bridge escrow");

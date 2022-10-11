@@ -131,17 +131,17 @@ contract BaseVaultTest is TestPlus {
         }
     }
 
-    function testSwapWithdrawalQueue() public {
-        vault.addStrategy(new TestStrategy(token, vault), 1000);
-        vault.addStrategy(new TestStrategy(token, vault), 2000);
-        BaseStrategy newStrategy1 = vault.withdrawalQueue(0);
-        BaseStrategy newStrategy2 = vault.withdrawalQueue(1);
-        vm.expectEmit(true, true, true, true);
-        emit WithdrawalQueueIndexesSwapped(address(this), 0, 1, newStrategy2, newStrategy1);
-        vault.swapWithdrawalQueueIndexes(0, 1);
-        assertTrue(newStrategy1 == vault.withdrawalQueue(1));
-        assertTrue(newStrategy2 == vault.withdrawalQueue(0));
-    }
+    // function testSwapWithdrawalQueue() public {
+    //     vault.addStrategy(new TestStrategy(token, vault), 1000);
+    //     vault.addStrategy(new TestStrategy(token, vault), 2000);
+    //     BaseStrategy newStrategy1 = vault.withdrawalQueue(0);
+    //     BaseStrategy newStrategy2 = vault.withdrawalQueue(1);
+    //     vm.expectEmit(true, true, true, true);
+    //     emit WithdrawalQueueIndexesSwapped(address(this), 0, 1, newStrategy2, newStrategy1);
+    //     vault.swapWithdrawalQueueIndexes(0, 1);
+    //     assertTrue(newStrategy1 == vault.withdrawalQueue(1));
+    //     assertTrue(newStrategy2 == vault.withdrawalQueue(0));
+    // }
 
     function testLiquidate() public {
         BaseStrategy newStrategy1 = new TestStrategy(token, vault);
