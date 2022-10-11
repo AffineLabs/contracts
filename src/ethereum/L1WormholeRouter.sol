@@ -16,7 +16,7 @@ contract L1WormholeRouter is WormholeRouter {
         governance = vault.governance();
     }
 
-    function reportTVL(uint256 tvl, bool received) external {
+    function reportTVL(uint256 tvl, bool received) external payable {
         require(msg.sender == address(vault), "Only vault");
         bytes memory payload = abi.encode(Constants.L1_TVL, tvl, received);
         // NOTE: We use the current tx count (to wormhole) of this contract
@@ -24,15 +24,15 @@ contract L1WormholeRouter is WormholeRouter {
         // This casting is fine so long as we send less than 2 ** 32 - 1 (~ 4 billion) messages
         uint64 sequence = wormhole.nextSequence(address(this));
 
-        wormhole.publishMessage(uint32(sequence), payload, consistencyLevel);
+        wormhole.publishMessage{value: msg.value}(uint32(sequence), payload, consistencyLevel);
     }
 
-    function reportTransferredFund(uint256 amount) external {
+    function reportTransferredFund(uint256 amount) external payable {
         require(msg.sender == address(vault), "Only vault");
         bytes memory payload = abi.encode(Constants.L1_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
 
-        wormhole.publishMessage(uint32(sequence), payload, consistencyLevel);
+        wormhole.publishMessage{value: msg.value}(uint32(sequence), payload, consistencyLevel);
     }
 
     event TransferFromL2(uint256 amount);

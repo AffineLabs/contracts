@@ -16,18 +16,18 @@ contract L2WormholeRouter is WormholeRouter {
         governance = vault.governance();
     }
 
-    function reportTransferredFund(uint256 amount) external {
+    function reportTransferredFund(uint256 amount) external payable {
         require(msg.sender == address(vault), "Only vault");
         bytes memory payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
-        wormhole.publishMessage(uint32(sequence), payload, consistencyLevel);
+        wormhole.publishMessage{value: msg.value}(uint32(sequence), payload, consistencyLevel);
     }
 
-    function requestFunds(uint256 amount) external {
+    function requestFunds(uint256 amount) external payable {
         require(msg.sender == address(vault), "Only vault");
         bytes memory payload = abi.encode(Constants.L2_FUND_REQUEST, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
-        wormhole.publishMessage(uint32(sequence), payload, consistencyLevel);
+        wormhole.publishMessage{value: msg.value}(uint32(sequence), payload, consistencyLevel);
     }
 
     event TransferFromL1(uint256 amount);

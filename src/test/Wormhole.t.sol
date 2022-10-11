@@ -68,6 +68,19 @@ contract L2WormholeRouterTest is TestPlus {
 
         vm.prank(address(vault));
         router.reportTransferredFund(transferAmount);
+
+        // Turn on a fee (wormhole reverts if you send a msg.value != wormhole.messageFee)
+        uint256 fee = 1 ether;
+        stdstore.target(address(wormhole)).sig("messageFee()").checked_write(fee);
+
+        // We can send ether/matic
+        vm.expectCall(
+            address(router.wormhole()),
+            fee,
+            abi.encodeCall(IWormhole.publishMessage, (uint32(1), payload, router.consistencyLevel()))
+        );
+        hoax(address(vault), fee);
+        router.reportTransferredFund{value: fee}(transferAmount);
     }
 
     function testMessageValidation() public {
@@ -108,6 +121,19 @@ contract L2WormholeRouterTest is TestPlus {
 
         vm.prank(address(vault));
         router.requestFunds(requestAmount);
+
+        // Turn on a fee (wormhole reverts if you send a msg.value != wormhole.messageFee)
+        uint256 fee = 1 ether;
+        stdstore.target(address(wormhole)).sig("messageFee()").checked_write(fee);
+
+        // We can send ether/matic
+        vm.expectCall(
+            address(router.wormhole()),
+            fee,
+            abi.encodeCall(IWormhole.publishMessage, (uint32(1), payload, router.consistencyLevel()))
+        );
+        hoax(address(vault), fee);
+        router.requestFunds{value: fee}(requestAmount);
     }
 
     // TODO: Uncomment this test once fixed
@@ -224,11 +250,13 @@ contract L1WormholeRouterTest is TestPlus {
     L1WormholeRouter router;
     L1Vault vault;
     address rebalancer = makeAddr("randomAddr");
+    IWormhole wormhole;
 
     function setUp() public {
         vm.createSelectFork("ethereum", 14_971_385);
         vault = Deploy.deployL1Vault();
         router = L1WormholeRouter(vault.wormholeRouter());
+        wormhole = router.wormhole();
     }
 
     function testReportTVL() public {
@@ -247,6 +275,18 @@ contract L1WormholeRouterTest is TestPlus {
 
         vm.prank(address(vault));
         router.reportTVL(tvl, received);
+
+        uint256 fee = 1 ether;
+        stdstore.target(address(wormhole)).sig("messageFee()").checked_write(fee);
+
+        // We can send ether/matic
+        vm.expectCall(
+            address(router.wormhole()),
+            fee,
+            abi.encodeCall(IWormhole.publishMessage, (uint32(1), payload, router.consistencyLevel()))
+        );
+        hoax(address(vault), fee);
+        router.reportTVL{value: fee}(tvl, received);
     }
 
     function testReportTransferredFund() public {
@@ -264,6 +304,18 @@ contract L1WormholeRouterTest is TestPlus {
 
         vm.prank(address(vault));
         router.reportTransferredFund(requestAmount);
+
+        uint256 fee = 1 ether;
+        stdstore.target(address(wormhole)).sig("messageFee()").checked_write(fee);
+
+        // We can send ether/matic
+        vm.expectCall(
+            address(router.wormhole()),
+            fee,
+            abi.encodeCall(IWormhole.publishMessage, (uint32(1), payload, router.consistencyLevel()))
+        );
+        hoax(address(vault), fee);
+        router.reportTransferredFund{value: fee}(requestAmount);
     }
 
     function testReceiveFunds() public {
