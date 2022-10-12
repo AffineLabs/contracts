@@ -110,47 +110,47 @@ contract L2WormholeRouterTest is TestPlus {
         router.requestFunds(requestAmount);
     }
 
-    function testReceiveFunds() public {
-        uint256 l1TransferAmount = 500;
+    // function testReceiveFunds() public {
+    //     uint256 l1TransferAmount = 500;
 
-        // Mock call to wormhole.parseAndVerifyVM()
-        IWormhole.VM memory vaa;
-        vaa.nonce = 20;
-        vaa.payload = abi.encode(Constants.L1_FUND_TRANSFER_REPORT, l1TransferAmount);
-        vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
+    //     // Mock call to wormhole.parseAndVerifyVM()
+    //     IWormhole.VM memory vaa;
+    //     vaa.nonce = 20;
+    //     vaa.payload = abi.encode(Constants.L1_FUND_TRANSFER_REPORT, l1TransferAmount);
+    //     vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
 
-        bool valid = true;
-        string memory reason = "";
+    //     bool valid = true;
+    //     string memory reason = "";
 
-        bytes memory wormholeReturnData = abi.encode(vaa, valid, reason);
+    //     bytes memory wormholeReturnData = abi.encode(vaa, valid, reason);
 
-        vm.mockCall(
-            address(router.wormhole()),
-            abi.encodeCall(IWormhole.parseAndVerifyVM, ("VAA_FROM_L1_TRANSFER")),
-            wormholeReturnData
-        );
+    //     vm.mockCall(
+    //         address(router.wormhole()),
+    //         abi.encodeCall(IWormhole.parseAndVerifyVM, ("VAA_FROM_L1_TRANSFER")),
+    //         wormholeReturnData
+    //     );
 
-        // Make sure that bridgEscrow has funds to send to the vault
-        deal(vault.asset(), address(vault.bridgeEscrow()), l1TransferAmount);
+    //     // Make sure that bridgEscrow has funds to send to the vault
+    //     deal(vault.asset(), address(vault.bridgeEscrow()), l1TransferAmount);
 
-        // Make sure that l1TotalLockedValue is above amount being transferred to L2 (or else we get an underflow)
-        vm.store(
-            address(vault),
-            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
-            bytes32(uint256(l1TransferAmount))
-        );
+    //     // Make sure that l1TotalLockedValue is above amount being transferred to L2 (or else we get an underflow)
+    //     vm.store(
+    //         address(vault),
+    //         bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
+    //         bytes32(uint256(l1TransferAmount))
+    //     );
 
-        // You need the rebalancer role in the vault in order to call this function
-        // Governance gets the rebalancer role
-        vm.prank(governance);
-        router.receiveFunds("VAA_FROM_L1_TRANSFER");
+    //     // You need the rebalancer role in the vault in order to call this function
+    //     // Governance gets the rebalancer role
+    //     vm.prank(governance);
+    //     router.receiveFunds("VAA_FROM_L1_TRANSFER");
 
-        // Nonce is updated
-        assertEq(router.nextValidNonce(), vaa.nonce + 1);
+    //     // Nonce is updated
+    //     assertEq(router.nextValidNonce(), vaa.nonce + 1);
 
-        // Assert that funds get cleared
-        assertEq(ERC20(vault.asset()).balanceOf(address(vault)), l1TransferAmount);
-    }
+    //     // Assert that funds get cleared
+    //     assertEq(ERC20(vault.asset()).balanceOf(address(vault)), l1TransferAmount);
+    // }
 
     function testReceiveFundsInvariants() public {
         // If wormhole says the vaa is bad, we revert
