@@ -7,16 +7,16 @@ import {AffineGovernable} from "./AffineGovernable.sol";
 import {OwnedInitializable} from "./Initializable.sol";
 
 contract WormholeRouter is AffineGovernable, OwnedInitializable {
-    constructor(IWormhole _wormhole, uint16 _otherLayerChainId) {
+    constructor(IWormhole _wormhole, uint16 _otherLayerWormholeChainId) {
         wormhole = _wormhole;
-        otherLayerChainId = _otherLayerChainId;
+        otherLayerWormholeChainId = _otherLayerWormholeChainId;
     }
     /**
      * WORMHOLE CONFIGURATION
      *
      */
 
-    uint16 public immutable otherLayerChainId;
+    uint16 public immutable otherLayerWormholeChainId;
     uint256 public nextValidNonce;
 
     /// @notice The address of the core wormhole contract
@@ -40,7 +40,7 @@ contract WormholeRouter is AffineGovernable, OwnedInitializable {
      */
     function _validateWormholeMessageEmitter(IWormhole.VM memory vm) internal view {
         require(vm.emitterAddress == bytes32(uint256(uint160(address(this)))), "Wrong emitter address");
-        require(vm.emitterChainId == otherLayerChainId, "Wrong emitter chain");
+        require(vm.emitterChainId == otherLayerWormholeChainId, "Wrong emitter chain");
         require(vm.nonce >= nextValidNonce, "Old transaction");
     }
 }
