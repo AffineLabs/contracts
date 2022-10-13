@@ -86,7 +86,7 @@ contract L2BridgeEscrowTest is TestPlus {
         deal(address(asset), address(escrow), 100);
 
         changePrank(wormholeRouter);
-        vm.expectRevert("Funds not received");
+        vm.expectRevert("BE: Funds not received");
         escrow.l2ClearFund(200);
     }
 }
@@ -139,7 +139,7 @@ contract L1BridgeEscrowTest is TestPlus {
         vm.mockCall(address(manager), abi.encodeCall(IRootChainManager.exit, (exitProof)), "");
 
         changePrank(wormholeRouter);
-        vm.expectRevert("Funds not received");
+        vm.expectRevert("BE: Funds not received");
         escrow.l1ClearFund(200, "");
     }
 }
