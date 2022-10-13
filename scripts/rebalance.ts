@@ -54,12 +54,14 @@ async function getContracts(): Promise<Contracts> {
   const addrBook = await readAddressBook(contractVersion);
 
   // Get Contracts
-  const l1WormholeRouter = L1WormholeRouter__factory.connect(addrBook.EthWormholeRouter.address, ethSigner);
-  const l2WormholeRouter = L2WormholeRouter__factory.connect(addrBook.PolygonWormholeRouter.address, polygonSigner);
-  const l1Wormhole = IWormhole__factory.connect(await l1WormholeRouter.wormhole(), ethSigner);
-  const l2Wormhole = IWormhole__factory.connect(await l2WormholeRouter.wormhole(), polygonSigner);
   const l1Vault = L1Vault__factory.connect(addrBook.EthAlpSave.address, ethSigner);
   const l2Vault = L2Vault__factory.connect(addrBook.PolygonAlpSave.address, polygonSigner);
+
+  const l1WormholeRouter = L1WormholeRouter__factory.connect(await l1Vault.wormholeRouter(), ethSigner);
+  const l2WormholeRouter = L2WormholeRouter__factory.connect(await l2Vault.wormholeRouter(), polygonSigner);
+  const l1Wormhole = IWormhole__factory.connect(await l1WormholeRouter.wormhole(), ethSigner);
+  const l2Wormhole = IWormhole__factory.connect(await l2WormholeRouter.wormhole(), polygonSigner);
+
   const l1BridgeEscrow = IBridgeEscrow__factory.connect(await l1Vault.bridgeEscrow(), ethSigner);
   const l2BridgeEscrow = IBridgeEscrow__factory.connect(await l2Vault.bridgeEscrow(), polygonSigner);
   const l2USDC = ERC20__factory.connect(await l2Vault.asset(), polygonSigner);
@@ -172,14 +174,19 @@ async function getLatestTransferToL1EventTxHash(contracts: Contracts): Promise<s
 
 async function getL2FundTransferMessageProof(contracts: Contracts): Promise<string | undefined> {
   const ecr20TransferEventSig = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+  const txHash = await getLatestTransferToL1EventTxHash(contracts);
+  console.log({ txHash });
   try {
     const { data: maticAPIResponse } = await axios.get(
-      `${getPolygonAPIURL()}/exit-payload/${await getLatestTransferToL1EventTxHash(
-        contracts,
-      )}?eventSignature=${ecr20TransferEventSig}`,
+      `${getPolygonAPIURL()}/all-exit-payloads/${txHash}?eventSignature=${ecr20TransferEventSig}`,
     );
+
+    console.log("result length", maticAPIResponse.result.length);
     if ("result" in maticAPIResponse) {
-      return maticAPIResponse.result;
+      // `result` is an array of all burn proofs. We want the last one since the last token burned is USDC
+      // If we simply use the /exit-payload/ endpoint we might get a burn event we don't care about (like burning amUSDC)
+      // on a divestment from the polygon aave strategy
+      return maticAPIResponse.result.slice(-1)[0];
     }
     return undefined;
   } catch (e) {
