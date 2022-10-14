@@ -175,13 +175,10 @@ async function getLatestTransferToL1EventTxHash(contracts: Contracts): Promise<s
 async function getL2FundTransferMessageProof(contracts: Contracts): Promise<string | undefined> {
   const ecr20TransferEventSig = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
   const txHash = await getLatestTransferToL1EventTxHash(contracts);
-  console.log({ txHash });
   try {
     const { data: maticAPIResponse } = await axios.get(
       `${getPolygonAPIURL()}/all-exit-payloads/${txHash}?eventSignature=${ecr20TransferEventSig}`,
     );
-
-    console.log("result length", maticAPIResponse.result.length);
     if ("result" in maticAPIResponse) {
       // `result` is an array of all burn proofs. We want the last one since the last token burned is USDC
       // If we simply use the /exit-payload/ endpoint we might get a burn event we don't care about (like burning amUSDC)
