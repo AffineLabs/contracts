@@ -43,7 +43,7 @@ contract CompoundStratTest is TestPlus {
             ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563), // cToken
             IComptroller(comptrollerAddr), // Comptroller
             IUniswapV2Router02(uniLikeSwapRouterAddr), // sushiswap router in eth mainnet
-            0xc00e94Cb662C3520282E6f5717214004A7f26888, // reward token -> comp token
+            ERC20(0xc00e94Cb662C3520282E6f5717214004A7f26888), // comp
             0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 // wrapped eth address
         );
     }
@@ -150,5 +150,25 @@ contract CompoundStratTest is TestPlus {
         assertEq(usdc.balanceOf(address(vault)), 2e6);
         assertEq(usdc.balanceOf(address(strategy)), 0);
         assertEq(strategy.underlyingBalanceOfCToken(), 1e6);
+    }
+
+    function testCanSellRewards() public {
+        // Give comp
+        deal(address(strategy.comp()), address(strategy), 1e18);
+
+        // If I divest then I have zero comp left
+        vm.prank(address(vault));
+        strategy.divest(100);
+
+        assertEq(strategy.balanceOfComp(), 0);
+
+        deal(address(strategy.comp()), address(strategy), 1e18);
+
+        // Only the owner can call withdrawAssets
+        vm.prank(alice);
+        vm.expectRevert("Ownable: caller is not the owner");
+        strategy.withdrawAssets(100, 0);
+
+        strategy.withdrawAssets(100, 10e6);
     }
 }
