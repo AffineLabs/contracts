@@ -26,7 +26,7 @@ contract Deploy is Script {
     }
 
     function run() external {
-        (address deployer, ) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
         // Get salts
         bytes32 escrowSalt = _getSalt();
