@@ -39,27 +39,25 @@ contract BridgeEscrow {
         require(msg.sender == wormholeRouter, "Only wormhole router");
 
         uint256 balance = token.balanceOf(address(this));
-        require(balance >= amount, "Funds not received");
+        require(balance >= amount, "BE: Funds not received");
+        token.safeTransfer(vault, balance);
 
-        IL2Vault l2Vault = IL2Vault(vault);
-        token.safeTransfer(address(l2Vault), balance);
-
-        l2Vault.afterReceive(balance);
+        IL2Vault(vault).afterReceive(balance);
     }
 
     function l1ClearFund(uint256 amount, bytes calldata exitProof) external {
         require(msg.sender == wormholeRouter, "Only wormhole router");
 
-        // Exit tokens, after that the withdrawn tokens from L2 will be reflected in L1 BridgeEscrow.
-        rootChainManager.exit(exitProof);
+        // Exit tokens, after this the withdrawn tokens from L2 will be reflected in the L1 BridgeEscrow
+        // NOTE: This function can fail if the exitProof provided is fake or has already been processed
+        // In either case, we want to send at least `amount` to the vault since we know that the L2Vault sent `amount`
+        try rootChainManager.exit(exitProof) {} catch {}
 
         // Transfer exited tokens to L1 Vault.
         uint256 balance = token.balanceOf(address(this));
-        require(balance >= amount, "Funds not received");
+        require(balance >= amount, "BE: Funds not received");
+        token.safeTransfer(vault, balance);
 
-        IL1Vault l1Vault = IL1Vault(vault);
-        token.safeTransfer(address(l1Vault), balance);
-
-        l1Vault.afterReceive();
+        IL1Vault(vault).afterReceive();
     }
 }
