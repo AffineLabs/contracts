@@ -5,13 +5,8 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {
-    ILendingPoolAddressesProviderRegistry,
-    ILendingPoolAddressesProvider,
-    IAaveIncentivesController,
-    ILendingPool,
-    IAToken
+    ILendingPoolAddressesProviderRegistry, ILendingPoolAddressesProvider, ILendingPool
 } from "../interfaces/aave.sol";
 
 import {BaseVault} from "../BaseVault.sol";
@@ -20,61 +15,19 @@ import {BaseStrategy} from "../BaseStrategy.sol";
 contract L2AAVEStrategy is BaseStrategy {
     using SafeTransferLib for ERC20;
 
-    // AAVE protocol contracts
-    IAaveIncentivesController public immutable incentivesController;
+    /// @notice The lending pool. We'll call deposit, withdraw, etc. on this.
     ILendingPool public immutable lendingPool;
-
-    // USDC pool reward asset is WMATIC
-    address public immutable rewardToken;
-    address public immutable wrappedNative;
-
     // Corresponding AAVE asset (USDC -> aUSDC)
-    IAToken public immutable aToken;
+    ERC20 public immutable aToken;
 
-    // Router for swapping reward tokens to `asset`
-    IUniswapV2Router02 public immutable router;
-
-    uint256 public constant MAX_BPS = 1e4;
-    uint256 public constant PESSIMISM_FACTOR = 1000;
-
-    constructor(
-        BaseVault _vault,
-        address _registry,
-        address _incentives,
-        address _router,
-        address _rewardToken,
-        address _wrappedNative
-    ) BaseStrategy(_vault) {
+    constructor(BaseVault _vault, address _registry) BaseStrategy(_vault) {
         address[] memory providers = ILendingPoolAddressesProviderRegistry(_registry).getAddressesProvidersList();
-        address pool = ILendingPoolAddressesProvider(providers[providers.length - 1]).getLendingPool();
-        lendingPool = ILendingPool(pool);
+        lendingPool = ILendingPool(ILendingPoolAddressesProvider(providers[providers.length - 1]).getLendingPool());
+        aToken = ERC20(lendingPool.getReserveData(address(asset)).aTokenAddress);
 
-        address _aToken = lendingPool.getReserveData(address(asset)).aTokenAddress;
-        aToken = IAToken(_aToken);
-
-        incentivesController = IAaveIncentivesController(_incentives);
-
-        router = IUniswapV2Router02(_router);
-        rewardToken = _rewardToken;
-        wrappedNative = _wrappedNative;
-
-        // approve
-        ERC20(_aToken).safeApprove(pool, type(uint256).max);
-        asset.safeApprove(pool, type(uint256).max);
-        ERC20(rewardToken).safeApprove(_router, type(uint256).max);
-    }
-
-    /**
-     * BALANCES
-     *
-     */
-
-    function balanceOfRewardToken() public view returns (uint256) {
-        return ERC20(rewardToken).balanceOf(address(this));
-    }
-
-    function balanceOfAToken() public view returns (uint256) {
-        return aToken.balanceOf(address(this));
+        // We can mint/burn aTokens
+        asset.safeApprove(address(lendingPool), type(uint256).max);
+        aToken.safeApprove(address(lendingPool), type(uint256).max);
     }
 
     /**
@@ -83,15 +36,7 @@ contract L2AAVEStrategy is BaseStrategy {
      */
     function invest(uint256 amount) external override {
         asset.safeTransferFrom(msg.sender, address(this), amount);
-        _depositWant(amount);
-    }
-
-    function _depositWant(uint256 amount) internal returns (uint256) {
-        if (amount == 0) {
-            return 0;
-        }
         lendingPool.deposit(address(asset), amount, address(this), 0);
-        return amount;
     }
 
     /**
@@ -99,41 +44,13 @@ contract L2AAVEStrategy is BaseStrategy {
      *
      */
     function divest(uint256 amount) external override onlyVault returns (uint256) {
-        _claimAndSellRewards();
-
         uint256 currAssets = balanceOfAsset();
         uint256 withdrawAmount = currAssets >= amount ? 0 : amount - currAssets;
-        _withdrawWant(withdrawAmount);
+        lendingPool.withdraw(address(asset), withdrawAmount, address(this));
 
         uint256 amountToSend = Math.min(amount, balanceOfAsset());
         asset.safeTransfer(address(vault), amountToSend);
         return amountToSend;
-    }
-
-    function _withdrawWant(uint256 amount) internal returns (uint256) {
-        if (amount == 0) {
-            return 0;
-        }
-        lendingPool.withdraw(address(asset), amount, address(this));
-        return amount;
-    }
-
-    function _claimAndSellRewards() internal {
-        incentivesController.claimRewards(getAaveAssets(), type(uint256).max, address(this));
-
-        // Sell reward tokens if we have "1" of them. This only makes sense if the reward token has 18 decimals
-        uint256 rewardTokenBalance = balanceOfRewardToken();
-        if (rewardTokenBalance < 1e18) {
-            return;
-        }
-
-        router.swapExactTokensForTokens(
-            rewardTokenBalance,
-            0,
-            getTokenOutPathV2(address(rewardToken), address(asset)),
-            address(this),
-            block.timestamp
-        );
     }
 
     /**
@@ -141,55 +58,6 @@ contract L2AAVEStrategy is BaseStrategy {
      *
      */
     function totalLockedValue() public view override returns (uint256) {
-        uint256 balanceExcludingRewards = balanceOfAsset() + balanceOfAToken();
-
-        uint256 rewards = (estimatedRewardsInWant() * (MAX_BPS - PESSIMISM_FACTOR)) / MAX_BPS;
-
-        return balanceExcludingRewards + rewards;
-    }
-
-    function estimatedRewardsInWant() public view returns (uint256) {
-        uint256 rewardTokenBalance = balanceOfRewardToken();
-
-        uint256 pendingRewards = incentivesController.getRewardsBalance(getAaveAssets(), address(this));
-
-        if (rewardToken == address(asset)) {
-            return pendingRewards;
-        } else {
-            return tokenToAsset(rewardToken, rewardTokenBalance + pendingRewards);
-        }
-    }
-
-    function tokenToAsset(address token, uint256 amountToken) internal view returns (uint256) {
-        if (amountToken == 0 || address(token) == address(asset)) {
-            return amountToken;
-        }
-
-        uint256[] memory amounts = router.getAmountsOut(amountToken, getTokenOutPathV2(token, address(asset)));
-
-        return amounts[amounts.length - 1];
-    }
-
-    function getAaveAssets() internal view returns (address[] memory assets) {
-        assets = new address[](1);
-        assets[0] = address(aToken);
-    }
-
-    // TODO: is this function needed?
-
-    /// @dev This function will choose  a path of [A, B] if either A or B is WETH (or equivalent on other EVM chains)
-    // If neither is WETH, then it gives a path of [A, WETH, B]
-    function getTokenOutPathV2(address inToken, address outToken) internal view returns (address[] memory _path) {
-        bool isWrappedNative = inToken == address(wrappedNative) || outToken == address(wrappedNative);
-
-        _path = new address[](isWrappedNative ? 2 : 3);
-        _path[0] = inToken;
-
-        if (isWrappedNative) {
-            _path[1] = outToken;
-        } else {
-            _path[1] = address(wrappedNative);
-            _path[2] = outToken;
-        }
+        return balanceOfAsset() + aToken.balanceOf(address(this));
     }
 }
