@@ -96,7 +96,7 @@ contract L1BridgeEscrowTest is TestPlus {
     MockL1Vault vault;
     address wormholeRouter;
     ERC20 asset;
-    IRootChainManager manager = IRootChainManager(makeAddr("chain_manager"));
+    IRootChainManager manager;
 
     function setUp() public {
         // Not forking because getting a valid exitProof in l1ClearFund is tricky
@@ -104,6 +104,7 @@ contract L1BridgeEscrowTest is TestPlus {
         asset = ERC20(vault.asset());
         wormholeRouter = vault.wormholeRouter();
 
+        manager = IRootChainManager(address(asset)); // Any call to exit() will revert!
         escrow = new BridgeEscrow(address(vault), manager);
 
         // Set the bridgeEscrow
@@ -141,5 +142,22 @@ contract L1BridgeEscrowTest is TestPlus {
         changePrank(wormholeRouter);
         vm.expectRevert("BE: Funds not received");
         escrow.l1ClearFund(200, "");
+    }
+
+    function testL1ClearFundWithBadProof() public {
+        // Give escrow some money
+        deal(address(asset), address(escrow), 100);
+
+        // Send money to vault (clear funds)
+        changePrank(wormholeRouter);
+        vm.expectCall(address(vault), abi.encodeCall(L1Vault.afterReceive, ()));
+
+        // We don't pass a valid exitProof, so we know rootchainmanager.exit() will fail
+        // Even though that external call fails, the funds still get cleared
+        escrow.l1ClearFund(100, "");
+
+        assertEq(asset.balanceOf(address(vault)), 100);
+        // afterReceive was called on the vault
+        assertTrue(vault.received());
     }
 }
