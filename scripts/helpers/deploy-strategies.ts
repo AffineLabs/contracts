@@ -24,14 +24,7 @@ export async function deployStrategies(
 
   const aaveConfig = config.l2.aave;
   const stratFactory = await ethers.getContractFactory("L2AAVEStrategy", signer);
-  const l2Strategy = await stratFactory.deploy(
-    await getContractAddress(vaults.l2Vault),
-    aaveConfig.registry,
-    aaveConfig.incentivesController,
-    aaveConfig.uniRouter,
-    aaveConfig.rewardToken,
-    aaveConfig.wrappedNative,
-  );
+  const l2Strategy = await stratFactory.deploy(await getContractAddress(vaults.l2Vault), aaveConfig.registry);
   await addToAddressBookAndDefender(polygonNetworkName, `PolygonAAVEStrategy`, "L2AAVEStrategy", l2Strategy, [], false);
   console.log("strategy L2: ", l2Strategy.address);
 
