@@ -4,49 +4,48 @@ pragma solidity ^0.8.13;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+
 import {ICToken} from "../interfaces/compound/ICToken.sol";
 import {IComptroller} from "../interfaces/compound/IComptroller.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
 
-contract L1CompoundStrategy is BaseStrategy {
+contract L1CompoundStrategy is BaseStrategy, Ownable {
     using SafeTransferLib for ERC20;
-    // Compound protocol contracts
 
+    /// @notice The comptroller
     IComptroller public immutable comptroller;
-    // Corresponding Compound token (USDC -> cUSDC)
+    /// @notice Corresponding Compound token for `asset`(e.g. cUSDC for USDC)
     ICToken public immutable cToken;
 
-    // Comp asset
-    address public immutable rewardToken;
+    /// The compound governance token
+    ERC20 public immutable comp;
     // WETH
     address public immutable wrappedNative;
 
-    // Router for swapping reward tokens to `asset`
+    /// @notice Sushi/uni router for swapping comp to `asset`
     IUniswapV2Router02 public immutable router;
-
-    uint256 public constant MAX_BPS = 1e4;
-    uint256 public constant PESSIMISM_FACTOR = 1000;
 
     constructor(
         BaseVault _vault,
         ICToken _cToken,
         IComptroller _comptroller,
         IUniswapV2Router02 _router,
-        address _rewardToken,
+        ERC20 _comp,
         address _wrappedNative
     ) BaseStrategy(_vault) {
         cToken = _cToken;
         comptroller = _comptroller;
 
         router = _router;
-        rewardToken = _rewardToken;
+        comp = _comp;
         wrappedNative = _wrappedNative;
         // Approve transfer on the cToken contract
         asset.safeApprove(address(cToken), type(uint256).max);
+        comp.safeApprove(address(router), type(uint256).max);
     }
 
     /**
@@ -54,8 +53,8 @@ contract L1CompoundStrategy is BaseStrategy {
      *
      */
 
-    function balanceOfRewardToken() public view returns (uint256) {
-        return ERC20(rewardToken).balanceOf(address(this));
+    function balanceOfComp() public view returns (uint256) {
+        return comp.balanceOf(address(this));
     }
 
     function balanceOfCToken() public view returns (uint256) {
@@ -88,21 +87,33 @@ contract L1CompoundStrategy is BaseStrategy {
      *
      */
     function divest(uint256 amount) external override onlyVault returns (uint256) {
-        _claimAndSellRewards();
-
         uint256 currAssets = balanceOfAsset();
         uint256 withdrawAmount = currAssets >= amount ? 0 : amount - currAssets;
-        _withdrawWant(withdrawAmount);
+        _withdrawWant(withdrawAmount, compToAsset(balanceOfComp()) * 95 / 100);
 
         uint256 amountToSend = Math.min(amount, balanceOfAsset());
         asset.safeTransfer(address(vault), amountToSend);
         return amountToSend;
     }
 
-    function _withdrawWant(uint256 amount) internal returns (uint256) {
+    function withdrawAssets(uint256 assets, uint256 minAssetsFromReward) external onlyOwner {
+        _withdrawWant(assets, minAssetsFromReward);
+    }
+
+    function _withdrawWant(uint256 amount, uint256 minAssetsFromReward) internal returns (uint256) {
         if (amount == 0) {
             return 0;
         }
+        comptroller.claimComp(address(this));
+
+        // Sell reward tokens if we have ".01" of them. This only makes sense if the reward token has 18 decimals
+        uint256 compBalance = balanceOfComp();
+        if (compBalance > 0.01e18) {
+            router.swapExactTokensForTokens(
+                compBalance, minAssetsFromReward, getTradePath(), address(this), block.timestamp
+            );
+        }
+
         uint256 balanceOfUnderlying = underlyingBalanceOfCToken();
         uint256 amountToRedeem = amount;
         if (amountToRedeem > balanceOfUnderlying) {
@@ -111,76 +122,31 @@ contract L1CompoundStrategy is BaseStrategy {
         return cToken.redeemUnderlying(amountToRedeem);
     }
 
-    function _claimAndSellRewards() internal {
-        comptroller.claimComp(address(this));
-
-        // Sell reward tokens if we have "1" of them. This only makes sense if the reward token has 18 decimals
-        uint256 rewardTokenBalance = balanceOfRewardToken();
-        if (rewardTokenBalance < 1e18) {
-            return;
-        }
-
-        router.swapExactTokensForTokens(
-            rewardTokenBalance,
-            0,
-            getTokenOutPathV2(address(rewardToken), address(asset)),
-            address(this),
-            block.timestamp
-        );
-        return;
-    }
-
     /**
      * TVL ESTIMATION
      *
      */
     function totalLockedValue() public override returns (uint256) {
         uint256 balanceExcludingRewards = balanceOfAsset() + underlyingBalanceOfCToken();
-
-        uint256 rewards = (estimatedRewardsInWant() * (MAX_BPS - PESSIMISM_FACTOR)) / MAX_BPS;
-
-        return balanceExcludingRewards + rewards;
+        return balanceExcludingRewards + estimatedRewardsInWant();
     }
 
     function estimatedRewardsInWant() public view returns (uint256) {
-        uint256 rewardTokenBalance = balanceOfRewardToken();
         uint256 pendingRewards = comptroller.compAccrued(address(this));
-
-        if (rewardToken == address(asset)) {
-            return rewardTokenBalance + pendingRewards;
-        } else {
-            return tokenToAsset(rewardToken, rewardTokenBalance + pendingRewards);
-        }
+        return compToAsset(balanceOfComp() + pendingRewards);
     }
 
-    function tokenToAsset(address token, uint256 amountToken) internal view returns (uint256) {
-        if (amountToken == 0 || address(token) == address(asset)) {
-            return amountToken;
-        }
+    function compToAsset(uint256 amountComp) internal view returns (uint256) {
+        if (amountComp == 0) return 0;
 
-        uint256[] memory amounts = router.getAmountsOut(amountToken, getTokenOutPathV2(token, address(asset)));
-
+        uint256[] memory amounts = router.getAmountsOut(amountComp, getTradePath());
         return amounts[amounts.length - 1];
     }
 
-    function getCompoundAssets() internal view returns (ICToken[] memory assets) {
-        assets = new ICToken[](1);
-        assets[0] = cToken;
-    }
-
-    // This function will choose  a path of [A, B] if either A or B is WETH (or equivalent on other EVM chains)
-    // If neither is WETH, then it gives a path of [A, WETH, B]
-    function getTokenOutPathV2(address inToken, address outToken) internal view returns (address[] memory _path) {
-        bool isWrappedNative = inToken == address(wrappedNative) || outToken == address(wrappedNative);
-
-        _path = new address[](isWrappedNative ? 2 : 3);
-        _path[0] = inToken;
-
-        if (isWrappedNative) {
-            _path[1] = outToken;
-        } else {
-            _path[1] = address(wrappedNative);
-            _path[2] = outToken;
-        }
+    function getTradePath() internal view returns (address[] memory path) {
+        path = new address[](3);
+        path[0] = address(comp);
+        path[1] = address(wrappedNative);
+        path[2] = address(asset);
     }
 }
