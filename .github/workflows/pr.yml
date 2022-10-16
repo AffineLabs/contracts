@@ -67,7 +67,7 @@ jobs:
           working-directory: ./
 
       - name: Run deployment tests
-        run: yarn ts-node scripts/deploy.ts -l1 -m
+        run: yarn ts-node scripts/deploy.ts -l1 -m && yarn ts-node scripts/deploy.ts -m
 
       # TODO: add back once slither works again (https://github.com/crytic/slither/issues/1211)
       # - name: Check slither errors
