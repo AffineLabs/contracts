@@ -15,7 +15,7 @@ import {L1WormholeRouter} from "../src/ethereum/L1WormholeRouter.sol";
 contract Deploy is Script {
     Create3Deployer create3 = Create3Deployer(0x10A4aA784D2bE45e6e67B909c5cf7E588aA7A257);
 
-    function _getSalt() internal returns (bytes32 salt) {
+    function _getSalt(string memory fileName) internal returns (bytes32 salt) {
         string[] memory inputs = new string[](4);
         inputs[0] = "yarn";
         inputs[1] = "--silent";
@@ -23,14 +23,15 @@ contract Deploy is Script {
         inputs[3] = "scripts/utils/get-bytes.ts";
         bytes memory res = vm.ffi(inputs);
         salt = keccak256(res);
+        vm.writeFile(fileName, string(abi.encodePacked(salt)));
     }
 
     function run() external {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
         // Get salts
-        bytes32 escrowSalt = _getSalt();
-        bytes32 routerSalt = _getSalt();
+        bytes32 escrowSalt = _getSalt("salts/escrow.salt");
+        bytes32 routerSalt = _getSalt("salts/router.salt");
         require(escrowSalt != routerSalt, "Salts not unique");
 
         BridgeEscrow escrow = BridgeEscrow(create3.getDeployed(escrowSalt));
@@ -41,7 +42,7 @@ contract Deploy is Script {
         bytes memory initData = abi.encodeCall(
             L1Vault.initialize,
             (
-                address(0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e),
+                0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e,
                 ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48),
                 address(router),
                 escrow,

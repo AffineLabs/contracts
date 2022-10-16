@@ -16,6 +16,7 @@ out
 cache
 lcov.info
 broadcast
+salts
 
 # Address Book
 addressbook.json
