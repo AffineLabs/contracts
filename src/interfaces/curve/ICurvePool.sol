@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.16;
+pragma solidity =0.8.16;
 
 // See https://curve.readthedocs.io/exchange-deposits.html#curve-stableswap-exchange-deposit-contracts
 /*  solhint-disable func-name-mixedcase, var-name-mixedcase */
