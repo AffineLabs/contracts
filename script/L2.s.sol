@@ -39,11 +39,12 @@ contract Deploy is Script {
         // Get salts
         bytes32 escrowSalt = _getSaltFile("salts/escrow.salt");
         bytes32 routerSalt = _getSaltFile("salts/router.salt");
+        bytes32 ewqSalt = _getSaltBasic();
         require(escrowSalt != routerSalt, "Salts not unique");
 
         BridgeEscrow escrow = BridgeEscrow(create3.getDeployed(escrowSalt));
         L2WormholeRouter router = L2WormholeRouter(create3.getDeployed(routerSalt));
-        EmergencyWithdrawalQueue queue = EmergencyWithdrawalQueue(create3.getDeployed(_getSaltBasic()));
+        EmergencyWithdrawalQueue queue = EmergencyWithdrawalQueue(create3.getDeployed(ewqSalt));
 
         // Deploy Vault
         L2Vault impl = new L2Vault();
@@ -98,6 +99,9 @@ contract Deploy is Script {
         require(router.vault() == vault);
         require(router.wormhole() == wormhole);
         require(router.otherLayerChainId() == uint16(2));
+
+        create3.deploy(ewqSalt, abi.encodePacked(type(EmergencyWithdrawalQueue).creationCode, abi.encode(vault)), 0);
+        require(queue.vault() == vault);
 
         vm.stopBroadcast();
     }
