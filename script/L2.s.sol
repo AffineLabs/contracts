@@ -70,7 +70,7 @@ contract Deploy is Script {
         require(vault.withdrawalFee() == 0);
         require(vault.managementFee() == 200);
 
-        // Deploy helper contracts (escrow and router)
+        // Deploy helper contracts (escrow, router, and ewq)
         create3.deploy(
             escrowSalt,
             abi.encodePacked(type(BridgeEscrow).creationCode, abi.encode(address(vault), IRootChainManager(address(0)))),
