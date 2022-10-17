@@ -7,8 +7,8 @@ import { CHAIN_ID_ETH, CHAIN_ID_POLYGON } from "@certusone/wormhole-sdk";
 import {
   ERC20,
   ERC20__factory,
-  IBridgeEscrow,
-  IBridgeEscrow__factory,
+  BridgeEscrow,
+  BridgeEscrow__factory,
   IWormhole,
   IWormhole__factory,
   L1Vault,
@@ -31,8 +31,8 @@ interface Contracts {
   l2WormholeRouter: L2WormholeRouter;
   l1Vault: L1Vault;
   l2Vault: L2Vault;
-  l1BridgeEscrow: IBridgeEscrow;
-  l2BridgeEscrow: IBridgeEscrow;
+  l1BridgeEscrow: BridgeEscrow;
+  l2BridgeEscrow: BridgeEscrow;
   l2USDC: ERC20;
 }
 
@@ -62,8 +62,8 @@ async function getContracts(): Promise<Contracts> {
   const l1Wormhole = IWormhole__factory.connect(await l1WormholeRouter.wormhole(), ethSigner);
   const l2Wormhole = IWormhole__factory.connect(await l2WormholeRouter.wormhole(), polygonSigner);
 
-  const l1BridgeEscrow = IBridgeEscrow__factory.connect(await l1Vault.bridgeEscrow(), ethSigner);
-  const l2BridgeEscrow = IBridgeEscrow__factory.connect(await l2Vault.bridgeEscrow(), polygonSigner);
+  const l1BridgeEscrow = BridgeEscrow__factory.connect(await l1Vault.bridgeEscrow(), ethSigner);
+  const l2BridgeEscrow = BridgeEscrow__factory.connect(await l2Vault.bridgeEscrow(), polygonSigner);
   const l2USDC = ERC20__factory.connect(await l2Vault.asset(), polygonSigner);
   return {
     l1Wormhole,
