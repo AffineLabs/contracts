@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 import hre from "hardhat";
 import { L1CompoundStrategy, L2AAVEStrategy } from "typechain";
 import { VaultContracts } from "./deploy-vaults";
-import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
+import { addToAddressBookAndDefender } from "../utils/export";
 import { totalConfig } from "scripts/utils/config";
 
 export interface StrategyContracts {
@@ -25,7 +25,7 @@ export async function deployStrategies(
   const aaveConfig = config.l2.aave;
   const stratFactory = await ethers.getContractFactory("L2AAVEStrategy", signer);
   const l2Strategy = await stratFactory.deploy(
-    await getContractAddress(vaults.l2Vault),
+    vaults.l2Vault.address,
     aaveConfig.registry,
     aaveConfig.incentivesController,
     aaveConfig.uniRouter,
@@ -42,7 +42,7 @@ export async function deployStrategies(
   const compConfig = config.l1.compound;
   const compStratFactory = await ethers.getContractFactory("L1CompoundStrategy", signer);
   const l1Strategy = await compStratFactory.deploy(
-    await getContractAddress(vaults.l1Vault),
+    vaults.l1Vault.address,
     compConfig.cToken,
     compConfig.comptroller,
     compConfig.uniRouter,

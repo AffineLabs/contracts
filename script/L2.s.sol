@@ -28,9 +28,8 @@ contract Deploy is Script {
     }
 
     function _getSaltFile(string memory fileName) internal returns (bytes32 salt) {
-        string memory saltTxt = vm.readFile(fileName);
-        console.log("saltTxt: ", saltTxt);
-        salt = bytes32(bytes(saltTxt));
+        bytes memory saltData = vm.readFileBinary(fileName);
+        salt = bytes32(saltData);
     }
 
     function run() external {
@@ -40,6 +39,10 @@ contract Deploy is Script {
         bytes32 escrowSalt = _getSaltFile("salts/escrow.salt");
         bytes32 routerSalt = _getSaltFile("salts/router.salt");
         bytes32 ewqSalt = _getSaltBasic();
+
+        console.logBytes32(escrowSalt);
+        console.logBytes32(routerSalt);
+        console.log("not equal: ", escrowSalt != routerSalt);
         require(escrowSalt != routerSalt, "Salts not unique");
 
         BridgeEscrow escrow = BridgeEscrow(create3.getDeployed(escrowSalt));

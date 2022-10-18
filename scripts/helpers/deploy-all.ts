@@ -5,7 +5,7 @@ import { deployBasket } from "./deploy-btc-eth";
 import { address } from "../utils/types";
 import { TwoAssetBasket } from "../../typechain";
 import hre from "hardhat";
-import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
+import { addToAddressBookAndDefender } from "../utils/export";
 import { deployWormholeRouters, WormholeRouterContracts } from "./deploy-wormhole-router";
 import { deployRouter } from "./deploy-router";
 import { Forwarder, Router } from "typechain/src/polygon";
@@ -48,14 +48,7 @@ export async function deployAll(
     [],
     false,
   );
-  await addToAddressBookAndDefender(
-    polygonNetworkName,
-    "Forwarder",
-    "Forwarder",
-    await getContractAddress(forwarder),
-    [],
-    false,
-  );
+  await addToAddressBookAndDefender(polygonNetworkName, "Forwarder", "Forwarder", forwarder.address, [], false);
 
   return {
     wormholeRouters,

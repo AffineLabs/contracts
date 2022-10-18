@@ -1,4 +1,4 @@
-import { addToAddressBookAndDefender, getContractAddress } from "../utils/export";
+import { addToAddressBookAndDefender } from "../utils/export";
 import { ethers, upgrades } from "hardhat";
 import { Forwarder, TwoAssetBasket } from "../../typechain";
 import { totalConfig } from "../utils/config";
@@ -9,7 +9,7 @@ export async function deployBasket(config: totalConfig, forwarder: Forwarder): P
     BasketFactory,
     [
       config.l2.governance,
-      await getContractAddress(forwarder),
+      forwarder.address,
       config.l2.aave.uniRouter,
       config.l2.usdc,
       [config.l2.wbtc, config.l2.weth],

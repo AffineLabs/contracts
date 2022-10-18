@@ -4,6 +4,7 @@ import { execSync } from "child_process";
 import { config as dotenvConfig } from "dotenv";
 import { resolve } from "path";
 dotenvConfig({ path: resolve(__dirname, "../.env") });
+import { defenderEth, defenderPolygon } from "./utils/export";
 
 function executeScript(options: { layer1: boolean; mainnet: boolean; broadcast: boolean }) {
   const ALCHEMY_ETH_KEY =
@@ -23,7 +24,9 @@ function executeScript(options: { layer1: boolean; mainnet: boolean; broadcast: 
   const broadcast = options.broadcast ? "--broadcast" : "";
 
   const scriptCommand = `forge script script/${contract} --rpc-url ${rpcUrl} --ffi -vvv ${broadcast}`;
-  execSync(scriptCommand);
+  execSync(scriptCommand, { stdio: "inherit" });
+  if (options.layer1) defenderEth(!options.broadcast, !options.mainnet);
+  else defenderPolygon(!options.broadcast, !options.mainnet);
 }
 
 program

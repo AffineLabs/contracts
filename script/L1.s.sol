@@ -23,7 +23,9 @@ contract Deploy is Script {
         inputs[3] = "scripts/utils/get-bytes.ts";
         bytes memory res = vm.ffi(inputs);
         salt = keccak256(res);
-        vm.writeFile(fileName, string(abi.encodePacked(salt)));
+        console.log("about to log bytes salt");
+        console.logBytes(abi.encodePacked(salt));
+        vm.writeFileBinary(fileName, abi.encodePacked(salt));
     }
 
     function run() external {
