@@ -69,17 +69,9 @@ contract L1CompoundStrategy is BaseStrategy, Ownable {
      * INVESTMENT
      *
      */
-    function invest(uint256 amount) external override {
-        asset.safeTransferFrom(msg.sender, address(this), amount);
-        _depositWant(amount);
-    }
-
-    function _depositWant(uint256 amount) internal returns (uint256) {
-        if (amount == 0) {
-            return 0;
-        }
+    function _afterInvest(uint256 amount) internal override {
+        if (amount == 0) return;
         require(cToken.mint(amount) == 0, "CompStrat: mint failed");
-        return amount;
     }
 
     /**

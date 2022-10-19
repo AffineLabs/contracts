@@ -34,7 +34,16 @@ abstract contract BaseStrategy {
     /// @notice Deposit vault's underlying asset into strategy.
     /// @param amount The amount to invest.
     /// @dev This function must revert if investment fails.
-    function invest(uint256 amount) external virtual;
+    function invest(uint256 amount) external {
+        asset.safeTransferFrom(msg.sender, address(this), amount);
+        _afterInvest(amount);
+    }
+
+    /// @notice After getting money from the vault, do something with it.
+    /// @param amount The amount received from the vault.
+    /// @dev Since investment is often gas-intensive and may require off-chain data, this will often be unimplemented.
+    /// @dev Strategists will call custom functions for handling deployment of capital.
+    function _afterInvest(uint256 amount) internal virtual {}
 
     /// @notice Withdraw vault's underlying asset from strategy.
     /// @param amount The amount to withdraw.
