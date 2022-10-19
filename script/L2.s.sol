@@ -13,6 +13,10 @@ import {BridgeEscrow} from "../src/BridgeEscrow.sol";
 import {L2WormholeRouter} from "../src/polygon/L2WormholeRouter.sol";
 import {Forwarder} from "../src/polygon/Forwarder.sol";
 import {EmergencyWithdrawalQueue} from "../src/polygon/EmergencyWithdrawalQueue.sol";
+import {Router} from "../src/polygon/Router.sol";
+import {TwoAssetBasket} from "../src/polygon/TwoAssetBasket.sol";
+import {AggregatorV3Interface} from "../src/interfaces/AggregatorV3Interface.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 contract Deploy is Script {
     Create3Deployer create3 = Create3Deployer(0x5185fe072f9eE947bF017C7854470e11C2cFb32a);
@@ -42,12 +46,12 @@ contract Deploy is Script {
 
         console.logBytes32(escrowSalt);
         console.logBytes32(routerSalt);
-        console.log("not equal: ", escrowSalt != routerSalt);
         require(escrowSalt != routerSalt, "Salts not unique");
 
         BridgeEscrow escrow = BridgeEscrow(create3.getDeployed(escrowSalt));
         L2WormholeRouter router = L2WormholeRouter(create3.getDeployed(routerSalt));
         EmergencyWithdrawalQueue queue = EmergencyWithdrawalQueue(create3.getDeployed(ewqSalt));
+        Forwarder forwarder = new Forwarder();
 
         // Deploy Vault
         L2Vault impl = new L2Vault();
@@ -59,7 +63,7 @@ contract Deploy is Script {
                 address(router),
                 escrow,
                 queue,
-                address(new Forwarder()),
+                address(forwarder),
                 9,
                 1,
                 [uint256(0), uint256(200)] // withdrawal and AUM fees
@@ -80,7 +84,6 @@ contract Deploy is Script {
             abi.encodePacked(type(BridgeEscrow).creationCode, abi.encode(address(vault), IRootChainManager(address(0)))),
             0
         );
-
         require(escrow.vault() == address(vault));
         require(address(escrow.token()) == vault.asset());
         require(escrow.wormholeRouter() == vault.wormholeRouter());
@@ -98,13 +101,40 @@ contract Deploy is Script {
             ),
             0
         );
-
         require(router.vault() == vault);
         require(router.wormhole() == wormhole);
         require(router.otherLayerChainId() == uint16(2));
 
         create3.deploy(ewqSalt, abi.encodePacked(type(EmergencyWithdrawalQueue).creationCode, abi.encode(vault)), 0);
         require(queue.vault() == vault);
+
+        Router router4626 = new Router("affine-router-v1", address(forwarder));
+        require(router4626.trustedForwarder() == address(forwarder));
+
+        TwoAssetBasket basketImpl = new TwoAssetBasket();
+        bytes memory basketInitData = abi.encodeCall(
+            TwoAssetBasket.initialize,
+            (
+                0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0, // governance,
+                address(forwarder), // forwarder
+                IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506), // sushiswap router
+                ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174), // usdc
+                // WBTC AND WETH
+                [ERC20(0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6), ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619)],
+                [uint256(1), uint256(1)], // ratios
+                // Price feeds (USDC/USDC, BTC/USD, ETH/USD)
+                [
+                    AggregatorV3Interface(0xfE4A8cc5b5B2366C1B58Bea3858e81843581b2F7),
+                    AggregatorV3Interface(0xc907E116054Ad103354f2D350FD2514433D57F6f),
+                    AggregatorV3Interface(0xF9680D99D6C9589e2a93a78A04A279e509205945)
+                ]
+            )
+        );
+
+        ERC1967Proxy basketProxy = new ERC1967Proxy(address(basketImpl), basketInitData);
+        TwoAssetBasket basket = TwoAssetBasket(address(basketProxy));
+        require(basket.btc() == ERC20(0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6));
+        require(basket.weth() == ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619));
 
         vm.stopBroadcast();
     }
