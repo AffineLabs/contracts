@@ -17,17 +17,13 @@ contract CompoundStratTest is TestPlus {
     using stdStorage for StdStorage;
 
     ERC20 usdc = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-    address uniLikeSwapRouterAddr = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-    address comptrollerAddr = 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B;
     address cTokenAddr = 0x39AA39c021dfbaE8faC545936693aC917d5E7563;
     L1Vault vault;
     L1CompoundStrategy strategy;
 
     // constants
-    uint256 usdcBalancesStorageSlot = 0;
     uint256 oneUSDC = 1e6;
     uint256 halfUSDC = oneUSDC / 2;
-    uint256 oneCOMP = 1e18;
 
     function setUp() public {
         vm.createSelectFork("ethereum", 14_971_385);
@@ -40,11 +36,7 @@ contract CompoundStratTest is TestPlus {
 
         strategy = new L1CompoundStrategy(
             vault,
-            ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563), // cToken
-            IComptroller(comptrollerAddr), // Comptroller
-            IUniswapV2Router02(uniLikeSwapRouterAddr), // sushiswap router in eth mainnet
-            ERC20(0xc00e94Cb662C3520282E6f5717214004A7f26888), // comp
-            0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 // wrapped eth address
+            ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563) // cToken
         );
     }
 
@@ -54,7 +46,7 @@ contract CompoundStratTest is TestPlus {
     }
 
     function investHalfOfVaultAssetInCompund() internal {
-        changePrank(governance);
+        vm.startPrank(governance);
         vault.addStrategy(strategy, 5000);
 
         changePrank(address(vault.bridgeEscrow()));
@@ -62,19 +54,7 @@ contract CompoundStratTest is TestPlus {
         // in the aforementioed strategy and the remaining 5,000 bips will stay in vault
         // as a pile of idle USDC.
         vault.afterReceive();
-    }
-
-    function testTVL() public {
-        deal(address(usdc), address(strategy), oneUSDC, true);
-        assertEq(strategy.totalLockedValue(), oneUSDC);
-
-        depositOneUSDCToVault();
-        investHalfOfVaultAssetInCompund();
-
-        // We should have 1.5 USDC
-        // Compound might round down when reporting balanceOfUnderlying
-        // E.g. is you deposit .5 USDC (500_000) you might get (499_999) as a balanceOfUnderlying
-        assertInRange(strategy.totalLockedValue(), oneUSDC + halfUSDC - 1, oneUSDC + halfUSDC + 1);
+        vm.stopPrank();
     }
 
     function testStrategyInvest() public {
@@ -89,8 +69,8 @@ contract CompoundStratTest is TestPlus {
         depositOneUSDCToVault();
         investHalfOfVaultAssetInCompund();
 
-        // Simulate some accured COMP token.
-        vm.mockCall(comptrollerAddr, abi.encodeWithSelector(IComptroller.compAccrued.selector), abi.encode(oneCOMP));
+        deal(address(strategy.comp()), address(strategy), 2e18);
+        strategy.claimRewards(0);
         assertGt(strategy.totalLockedValue(), halfUSDC);
     }
 
@@ -149,26 +129,17 @@ contract CompoundStratTest is TestPlus {
         // We only withdrew 2 - 1 == 1 usdc worth of cToken. We gave 2 usdc to the vault
         assertEq(usdc.balanceOf(address(vault)), 2e6);
         assertEq(usdc.balanceOf(address(strategy)), 0);
-        assertEq(strategy.underlyingBalanceOfCToken(), 1e6);
+        assertEq(strategy.cToken().balanceOfUnderlying(address(strategy)), 1e6);
     }
 
     function testCanSellRewards() public {
-        // Give comp
-        deal(address(strategy.comp()), address(strategy), 1e18);
-
-        // If I divest then I have zero comp left
-        vm.prank(address(vault));
-        strategy.divest(100);
-
-        assertEq(strategy.balanceOfComp(), 0);
-
         deal(address(strategy.comp()), address(strategy), 1e18);
 
         // Only the owner can call withdrawAssets
         vm.prank(alice);
         vm.expectRevert("Ownable: caller is not the owner");
-        strategy.withdrawAssets(100, 0);
+        strategy.claimRewards(100);
 
-        strategy.withdrawAssets(100, 10e6);
+        strategy.claimRewards(100);
     }
 }
