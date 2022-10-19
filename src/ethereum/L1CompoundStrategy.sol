@@ -4,7 +4,7 @@ pragma solidity =0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 import {ICToken} from "../interfaces/compound/ICToken.sol";
@@ -13,7 +13,7 @@ import {IComptroller} from "../interfaces/compound/IComptroller.sol";
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
 
-contract L1CompoundStrategy is BaseStrategy, Ownable {
+contract L1CompoundStrategy is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
 
     /// @notice The comptroller
@@ -29,8 +29,14 @@ contract L1CompoundStrategy is BaseStrategy, Ownable {
     /// @notice Uni router for swapping comp to `asset`
     IUniswapV2Router02 public constant router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 
+    bytes32 public constant CLAIMER = keccak256("CLAIMER");
+
     constructor(BaseVault _vault, ICToken _cToken) BaseStrategy(_vault) {
         cToken = _cToken;
+
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(CLAIMER, msg.sender);
+
         // We can mint cToken and also sell it
         asset.safeApprove(address(cToken), type(uint256).max);
         comp.safeApprove(address(router), type(uint256).max);
@@ -63,7 +69,7 @@ contract L1CompoundStrategy is BaseStrategy, Ownable {
         return amountToSend;
     }
 
-    function claimRewards(uint256 minAssetsFromReward) external onlyOwner {
+    function claimRewards(uint256 minAssetsFromReward) external onlyRole(CLAIMER) {
         comptroller.claimComp(address(this));
         uint256 compBalance = comp.balanceOf(address(this));
 

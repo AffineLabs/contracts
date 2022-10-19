@@ -137,7 +137,7 @@ contract CompoundStratTest is TestPlus {
 
         // Only the owner can call withdrawAssets
         vm.prank(alice);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert();
         strategy.claimRewards(100);
 
         strategy.claimRewards(100);
