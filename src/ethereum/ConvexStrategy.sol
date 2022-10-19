@@ -65,10 +65,6 @@ contract ConvexStrategy is BaseStrategy, Ownable {
         cvx.safeApprove(address(router), type(uint256).max);
     }
 
-    function invest(uint256 amount) external override {
-        asset.safeTransferFrom(msg.sender, address(this), amount);
-    }
-
     function deposit(uint256 assets, uint256 minLpTokens) external onlyOwner {
         // e.g. in a FRAX-USDC stableswap pool, the 0 index is for FRAX and the index 1 is for USDC.
         uint256[2] memory depositAmounts = [0, assets];
