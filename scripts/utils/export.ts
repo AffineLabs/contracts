@@ -116,9 +116,15 @@ async function _ethDefender(forking: boolean, testnet: boolean) {
   // to create the actual contract
   const escrowAddr = txs[2].additionalContracts.filter(c => c.transactionType === "CREATE")[0].address;
   const routerAddr = txs[3].additionalContracts.filter(c => c.transactionType === "CREATE")[0].address;
+  const compAddr = txs[4].contractAddress;
+  const curveAddr = txs[5].contractAddress;
+  const cvxAddr = txs[6].contractAddress;
   console.log({ l1VaultAddr, escrowAddr, routerAddr });
   await addToAddressBookAndDefender(ethNetwork, "EthAlpSave", "L1Vault", l1VaultAddr);
-  await addToAddressBookAndDefender(ethNetwork, "EthWormholeRouter", "L1WormholeRouter", routerAddr);
+  await addToAddressBookAndDefender(ethNetwork, "EthWormholeRouter", "L1WormholeRouter", routerAddr, [], false);
+  await addToAddressBookAndDefender(ethNetwork, "L1CompoundStrategy", "L1CompoundStrategy", compAddr, [], false);
+  await addToAddressBookAndDefender(ethNetwork, "CurveStrategy", "CurveStrategy", curveAddr, [], false);
+  await addToAddressBookAndDefender(ethNetwork, "ConvexUSDCStrategy", "ConvexUSDCStrategy", cvxAddr, [], false);
 }
 
 async function _polygonDefender(forking: boolean, testnet: boolean) {
@@ -134,10 +140,10 @@ async function _polygonDefender(forking: boolean, testnet: boolean) {
   );
   console.log({ lastestL2DeployPath });
 
-  // Txs:  The forwarder, implementation, the proxy, the escrow, router, ewq, 4626Router, TwoAssetBasket
+  // Txs:  The forwarder, implementation, the proxy, the escrow, router, ewq, 4626Router,
+  // TwoAssetBasket impl, TwoAssetBasket proxy,
   const deployData = await readJSON(lastestL2DeployPath);
   const txs: Array<Transaction> = deployData.transactions;
-  const forwarderAddr = txs[0].contractAddress;
   const l2VaultAddr = txs[2].contractAddress;
   // In this create3Deployer.deploy() tx, we call create2 to create the small proxy and then call create (via the proxy)
   // to create the actual contract
@@ -145,13 +151,14 @@ async function _polygonDefender(forking: boolean, testnet: boolean) {
   const routerAddr = txs[4].additionalContracts.filter(c => c.transactionType === "CREATE")[0].address;
   const ewqAddr = txs[5].additionalContracts.filter(c => c.transactionType === "CREATE")[0].address;
   const router4626Addr = txs[6].contractAddress;
-  const basketAddr = txs[7].contractAddress;
-  console.log({ l2VaultAddr, escrowAddr, routerAddr, ewqAddr, forwarderAddr, router4626Addr });
+  const basketAddr = txs[8].contractAddress;
+  const aaveStratAddr = txs[9].contractAddress;
+  console.log({ l2VaultAddr, escrowAddr, routerAddr, ewqAddr, router4626Addr, aaveStratAddr });
   await addToAddressBookAndDefender(network, "PolygonAlpSave", "L2Vault", l2VaultAddr);
-  await addToAddressBookAndDefender(network, "PolygonWormholeRouter", "L2WormholeRouter", routerAddr);
-  await addToAddressBookAndDefender(network, "Forwarder", "Forwarder", forwarderAddr);
-  await addToAddressBookAndDefender(network, "ERC4626Router", "Router", router4626Addr);
+  await addToAddressBookAndDefender(network, "PolygonWormholeRouter", "L2WormholeRouter", routerAddr, [], false);
+  await addToAddressBookAndDefender(network, "ERC4626Router", "Router", router4626Addr, [], false);
   await addToAddressBookAndDefender(network, "PolygonBtcEthVault", "TwoAssetBasket", basketAddr);
+  await addToAddressBookAndDefender(network, "PolygonAAVEStrategy", "L2AAVEStrategy", aaveStratAddr, [], false);
 }
 
 export async function readAddressBook(contractVersion: string = "stable") {

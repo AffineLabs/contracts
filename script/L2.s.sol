@@ -17,6 +17,7 @@ import {Router} from "../src/polygon/Router.sol";
 import {TwoAssetBasket} from "../src/polygon/TwoAssetBasket.sol";
 import {AggregatorV3Interface} from "../src/interfaces/AggregatorV3Interface.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import {L2AAVEStrategy} from "../src/polygon/L2AAVEStrategy.sol";
 
 contract Deploy is Script {
     Create3Deployer create3 = Create3Deployer(0x5185fe072f9eE947bF017C7854470e11C2cFb32a);
@@ -136,6 +137,9 @@ contract Deploy is Script {
         require(basket.btc() == ERC20(0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6));
         require(basket.weth() == ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619));
 
+        L2AAVEStrategy aave =
+        new L2AAVEStrategy(vault, 0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19, address(0), address(0), address(0), address(0));
+        require(address(aave.asset()) == vault.asset());
         vm.stopBroadcast();
     }
 }

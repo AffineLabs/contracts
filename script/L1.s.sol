@@ -12,6 +12,23 @@ import {IWormhole} from "../src/interfaces/IWormhole.sol";
 import {BridgeEscrow} from "../src/BridgeEscrow.sol";
 import {L1WormholeRouter} from "../src/ethereum/L1WormholeRouter.sol";
 
+import {L1CompoundStrategy} from "../src/ethereum/L1CompoundStrategy.sol";
+import {ICToken} from "../src/interfaces/compound/ICToken.sol";
+import {IComptroller} from "../src/interfaces/compound/IComptroller.sol";
+import {L1CompoundStrategy} from "../src/ethereum/L1CompoundStrategy.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+
+import {CurveStrategy} from "../src/ethereum/CurveStrategy.sol";
+import {I3CrvMetaPoolZap} from "../src/interfaces/IMetaPoolZap.sol";
+import {ILiquidityGauge} from "../src/interfaces/ILiquidityGauge.sol";
+
+import {ConvexUSDCStrategy} from "../src/ethereum/ConvexUSDCStrategy.sol";
+import {ICurveUSDCStableSwapZap} from "../src/interfaces/curve/ICurveUSDCStableSwapZap.sol";
+import {IConvexBooster} from "../src/interfaces/convex/IConvexBooster.sol";
+import {IConvexClaimZap} from "../src/interfaces/convex/IConvexClaimZap.sol";
+import {IConvexCrvRewards} from "../src/interfaces/convex/IConvexCrvRewards.sol";
+
+
 contract Deploy is Script {
     Create3Deployer create3 = Create3Deployer(0x10A4aA784D2bE45e6e67B909c5cf7E588aA7A257);
 
@@ -88,6 +105,36 @@ contract Deploy is Script {
         require(router.vault() == vault);
         require(router.wormhole() == wormhole);
         require(router.otherLayerChainId() == uint16(5));
+
+
+        // Compound strat
+        L1CompoundStrategy comp = new L1CompoundStrategy(vault, ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563), 
+        IComptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B), IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D),
+        0xc00e94Cb662C3520282E6f5717214004A7f26888, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+        require(address(comp.asset()) == vault.asset());
+
+        // Curve Strat
+        CurveStrategy curve = new CurveStrategy(vault, 
+                         ERC20(0x5a6A4D54456819380173272A5E8E9B9904BdF41B),
+                         I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359), 
+                         2,
+                         ILiquidityGauge(0xd8b712d29381748dB89c36BCa0138d7c75866ddF),
+                         IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D),
+                         ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52)
+                         );
+        require(address(curve.asset()) == vault.asset());
+
+        // Convex strat
+        ConvexUSDCStrategy cvx = new ConvexUSDCStrategy(
+            vault, 
+            ICurveUSDCStableSwapZap(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
+            100,
+            IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31),
+            IConvexClaimZap(0xDd49A93FDcae579AE50B4b9923325e9e335ec82B),
+            IConvexCrvRewards(0x7e880867363A7e321f5d260Cade2B0Bb2F717B02),
+            IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D)
+        );
+        require(address(cvx.asset()) == vault.asset()); 
 
         vm.stopBroadcast();
     }
