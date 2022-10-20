@@ -7,6 +7,7 @@ interface ILiquidityGauge {
     function deposit(uint256 _value) external;
     function claimable_tokens(address addr) external returns (uint256);
     function claim_rewards() external;
+    function balanceOf(address owner) external returns (uint256);
 }
 
 /*  solhint-disable func-name-mixedcase, var-name-mixedcase */

@@ -3,16 +3,18 @@ pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
-import {I3CrvMetaPoolZap, ILiquidityGauge} from "../interfaces/curve.sol";
+import {I3CrvMetaPoolZap, ILiquidityGauge, ICurvePool} from "../interfaces/curve.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 contract CurveStrategy is BaseStrategy, Ownable {
     using SafeTransferLib for ERC20;
+    using FixedPointMathLib for uint256;
 
     I3CrvMetaPoolZap public immutable zapper;
     ERC20 public immutable metaPool;
@@ -20,26 +22,19 @@ contract CurveStrategy is BaseStrategy, Ownable {
     int128 public immutable assetIndex;
     ILiquidityGauge public immutable gauge;
 
-    IUniswapV2Router02 public immutable router;
-    ERC20 public immutable crv;
+    IUniswapV2Router02 public constant router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+    ERC20 public constant crv = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
     address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-    constructor(
-        BaseVault _vault,
-        ERC20 _metaPool,
-        I3CrvMetaPoolZap _zapper,
-        int128 _assetIndex,
-        ILiquidityGauge _gauge,
-        IUniswapV2Router02 _router,
-        ERC20 _crv
-    ) BaseStrategy(_vault) {
+    constructor(BaseVault _vault, ERC20 _metaPool, I3CrvMetaPoolZap _zapper, int128 _assetIndex, ILiquidityGauge _gauge)
+        BaseStrategy(_vault)
+    {
         metaPool = _metaPool;
         zapper = _zapper;
         assetIndex = _assetIndex;
         gauge = _gauge;
-        router = _router;
-        crv = _crv;
 
+        // mint/burn lp tokens + deposit into gauge
         asset.safeApprove(address(zapper), type(uint256).max);
         metaPool.safeApprove(address(zapper), type(uint256).max);
         metaPool.safeApprove(address(gauge), type(uint256).max);
@@ -54,37 +49,18 @@ contract CurveStrategy is BaseStrategy, Ownable {
         // In this particular metapool, the 1st, 2nd, and 3rd indices are for DAI, USDC, and USDT
         uint256[4] memory depositAmounts = [0, 0, assets, 0];
         zapper.add_liquidity(address(metaPool), depositAmounts, minLpTokens);
-    }
-
-    function depositInGauge() external onlyOwner {
         gauge.deposit(metaPool.balanceOf(address(this)));
     }
 
     function divest(uint256 assets) external override onlyVault returns (uint256) {
-        _withdraw(assets, 0, 0);
+        _withdraw(assets);
 
         uint256 amountToSend = Math.min(asset.balanceOf(address(this)), assets);
         asset.safeTransfer(address(vault), amountToSend);
         return amountToSend;
     }
 
-    /**
-     * @notice Withdraw from crv and try to increase balance of `asset` to `assets`.
-     * @dev Useful in the case that we want to do multiple withdrawals ahead of a big divestment from the vault. Doing the
-     * withdrawals manually (in chunks) will give us less slippage
-     */
-    function withdrawAssets(uint256 assets, uint256 minAssetsFromCrv, uint256 minAssetsFromLp) external onlyOwner {
-        _withdraw(assets, minAssetsFromCrv, minAssetsFromLp);
-    }
-
-    /// @notice Try to increase balance of `asset` to `assets`.
-    function _withdraw(uint256 assets, uint256 minAssetsFromCrv, uint256 minAssetsFromLp) internal {
-        uint256 currAssets = asset.balanceOf(address(this));
-        if (currAssets >= assets) {
-            return;
-        }
-
-        // Sell rewards if we have at least 10 CRV tokens
+    function claimRewards(uint256 minAssetsFromCrv) external onlyOwner {
         gauge.claim_rewards();
         uint256 crvBal = crv.balanceOf(address(this));
 
@@ -93,46 +69,45 @@ contract CurveStrategy is BaseStrategy, Ownable {
         crvPath[1] = WETH;
         crvPath[2] = address(asset);
 
-        if (crvBal > 10e18) {
-            router.swapExactTokensForTokens(crvBal, minAssetsFromCrv, crvPath, address(this), block.timestamp);
+        if (crvBal > 0.1e18) {
+            router.swapExactTokensForTokens({
+                amountIn: crvBal,
+                amountOutMin: minAssetsFromCrv,
+                path: crvPath,
+                to: address(this),
+                deadline: block.timestamp
+            });
         }
+    }
 
-        currAssets = asset.balanceOf(address(this));
+    /// @notice Try to increase balance of `asset` to `assets`.
+    function _withdraw(uint256 assets) internal {
+        uint256 currAssets = asset.balanceOf(address(this));
         if (currAssets >= assets) {
             return;
         }
-
         // Only divest the amount that you have to
         uint256 assetsToDivest = assets - currAssets;
         uint256[4] memory withdrawAmounts = [0, 0, assetsToDivest, 0];
 
-        // If the amount  of lp tokens is greater than we have, simply burn the max amount of tokens
-        try zapper.remove_liquidity_imbalance(address(metaPool), withdrawAmounts, type(uint256).max) {
-            // We successfully withdrew `assetsToDivest` and our balance is now `assets`
-        } catch (bytes memory) {
-            // We didn't have enough lp tokens to withdraw `assetsToDivest`. So we just burn all of our lp shares
-            zapper.remove_liquidity_one_coin(
-                address(metaPool), metaPool.balanceOf(address(this)), assetIndex, minAssetsFromLp
-            );
-        }
+        // price * (num of lp tokens) = dollars.
+        uint256 lpTokenBal = metaPool.balanceOf(address(this));
+        uint256 price = ICurvePool(address(metaPool)).get_virtual_price(); // 18 decimals
+        uint256 dollarsOfLp = price.mulWadDown(lpTokenBal);
+        // We assume that the  vault `asset` is $1.00 (i.e. we assume that USDC is 1.00)
+        uint256 dollarsOfAssetsToDivest = assetsToDivest * 1e12;
+
+        uint256 maxLpTokensToBurn =
+            Math.min(lpTokenBal, lpTokenBal.mulDivDown(dollarsOfAssetsToDivest, dollarsOfLp).mulDivDown(101, 100));
+        zapper.remove_liquidity_imbalance(address(metaPool), withdrawAmounts, maxLpTokensToBurn);
     }
 
     function totalLockedValue() external override returns (uint256) {
-        // Get amount of `asset` we would get if we sold all of our curve
-        uint256 crvBal = gauge.claimable_tokens(address(this));
-
-        uint256 assetsFromCrv;
-        if (crvBal > 0) {
-            address[] memory crvPath = new address[](3);
-            crvPath[0] = address(crv);
-            crvPath[1] = WETH;
-            crvPath[2] = address(asset);
-
-            uint256[] memory amounts = router.getAmountsOut(crvBal, crvPath);
-            assetsFromCrv = amounts[amounts.length - 1];
+        uint256 assetsLp;
+        uint256 lpTokenBal = metaPool.balanceOf(address(this)) + gauge.balanceOf(address(this));
+        if (lpTokenBal > 100) {
+            assetsLp = zapper.calc_withdraw_one_coin(address(metaPool), lpTokenBal, assetIndex);
         }
-
-        return balanceOfAsset() + assetsFromCrv
-            + zapper.calc_withdraw_one_coin(address(metaPool), metaPool.balanceOf(address(this)), assetIndex);
+        return balanceOfAsset() + assetsLp;
     }
 }
