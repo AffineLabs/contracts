@@ -34,14 +34,7 @@ export async function deployStrategies(
 
   const compConfig = config.l1.compound;
   const compStratFactory = await ethers.getContractFactory("L1CompoundStrategy", signer);
-  const l1Strategy = await compStratFactory.deploy(
-    await getContractAddress(vaults.l1Vault),
-    compConfig.cToken,
-    compConfig.comptroller,
-    compConfig.uniRouter,
-    compConfig.rewardToken,
-    compConfig.wrappedNative,
-  );
+  const l1Strategy = await compStratFactory.deploy(await getContractAddress(vaults.l1Vault), compConfig.cToken);
   await l1Strategy.deployed();
   await addToAddressBookAndDefender(ethNetworkName, `EthCompoundStrategy`, "L1CompoundStrategy", l1Strategy, [], false);
   console.log("strategy l1: ", l1Strategy.address);
