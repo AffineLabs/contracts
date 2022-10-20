@@ -34,8 +34,7 @@ contract L2AAVEStrategy is BaseStrategy {
      * INVESTMENT
      *
      */
-    function invest(uint256 amount) external override {
-        asset.safeTransferFrom(msg.sender, address(this), amount);
+    function _afterInvest(uint256 amount) internal override {
         lendingPool.deposit(address(asset), amount, address(this), 0);
     }
 

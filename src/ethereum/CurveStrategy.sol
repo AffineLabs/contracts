@@ -48,10 +48,6 @@ contract CurveStrategy is BaseStrategy, Ownable {
         crv.safeApprove(address(router), type(uint256).max);
     }
 
-    function invest(uint256 amount) external override {
-        asset.safeTransferFrom(msg.sender, address(this), amount);
-    }
-
     function deposit(uint256 assets, uint256 minLpTokens) external onlyOwner {
         // e.g. in a MIM-3CRV metapool, the 0 index is for MIM and the next three are for the underlying
         // coins of 3CRV

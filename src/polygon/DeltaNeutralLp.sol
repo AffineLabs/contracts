@@ -91,10 +91,6 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         return balanceOfAsset() + assetsMatic + aToken.balanceOf(address(this)) + assetsLP - assetsDebt;
     }
 
-    function invest(uint256 amount) external override {
-        asset.safeTransferFrom(msg.sender, address(this), amount);
-    }
-
     uint32 public currentPosition;
     bool public canStartNewPos;
 
