@@ -149,7 +149,10 @@ contract L2Vault is
     }
 
     function decimals() public view override returns (uint8) {
-        return _asset.decimals();
+        // E.g. for USDC, we want the initial price of a share to be $100.
+        // For an initial price of 1 USDC / share we would have 1e6  * 1e8 / 1 = 1e14 given that we have (6 + 8) 14 decimals
+        // But since we want 100 USDC / share for the intial price, we add an extra two decimal places
+        return _asset.decimals() + 10;
     }
 
     bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN");
@@ -332,18 +335,19 @@ contract L2Vault is
 
     /// @dev In previewDeposit we want to round down, but in previewWithdraw we want to round up
     function _convertToShares(uint256 assets, Rounding roundingDirection) internal view returns (uint256 shares) {
-        uint256 totalShares = totalSupply();
-        // E.g. for USDC, we want the initial price of a share to be $100.
-        // Apparently testnet users confused AlpSave with a stablecoin
-        if (totalShares == 0) {
-            shares = assets / 100;
+        // Even if there are no shares or assets in the vault, we start with 1 wei of asset and 1e8 shares
+        // This helps mitigate price inflation attacks: https://github.com/transmissions11/solmate/issues/178
+        // See https://www.rileyholterhus.com/writing/bunni as well.
+        // The solution is inspired by YieldBox
+        uint256 totalShares = totalSupply() + 1e8;
+        uint256 _totalAssets = totalAssets() + 1;
+
+        if (roundingDirection == Rounding.Up) {
+            shares = assets.mulDivUp(totalShares, _totalAssets);
         } else {
-            if (roundingDirection == Rounding.Up) {
-                shares = assets.mulDivUp(totalShares, totalAssets());
-            } else {
-                shares = assets.mulDivDown(totalShares, totalAssets());
-            }
+            shares = assets.mulDivDown(totalShares, _totalAssets);
         }
+        shares;
     }
 
     /// @notice See {IERC4262-convertToAssets}
@@ -353,16 +357,13 @@ contract L2Vault is
 
     /// @dev In previewMint, we want to round up, but in previewRedeem we want to round down
     function _convertToAssets(uint256 shares, Rounding roundingDirection) internal view returns (uint256 assets) {
-        uint256 totalShares = totalSupply();
-        if (totalShares == 0) {
-            // see _convertToShares
-            assets = shares * 100;
+        uint256 totalShares = totalSupply() + 1e8;
+        uint256 _totalAssets = totalAssets() + 1;
+
+        if (roundingDirection == Rounding.Up) {
+            assets = shares.mulDivUp(_totalAssets, totalShares);
         } else {
-            if (roundingDirection == Rounding.Up) {
-                assets = shares.mulDivUp(totalAssets(), totalShares);
-            } else {
-                assets = shares.mulDivDown(totalAssets(), totalShares);
-            }
+            assets = shares.mulDivDown(_totalAssets, totalShares);
         }
     }
 
@@ -565,16 +566,12 @@ contract L2Vault is
      * DETAILED PRICE INFO
      *
      */
-
-    /// @dev The vault has as many decimals as the input token does
     function detailedTVL() external view override returns (Number memory tvl) {
-        tvl = Number({num: totalAssets(), decimals: decimals()});
+        tvl = Number({num: totalAssets(), decimals: _asset.decimals()});
     }
 
     function detailedPrice() external view override returns (Number memory price) {
-        // If there are no shares, simply say that the price is 100
-        uint256 rawPrice = totalSupply() > 0 ? (totalAssets() * 10 ** decimals()) / totalSupply() : 100 ** decimals();
-        price = Number({num: rawPrice, decimals: decimals()});
+        price = Number({num: convertToAssets(10 ** decimals()), decimals: _asset.decimals()});
     }
 
     function detailedTotalSupply() external view override returns (Number memory supply) {
