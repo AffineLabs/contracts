@@ -9,7 +9,7 @@ import {Deploy} from "./Deploy.sol";
 
 import {L1Vault} from "../ethereum/L1Vault.sol";
 import {CurveStrategy} from "../ethereum/CurveStrategy.sol";
-import {I3CrvMetaPoolZap, ILiquidityGauge, ICurvePool} from "../interfaces/curve.sol";
+import {I3CrvMetaPoolZap, ILiquidityGauge, ICurvePool, IMinter} from "../interfaces/curve.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 contract CurveStratTest is TestPlus {
@@ -18,9 +18,12 @@ contract CurveStratTest is TestPlus {
     ERC20 usdc = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     L1Vault vault;
     CurveStrategy strategy;
+    ERC20 metaPool;
+    ILiquidityGauge gauge;
+    IMinter minter = IMinter(0xd061D61a4d941c39E5453435B6345Dc261C2fcE0);
 
     function setUp() public {
-        vm.createSelectFork("ethereum", 14_971_385);
+        vm.createSelectFork("ethereum", 15_774_176);
         vault = deployL1Vault();
 
         // make vault token equal to the L1 usdc address
@@ -36,6 +39,8 @@ contract CurveStratTest is TestPlus {
                          2,
                          ILiquidityGauge(0xd8b712d29381748dB89c36BCa0138d7c75866ddF)
                          );
+        metaPool = strategy.metaPool();
+        gauge = strategy.gauge();
     }
 
     function testCanMintLpTokens() public {
@@ -61,13 +66,27 @@ contract CurveStratTest is TestPlus {
 
     function testCanDivest() public {
         // One lp token is worth more than a dollar
-        deal(address(strategy.metaPool()), address(strategy), 1e18);
+        deal(address(metaPool), address(strategy), 1e18);
 
         vm.prank(address(vault));
         uint256 amountDivested = strategy.divest(1e6);
 
         assertTrue(amountDivested == 1e6);
         assertTrue(usdc.balanceOf(address(vault)) == 1e6);
+    }
+
+    function testGaugeWithdrawal() public {
+        // One lp token in contract, another in gauge.
+        deal(address(metaPool), address(strategy), 2e18);
+        deal(address(gauge), address(strategy), 1e18);
+
+        vm.warp(block.timestamp + 5 hours);
+
+        // The tvl is just a bit over $2. If we try to withdraw $2.5 dollars, we fully liquidate our lp tokens
+        strategy.withdrawAssets(2.5 * 1e6);
+        assertApproxEqAbs(metaPool.balanceOf(address(strategy)), 0, 0.01e18);
+        assertLt(gauge.balanceOf(address(strategy)), 1e18);
+        assertApproxEqRel(strategy.totalLockedValue(), 3e6, 0.02e18);
     }
 
     function testCanSellRewards() public {
