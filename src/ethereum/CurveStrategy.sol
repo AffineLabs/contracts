@@ -53,7 +53,8 @@ contract CurveStrategy is BaseStrategy, AccessControl {
         // e.g. in a MIM-3CRV metapool, the 0 index is for MIM and the next three are for the underlying
         // coins of 3CRV
         // In this particular metapool, the 1st, 2nd, and 3rd indices are for DAI, USDC, and USDT
-        uint256[4] memory depositAmounts = [0, 0, assets, 0];
+        uint256[4] memory depositAmounts = [uint256(0), 0, 0, 0];
+        depositAmounts[uint256(uint128(assetIndex))] = assets;
         zapper.add_liquidity(address(metaPool), depositAmounts, minLpTokens);
         gauge.deposit(metaPool.balanceOf(address(this)));
     }
@@ -99,7 +100,8 @@ contract CurveStrategy is BaseStrategy, AccessControl {
         }
         // Only divest the amount that you have to
         uint256 assetsToDivest = assets - currAssets;
-        uint256[4] memory withdrawAmounts = [0, 0, assetsToDivest, 0];
+        uint256[4] memory withdrawAmounts = [uint256(0), 0, (0), (0)];
+        withdrawAmounts[uint256(uint128(assetIndex))] = assetsToDivest;
 
         // price * (num of lp tokens) = dollars.
         uint256 currLpBal = metaPool.balanceOf(address(this));
