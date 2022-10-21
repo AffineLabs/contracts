@@ -68,6 +68,21 @@ contract CurveStratTest is TestPlus {
         assertTrue(crvRewards > 0);
     }
 
+    function testCanSlip() public {
+        deal(address(usdc), address(strategy), 100e6);
+
+        vm.expectRevert();
+        strategy.deposit(100e6, type(uint256).max);
+
+        strategy.deposit(100e6, 0);
+
+        deal(address(strategy.crv()), address(strategy), 1e18 * 100);
+        vm.expectRevert();
+        strategy.claimRewards(type(uint256).max);
+
+        strategy.claimRewards(0);
+    }
+
     function testCanDivest() public {
         // One lp token is worth more than a dollar
         deal(address(metaPool), address(strategy), 1e18);
@@ -79,18 +94,36 @@ contract CurveStratTest is TestPlus {
         assertTrue(usdc.balanceOf(address(vault)) == 1e6);
     }
 
-    function testGaugeWithdrawal() public {
-        // One lp token in contract, another in gauge.
+    function testCanDivestFully() public {
+        // If we try to withdraw more money than actually exists in the vault
+        // We end up approximately no lp tokens and a bunch of usdc
         deal(address(metaPool), address(strategy), 2e18);
         deal(address(gauge), address(strategy), 1e18);
 
-        vm.warp(block.timestamp + 5 hours);
+        strategy.withdrawAssets(5 * 1e6); // lp token is worth a bit more than a dollar
 
-        // The tvl is just a bit over $2. If we try to withdraw $2.5 dollars, we fully liquidate our lp tokens
-        strategy.withdrawAssets(2.5 * 1e6);
+        assertApproxEqRel(strategy.totalLockedValue(), 3e6, 0.01e18);
         assertApproxEqAbs(metaPool.balanceOf(address(strategy)), 0, 0.01e18);
-        assertLt(gauge.balanceOf(address(strategy)), 1e18);
-        assertApproxEqRel(strategy.totalLockedValue(), 3e6, 0.02e18);
+        assertApproxEqAbs(gauge.balanceOf(address(strategy)), 0, 0.01e18);
+    }
+
+    function testWithdrawFuzz(uint64 lpTokens, uint64 gaugeTokens, uint32 assetsToDivest) public {
+        deal(address(metaPool), address(strategy), lpTokens);
+        deal(address(gauge), address(strategy), gaugeTokens);
+
+        strategy.withdrawAssets(assetsToDivest);
+    }
+
+    function testTVLFuzz(uint64 lpTokens, uint64 gaugeTokens) public {
+        // Each token is roughly $1, and tvl function should reflect that
+        deal(address(metaPool), address(strategy), lpTokens);
+        deal(address(gauge), address(strategy), gaugeTokens);
+
+        uint256 tvl = strategy.totalLockedValue();
+        if (tvl > 100) {
+            // For small numbers the percentage difference can be greater than 1 (e.g. 74 vs 75 are more than 1% diff)
+            assertApproxEqRel(tvl, (uint256(gaugeTokens) + lpTokens) / 1e12, 0.05e18);
+        }
     }
 
     function testCanClaimRewards() public {
@@ -111,20 +144,5 @@ contract CurveStratTest is TestPlus {
         assertTrue(usdc.balanceOf(address(strategy)) > 0);
         // We sold all of our crv
         assertEq(strategy.crv().balanceOf(address(strategy)), 0);
-    }
-
-    function testCanSlip() public {
-        deal(address(usdc), address(strategy), 100e6);
-
-        vm.expectRevert();
-        strategy.deposit(100e6, type(uint256).max);
-
-        strategy.deposit(100e6, 0);
-
-        deal(address(strategy.crv()), address(strategy), 1e18 * 100);
-        vm.expectRevert();
-        strategy.claimRewards(type(uint256).max);
-
-        strategy.claimRewards(0);
     }
 }

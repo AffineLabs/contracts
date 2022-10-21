@@ -22,6 +22,11 @@ contract CurveStrategy is BaseStrategy, AccessControl {
     int128 public immutable assetIndex;
     ILiquidityGauge public immutable gauge;
     IMinter public constant MINTER = IMinter(0xd061D61a4d941c39E5453435B6345Dc261C2fcE0);
+    /**
+     * @notice The minimum amount of lp tokens to count towards tvl or be liquidated during withdrawals.
+     * @dev `calc_withdraw_one_coin` and `remove_liquidity_one_coin` may fail when using amounts smaller than this.
+     */
+    uint256 constant MIN_LP_AMOUNT = 100;
 
     IUniswapV2Router02 public constant router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
     ERC20 public constant crv = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
@@ -98,21 +103,25 @@ contract CurveStrategy is BaseStrategy, AccessControl {
         if (currAssets >= assets) {
             return;
         }
-        // Only divest the amount that you have to
-        uint256 assetsToDivest = assets - currAssets;
-        uint256[4] memory withdrawAmounts = [uint256(0), 0, 0, 0];
-        withdrawAmounts[uint256(uint128(assetIndex))] = assetsToDivest;
 
         // price * (num of lp tokens) = dollars
         uint256 currLpBal = metaPool.balanceOf(address(this));
         uint256 lpTokenBal = currLpBal + gauge.balanceOf(address(this));
         uint256 price = ICurvePool(address(metaPool)).get_virtual_price(); // 18 decimals
+        uint256 dollarsOfLp = lpTokenBal.mulWadDown(price);
+
+        // Get the amount of dollars to remove from vault, and the equivalent amount of lp token.
         // We assume that the  vault `asset` is $1.00 (i.e. we assume that USDC is 1.00). Convert to 18 decimals.
-        uint256 dollarsOfAssetsToDivest = assetsToDivest * 1e12;
+        uint256 dollarsOfAssetsToDivest =
+            Math.min(_giveDecimals(assets - currAssets, asset.decimals(), 18), dollarsOfLp);
         uint256 lpTokensToDivest = dollarsOfAssetsToDivest.divWadDown(price);
 
-        // We increase the amount of lp tokens by 1% to account for curve's trading fees
+        // Minimum amount of dollars received is 99% of dollar value of lp shares (trading fees, slippage)
+        // Convert back to `asset` decimals.
+        uint256 minAssetsReceived = _giveDecimals(dollarsOfAssetsToDivest.mulDivDown(99, 100), 18, asset.decimals());
+        // Increase the cap on lp tokens by 1% to account for curve's trading fees
         uint256 maxLpTokensToBurn = Math.min(lpTokenBal, lpTokensToDivest.mulDivDown(101, 100));
+        if (maxLpTokensToBurn < MIN_LP_AMOUNT) return;
 
         // Withdraw from gauge if needed to get correct amount of lp tokens
         if (maxLpTokensToBurn > currLpBal) {
@@ -121,20 +130,25 @@ contract CurveStrategy is BaseStrategy, AccessControl {
             require(success1, "Crv: gauge withdraw");
         }
 
-        (bool success2,) = address(zapper).call(
-            abi.encodeCall(
-                I3CrvMetaPoolZap.remove_liquidity_imbalance, (address(metaPool), withdrawAmounts, maxLpTokensToBurn)
-            )
-        );
-        require(success2, "Crv: zap remove");
+        zapper.remove_liquidity_one_coin(address(metaPool), maxLpTokensToBurn, assetIndex, minAssetsReceived);
     }
 
     function totalLockedValue() external override returns (uint256) {
         uint256 assetsLp;
         uint256 lpTokenBal = metaPool.balanceOf(address(this)) + gauge.balanceOf(address(this));
-        if (lpTokenBal > 100) {
+        if (lpTokenBal > MIN_LP_AMOUNT) {
             assetsLp = zapper.calc_withdraw_one_coin(address(metaPool), lpTokenBal, assetIndex);
         }
         return balanceOfAsset() + assetsLp;
+    }
+
+    function _giveDecimals(uint256 number, uint256 inDecimals, uint256 outDecimals) internal pure returns (uint256) {
+        if (inDecimals > outDecimals) {
+            number = number / (10 ** (inDecimals - outDecimals));
+        }
+        if (inDecimals < outDecimals) {
+            number = number * (10 ** (outDecimals - inDecimals));
+        }
+        return number;
     }
 }
