@@ -100,19 +100,19 @@ contract CurveStrategy is BaseStrategy, AccessControl {
         }
         // Only divest the amount that you have to
         uint256 assetsToDivest = assets - currAssets;
-        uint256[4] memory withdrawAmounts = [uint256(0), 0, (0), (0)];
+        uint256[4] memory withdrawAmounts = [uint256(0), 0, 0, 0];
         withdrawAmounts[uint256(uint128(assetIndex))] = assetsToDivest;
 
-        // price * (num of lp tokens) = dollars.
+        // price * (num of lp tokens) = dollars
         uint256 currLpBal = metaPool.balanceOf(address(this));
         uint256 lpTokenBal = currLpBal + gauge.balanceOf(address(this));
         uint256 price = ICurvePool(address(metaPool)).get_virtual_price(); // 18 decimals
-        uint256 dollarsOfLp = price.mulWadDown(lpTokenBal);
-        // We assume that the  vault `asset` is $1.00 (i.e. we assume that USDC is 1.00)
+        // We assume that the  vault `asset` is $1.00 (i.e. we assume that USDC is 1.00). Convert to 18 decimals.
         uint256 dollarsOfAssetsToDivest = assetsToDivest * 1e12;
+        uint256 lpTokensToDivest = dollarsOfAssetsToDivest.divWadDown(price);
 
-        uint256 maxLpTokensToBurn =
-            Math.min(lpTokenBal, lpTokenBal.mulDivDown(dollarsOfAssetsToDivest, dollarsOfLp).mulDivDown(101, 100));
+        // We increase the amount of lp tokens by 1% to account for curve's trading fees
+        uint256 maxLpTokensToBurn = Math.min(lpTokenBal, lpTokensToDivest.mulDivDown(101, 100));
 
         // Withdraw from gauge if needed to get correct amount of lp tokens
         if (maxLpTokensToBurn > currLpBal) {
