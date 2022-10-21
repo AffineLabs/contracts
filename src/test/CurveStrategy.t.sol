@@ -43,14 +43,18 @@ contract CurveStratTest is TestPlus {
         gauge = strategy.gauge();
     }
 
-    function testCanMintLpTokens() public {
+    function _invest(uint256 amount) internal {
         // get some usdc
         // invest in the vault
-        deal(address(usdc), address(this), 1e6);
-
+        deal(address(usdc), address(this), amount);
         usdc.approve(address(strategy), type(uint256).max);
-        strategy.invest(1e6);
-        strategy.deposit(1e6, 0);
+
+        strategy.invest(amount);
+        strategy.deposit(amount, 0);
+    }
+
+    function testCanMintLpTokens() public {
+        _invest(1e6);
 
         assertGt(strategy.gauge().balanceOf(address(strategy)), 0);
         emit log_named_uint("strat tvl: ", strategy.totalLockedValue());
@@ -87,6 +91,15 @@ contract CurveStratTest is TestPlus {
         assertApproxEqAbs(metaPool.balanceOf(address(strategy)), 0, 0.01e18);
         assertLt(gauge.balanceOf(address(strategy)), 1e18);
         assertApproxEqRel(strategy.totalLockedValue(), 3e6, 0.02e18);
+    }
+
+    function testCanClaimRewards() public {
+        _invest(1e6 * 1e6);
+        vm.warp(block.timestamp + 365 days);
+
+        uint256 oldTvl = strategy.totalLockedValue();
+        strategy.claimRewards(0);
+        assertGt(strategy.totalLockedValue(), oldTvl);
     }
 
     function testCanSellRewards() public {

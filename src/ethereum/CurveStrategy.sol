@@ -9,7 +9,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
-import {I3CrvMetaPoolZap, ILiquidityGauge, ICurvePool} from "../interfaces/curve.sol";
+import {I3CrvMetaPoolZap, ILiquidityGauge, ICurvePool, IMinter} from "../interfaces/curve.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 contract CurveStrategy is BaseStrategy, AccessControl {
@@ -21,6 +21,7 @@ contract CurveStrategy is BaseStrategy, AccessControl {
     /// @notice The index assigned to `asset` in the metapool
     int128 public immutable assetIndex;
     ILiquidityGauge public immutable gauge;
+    IMinter public constant MINTER = IMinter(0xd061D61a4d941c39E5453435B6345Dc261C2fcE0);
 
     IUniswapV2Router02 public constant router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
     ERC20 public constant crv = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
@@ -67,6 +68,7 @@ contract CurveStrategy is BaseStrategy, AccessControl {
 
     function claimRewards(uint256 minAssetsFromCrv) external onlyRole(OWNER) {
         gauge.claim_rewards();
+        MINTER.mint(address(gauge));
         uint256 crvBal = crv.balanceOf(address(this));
 
         address[] memory crvPath = new address[](3);
