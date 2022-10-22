@@ -69,29 +69,37 @@ contract ConvexStratTest is TestPlus {
     }
 
     function testRewards() public {
-        deal(address(usdc), address(this), 1e12);
-        usdc.approve(address(strategy), type(uint256).max);
-        strategy.invest(1e12);
+        deal(address(usdc), address(strategy), 1e12);
         strategy.deposit(1e12, 0);
 
         uint256 prevTVL = strategy.totalLockedValue();
         vm.warp(block.timestamp + 365 days);
 
-        uint256 newTVL = strategy.totalLockedValue();
-        assertGt(newTVL, prevTVL);
+        strategy.claimRewards();
+
         assertGt(strategy.cvx().balanceOf(address(strategy)), 0);
         assertGt(strategy.crv().balanceOf(address(strategy)), 0);
     }
 
     function testCanSellRewards() public {
         deal(address(strategy.crv()), address(strategy), strategy.MIN_TOKEN_AMT() * 10);
+        deal(address(strategy.cvx()), address(strategy), strategy.MIN_TOKEN_AMT() * 10);
 
-        strategy.withdrawAssets(100, 0, 0, 0);
+        strategy.claimAndSellRewards(0, 0);
 
         // We have usdc
         assertTrue(usdc.balanceOf(address(strategy)) > 0);
         // We sold all of our crv
         assertEq(strategy.crv().balanceOf(address(strategy)), 0);
+        assertEq(strategy.cvx().balanceOf(address(strategy)), 0);
+    }
+
+    function testTVLFuzz(uint64 lpTokens, uint64 cvxLpTokens) public {
+        deal(address(strategy.curveLpToken()), address(strategy), lpTokens);
+        deal(address(strategy.cvxRewarder()), address(strategy), cvxLpTokens);
+
+        uint256 tvl = strategy.totalLockedValue();
+        assertApproxEqRel(tvl, (uint256(lpTokens) + cvxLpTokens) / 1e12, 0.02e18);
     }
 
     function testCanSlip() public {
@@ -104,8 +112,8 @@ contract ConvexStratTest is TestPlus {
 
         vm.expectRevert();
         // If we set minAssetsFromLp too high, we won't be able to withdraw
-        strategy.withdrawAssets(type(uint256).max, 0, 0, type(uint256).max);
+        strategy.withdrawAssets(type(uint256).max, type(uint256).max);
 
-        strategy.withdrawAssets(type(uint256).max, 0, 0, 0);
+        strategy.withdrawAssets(type(uint256).max, 0);
     }
 }

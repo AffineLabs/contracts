@@ -3,7 +3,7 @@ pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {BaseVault} from "../BaseVault.sol";
@@ -12,7 +12,7 @@ import {ICurvePool} from "../interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "../interfaces/convex.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
-contract ConvexStrategy is BaseStrategy, Ownable {
+contract ConvexStrategy is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
 
     // Asset index of USDC during deposit and withdraw.
@@ -36,6 +36,8 @@ contract ConvexStrategy is BaseStrategy, Ownable {
     ERC20 public constant crv = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
     ERC20 public constant cvx = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
 
+    bytes32 public constant OWNER = keccak256("OWNER");
+
     constructor(BaseVault _vault, ICurvePool _curvePool, uint256 _convexPid, IConvexBooster _convexBooster)
         BaseStrategy(_vault)
     {
@@ -54,9 +56,12 @@ contract ConvexStrategy is BaseStrategy, Ownable {
         // For trading cvx and crv
         crv.safeApprove(address(router), type(uint256).max);
         cvx.safeApprove(address(router), type(uint256).max);
+
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(OWNER, msg.sender);
     }
 
-    function deposit(uint256 assets, uint256 minLpTokens) external onlyOwner {
+    function deposit(uint256 assets, uint256 minLpTokens) external onlyRole(OWNER) {
         // e.g. in a FRAX-USDC stableswap pool, the 0 index is for FRAX and the index 1 is for USDC.
         uint256[2] memory depositAmounts = [uint256(0), 0];
         depositAmounts[uint256(uint128(ASSET_INDEX))] = assets;
@@ -65,7 +70,7 @@ contract ConvexStrategy is BaseStrategy, Ownable {
     }
 
     function divest(uint256 assets) external override onlyVault returns (uint256) {
-        _withdraw(assets, 0, 0, 0);
+        _withdraw(assets, 0);
 
         uint256 amountToSend = Math.min(asset.balanceOf(address(this)), assets);
         asset.safeTransfer(address(vault), amountToSend);
@@ -77,28 +82,16 @@ contract ConvexStrategy is BaseStrategy, Ownable {
      * @dev Useful in the case that we want to do multiple withdrawals ahead of a big divestment from the vault. Doing the
      * withdrawals manually (in chunks) will give us less slippage
      */
-    function withdrawAssets(uint256 assets, uint256 minAssetsFromCrv, uint256 minAssetsFromCvx, uint256 minAssetsFromLp)
-        external
-        onlyOwner
-    {
-        _withdraw(assets, minAssetsFromCrv, minAssetsFromCvx, minAssetsFromLp);
+    function withdrawAssets(uint256 assets, uint256 minAssetsFromLp) external onlyRole(OWNER) {
+        _withdraw(assets, minAssetsFromLp);
     }
 
-    function _claimAllRewards() internal {
+    function claimRewards() external onlyRole(OWNER) {
         cvxRewarder.getReward();
     }
 
-    /// @notice Try to increase balance of `asset` to `assets`.
-    function _withdraw(uint256 assets, uint256 minAssetsFromCrv, uint256 minAssetsFromCvx, uint256 minAssetsFromLp)
-        internal
-    {
-        uint256 currAssets = asset.balanceOf(address(this));
-        if (currAssets >= assets) {
-            return;
-        }
-
-        _claimAllRewards();
-
+    function claimAndSellRewards(uint256 minAssetsFromCrv, uint256 minAssetsFromCvx) external onlyRole(OWNER) {
+        cvxRewarder.getReward();
         // Sell crv rewards if we have at least MIN_TOKEN_AMT tokens
         // Routing through WETH for high liquidity
         address[] memory crvPath = new address[](3);
@@ -133,7 +126,11 @@ contract ConvexStrategy is BaseStrategy, Ownable {
                 deadline: block.timestamp
             });
         }
-        currAssets = asset.balanceOf(address(this));
+    }
+
+    /// @notice Try to increase balance of `asset` to `assets`.
+    function _withdraw(uint256 assets, uint256 minAssetsFromLp) internal {
+        uint256 currAssets = asset.balanceOf(address(this));
         if (currAssets >= assets) {
             return;
         }
@@ -160,31 +157,8 @@ contract ConvexStrategy is BaseStrategy, Ownable {
     }
 
     function totalLockedValue() external override returns (uint256) {
-        _claimAllRewards();
-
-        uint256 assetsFromCrv;
-        uint256 crvBal = crv.balanceOf(address(this));
-        if (crvBal >= MIN_TOKEN_AMT) {
-            address[] memory crvPath = new address[](3);
-            crvPath[0] = address(crv);
-            crvPath[1] = WETH;
-            crvPath[2] = address(asset);
-            uint256[] memory crvAmounts = router.getAmountsOut(crvBal, crvPath);
-            assetsFromCrv = crvAmounts[crvAmounts.length - 1];
-        }
-
-        uint256 assetsFromCvx;
-        uint256 cvxBal = cvx.balanceOf(address(this));
-        if (cvxBal >= MIN_TOKEN_AMT) {
-            address[] memory cvxPath = new address[](3);
-            cvxPath[0] = address(cvx);
-            cvxPath[1] = WETH;
-            cvxPath[2] = address(asset);
-            uint256[] memory cvxAmounts = router.getAmountsOut(cvxBal, cvxPath);
-            assetsFromCvx = cvxAmounts[cvxAmounts.length - 1];
-        }
-
-        return balanceOfAsset() + assetsFromCrv + assetsFromCvx
-            + curvePool.calc_withdraw_one_coin(cvxRewarder.balanceOf(address(this)), ASSET_INDEX);
+        uint256 lpTokenBal = curveLpToken.balanceOf(address(this)) + cvxRewarder.balanceOf(address(this));
+        uint256 assetsLp = curvePool.calc_withdraw_one_coin(lpTokenBal, ASSET_INDEX);
+        return balanceOfAsset() + assetsLp;
     }
 }
