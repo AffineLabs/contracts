@@ -19,6 +19,8 @@ contract ConvexStratTest is TestPlus {
     ERC20 usdc = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     L1Vault vault;
     ConvexStrategy strategy;
+    ERC20 crv;
+    ERC20 cvx;
 
     function setUp() public {
         vm.createSelectFork("ethereum", 15_624_364);
@@ -34,10 +36,9 @@ contract ConvexStratTest is TestPlus {
             vault, 
             ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
             100,
-            IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31),
-            ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B),
-            IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D)
-        );
+            IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31));
+        crv = strategy.crv();
+        cvx = strategy.cvx();
     }
 
     function testCanDeposit() public {
@@ -59,6 +60,22 @@ contract ConvexStratTest is TestPlus {
         assertApproxEqRel(tvl, 1e6, 1e18);
     }
 
+    function testCanSlip() public {
+        deal(address(usdc), address(strategy), 1e12);
+        deal(address(crv), address(strategy), 10e18);
+        deal(address(cvx), address(strategy), 10e18);
+
+        vm.expectRevert();
+        strategy.deposit(1e12, type(uint256).max);
+
+        strategy.deposit(1e12, 0);
+
+        vm.expectRevert();
+        strategy.claimAndSellRewards(type(uint256).max, type(uint256).max);
+
+        strategy.claimAndSellRewards(0, 0);
+    }
+
     function testCanDivest() public {
         deal(address(usdc), address(this), 2e6);
         usdc.approve(address(strategy), type(uint256).max);
@@ -68,47 +85,48 @@ contract ConvexStratTest is TestPlus {
         vm.prank(address(vault));
         strategy.divest(1e6);
         emit log_named_uint("vault usdc: ", usdc.balanceOf(address(vault)));
-        assert(usdc.balanceOf(address(vault)) == 1e6);
+        assertTrue(usdc.balanceOf(address(vault)) == 1e6);
+    }
+
+    function testWithdrawFuzz(uint64 lpTokens, uint64 cvxLpTokens, uint32 assetsToDivest) public {
+        deal(address(strategy.curveLpToken()), address(strategy), lpTokens);
+        deal(address(strategy.cvxRewarder()), address(strategy), cvxLpTokens);
+
+        strategy.withdrawAssets(assetsToDivest);
     }
 
     function testRewards() public {
-        deal(address(usdc), address(this), 1e12);
-        usdc.approve(address(strategy), type(uint256).max);
-        strategy.invest(1e12);
+        deal(address(usdc), address(strategy), 1e12);
         strategy.deposit(1e12, 0);
 
         uint256 prevTVL = strategy.totalLockedValue();
         vm.warp(block.timestamp + 365 days);
 
-        uint256 newTVL = strategy.totalLockedValue();
-        assertGt(newTVL, prevTVL);
+        strategy.claimRewards();
+
         assertGt(strategy.cvx().balanceOf(address(strategy)), 0);
         assertGt(strategy.crv().balanceOf(address(strategy)), 0);
     }
 
     function testCanSellRewards() public {
-        deal(address(strategy.crv()), address(strategy), strategy.CRV_SWAP_THRESHOLD() * 10);
+        deal(address(strategy.crv()), address(strategy), strategy.MIN_TOKEN_AMT() * 10);
+        deal(address(strategy.cvx()), address(strategy), strategy.MIN_TOKEN_AMT() * 10);
 
-        strategy.withdrawAssets(100, 0, 0, 0);
+        strategy.claimAndSellRewards(0, 0);
 
         // We have usdc
         assertTrue(usdc.balanceOf(address(strategy)) > 0);
         // We sold all of our crv
         assertEq(strategy.crv().balanceOf(address(strategy)), 0);
+        assertEq(strategy.cvx().balanceOf(address(strategy)), 0);
     }
 
-    function testCanSlip() public {
-        deal(address(usdc), address(strategy), 1e12);
+    function testTVLFuzz(uint64 lpTokens, uint64 cvxLpTokens) public {
+        deal(address(strategy.curveLpToken()), address(strategy), lpTokens);
+        deal(address(strategy.cvxRewarder()), address(strategy), cvxLpTokens);
 
-        vm.expectRevert();
-        strategy.deposit(1e12, type(uint256).max);
-
-        strategy.deposit(1e12, 0);
-
-        vm.expectRevert();
-        // If we set minAssetsFromLp too high, we won't be able to withdraw
-        strategy.withdrawAssets(type(uint256).max, 0, 0, type(uint256).max);
-
-        strategy.withdrawAssets(type(uint256).max, 0, 0, 0);
+        uint256 tvl = strategy.totalLockedValue();
+        if (tvl < 100) return;
+        assertApproxEqRel(tvl, (uint256(lpTokens) + cvxLpTokens) / 1e12, 0.02e18);
     }
 }
