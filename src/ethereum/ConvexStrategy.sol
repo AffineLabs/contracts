@@ -3,6 +3,7 @@ pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
@@ -14,6 +15,7 @@ import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUn
 
 contract ConvexStrategy is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
+    using FixedPointMathLib for uint256;
 
     // Asset index of USDC during deposit and withdraw.
     int128 public constant ASSET_INDEX = 1;
@@ -70,7 +72,7 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
     }
 
     function divest(uint256 assets) external override onlyVault returns (uint256) {
-        _withdraw(assets, 0);
+        _withdraw(assets);
 
         uint256 amountToSend = Math.min(asset.balanceOf(address(this)), assets);
         asset.safeTransfer(address(vault), amountToSend);
@@ -82,8 +84,8 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
      * @dev Useful in the case that we want to do multiple withdrawals ahead of a big divestment from the vault. Doing the
      * withdrawals manually (in chunks) will give us less slippage
      */
-    function withdrawAssets(uint256 assets, uint256 minAssetsFromLp) external onlyRole(OWNER) {
-        _withdraw(assets, minAssetsFromLp);
+    function withdrawAssets(uint256 assets) external onlyRole(OWNER) {
+        _withdraw(assets);
     }
 
     function claimRewards() external onlyRole(OWNER) {
@@ -129,31 +131,35 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
     }
 
     /// @notice Try to increase balance of `asset` to `assets`.
-    function _withdraw(uint256 assets, uint256 minAssetsFromLp) internal {
+    function _withdraw(uint256 assets) internal {
         uint256 currAssets = asset.balanceOf(address(this));
         if (currAssets >= assets) {
             return;
         }
 
-        // Only divest the amount that you have to
-        uint256 assetsToDivest = assets - currAssets;
-        uint256[2] memory withdrawAmounts = [uint256(0), 0];
-        withdrawAmounts[uint256(uint128(ASSET_INDEX))] = assetsToDivest;
+        // price * (num of lp tokens) = dollars
+        uint256 currLpBal = curveLpToken.balanceOf(address(this));
+        uint256 lpTokenBal = currLpBal + cvxRewarder.balanceOf(address(this));
+        uint256 price = curvePool.get_virtual_price(); // 18 decimals
+        uint256 dollarsOfLp = lpTokenBal.mulWadDown(price);
 
-        // TODO: Find a way to not withdraw all curve lp tokens from convex
-        cvxRewarder.withdrawAllAndUnwrap(true);
+        // Get the amount of dollars to remove from vault, and the equivalent amount of lp token.
+        // We assume that the  vault `asset` is $1.00 (i.e. we assume that USDC is 1.00). Convert to 18 decimals.
+        uint256 dollarsOfAssetsToDivest = Math.min((assets - currAssets) * 1e12, dollarsOfLp);
+        uint256 lpTokensToDivest = dollarsOfAssetsToDivest.divWadDown(price);
 
-        // If the amount of lp tokens is greater than we have, simply burn the max amount of tokens
-        try curvePool.remove_liquidity_imbalance(withdrawAmounts, type(uint256).max) {
-            // We successfully withdrew `assetsToDivest` and our balance is now `assets`
-        } catch (bytes memory) {
-            // We didn't have enough lp tokens to withdraw `assetsToDivest`. So we just burn all of our lp shares
-            curvePool.remove_liquidity_one_coin(curveLpToken.balanceOf(address(this)), ASSET_INDEX, minAssetsFromLp);
+        // Minimum amount of dollars received is 99% of dollar value of lp shares (trading fees, slippage)
+        // Convert back to `asset` decimals.
+        uint256 minAssetsReceived = dollarsOfAssetsToDivest.mulDivDown(99, 100) / 1e12;
+        // Increase the cap on lp tokens by 1% to account for curve's trading fees
+        uint256 maxLpTokensToBurn = Math.min(lpTokenBal, lpTokensToDivest.mulDivDown(101, 100));
+
+        // Withdraw from cvx rewarder contract if needed to get correct amount of lp tokens
+        if (maxLpTokensToBurn > currLpBal) {
+            cvxRewarder.withdrawAndUnwrap(maxLpTokensToBurn - currLpBal, true);
         }
 
-        if (curveLpToken.balanceOf(address(this)) > 0) {
-            convexBooster.depositAll(convexPid, true);
-        }
+        curvePool.remove_liquidity_one_coin(curveLpToken.balanceOf(address(this)), ASSET_INDEX, minAssetsReceived);
     }
 
     function totalLockedValue() external override returns (uint256) {

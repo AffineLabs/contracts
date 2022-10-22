@@ -19,6 +19,8 @@ contract ConvexStratTest is TestPlus {
     ERC20 usdc = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     L1Vault vault;
     ConvexStrategy strategy;
+    ERC20 crv;
+    ERC20 cvx;
 
     function setUp() public {
         vm.createSelectFork("ethereum", 15_624_364);
@@ -35,6 +37,8 @@ contract ConvexStratTest is TestPlus {
             ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
             100,
             IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31));
+        crv = strategy.crv();
+        cvx = strategy.cvx();
     }
 
     function testCanDeposit() public {
@@ -56,6 +60,22 @@ contract ConvexStratTest is TestPlus {
         assertApproxEqRel(tvl, 1e6, 1e18);
     }
 
+    function testCanSlip() public {
+        deal(address(usdc), address(strategy), 1e12);
+        deal(address(crv), address(strategy), 10e18);
+        deal(address(cvx), address(strategy), 10e18);
+
+        vm.expectRevert();
+        strategy.deposit(1e12, type(uint256).max);
+
+        strategy.deposit(1e12, 0);
+
+        vm.expectRevert();
+        strategy.claimAndSellRewards(type(uint256).max, type(uint256).max);
+
+        strategy.claimAndSellRewards(0, 0);
+    }
+
     function testCanDivest() public {
         deal(address(usdc), address(this), 2e6);
         usdc.approve(address(strategy), type(uint256).max);
@@ -65,7 +85,14 @@ contract ConvexStratTest is TestPlus {
         vm.prank(address(vault));
         strategy.divest(1e6);
         emit log_named_uint("vault usdc: ", usdc.balanceOf(address(vault)));
-        assert(usdc.balanceOf(address(vault)) == 1e6);
+        assertTrue(usdc.balanceOf(address(vault)) == 1e6);
+    }
+
+    function testWithdrawFuzz(uint64 lpTokens, uint64 cvxLpTokens, uint32 assetsToDivest) public {
+        deal(address(strategy.curveLpToken()), address(strategy), lpTokens);
+        deal(address(strategy.cvxRewarder()), address(strategy), cvxLpTokens);
+
+        strategy.withdrawAssets(assetsToDivest);
     }
 
     function testRewards() public {
@@ -99,21 +126,7 @@ contract ConvexStratTest is TestPlus {
         deal(address(strategy.cvxRewarder()), address(strategy), cvxLpTokens);
 
         uint256 tvl = strategy.totalLockedValue();
+        if (tvl < 100) return;
         assertApproxEqRel(tvl, (uint256(lpTokens) + cvxLpTokens) / 1e12, 0.02e18);
-    }
-
-    function testCanSlip() public {
-        deal(address(usdc), address(strategy), 1e12);
-
-        vm.expectRevert();
-        strategy.deposit(1e12, type(uint256).max);
-
-        strategy.deposit(1e12, 0);
-
-        vm.expectRevert();
-        // If we set minAssetsFromLp too high, we won't be able to withdraw
-        strategy.withdrawAssets(type(uint256).max, type(uint256).max);
-
-        strategy.withdrawAssets(type(uint256).max, 0);
     }
 }
