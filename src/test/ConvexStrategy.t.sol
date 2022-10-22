@@ -34,10 +34,7 @@ contract ConvexStratTest is TestPlus {
             vault, 
             ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
             100,
-            IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31),
-            ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B),
-            IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D)
-        );
+            IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31));
     }
 
     function testCanDeposit() public {
@@ -87,7 +84,7 @@ contract ConvexStratTest is TestPlus {
     }
 
     function testCanSellRewards() public {
-        deal(address(strategy.crv()), address(strategy), strategy.CRV_SWAP_THRESHOLD() * 10);
+        deal(address(strategy.crv()), address(strategy), strategy.MIN_TOKEN_AMT() * 10);
 
         strategy.withdrawAssets(100, 0, 0, 0);
 
