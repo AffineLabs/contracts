@@ -258,11 +258,9 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
             emit StrategyRemoved(strategy);
             _organizeWithdrawalQueue();
 
-            // Take all money out of strategy.
-            uint256 amountWithdrawn = strategy.divest(type(uint256).max);
+            // Take all money out of strategy
             uint256 oldBal = stratInfo.balance;
-            totalStrategyHoldings -= oldBal;
-            stratInfo.balance = 0;
+            uint256 amountWithdrawn = _withdrawFromStrategy(strategy, strategy.totalLockedValue());
 
             // In this case, we've made a profit since we extracted more money than we thought we had
             // This increases the vaultTVL. In order to avoid frontrunning, we unlock this profit as in harvest()
@@ -356,9 +354,9 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      * @param assets  The amount of underlying tokens to withdraw.
      * @return The amount of underlying tokens withdrawn from the strategy.
      */
-    function withdrawFromStrategy(Strategy strategy, uint256 assets) internal returns (uint256) {
+    function _withdrawFromStrategy(Strategy strategy, uint256 assets) internal returns (uint256) {
         // Withdraw from the strategy
-        uint256 amountWithdrawn = strategy.divest(assets);
+        uint256 amountWithdrawn = _divest(strategy, assets);
         // Without this the next harvest would count the withdrawal as a loss.
         strategies[strategy].balance -= amountWithdrawn;
 
@@ -370,6 +368,15 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
 
         emit StrategyWithdrawal(strategy, amountWithdrawn);
         return amountWithdrawn;
+    }
+
+    /// @notice A small wrapper around divest(). We try-catch to make sure that a bad strategy does not pause withdrawals.
+    function _divest(Strategy strategy, uint256 assets) internal returns (uint256) {
+        try strategy.divest(assets) returns (uint256 amountDivested) {
+            return amountDivested;
+        } catch {
+            return 0;
+        }
     }
 
     /**
@@ -507,7 +514,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
             amountNeeded = Math.min(amountNeeded, strategies[strategy].balance);
 
             // Force withdraw of token from strategy
-            uint256 withdrawn = withdrawFromStrategy(strategy, amountNeeded);
+            uint256 withdrawn = _withdrawFromStrategy(strategy, amountNeeded);
             amountLiquidated += withdrawn;
         }
         emit Liquidation(amount, amountLiquidated);
@@ -539,7 +546,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
             uint256 idealStrategyTVL = (tvl * strategies[strategy].tvlBps) / MAX_BPS;
             uint256 currStrategyTVL = strategy.totalLockedValue();
             if (idealStrategyTVL < currStrategyTVL) {
-                strategy.divest(currStrategyTVL - idealStrategyTVL);
+                _withdrawFromStrategy(strategy, currStrategyTVL - idealStrategyTVL);
             }
             if (idealStrategyTVL > currStrategyTVL) {
                 amountsToInvest[i] = idealStrategyTVL - currStrategyTVL;

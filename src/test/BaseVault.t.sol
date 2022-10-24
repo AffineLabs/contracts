@@ -108,7 +108,7 @@ contract BaseVaultTest is TestPlus {
         vault.harvest(strategies);
 
         // Divest (make sure divest is called on the strategy)
-        vm.expectCall(address(strategy), abi.encodeCall(BaseStrategy.divest, (type(uint256).max)));
+        vm.expectCall(address(strategy), abi.encodeCall(BaseStrategy.divest, (strategy.totalLockedValue())));
         vault.removeStrategy(strategy);
 
         // The vault removed all money from the strategy
