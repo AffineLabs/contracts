@@ -637,14 +637,26 @@ contract L2VaultTest is TestPlus {
     }
 
     function testSettingForwarder() public {
-        changePrank(governance);
+        vm.prank(governance);
         address newForwarder = makeAddr("new_forwarder");
         vault.setTrustedForwarder(newForwarder);
         assertEq(vault.trustedForwarder(), newForwarder);
 
         // only gov can call
-        changePrank(alice);
+        vm.prank(alice);
         vm.expectRevert("Only Governance.");
         vault.setTrustedForwarder(address(0));
+    }
+
+    function testSetEwq() public {
+        EmergencyWithdrawalQueue newQ = EmergencyWithdrawalQueue(makeAddr("new_queue"));
+        vm.prank(governance);
+        vault.setEwq(newQ);
+        assertEq(address(vault.emergencyWithdrawalQueue()), address(newQ));
+
+        // only gov can call
+        vm.prank(alice);
+        vm.expectRevert("Only Governance.");
+        vault.setEwq(EmergencyWithdrawalQueue(address(0)));
     }
 }

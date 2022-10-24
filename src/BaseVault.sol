@@ -65,6 +65,22 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
     BridgeEscrow public bridgeEscrow;
 
     /**
+     * @notice Update the address of the wormhole router.
+     * @param _router The new router.
+     */
+    function setWormholeRouter(address _router) external onlyGovernance {
+        wormholeRouter = _router;
+    }
+    /**
+     * @notice Update the address of the bridge escrow.
+     * @param _escrow The new escrow.
+     */
+
+    function setBridgeEscrow(BridgeEscrow _escrow) external onlyGovernance {
+        bridgeEscrow = _escrow;
+    }
+
+    /**
      * AUTHENTICATION
      *
      */
