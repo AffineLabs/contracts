@@ -15,6 +15,10 @@ contract MockL2Vault is L2Vault {
     function setCanRequestFromL1(bool _can) external {
         canRequestFromL1 = _can;
     }
+
+    function setMockRebalanceDelta(uint256 _rebalanceDelta) external {
+        rebalanceDelta = _rebalanceDelta;
+    }
 }
 
 contract MockL1Vault is L1Vault {}

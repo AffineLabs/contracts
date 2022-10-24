@@ -96,6 +96,7 @@ contract L2Vault is
         emergencyWithdrawalQueue = _emergencyWithdrawalQueue;
         l1Ratio = _l1Ratio;
         l2Ratio = _l2Ratio;
+        rebalanceDelta = 10_000 * _asset.decimals();
         canTransferToL1 = true;
         canRequestFromL1 = true;
         lastTVLUpdate = block.timestamp;
@@ -454,6 +455,20 @@ contract L2Vault is
         l2Ratio = _l2Ratio;
     }
 
+    /**
+     * @notice The delta required to trigger a rebalance. The delta is the difference between current and ideal tvl
+     * on a given layer
+     */
+    uint256 public rebalanceDelta;
+
+    /**
+     * @notice Set the rebalance delta
+     * @param _rebalanceDelta The new rebalance delta
+     */
+    function setRebalanceDelta(uint256 _rebalanceDelta) external onlyGovernance {
+        rebalanceDelta = _rebalanceDelta;
+    }
+
     // Whether we can send or receive money from L1
     bool public canTransferToL1;
     bool public canRequestFromL1;
@@ -502,7 +517,7 @@ contract L2Vault is
         l1TotalLockedValue = tvl;
 
         (bool invest, uint256 delta) = _computeRebalance();
-        if (delta == 0) {
+        if (delta < rebalanceDelta) {
             return;
         }
         _l1L2Rebalance(invest, delta);

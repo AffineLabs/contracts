@@ -26,6 +26,7 @@ contract L2VaultTest is TestPlus {
     function setUp() public {
         vault = Deploy.deployL2Vault();
         asset = MockERC20(vault.asset());
+        vault.setMockRebalanceDelta(0);
     }
 
     // Adding this since this test contract is used as a strategy
@@ -190,13 +191,14 @@ contract L2VaultTest is TestPlus {
      */
 
     function testReceiveTVL() public {
+        // No rebalancing should actually occur
+        vault.setMockRebalanceDelta(1e6);
+
         vm.prank(alice);
         vm.expectRevert("Only wormhole router");
         vault.receiveTVL(0, false);
 
         // If L1 has received our last transfer, we can transfer again
-        // We mint some money so that we don't trigger any actual rebalancing
-        asset.mint(address(vault), 100);
         vault.setCanTransferToL1(false);
         vm.startPrank(vault.wormholeRouter());
         vault.receiveTVL(100, true);
@@ -225,7 +227,6 @@ contract L2VaultTest is TestPlus {
         // canRequestFromL1 is true, canTransferToL1 is true
         vault.setCanRequestFromL1(true);
         vault.setCanTransferToL1(true);
-        asset.mint(address(vault), 20); // mint so that we don't try to request money from L1
         vault.receiveTVL(120, true);
 
         assertEq(vault.canTransferToL1(), true);
@@ -233,27 +234,27 @@ contract L2VaultTest is TestPlus {
     }
 
     function testLockedTVL() public {
+        // No rebalancing should actually occur
+        vault.setMockRebalanceDelta(1e6);
         assertEq(vault.lockedTVL(), 0);
 
-        // We mint some money so that we don't trigger any actual rebalancing
-        asset.mint(address(vault), 100);
         vault.setCanTransferToL1(false);
         vm.startPrank(vault.wormholeRouter());
         vault.receiveTVL(100, true);
 
         assertEq(vault.l1TotalLockedValue(), 100);
         assertEq(vault.lockedTVL(), 100);
-        assertEq(vault.totalAssets(), 100);
+        assertEq(vault.totalAssets(), 0);
 
         // Using up 50% of lockInterval unlocks 50% of tvl
         vm.warp(block.timestamp + vault.lockInterval() / 2);
         assertEq(vault.lockedTVL(), 50);
-        assertEq(vault.totalAssets(), 150);
+        assertEq(vault.totalAssets(), 50);
 
         // Using up all of lock interval unlocks all of tvl
         vm.warp(block.timestamp + vault.lockInterval());
         assertEq(vault.lockedTVL(), 0);
-        assertEq(vault.totalAssets(), 200);
+        assertEq(vault.totalAssets(), 100);
     }
 
     function testL1ToL2Rebalance() public {
@@ -658,5 +659,15 @@ contract L2VaultTest is TestPlus {
         vm.prank(alice);
         vm.expectRevert("Only Governance.");
         vault.setEwq(EmergencyWithdrawalQueue(address(0)));
+    }
+
+    function testSettingRebalanceDelta() public {
+        vm.prank(governance);
+        vault.setRebalanceDelta(100);
+        assertEq(vault.rebalanceDelta(), 100);
+
+        vm.prank(alice);
+        vm.expectRevert("Only Governance.");
+        vault.setRebalanceDelta(0);
     }
 }
