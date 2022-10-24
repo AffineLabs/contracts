@@ -3,6 +3,7 @@ pragma solidity =0.8.16;
 
 interface IL1Vault {
     function afterReceive() external;
+    function governance() external view returns (address);
 }
 
 interface IL2Vault {
