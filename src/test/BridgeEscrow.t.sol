@@ -43,6 +43,7 @@ contract L2BridgeEscrowTest is TestPlus {
         escrow = new BridgeEscrow(address(vault), manager);
 
         // Set the bridgeEscrow
+        vm.prank(governance);
         vault.setBridgeEscrow(escrow);
     }
 
@@ -108,6 +109,7 @@ contract L1BridgeEscrowTest is TestPlus {
         escrow = new BridgeEscrow(address(vault), manager);
 
         // Set the bridgeEscrow
+        vm.prank(governance);
         vault.setBridgeEscrow(escrow);
     }
 

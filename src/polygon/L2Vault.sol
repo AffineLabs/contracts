@@ -204,6 +204,14 @@ contract L2Vault is
 
     EmergencyWithdrawalQueue public emergencyWithdrawalQueue;
 
+    /**
+     * @notice Update the address of the emergency withdrawal queue.
+     * @param _ewq The new queue.
+     */
+    function setEwq(EmergencyWithdrawalQueue _ewq) external onlyGovernance {
+        emergencyWithdrawalQueue = _ewq;
+    }
+
     event EmergencyWithdrawalQueueRequestDropped(
         uint256 indexed pos, address indexed owner, address indexed receiver, uint256 shares
     );
