@@ -5,7 +5,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
@@ -20,7 +20,7 @@ import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
 
-contract DeltaNeutralLp is BaseStrategy, Ownable {
+contract DeltaNeutralLp is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -34,6 +34,9 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         IUniswapV2Router02 _router,
         IUniswapV2Factory _factory
     ) BaseStrategy(_vault) {
+        _grantRole(DEFAULT_ADMIN_ROLE, vault.governance());
+        _grantRole(STRATEGIST_ROLE, vault.governance());
+
         canStartNewPos = true;
         slippageTolerance = _slippageTolerance;
         longPercentage = _longPct;
@@ -61,6 +64,8 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         // To remove liquidity
         abPair.safeApprove(address(_router), type(uint256).max);
     }
+
+    bytes32 public constant STRATEGIST_ROLE = keccak256("STRATEGIST");
 
     /// @notice Convert `borrowAsset` (e.g. MATIC) to `asset` (e.g. USDC)
     function _borrowToAsset(uint256 amountB) internal view returns (uint256 assets) {
@@ -115,7 +120,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
     /// @notice Gives ratio of vault asset to borrow asset, e.g. WMATIC/USD (assuming usdc = usd)
     AggregatorV3Interface immutable borrowAssetFeed;
 
-    function startPosition() external onlyOwner {
+    function startPosition() external onlyRole(STRATEGIST_ROLE) {
         // Set position metadata
         require(canStartNewPos, "DNLP: position is active");
         uint32 newPositionId = currentPosition + 1;
@@ -197,7 +202,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
 
     event PositionEnd(uint32 indexed position, uint256 assetBalance, uint256 timestamp);
 
-    function endPosition() external onlyOwner {
+    function endPosition() external onlyRole(STRATEGIST_ROLE) {
         _endPosition();
     }
 

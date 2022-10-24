@@ -3,6 +3,7 @@ pragma solidity =0.8.16;
 
 import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
@@ -49,6 +50,21 @@ contract DeltaNeutralTest is TestPlus {
         borrowAsset = strategy.borrowAsset();
     }
 
+    function testOnlyAddressWithStrategistRoleCanStartPosition() public {
+        uint256 startAssets = 1000e6;
+        deal(address(usdc), address(strategy), startAssets);
+        vm.startPrank(alice);
+        vm.expectRevert(
+            abi.encodePacked(
+                "AccessControl: account ",
+                Strings.toHexString(uint160(alice), 20),
+                " is missing role ",
+                Strings.toHexString(uint256(strategy.STRATEGIST_ROLE()), 32)
+            )
+        );
+        strategy.startPosition();
+    }
+
     function testCreatePosition() public {
         uint256 startAssets = 1000e6;
         deal(address(usdc), address(strategy), startAssets);
@@ -61,6 +77,8 @@ contract DeltaNeutralTest is TestPlus {
         // I should get this much matic
         uint256[] memory amounts = strategy.router().getAmountsOut(assetsToMatic, path);
         uint256 amountMatic = amounts[1];
+
+        vm.startPrank(vault.governance());
 
         strategy.startPosition();
         assertFalse(strategy.canStartNewPos());
@@ -80,18 +98,34 @@ contract DeltaNeutralTest is TestPlus {
         assertApproxEqRel(assetsLP, assetsInAAve * 2, 0.01e18);
     }
 
-    function testEndPosition() public {
+    function testOnlyAddressWithStrategistRoleCanEndPosition() public {
         deal(address(asset), address(strategy), 1000e6);
+
+        vm.startPrank(vault.governance());
         strategy.startPosition();
 
-        vm.expectRevert("Ownable: caller is not the owner");
-        vm.prank(alice);
+        changePrank(alice);
+        vm.expectRevert(
+            abi.encodePacked(
+                "AccessControl: account ",
+                Strings.toHexString(uint160(alice), 20),
+                " is missing role ",
+                Strings.toHexString(uint256(strategy.STRATEGIST_ROLE()), 32)
+            )
+        );
         strategy.endPosition();
+    }
 
+    function testEndPosition() public {
+        deal(address(asset), address(strategy), 1000e6);
+
+        vm.startPrank(vault.governance());
+        strategy.startPosition();
+
+        changePrank(vault.governance());
         strategy.endPosition();
 
         assertTrue(strategy.canStartNewPos());
-
         assertApproxEqRel(asset.balanceOf(address(strategy)), 1000e6, 0.02e18);
         assertEq(borrowAsset.balanceOf(address(strategy)), 0);
         assertEq(abPair.balanceOf(address(strategy)), 0);
@@ -100,6 +134,8 @@ contract DeltaNeutralTest is TestPlus {
     function testTVL() public {
         assertEq(strategy.totalLockedValue(), 0);
         deal(address(asset), address(strategy), 1000e6);
+
+        vm.prank(vault.governance());
         strategy.startPosition();
 
         assertApproxEqRel(strategy.totalLockedValue(), 1000e6, 0.02e18);
@@ -113,6 +149,8 @@ contract DeltaNeutralTest is TestPlus {
         assertEq(asset.balanceOf(address(vault)), 1);
 
         deal(address(asset), address(strategy), 1000e6);
+
+        vm.prank(vault.governance());
         strategy.startPosition();
 
         // We unwind position if there is a one
