@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity =0.8.16;
 
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+
 import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 
@@ -24,18 +26,18 @@ contract ForwardTest is TestPlus {
 
     L2Vault vault;
     TwoAssetBasket basket;
-    MockERC20 token;
+    ERC20 token = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     Forwarder forwarder;
 
     function setUp() public {
-        vm.createSelectFork("mumbai", 25_804_436);
+        vm.createSelectFork("polygon", 31_824_532);
         vault = Deploy.deployL2Vault();
+        basket = Deploy.deployTwoAssetBasket(token);
 
-        bytes32 tokenAddr = bytes32(uint256(uint160(0x8f7116CA03AEB48547d0E2EdD3Faa73bfB232538)));
+        bytes32 tokenAddr = bytes32(uint256(uint160(address(token))));
         vm.store(address(vault), bytes32(stdstore.target(address(vault)).sig("asset()").find()), tokenAddr);
 
         token = MockERC20(address(vault.asset()));
-        basket = Deploy.deployTwoAssetBasket(token);
         forwarder = new Forwarder();
 
         // Update trusted forwarder in vault
@@ -78,7 +80,7 @@ contract ForwardTest is TestPlus {
     function testDoubleDeposit() public {
         // send two deposits of 1 usdc to the l2vault
         address user = vm.addr(1);
-        token.mint(user, 2e6);
+        deal(address(token), user, 2e6);
         vm.startPrank(user);
         token.approve(address(vault), type(uint256).max);
 
@@ -109,7 +111,7 @@ contract ForwardTest is TestPlus {
         // send one deposits of 1 usdc to L2Vault
         // try to start a rebalance in TwoAssetBasket
         address user = vm.addr(1);
-        token.mint(user, 2e6);
+        deal(address(token), user, 2e6);
         vm.startPrank(user);
         token.approve(address(vault), type(uint256).max);
         token.approve(address(basket), type(uint256).max);
