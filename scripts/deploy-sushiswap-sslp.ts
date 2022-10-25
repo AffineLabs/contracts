@@ -8,7 +8,7 @@ export async function deploySushiSwapSSLPStrategy() {
   hre.changeNetwork(ETH_NETWORK_NAME);
   const addressBook = await readAddressBook("v1.0-alpha");
   const factory = await ethers.getContractFactory("DeltaNeutralLp");
-  await factory.deploy(
+  const sslpStrategy = await factory.deploy(
     addressBook.EthAlpSave.address,
     1e15, // Long percentage
     "0x52D306e36E3B6B02c153d0266ff0f85d18BCD413", // Aave lending pool address registry
@@ -17,6 +17,7 @@ export async function deploySushiSwapSSLPStrategy() {
     "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F", // Sushiswap router
     "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac", // Sushiswap factory
   );
+  console.log("SSLP strategy address:", sslpStrategy.address);
 }
 
 deploySushiSwapSSLPStrategy()
