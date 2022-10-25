@@ -10,7 +10,6 @@ export async function deploySushiSwapSSLPStrategy() {
   const factory = await ethers.getContractFactory("DeltaNeutralLp");
   await factory.deploy(
     addressBook.EthAlpSave.address,
-    5e16, // Slippage tolerance
     1e15, // Long percentage
     "0x52D306e36E3B6B02c153d0266ff0f85d18BCD413", // Aave lending pool address registry
     "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", // Asset to borrow (WETH)

@@ -33,7 +33,6 @@ contract DeltaNeutralTest is TestPlus {
 
         strategy = new DeltaNeutralLp(
         vault,
-        0.05e18,
         0.001e18,
         ILendingPoolAddressesProviderRegistry(0x52D306e36E3B6B02c153d0266ff0f85d18BCD413),
         ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2),

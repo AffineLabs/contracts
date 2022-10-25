@@ -25,7 +25,6 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
 
     constructor(
         BaseVault _vault,
-        uint256 _slippageTolerance,
         uint256 _longPct,
         ILendingPoolAddressesProviderRegistry _registry,
         ERC20 _borrowAsset,
@@ -37,7 +36,6 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         _grantRole(STRATEGIST_ROLE, vault.governance());
 
         canStartNewPos = true;
-        slippageTolerance = _slippageTolerance;
         longPercentage = _longPct;
 
         borrowAsset = _borrowAsset;
@@ -56,7 +54,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         aToken.safeApprove(address(lendingPool), type(uint256).max);
         borrowAsset.safeApprove(address(lendingPool), type(uint256).max);
 
-        // To trade usdc/matic
+        // To trade usdc/eth
         asset.safeApprove(address(_router), type(uint256).max);
         borrowAsset.safeApprove(address(_router), type(uint256).max);
         // To remove liquidity
@@ -82,16 +80,16 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
 
     function totalLockedValue() public view override returns (uint256) {
         // The below are all in units of `asset`
-        // balanceOfAsset + balanceOfMatic + aToken value + Uni Lp value - debt
+        // balanceOfAsset + balanceOfEth + aToken value + Uni Lp value - debt
         // lp tokens * (total assets) / total lp tokens
 
-        uint256 assetsMatic = _borrowToAsset(borrowAsset.balanceOf(address(this)));
+        uint256 assetsEth = _borrowToAsset(borrowAsset.balanceOf(address(this)));
 
         uint256 assetsLP =
             abPair.balanceOf(address(this)).mulDivDown(asset.balanceOf(address(abPair)) * 2, abPair.totalSupply());
 
         uint256 assetsDebt = _borrowToAsset(debtToken.balanceOf(address(this)));
-        return balanceOfAsset() + assetsMatic + aToken.balanceOf(address(this)) + assetsLP - assetsDebt;
+        return balanceOfAsset() + assetsEth + aToken.balanceOf(address(this)) + assetsLP - assetsDebt;
     }
 
     uint32 public currentPosition;
@@ -107,7 +105,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     /// @notice The address of the Uniswap Lp token (the asset-borrowAsset pair)
     ERC20 public immutable abPair;
 
-    /// @notice The asset we want to borrow, e.g. WMATIC
+    /// @notice The asset we want to borrow, e.g. WETH
     ERC20 public immutable borrowAsset;
     ILendingPool immutable lendingPool;
     /// @notice The asset we get when we borrow our `borrowAsset` from aave
@@ -115,7 +113,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     /// @notice The asset we get deposit `asset` into aave
     ERC20 public immutable aToken;
 
-    /// @notice Gives ratio of vault asset to borrow asset, e.g. WMATIC/USD (assuming usdc = usd)
+    /// @notice Gives ratio of vault asset to borrow asset, e.g. WETH/USD (assuming usdc = usd)
     AggregatorV3Interface immutable borrowAssetFeed;
 
     function startPosition() external onlyRole(STRATEGIST_ROLE) {
@@ -125,18 +123,18 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         currentPosition = newPositionId;
         canStartNewPos = false;
 
-        // Some amount of the assets will be used to buy matic at the end of this function
+        // Some amount of the assets will be used to buy eth at the end of this function
         uint256 assets = asset.balanceOf(address(this));
-        uint256 assetsToMatic = assets.mulWadDown(longPercentage);
+        uint256 assetsToEth = assets.mulWadDown(longPercentage);
 
-        // Borrow Matic at 75% (88% liquidation threshold and 85.5% max LTV)
+        // Borrow Eth at 75% (88% liquidation threshold and 85.5% max LTV)
         // If x is amount we want to deposit into aave
         // .75x = Total - x => 1.75x = Total => x = Total / 1.75 => Total * 4/7
         // Deposit asset in aave
-        uint256 assetsToDeposit = (assets - assetsToMatic).mulDivDown(4, 7);
+        uint256 assetsToDeposit = (assets - assetsToEth).mulDivDown(4, 7);
         lendingPool.deposit({asset: address(asset), amount: assetsToDeposit, onBehalfOf: address(this), referralCode: 0});
 
-        // Convert assetsToDeposit into `borrowAsset` (e.g. WMATIC) units
+        // Convert assetsToDeposit into `borrowAsset` (e.g. WETH) units
         (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = borrowAssetFeed.latestRoundData();
         require(price > 0, "Chainlink price <= 0");
         require(answeredInRound >= roundId, "Chainlink stale data");
@@ -148,7 +146,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         // assetsToDeposit has price uints `asset`, price has units `asset / borrowAsset` ratio. so we divide by price
         // Scaling `asset` to 8 decimals since chainlink provides 8: https://docs.chain.link/docs/data-feeds/price-feeds/
         // TODO: handle both cases (assetDecimals > priceDecimals as well)
-        uint256 borrowAssetsDeposited = (assetsToDeposit * 1e2 * 1e18) / (uint256(price));
+        uint256 borrowAssetsDeposited = (assetsToDeposit * 1e2).divWadDown(uint256(price));
         lendingPool.borrow({
             asset: address(borrowAsset),
             amount: borrowAssetsDeposited.mulDivDown(3, 4),
@@ -160,7 +158,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         // Provide liquidity on uniswap
         // TODO: make slippage parameterizable by caller
         uint256 bBal = borrowAsset.balanceOf(address(this));
-        uint256 aBal = assets - assetsToMatic - assetsToDeposit;
+        uint256 aBal = assets - assetsToEth - assetsToDeposit;
         router.addLiquidity({
             tokenA: address(asset),
             tokenB: address(borrowAsset),
@@ -172,13 +170,13 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
             deadline: block.timestamp
         });
 
-        // Buy Matic. The strat now holds only lp tokens and a little bit of matic
+        // Buy Eth. The strat now holds only lp tokens and a little bit of eth
         address[] memory path = new address[](2);
         path[0] = address(asset);
         path[1] = address(borrowAsset);
 
         router.swapExactTokensForTokens({
-            amountIn: assetsToMatic,
+            amountIn: assetsToEth,
             amountOutMin: 0,
             path: path,
             to: address(this),
@@ -221,31 +219,31 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
             deadline: block.timestamp
         });
 
-        // Buy enough matic to pay back debt
+        // Buy enough eth to pay back debt
         uint256 debt = debtToken.balanceOf(address(this));
         uint256 bBal = borrowAsset.balanceOf(address(this));
-        uint256 maticToBuy = debt > bBal ? debt - bBal : 0;
-        uint256 maticToSell = bBal > debt ? bBal - debt : 0;
+        uint256 ethToBuy = debt > bBal ? debt - bBal : 0;
+        uint256 ethToSell = bBal > debt ? bBal - debt : 0;
 
-        if (maticToBuy > 0) {
+        if (ethToBuy > 0) {
             address[] memory path = new address[](2);
             path[0] = address(asset);
             path[1] = address(borrowAsset);
 
             router.swapTokensForExactTokens({
-                amountOut: maticToBuy,
+                amountOut: ethToBuy,
                 amountInMax: asset.balanceOf(address(this)),
                 path: path,
                 to: address(this),
                 deadline: block.timestamp
             });
         }
-        if (maticToSell > 0) {
+        if (ethToSell > 0) {
             address[] memory path = new address[](2);
             path[0] = address(borrowAsset);
             path[1] = address(asset);
             router.swapExactTokensForTokens({
-                amountIn: maticToSell,
+                amountIn: ethToSell,
                 amountOutMin: 0,
                 path: path,
                 to: address(this),
