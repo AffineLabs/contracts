@@ -230,13 +230,13 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         masterChef.withdraw(masterChefPid, depositedSLPAmount);
 
         // Sell SUSHI tokens to USDC
-        address[] memory path = new address[](3);
-        path[0] = address(sushiToken);
-        path[1] = address(borrowAsset);
-        path[2] = address(asset);
-
         uint256 sushiBalance = sushiToken.balanceOf(address(this));
         if (sushiBalance > 0) {
+            address[] memory path = new address[](3);
+            path[0] = address(sushiToken);
+            path[1] = address(borrowAsset);
+            path[2] = address(asset);
+
             router.swapExactTokensForTokens({
                 amountIn: sushiBalance,
                 amountOutMin: 0,
