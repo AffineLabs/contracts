@@ -261,6 +261,8 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         // Buy enough eth to pay back debt
         uint256 debt = debtToken.balanceOf(address(this));
         uint256 bBal = borrowAsset.balanceOf(address(this));
+        // Either we buy eth or sell eth. If we need to buy then ethToBuy will be 
+        // positive and ethToSell will be zero and vice versa.
         uint256 ethToBuy = debt > bBal ? debt - bBal : 0;
         uint256 ethToSell = bBal > debt ? bBal - debt : 0;
 
