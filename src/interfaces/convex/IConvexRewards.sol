@@ -2,7 +2,6 @@
 pragma solidity =0.8.16;
 
 // See https://docs.convexfinance.com/convexfinanceintegration/baserewardpool
-//sample convex reward contracts interface
 interface IConvexRewards {
     //get balance of an address
     function balanceOf(address _account) external returns (uint256);

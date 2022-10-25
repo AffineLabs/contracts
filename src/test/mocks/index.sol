@@ -16,13 +16,9 @@ contract MockL2Vault is L2Vault {
         canRequestFromL1 = _can;
     }
 
-    function setBridgeEscrow(BridgeEscrow escrow) external {
-        bridgeEscrow = escrow;
+    function setMockRebalanceDelta(uint256 _rebalanceDelta) external {
+        rebalanceDelta = _rebalanceDelta;
     }
 }
 
-contract MockL1Vault is L1Vault {
-    function setBridgeEscrow(BridgeEscrow escrow) external {
-        bridgeEscrow = escrow;
-    }
-}
+contract MockL1Vault is L1Vault {}

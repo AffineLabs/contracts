@@ -96,6 +96,7 @@ contract L2Vault is
         emergencyWithdrawalQueue = _emergencyWithdrawalQueue;
         l1Ratio = _l1Ratio;
         l2Ratio = _l2Ratio;
+        rebalanceDelta = 10_000 * _asset.decimals();
         canTransferToL1 = true;
         canRequestFromL1 = true;
         lastTVLUpdate = block.timestamp;
@@ -150,8 +151,8 @@ contract L2Vault is
 
     function decimals() public view override returns (uint8) {
         // E.g. for USDC, we want the initial price of a share to be $100.
-        // For an initial price of 1 USDC / share we would have 1e6  * 1e8 / 1 = 1e14 given that we have (6 + 8) 14 decimals
-        // But since we want 100 USDC / share for the intial price, we add an extra two decimal places
+        // For an initial price of 1 USDC / share we would have 1e6 * 1e8 / 1 = 1e14 shares given that we have 14 (6 + 8) decimals
+        // in our share token. But since we want 100 USDC / share for the intial price, we add an extra two decimal places
         return _asset.decimals() + 10;
     }
 
@@ -201,72 +202,48 @@ contract L2Vault is
      * WITHDRAW / REDEEM
      *
      */
-
     EmergencyWithdrawalQueue public emergencyWithdrawalQueue;
 
-    event EmergencyWithdrawalQueueRequestDropped(
-        uint256 indexed pos, address indexed owner, address indexed receiver, uint256 shares
-    );
-
-    /// @notice Redeem logic when done via emeregency withdrawal queue.
-    function redeemByEmergencyWithdrawalQueue(uint256 pos, uint256 shares, address receiver, address owner)
-        external
-        whenNotPaused
-        returns (uint256 assets)
-    {
-        address caller = _msgSender();
-        require(caller == address(emergencyWithdrawalQueue), "Only emergency withdrawal queue");
-        // Owner doesn't have enough shares. Can happen if owner transfers some ALP token to other
-        // accounts while the request is in the queue.
-        if (balanceOf(owner) < shares) {
-            emit EmergencyWithdrawalQueueRequestDropped(pos, owner, receiver, shares);
-            return 0;
-        }
-        (uint256 assetsToUser, uint256 assetsFee) = _previewRedeem(shares);
-        assets = assetsToUser;
-
-        uint256 requiredAssets = assets + assetsFee;
-        _liquidate(requiredAssets);
-        require(_asset.balanceOf(address(this)) >= requiredAssets, "Not enough assets");
-
-        // Burn shares and give user equivalent value in `_asset` (minus withdrawal fees)
-        _burn(owner, shares);
-
-        emit Withdraw(caller, receiver, owner, assets, shares);
-
-        _asset.safeTransfer(receiver, assets);
-        _asset.safeTransfer(governance, assetsFee);
+    /**
+     * @notice Update the address of the emergency withdrawal queue.
+     * @param _ewq The new queue.
+     */
+    function setEwq(EmergencyWithdrawalQueue _ewq) external onlyGovernance {
+        emergencyWithdrawalQueue = _ewq;
     }
 
     /// @notice See {IERC4262-redeem}
     function redeem(uint256 shares, address receiver, address owner) external whenNotPaused returns (uint256 assets) {
-        require(shares + emergencyWithdrawalQueue.debtToOwner(owner) <= balanceOf(owner), "L2Vault: min shares");
+        address caller = _msgSender();
+        EmergencyWithdrawalQueue ewq = emergencyWithdrawalQueue;
+
+        // Only real share amounts are allowed since we might create an ewq request
+        require(balanceOf(owner) >= shares, "L2Vault: min shares");
         (uint256 assetsToUser, uint256 assetsFee) = _previewRedeem(shares);
         assets = assetsToUser;
 
-        address caller = _msgSender();
-        uint256 assetDemand = emergencyWithdrawalQueue.totalDebt() + assets + assetsFee;
+        uint256 assetDemand = assets + assetsFee;
         _liquidate(assetDemand);
 
         // Add to emergency withdrawal queue if there is not enough liquidity.
-        if (_asset.balanceOf(address(this)) < assetDemand) {
-            // Before pushing a request to emergency withdrawal queue we make sure every request
-            // in the queue is valid, so that, when the emergency withdrawal queue calls `redeem` we skip
-            // all the checks and execute the burns and transfers.
-            if (caller != owner) {
-                _spendAllowance(owner, caller, shares);
+        if (caller != address(ewq)) {
+            if (ewq.size() > 0 || _asset.balanceOf(address(this)) < assetDemand) {
+                ewq.enqueue(owner, receiver, shares);
+                return 0;
             }
-            emergencyWithdrawalQueue.enqueue(owner, receiver, shares);
-            return 0;
+        } else {
+            if (_asset.balanceOf(address(this)) < assetDemand) {
+                revert("L2Vault: bad dequeue");
+            }
         }
 
-        if (caller != owner) {
+        // The ewq does not need approval to burn shares
+        if (caller != owner && caller != address(emergencyWithdrawalQueue)) {
             _spendAllowance(owner, caller, shares);
         }
 
         // Burn shares and give user equivalent value in `_asset` (minus withdrawal fees)
         _burn(owner, shares);
-
         emit Withdraw(caller, receiver, owner, assets, shares);
 
         _asset.safeTransfer(receiver, assets);
@@ -279,23 +256,19 @@ contract L2Vault is
         whenNotPaused
         returns (uint256 shares)
     {
-        shares = previewWithdraw(assets);
-        require(shares + emergencyWithdrawalQueue.debtToOwner(owner) <= balanceOf(owner), "L2Vault: min shares");
-
         address caller = _msgSender();
+        EmergencyWithdrawalQueue ewq = emergencyWithdrawalQueue;
 
-        uint256 assetDemand = emergencyWithdrawalQueue.totalDebt() + assets;
+        shares = previewWithdraw(assets);
+        // Only real share amounts are allowed since we might create an ewq request
+        require(balanceOf(owner) >= shares, "L2Vault: min shares");
+
+        uint256 assetDemand = assets;
         _liquidate(assetDemand);
 
         // Add to emergency withdrawal queue if there is not enough liquidity.
-        if (_asset.balanceOf(address(this)) < assetDemand) {
-            // Before pushing a request to emergency withdrawal queue we make sure every request
-            // in the queue is valid, so that, when the emergency withdrawal queue calls `redeem` we skip
-            // all the checks and execute the burns and transfers.
-            if (caller != owner) {
-                _spendAllowance(owner, caller, shares);
-            }
-            emergencyWithdrawalQueue.enqueue(owner, receiver, shares);
+        if (ewq.size() > 0 || _asset.balanceOf(address(this)) < assetDemand) {
+            ewq.enqueue(owner, receiver, shares);
             return 0;
         }
 
@@ -446,6 +419,20 @@ contract L2Vault is
         l2Ratio = _l2Ratio;
     }
 
+    /**
+     * @notice The delta required to trigger a rebalance. The delta is the difference between current and ideal tvl
+     * on a given layer
+     */
+    uint256 public rebalanceDelta;
+
+    /**
+     * @notice Set the rebalance delta
+     * @param _rebalanceDelta The new rebalance delta
+     */
+    function setRebalanceDelta(uint256 _rebalanceDelta) external onlyGovernance {
+        rebalanceDelta = _rebalanceDelta;
+    }
+
     // Whether we can send or receive money from L1
     bool public canTransferToL1;
     bool public canRequestFromL1;
@@ -494,7 +481,7 @@ contract L2Vault is
         l1TotalLockedValue = tvl;
 
         (bool invest, uint256 delta) = _computeRebalance();
-        if (delta == 0) {
+        if (delta < rebalanceDelta) {
             return;
         }
         _l1L2Rebalance(invest, delta);

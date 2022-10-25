@@ -37,7 +37,15 @@ contract BridgeEscrow {
 
     function l2ClearFund(uint256 amount) external {
         require(msg.sender == wormholeRouter, "Only wormhole router");
+        _l2Clear(amount);
+    }
 
+    function l2RescueFunds(uint256 amount) external {
+        require(msg.sender == IL1Vault(vault).governance(), "BE: Only Governance");
+        _l2Clear(amount);
+    }
+
+    function _l2Clear(uint256 amount) internal {
         uint256 balance = token.balanceOf(address(this));
         require(balance >= amount, "BE: Funds not received");
         token.safeTransfer(vault, balance);
@@ -47,7 +55,16 @@ contract BridgeEscrow {
 
     function l1ClearFund(uint256 amount, bytes calldata exitProof) external {
         require(msg.sender == wormholeRouter, "Only wormhole router");
+        _l1Clear(amount, exitProof);
+    }
 
+    /// @notice If for some reason we can't get a VAA, forcefully send the funds to the vault
+    function l1RescueFunds(uint256 amount, bytes calldata exitProof) external {
+        require(msg.sender == IL1Vault(vault).governance(), "BE: Only Governance");
+        _l1Clear(amount, exitProof);
+    }
+
+    function _l1Clear(uint256 amount, bytes calldata exitProof) internal {
         // Exit tokens, after this the withdrawn tokens from L2 will be reflected in the L1 BridgeEscrow
         // NOTE: This function can fail if the exitProof provided is fake or has already been processed
         // In either case, we want to send at least `amount` to the vault since we know that the L2Vault sent `amount`

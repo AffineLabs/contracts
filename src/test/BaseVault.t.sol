@@ -108,7 +108,7 @@ contract BaseVaultTest is TestPlus {
         vault.harvest(strategies);
 
         // Divest (make sure divest is called on the strategy)
-        vm.expectCall(address(strategy), abi.encodeCall(BaseStrategy.divest, (type(uint256).max)));
+        vm.expectCall(address(strategy), abi.encodeCall(BaseStrategy.divest, (strategy.totalLockedValue())));
         vault.removeStrategy(strategy);
 
         // The vault removed all money from the strategy
@@ -244,5 +244,25 @@ contract BaseVaultTest is TestPlus {
 
         assertEq(strat1TvlBps, 100);
         assertEq(strat2TvlBps, 200);
+    }
+
+    function testSetWormRouter() public {
+        address wormRouter = makeAddr("worm_router");
+        vault.setWormholeRouter(wormRouter);
+        assertEq(vault.wormholeRouter(), wormRouter);
+        // only gov can call
+        vm.prank(alice);
+        vm.expectRevert("Only Governance.");
+        vault.setWormholeRouter(address(0));
+    }
+
+    function testBridgeEscrow() public {
+        BridgeEscrow escrow = BridgeEscrow(makeAddr("worm_router"));
+        vault.setBridgeEscrow(escrow);
+        assertEq(address(vault.bridgeEscrow()), address(escrow));
+        // only gov can call
+        vm.prank(alice);
+        vm.expectRevert("Only Governance.");
+        vault.setBridgeEscrow(BridgeEscrow(address(0)));
     }
 }

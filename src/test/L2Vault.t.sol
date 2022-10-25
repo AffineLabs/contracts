@@ -26,6 +26,7 @@ contract L2VaultTest is TestPlus {
     function setUp() public {
         vault = Deploy.deployL2Vault();
         asset = MockERC20(vault.asset());
+        vault.setMockRebalanceDelta(0);
     }
 
     // Adding this since this test contract is used as a strategy
@@ -190,13 +191,14 @@ contract L2VaultTest is TestPlus {
      */
 
     function testReceiveTVL() public {
+        // No rebalancing should actually occur
+        vault.setMockRebalanceDelta(1e6);
+
         vm.prank(alice);
         vm.expectRevert("Only wormhole router");
         vault.receiveTVL(0, false);
 
         // If L1 has received our last transfer, we can transfer again
-        // We mint some money so that we don't trigger any actual rebalancing
-        asset.mint(address(vault), 100);
         vault.setCanTransferToL1(false);
         vm.startPrank(vault.wormholeRouter());
         vault.receiveTVL(100, true);
@@ -225,7 +227,6 @@ contract L2VaultTest is TestPlus {
         // canRequestFromL1 is true, canTransferToL1 is true
         vault.setCanRequestFromL1(true);
         vault.setCanTransferToL1(true);
-        asset.mint(address(vault), 20); // mint so that we don't try to request money from L1
         vault.receiveTVL(120, true);
 
         assertEq(vault.canTransferToL1(), true);
@@ -233,27 +234,27 @@ contract L2VaultTest is TestPlus {
     }
 
     function testLockedTVL() public {
+        // No rebalancing should actually occur
+        vault.setMockRebalanceDelta(1e6);
         assertEq(vault.lockedTVL(), 0);
 
-        // We mint some money so that we don't trigger any actual rebalancing
-        asset.mint(address(vault), 100);
         vault.setCanTransferToL1(false);
         vm.startPrank(vault.wormholeRouter());
         vault.receiveTVL(100, true);
 
         assertEq(vault.l1TotalLockedValue(), 100);
         assertEq(vault.lockedTVL(), 100);
-        assertEq(vault.totalAssets(), 100);
+        assertEq(vault.totalAssets(), 0);
 
         // Using up 50% of lockInterval unlocks 50% of tvl
         vm.warp(block.timestamp + vault.lockInterval() / 2);
         assertEq(vault.lockedTVL(), 50);
-        assertEq(vault.totalAssets(), 150);
+        assertEq(vault.totalAssets(), 50);
 
         // Using up all of lock interval unlocks all of tvl
         vm.warp(block.timestamp + vault.lockInterval());
         assertEq(vault.lockedTVL(), 0);
-        assertEq(vault.totalAssets(), 200);
+        assertEq(vault.totalAssets(), 100);
     }
 
     function testL1ToL2Rebalance() public {
@@ -501,9 +502,6 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.emergencyWithdrawalQueue().size(), 2);
         vm.stopPrank();
 
-        vault.emergencyWithdrawalQueue().dequeue();
-        assertEq(asset.balanceOf(user1), halfUSDC);
-
         // Simulate funds being bridged from L1 to L2 vault.
         asset.mint(address(vault), halfUSDC);
         vm.store(
@@ -511,6 +509,9 @@ contract L2VaultTest is TestPlus {
             bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(0))
         );
+
+        vault.emergencyWithdrawalQueue().dequeue();
+        assertEq(asset.balanceOf(user1), halfUSDC);
 
         vault.emergencyWithdrawalQueue().dequeue();
         assertEq(asset.balanceOf(user2), halfUSDC);
@@ -541,7 +542,6 @@ contract L2VaultTest is TestPlus {
             bytes32(uint256(0))
         );
 
-        vm.expectRevert("L2Vault: min shares");
         // At this point alice can withdraw at most half usdc. So trying to withdraw
         // half usdc + 1 should fail.
         vault.withdraw(halfUSDC + 1, alice, alice);
@@ -549,7 +549,7 @@ contract L2VaultTest is TestPlus {
         vault.withdraw(halfUSDC, alice, alice);
         vault.emergencyWithdrawalQueue().dequeue();
 
-        assertEq(asset.balanceOf(alice), oneUSDC);
+        assertEq(asset.balanceOf(alice), halfUSDC);
     }
 
     function testCheckEmeregencyWithdrawalQueueBeforeRedeem() public {
@@ -578,7 +578,6 @@ contract L2VaultTest is TestPlus {
             bytes32(uint256(0))
         );
 
-        vm.expectRevert("L2Vault: min shares");
         // At this point alice can redeem at most half usdc worth of vault token. So trying
         // to redeem half usdc worth of vault token + 1 should fail.
         vault.redeem(halfUSDCInShare + 1, alice, alice);
@@ -586,42 +585,7 @@ contract L2VaultTest is TestPlus {
         vault.redeem(halfUSDCInShare, alice, alice);
         vault.emergencyWithdrawalQueue().dequeue();
 
-        assertEq(asset.balanceOf(alice), oneUSDC);
-    }
-
-    function testEmergencyWithdrawalRequestDrop() public {
-        asset.mint(alice, oneUSDC);
-
-        vm.startPrank(alice);
-        asset.approve(address(vault), type(uint256).max);
-        vault.deposit(oneUSDC, alice);
-
-        // simulate vault assets being transferred to L1.
-        asset.burn(address(vault), halfUSDC);
-        vm.store(
-            address(vault),
-            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
-            bytes32(uint256(halfUSDC))
-        );
-
-        // This will trigger an emergency withdrawal queue enqueue as there is no asset in L2 vault.
-        vault.withdraw(oneUSDC, alice, alice);
-        // Transfer ALP tokens to bob.
-        vault.transfer(bob, vault.balanceOf(alice));
-
-        // Simulate funds being bridged from L1 to L2 vault.
-        asset.mint(address(vault), halfUSDC);
-        vm.store(
-            address(vault),
-            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
-            bytes32(uint256(0))
-        );
-
-        vm.expectEmit(true, true, false, true);
-        emit EmergencyWithdrawalQueueRequestDropped(1, alice, alice, vault.convertToShares(oneUSDC));
-        vault.emergencyWithdrawalQueue().dequeue();
-        // The emergency withdrawal request should be dropped.
-        assertEq(asset.balanceOf(alice), 0);
+        assertEq(asset.balanceOf(alice), halfUSDC);
     }
 
     function testDetailedPrice() public {
@@ -637,14 +601,36 @@ contract L2VaultTest is TestPlus {
     }
 
     function testSettingForwarder() public {
-        changePrank(governance);
+        vm.prank(governance);
         address newForwarder = makeAddr("new_forwarder");
         vault.setTrustedForwarder(newForwarder);
         assertEq(vault.trustedForwarder(), newForwarder);
 
         // only gov can call
-        changePrank(alice);
+        vm.prank(alice);
         vm.expectRevert("Only Governance.");
         vault.setTrustedForwarder(address(0));
+    }
+
+    function testSetEwq() public {
+        EmergencyWithdrawalQueue newQ = EmergencyWithdrawalQueue(makeAddr("new_queue"));
+        vm.prank(governance);
+        vault.setEwq(newQ);
+        assertEq(address(vault.emergencyWithdrawalQueue()), address(newQ));
+
+        // only gov can call
+        vm.prank(alice);
+        vm.expectRevert("Only Governance.");
+        vault.setEwq(EmergencyWithdrawalQueue(address(0)));
+    }
+
+    function testSettingRebalanceDelta() public {
+        vm.prank(governance);
+        vault.setRebalanceDelta(100);
+        assertEq(vault.rebalanceDelta(), 100);
+
+        vm.prank(alice);
+        vm.expectRevert("Only Governance.");
+        vault.setRebalanceDelta(0);
     }
 }

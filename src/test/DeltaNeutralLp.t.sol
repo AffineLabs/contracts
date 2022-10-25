@@ -26,7 +26,7 @@ contract DeltaNeutralTest is TestPlus {
     ERC20 borrowAsset;
 
     function setUp() public {
-        vm.createSelectFork("ethereum", 15_821_794);
+        vm.createSelectFork("ethereum", 15_624_364);
         vault = deployL1Vault();
         uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));

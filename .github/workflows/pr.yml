@@ -52,7 +52,7 @@ jobs:
 
       # Fuzz tests are included by default
       - name: Check gas snapshots.
-        run: yarn snap --check
+        run: yarn snap --check --tolerance 1
 
       - name: Generate coverage report
         run: forge coverage --report lcov
@@ -66,8 +66,8 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           working-directory: ./
 
-      - name: Run hardhat tests.
-        run: yarn test-hh -eth mainnet -p mainnet
+      # - name: Run hardhat tests.
+      #   run: yarn test-hh -eth mainnet -p mainnet
 
       # TODO: add back once slither works again (https://github.com/crytic/slither/issues/1211)
       # - name: Check slither errors
