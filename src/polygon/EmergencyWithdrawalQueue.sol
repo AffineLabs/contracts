@@ -2,6 +2,7 @@
 pragma solidity =0.8.16;
 
 import {L2Vault} from "./L2Vault.sol";
+import {uncheckedInc} from "../Unchecked.sol";
 
 contract EmergencyWithdrawalQueue {
     /// @notice Struct representing withdrawalRequest stored in each queue node.
@@ -15,6 +16,11 @@ contract EmergencyWithdrawalQueue {
 
     mapping(uint256 => WithdrawalRequest) queue;
 
+    /**
+     * @dev The tailPtr is to the right of the headPtr on a number line
+     * We start with tail(0) -> head(1)
+     * After an enqueue we have tail(1) == head(1)
+     */
     /// @notice Pointer to head of the queue.
     uint256 public headPtr = 1;
     /// @notice Pointer to tail of the queue.
@@ -46,12 +52,12 @@ contract EmergencyWithdrawalQueue {
         return (tailPtr + 1) - headPtr;
     }
 
-    /// @notice total debt
+    /// @notice Total debt
     function totalDebt() public view returns (uint256) {
         return vault.convertToAssets(shareDebt);
     }
 
-    /// @notice enqueue user withdrawal requests to the queue.
+    /// @notice Enqueue user withdrawal requests to the queue.
     function enqueue(address owner, address receiver, uint256 shares) external {
         require(msg.sender == address(vault), "EWQ: only vault");
         tailPtr += 1;
@@ -61,44 +67,56 @@ contract EmergencyWithdrawalQueue {
         emit EmergencyWithdrawalQueueEnqueue(tailPtr, owner, receiver, shares);
     }
 
-    /// @notice dequeue user withdrawal requests from the queue.
+    /// @notice Dequeue user withdrawal requests.
     function dequeue() external {
         require(tailPtr >= headPtr, "Queue is empty");
         WithdrawalRequest memory withdrawalRequest = queue[headPtr];
         delete queue[headPtr];
         shareDebt -= withdrawalRequest.shares;
         debtToOwner[withdrawalRequest.owner] -= withdrawalRequest.shares;
-        uint256 redeemedAssetAmount = vault.redeemByEmergencyWithdrawalQueue(
-            headPtr, withdrawalRequest.shares, withdrawalRequest.receiver, withdrawalRequest.owner
-        );
-        if (redeemedAssetAmount > 0) {
+
+        try vault.redeem(withdrawalRequest.shares, withdrawalRequest.receiver, withdrawalRequest.owner) {
             emit EmergencyWithdrawalQueueDequeue(
                 headPtr, withdrawalRequest.owner, withdrawalRequest.receiver, withdrawalRequest.shares
                 );
+            headPtr += 1;
+        } catch Error(string memory reason) {
+            if (keccak256(bytes(reason)) == keccak256("L2Vault: bad dequeue")) {
+                // do nothing while we wait for the vault to get enough assets
+                revert("Ewq: assets pending");
+            } else {
+                // The request is invalid for some reason
+                // (e.g. the user has a lower balance than they did when making request)
+                headPtr += 1;
+            }
         }
-        headPtr += 1;
     }
 
-    /// @notice dequeue user withdrawal requests from the queue in batch.
+    /// @notice Dequeue user withdrawal requests in a batch.
     function dequeueBatch(uint256 batchSize) external {
         require(size() >= batchSize, "Batch size too big");
+
         uint256 batchTailPtr = headPtr + batchSize;
         uint256 shareDebtReduction;
-        for (uint256 ptr = headPtr; ptr < batchTailPtr;) {
+
+        for (uint256 ptr = headPtr; ptr < batchTailPtr; ptr = uncheckedInc(ptr)) {
             WithdrawalRequest memory withdrawalRequest = queue[ptr];
             delete queue[ptr];
             shareDebtReduction += withdrawalRequest.shares;
             debtToOwner[withdrawalRequest.owner] -= withdrawalRequest.shares;
-            uint256 redeemedAssetAmount = vault.redeemByEmergencyWithdrawalQueue(
-                ptr, withdrawalRequest.shares, withdrawalRequest.receiver, withdrawalRequest.owner
-            );
-            if (redeemedAssetAmount > 0) {
+
+            try vault.redeem(withdrawalRequest.shares, withdrawalRequest.receiver, withdrawalRequest.owner) {
                 emit EmergencyWithdrawalQueueDequeue(
-                    headPtr, withdrawalRequest.owner, withdrawalRequest.receiver, withdrawalRequest.shares
+                    ptr, withdrawalRequest.owner, withdrawalRequest.receiver, withdrawalRequest.shares
                     );
-            }
-            unchecked {
-                ptr++;
+            } catch Error(string memory reason) {
+                if (keccak256(bytes(reason)) == keccak256("L2Vault: bad dequeue")) {
+                    // Not enough assets
+                    revert("Ewq: assets pending");
+                } else {
+                    // The request is invalid for some reason
+                    // (e.g. the user has a lower balance than they did when making request)
+                }
             }
         }
         shareDebt -= shareDebtReduction;
