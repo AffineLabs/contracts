@@ -13,6 +13,7 @@ import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 
 import {L1Vault} from "../ethereum/L1Vault.sol";
 import {DeltaNeutralLp, ILendingPoolAddressesProviderRegistry} from "../ethereum/DeltaNeutralLp.sol";
+import {IMasterChef} from "../interfaces/sushiswap/IMasterChef.sol";
 
 contract DeltaNeutralTest is TestPlus {
     using stdStorage for StdStorage;
@@ -38,7 +39,9 @@ contract DeltaNeutralTest is TestPlus {
         ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2),
         AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419),
         IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F), // sushiswap
-        IUniswapV2Factory(0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac) // sushiswap
+        IUniswapV2Factory(0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac), // sushiswap
+        IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd), // MasterChef
+        1 // Masterchef PID
         );
 
         vm.prank(governance);
@@ -89,9 +92,11 @@ contract DeltaNeutralTest is TestPlus {
         assertEq(strategy.aToken().balanceOf(address(strategy)), (startAssets - assetsToMatic) * 4 / 7);
 
         // I have the right amount of uniswap lp tokens
-        uint256 assetsLP =
-            abPair.balanceOf(address(strategy)) * (asset.balanceOf(address(abPair)) * 2) / abPair.totalSupply();
+        uint256 masterChefStakedAmount =
+            strategy.masterChef().userInfo(strategy.masterChefPid(), address(strategy)).amount;
+        uint256 assetsLP = masterChefStakedAmount * (asset.balanceOf(address(abPair)) * 2) / abPair.totalSupply();
         uint256 assetsInAAve = strategy.aToken().balanceOf(address(strategy)) * 3 / 4;
+        emit log_named_uint("masterChefStakedAmount", masterChefStakedAmount);
         emit log_named_uint("assetsLP: ", assetsLP);
         emit log_named_uint("assetsInAAve: ", assetsInAAve * 2);
         assertApproxEqRel(assetsLP, assetsInAAve * 2, 0.01e18);

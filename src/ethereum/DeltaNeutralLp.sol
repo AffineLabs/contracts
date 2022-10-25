@@ -18,6 +18,7 @@ import {
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
+import {IMasterChef} from "../interfaces/sushiswap/IMasterChef.sol";
 
 contract DeltaNeutralLp is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
@@ -30,7 +31,9 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         ERC20 _borrowAsset,
         AggregatorV3Interface _borrowAssetFeed,
         IUniswapV2Router02 _router,
-        IUniswapV2Factory _factory
+        IUniswapV2Factory _factory,
+        IMasterChef _masterChef,
+        uint256 _masterChefPid
     ) BaseStrategy(_vault) {
         _grantRole(DEFAULT_ADMIN_ROLE, vault.governance());
         _grantRole(STRATEGIST_ROLE, vault.governance());
@@ -49,6 +52,10 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         debtToken = ERC20(lendingPool.getReserveData(address(borrowAsset)).variableDebtTokenAddress);
         aToken = ERC20(lendingPool.getReserveData(address(asset)).aTokenAddress);
 
+        masterChef = _masterChef;
+        masterChefPid = _masterChefPid;
+        sushiToken = ERC20(_masterChef.sushi());
+
         // Depositing/withdrawing/repaying debt from lendingPool
         asset.safeApprove(address(lendingPool), type(uint256).max);
         aToken.safeApprove(address(lendingPool), type(uint256).max);
@@ -59,6 +66,8 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         borrowAsset.safeApprove(address(_router), type(uint256).max);
         // To remove liquidity
         abPair.safeApprove(address(_router), type(uint256).max);
+        // For staging SLP token
+        abPair.safeApprove(address(_masterChef), type(uint256).max);
     }
 
     bytes32 public constant STRATEGIST_ROLE = keccak256("STRATEGIST");
@@ -85,8 +94,10 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
 
         uint256 assetsEth = _borrowToAsset(borrowAsset.balanceOf(address(this)));
 
-        uint256 assetsLP =
-            abPair.balanceOf(address(this)).mulDivDown(asset.balanceOf(address(abPair)) * 2, abPair.totalSupply());
+        uint256 masterChefStakedAmount = masterChef.userInfo(masterChefPid, address(this)).amount;
+        uint256 assetsLP = (abPair.balanceOf(address(this)) + masterChefStakedAmount).mulDivDown(
+            asset.balanceOf(address(abPair)) * 2, abPair.totalSupply()
+        );
 
         uint256 assetsDebt = _borrowToAsset(debtToken.balanceOf(address(this)));
         return balanceOfAsset() + assetsEth + aToken.balanceOf(address(this)) + assetsLP - assetsDebt;
@@ -94,6 +105,9 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
 
     uint32 public currentPosition;
     bool public canStartNewPos;
+    IMasterChef public masterChef;
+    uint256 public masterChefPid;
+    ERC20 public sushiToken;
 
     event PositionStart(uint32 indexed position, uint256 assetBalance, uint256 chainlinkRoundId, uint256 timestamp);
 
@@ -175,13 +189,18 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         path[0] = address(asset);
         path[1] = address(borrowAsset);
 
-        router.swapExactTokensForTokens({
-            amountIn: assetsToEth,
-            amountOutMin: 0,
-            path: path,
-            to: address(this),
-            deadline: block.timestamp
-        });
+        if (assetsToEth > 0) {
+            router.swapExactTokensForTokens({
+                amountIn: assetsToEth,
+                amountOutMin: 0,
+                path: path,
+                to: address(this),
+                deadline: block.timestamp
+            });
+        }
+
+        // Deposit to MasterChef for additional SUSHI rewards.
+        masterChef.deposit(masterChefPid, abPair.balanceOf(address(this)));
     }
 
     /// @dev This strategy should be put at the end of the WQ so that we rarely divest from it. Divestment
@@ -206,6 +225,26 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         // Set position metadata
         require(!canStartNewPos, "DNLP: position is inactive");
         canStartNewPos = true;
+
+        uint256 depositedSLPAmount = masterChef.userInfo(masterChefPid, address(this)).amount;
+        masterChef.withdraw(masterChefPid, depositedSLPAmount);
+
+        // Sell SUSHI tokens to USDC
+        address[] memory path = new address[](3);
+        path[0] = address(sushiToken);
+        path[1] = address(borrowAsset);
+        path[2] = address(asset);
+
+        uint256 sushiBalance = sushiToken.balanceOf(address(this));
+        if (sushiBalance > 0) {
+            router.swapExactTokensForTokens({
+                amountIn: sushiBalance,
+                amountOutMin: 0,
+                path: path,
+                to: address(this),
+                deadline: block.timestamp
+            });
+        }
 
         // Remove liquidity
         // TODO: handle slippage

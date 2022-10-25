@@ -16,6 +16,8 @@ export async function deploySushiSwapSSLPStrategy() {
     "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419", // Chainlink AggregatorV3Interface (ETH/USD)
     "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F", // Sushiswap router
     "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac", // Sushiswap factory
+    "0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd", // MasterChef
+    1, // MasterChef PID
   );
   console.log("SSLP strategy address:", sslpStrategy.address);
 }
