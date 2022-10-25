@@ -16,7 +16,6 @@ import {
     IProtocolDataProvider
 } from "../interfaces/aave.sol";
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
-
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
 
@@ -46,7 +45,6 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
 
         router = _router;
         abPair = ERC20(_factory.getPair(address(asset), address(borrowAsset)));
-
         address[] memory providers = _registry.getAddressesProvidersList();
         ILendingPoolAddressesProvider provider = ILendingPoolAddressesProvider(providers[providers.length - 1]);
         lendingPool = ILendingPool(provider.getLendingPool());

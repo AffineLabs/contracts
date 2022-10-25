@@ -11,22 +11,22 @@ import {IUniswapV2Router01} from "@uniswap/v2-periphery/contracts/interfaces/IUn
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 
-import {L2Vault} from "../polygon/L2Vault.sol";
-import {DeltaNeutralLp, ILendingPoolAddressesProviderRegistry} from "../polygon/DeltaNeutralLp.sol";
+import {L1Vault} from "../ethereum/L1Vault.sol";
+import {DeltaNeutralLp, ILendingPoolAddressesProviderRegistry} from "../ethereum/DeltaNeutralLp.sol";
 
 contract DeltaNeutralTest is TestPlus {
     using stdStorage for StdStorage;
 
-    L2Vault vault;
+    L1Vault vault;
     DeltaNeutralLp strategy;
-    ERC20 usdc = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
+    ERC20 usdc = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     ERC20 abPair;
     ERC20 asset;
     ERC20 borrowAsset;
 
     function setUp() public {
-        vm.createSelectFork("polygon", 31_824_532);
-        vault = deployL2Vault();
+        vm.createSelectFork("ethereum", 15_821_794);
+        vault = deployL1Vault();
         uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
         vm.store(address(vault), bytes32(slot), tokenAddr);
@@ -35,11 +35,11 @@ contract DeltaNeutralTest is TestPlus {
         vault,
         0.05e18,
         0.001e18,
-        ILendingPoolAddressesProviderRegistry(0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19),
-        ERC20(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270),
-        AggregatorV3Interface(0xAB594600376Ec9fD91F8e885dADF0CE036862dE0),
-        IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506), // sushiswap
-        IUniswapV2Factory(0xc35DADB65012eC5796536bD9864eD8773aBc74C4) // sushiswap
+        ILendingPoolAddressesProviderRegistry(0x52D306e36E3B6B02c153d0266ff0f85d18BCD413),
+        ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2),
+        AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419),
+        IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F), // sushiswap
+        IUniswapV2Factory(0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac) // sushiswap
         );
 
         vm.prank(governance);
