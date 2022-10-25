@@ -69,22 +69,22 @@ contract Deploy is Test {
     }
 
     function deployTwoAssetBasket(ERC20 usdc) internal returns (TwoAssetBasket basket) {
-        ERC20 btc = ERC20(0xc8BA1fdaf17c1f16C68778fde5f78F3D37cD1509);
-        ERC20 weth = ERC20(0x3dd7F3CF122e0460Dba8A75d191b3486752B6A61);
+        ERC20 btc = ERC20(0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6);
+        ERC20 weth = ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619);
         basket = new TwoAssetBasket();
         basket.initialize(
             governance, // governance,
             address(0), // forwarder
-            IUniswapV2Router02(address(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506)), // sushiswap router
+            IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506), // sushiswap router
             usdc, // mintable usdc
             // WBTC AND WETH
             [btc, weth],
             [uint256(1), uint256(1)], // ratios (basket should contain an equal amount of btc/eth)
             // Price feeds (BTC/USD and ETH/USD)
             [
-                AggregatorV3Interface(0x572dDec9087154dC5dfBB1546Bb62713147e0Ab0),
-                AggregatorV3Interface(0x007A22900a3B98143368Bd5906f8E17e9867581b),
-                AggregatorV3Interface(0x0715A7794a1dc8e42615F059dD6e406A6594651A)
+                AggregatorV3Interface(0xfE4A8cc5b5B2366C1B58Bea3858e81843581b2F7),
+                AggregatorV3Interface(0xc907E116054Ad103354f2D350FD2514433D57F6f),
+                AggregatorV3Interface(0xF9680D99D6C9589e2a93a78A04A279e509205945)
             ]
         );
     }
