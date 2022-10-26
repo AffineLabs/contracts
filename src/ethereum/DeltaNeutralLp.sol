@@ -68,6 +68,8 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         abPair.safeApprove(address(_router), type(uint256).max);
         // For staging SLP token
         abPair.safeApprove(address(_masterChef), type(uint256).max);
+        // For trading shushi/usdc
+        sushiToken.safeApprove(address(_router), type(uint256).max);
     }
 
     bytes32 public constant STRATEGIST_ROLE = keccak256("STRATEGIST");
@@ -229,23 +231,6 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         uint256 depositedSLPAmount = masterChef.userInfo(masterChefPid, address(this)).amount;
         masterChef.withdraw(masterChefPid, depositedSLPAmount);
 
-        // Sell SUSHI tokens to USDC
-        uint256 sushiBalance = sushiToken.balanceOf(address(this));
-        if (sushiBalance > 0) {
-            address[] memory path = new address[](3);
-            path[0] = address(sushiToken);
-            path[1] = address(borrowAsset);
-            path[2] = address(asset);
-
-            router.swapExactTokensForTokens({
-                amountIn: sushiBalance,
-                amountOutMin: 0,
-                path: path,
-                to: address(this),
-                deadline: block.timestamp
-            });
-        }
-
         // Remove liquidity
         // TODO: handle slippage
         router.removeLiquidity({
@@ -299,5 +284,24 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         lendingPool.withdraw({asset: address(asset), amount: aToken.balanceOf(address(this)), to: address(this)});
 
         emit PositionEnd(currentPosition, asset.balanceOf(address(this)), block.timestamp);
+    }
+
+    function claimRewards(uint256 minAssetsFromReward) external onlyRole(STRATEGIST_ROLE) {
+         // Sell SUSHI tokens to USDC
+        uint256 sushiBalance = sushiToken.balanceOf(address(this));
+        if (sushiBalance > 0) {
+            address[] memory path = new address[](3);
+            path[0] = address(sushiToken);
+            path[1] = address(borrowAsset);
+            path[2] = address(asset);
+
+            router.swapTokensForExactTokens({
+                amountOut: minAssetsFromReward,
+                amountInMax: sushiBalance,
+                path: path,
+                to: address(this),
+                deadline: block.timestamp
+            });
+        }
     }
 }
