@@ -318,7 +318,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      */
     event StrategyWithdrawal(Strategy indexed strategy, uint256 assets);
 
-    /// @notice Deposit entire balance of `token` into strategies according to each strategies' `tvlBps`.
+    /// @notice Deposit entire balance of `asset` into strategies according to each strategy's `tvlBps`.
     function _depositIntoStrategies() internal {
         uint256 totalBal = _asset.balanceOf(address(this));
         // All non-zero strategies are active
@@ -327,29 +327,31 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
             if (address(strategy) == address(0)) {
                 break;
             }
-
-            uint256 assets = (totalBal * strategies[strategy].tvlBps) / MAX_BPS;
-            // Increase totalStrategyHoldings to account for the deposit.
-            totalStrategyHoldings += assets;
-
-            unchecked {
-                // Without this the next harvest would count the deposit as profit.
-                // Cannot overflow as the balance of one strategy can't exceed the sum of all.
-                strategies[strategy].balance += assets;
-            }
-
-            // Approve assets to the strategy so we can deposit.
-            _asset.safeApprove(address(strategy), assets);
-
-            // Deposit into the strategy, will revert upon failure
-            strategy.invest(assets);
-            emit StrategyDeposit(strategy, assets);
+            _depositIntoStrategy(strategy, (totalBal * strategies[strategy].tvlBps) / MAX_BPS);
         }
+    }
+
+    function _depositIntoStrategy(Strategy strategy, uint256 assets) internal {
+        // Increase totalStrategyHoldings to account for the deposit.
+        totalStrategyHoldings += assets;
+
+        unchecked {
+            // Without this the next harvest would count the deposit as profit.
+            // Cannot overflow as the balance of one strategy can't exceed the sum of all.
+            strategies[strategy].balance += assets;
+        }
+
+        // Approve assets to the strategy so we can deposit.
+        _asset.safeApprove(address(strategy), assets);
+
+        // Deposit into the strategy, will revert upon failure
+        strategy.invest(assets);
+        emit StrategyDeposit(strategy, assets);
     }
 
     /**
      * @notice Withdraw a specific amount of underlying tokens from a strategy.
-     * @dev This will not revert if the assets is not withdrawn. It could potentially withdraw nothing.
+     * @dev This is "best effort" withdrawal. It could potentially withdraw nothing.
      * @param strategy The strategy to withdraw from.
      * @param assets  The amount of underlying tokens to withdraw.
      * @return The amount of underlying tokens withdrawn from the strategy.
@@ -357,13 +359,19 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
     function _withdrawFromStrategy(Strategy strategy, uint256 assets) internal returns (uint256) {
         // Withdraw from the strategy
         uint256 amountWithdrawn = _divest(strategy, assets);
+
         // Without this the next harvest would count the withdrawal as a loss.
-        strategies[strategy].balance -= amountWithdrawn;
+        // We update the balance to the current tvl because a withdrawal can reduce the tvl by more than the amount
+        // withdrawn (e.g. fees during a swap)
+        uint256 oldStratTVL = strategies[strategy].balance;
+        uint256 newStratTvl = strategy.totalLockedValue();
+        strategies[strategy].balance = newStratTvl;
 
         unchecked {
             // Decrease totalStrategyHoldings to account for the withdrawal.
             // Cannot underflow as the balance of one strategy will never exceed the sum of all.
-            totalStrategyHoldings -= amountWithdrawn;
+            // If we haven't harvested in a long time, newStratTvl could be smaller than oldStratTvl, even with the withdrawal
+            totalStrategyHoldings -= oldStratTVL > newStratTvl ? oldStratTVL - newStratTvl : 0;
         }
 
         emit StrategyWithdrawal(strategy, amountWithdrawn);
@@ -568,10 +576,8 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
             if (amountToInvest == 0) {
                 break;
             }
-
-            Strategy strategy = withdrawalQueue[i];
-            _asset.safeApprove(address(strategy), amountToInvest);
-            strategy.invest(amountToInvest);
+            // Deposit into strategy, making sure to not count this investment as a profit
+            _depositIntoStrategy(withdrawalQueue[i], amountToInvest);
         }
     }
 }
