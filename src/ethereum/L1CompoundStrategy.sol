@@ -4,7 +4,6 @@ pragma solidity =0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 import {ICToken} from "../interfaces/compound/ICToken.sol";
@@ -13,33 +12,28 @@ import {IComptroller} from "../interfaces/compound/IComptroller.sol";
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
 
-contract L1CompoundStrategy is BaseStrategy, AccessControl {
+contract L1CompoundStrategy is BaseStrategy {
     using SafeTransferLib for ERC20;
 
-    /// @notice The comptroller
-    IComptroller public constant comptroller = IComptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
+    /// @notice The COMPTROLLER
+    IComptroller public constant COMPTROLLER = IComptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
     /// @notice Corresponding Compound token for `asset`(e.g. cUSDC for USDC)
     ICToken public immutable cToken;
 
     /// The compound governance token
-    ERC20 public constant comp = ERC20(0xc00e94Cb662C3520282E6f5717214004A7f26888);
+    ERC20 public constant COMP = ERC20(0xc00e94Cb662C3520282E6f5717214004A7f26888);
     /// @notice  WETH address. Our swap path is always COMP > WETH > asset
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-    /// @notice Uni router for swapping comp to `asset`
-    IUniswapV2Router02 public constant router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-
-    bytes32 public constant CLAIMER = keccak256("CLAIMER");
+    /// @notice Uni ROUTER for swapping COMP to `asset`
+    IUniswapV2Router02 public constant ROUTER = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 
     constructor(BaseVault _vault, ICToken _cToken) BaseStrategy(_vault) {
         cToken = _cToken;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(CLAIMER, msg.sender);
-
         // We can mint cToken and also sell it
         asset.safeApprove(address(cToken), type(uint256).max);
-        comp.safeApprove(address(router), type(uint256).max);
+        COMP.safeApprove(address(ROUTER), type(uint256).max);
     }
 
     /**
@@ -69,17 +63,17 @@ contract L1CompoundStrategy is BaseStrategy, AccessControl {
         return amountToSend;
     }
 
-    function claimRewards(uint256 minAssetsFromReward) external onlyRole(CLAIMER) {
-        comptroller.claimComp(address(this));
-        uint256 compBalance = comp.balanceOf(address(this));
+    function claimRewards(uint256 minAssetsFromReward) external onlyRole(vault.STRATEGIST()) {
+        COMPTROLLER.claimComp(address(this));
+        uint256 compBalance = COMP.balanceOf(address(this));
 
         address[] memory path = new address[](3);
-        path[0] = address(comp);
+        path[0] = address(COMP);
         path[1] = WETH;
         path[2] = address(asset);
 
         if (compBalance > 0.01e18) {
-            router.swapExactTokensForTokens({
+            ROUTER.swapExactTokensForTokens({
                 amountIn: compBalance,
                 amountOutMin: minAssetsFromReward,
                 path: path,

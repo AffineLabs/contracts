@@ -38,6 +38,11 @@ contract CompoundStratTest is TestPlus {
             vault,
             ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563) // cToken
         );
+
+        // To be able to call functions restricted to strategist role.
+        vm.startPrank(vault.governance());
+        vault.grantRole(vault.STRATEGIST(), address(this));
+        vm.stopPrank();
     }
 
     function depositOneUSDCToVault() internal {

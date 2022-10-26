@@ -39,6 +39,12 @@ contract CurveStratTest is TestPlus {
                          2,
                          ILiquidityGauge(0xd8b712d29381748dB89c36BCa0138d7c75866ddF)
                          );
+
+        // To be able to call functions restricted to strategist role.
+        vm.startPrank(vault.governance());
+        vault.grantRole(vault.STRATEGIST(), address(this));
+        vm.stopPrank();
+
         metaPool = strategy.metaPool();
         gauge = strategy.gauge();
     }

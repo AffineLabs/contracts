@@ -37,6 +37,12 @@ contract ConvexStratTest is TestPlus {
             ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
             100,
             IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31));
+
+        // To be able to call functions restricted to strategist role.
+        vm.startPrank(vault.governance());
+        vault.grantRole(vault.STRATEGIST(), address(this));
+        vm.stopPrank();
+
         crv = strategy.crv();
         cvx = strategy.cvx();
     }

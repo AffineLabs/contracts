@@ -4,6 +4,7 @@ pragma solidity =0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {BaseVault} from "./BaseVault.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 /// @notice Base strategy contract
 abstract contract BaseStrategy {
@@ -19,6 +20,27 @@ abstract contract BaseStrategy {
 
     modifier onlyVault() {
         require(msg.sender == address(vault), "ONLY_VAULT");
+        _;
+    }
+
+    modifier onlyRole(bytes32 role) {
+        require(
+            vault.hasRole(role, msg.sender),
+            string(
+                abi.encodePacked(
+                    "AccessControl: account ",
+                    Strings.toHexString(uint160(msg.sender), 20),
+                    " is missing role ",
+                    Strings.toHexString(uint256(role), 32),
+                    " in parent vault"
+                )
+            )
+        );
+        _;
+    }
+
+    modifier onlyGovernance() {
+        require(msg.sender == vault.governance(), "ONLY_GOVERNANCE");
         _;
     }
 
@@ -56,9 +78,7 @@ abstract contract BaseStrategy {
     /// @return The strategy tvl
     function totalLockedValue() external virtual returns (uint256);
 
-    function sweep(ERC20 rewardToken) external {
-        require(msg.sender == vault.governance(), "ONLY_GOVERNANCE");
-        require(rewardToken != asset, "!asset");
-        rewardToken.safeTransfer(vault.governance(), rewardToken.balanceOf(address(this)));
+    function sweep(ERC20 token) external onlyGovernance {
+        token.safeTransfer(vault.governance(), token.balanceOf(address(this)));
     }
 }

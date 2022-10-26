@@ -47,7 +47,9 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
         // All roles use the default admin role
         // governance has the admin role and can grant/remove a role to any account
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
-        _grantRole(harvesterRole, governance);
+        _grantRole(HARVESTER, governance);
+        _grantRole(STRATEGIST, governance);
+
         lastHarvest = uint128(block.timestamp);
     }
 
@@ -86,7 +88,10 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      */
 
     /// @notice Role with authority to call "harvest", i.e. update this vault's tvl
-    bytes32 public constant harvesterRole = keccak256("HARVESTER");
+    bytes32 public constant HARVESTER = keccak256("HARVESTER");
+
+    /// @notice Role with authority to manage strategies.
+    bytes32 public constant STRATEGIST = keccak256("STRATEGIST");
 
     /**
      * WITHDRAWAL QUEUE
@@ -271,7 +276,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      */
     function updateStrategyAllocations(Strategy[] calldata strategyList, uint256[] calldata strategyBps)
         external
-        onlyRole(harvesterRole)
+        onlyRole(HARVESTER)
     {
         for (uint256 i = 0; i < strategyList.length; i = uncheckedInc(i)) {
             // Get the strategy at the current index.
@@ -407,7 +412,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      * @param strategyList The trusted strategies to harvest.
      * @dev Will always revert if profit from last harvest has not finished unlocking.
      */
-    function harvest(Strategy[] calldata strategyList) external onlyRole(harvesterRole) {
+    function harvest(Strategy[] calldata strategyList) external onlyRole(HARVESTER) {
         // Profit must not be unlocking
         require(block.timestamp >= lastHarvest + lockInterval, "PROFIT_UNLOCKING");
 
@@ -527,7 +532,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
     function _assessFees() internal virtual {}
 
     /// @notice  Rebalance strategies according to given tvl bps
-    function rebalance() external onlyRole(harvesterRole) {
+    function rebalance() external onlyRole(HARVESTER) {
         uint256 tvl = vaultTVL();
 
         // Loop through all strategies. Divesting from those whose tvl is too high,
