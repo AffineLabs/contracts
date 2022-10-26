@@ -165,4 +165,34 @@ contract DeltaNeutralTest is TestPlus {
         assertEq(strategy.totalLockedValue(), 0);
         assertApproxEqRel(asset.balanceOf(address(vault)), 1000e6, 0.02e18);
     }
+
+    function testClaimRewards() public {
+        // If there's no position active, we just send our current balance
+        deal(address(asset), address(strategy), 1);
+        vm.prank(address(vault));
+        strategy.divest(1);
+        assertEq(asset.balanceOf(address(vault)), 1);
+
+        deal(address(asset), address(strategy), 1000e6);
+
+        vm.prank(vault.governance());
+        strategy.startPosition();
+
+        vm.roll(block.number + 1000);
+
+        // We unwind position if there is a one
+        changePrank(address(vault));
+        strategy.divest(type(uint256).max);
+
+        uint256 sushiBalance = strategy.sushiToken().balanceOf(address(strategy));
+        emit log_named_uint("[Pre] Suhsi balance", sushiBalance);
+        assertGt(sushiBalance, 0);
+
+        changePrank(vault.governance());
+        strategy.claimRewards();
+
+        sushiBalance = strategy.sushiToken().balanceOf(address(strategy));
+        emit log_named_uint("[Post] Suhsi balance", sushiBalance);
+        assertEq(sushiBalance, 0);
+    }
 }
