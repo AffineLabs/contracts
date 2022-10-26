@@ -107,6 +107,8 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
 
     uint32 public currentPosition;
     bool public canStartNewPos;
+    mapping(uint256 => uint256) positionStartRoundId;
+
     IMasterChef public masterChef;
     uint256 public masterChefPid;
     ERC20 public sushiToken;
@@ -135,8 +137,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     function startPosition() external onlyRole(STRATEGIST_ROLE) {
         // Set position metadata
         require(canStartNewPos, "DNLP: position is active");
-        uint32 newPositionId = currentPosition + 1;
-        currentPosition = newPositionId;
+        currentPosition += 1;
         canStartNewPos = false;
 
         // Some amount of the assets will be used to buy eth at the end of this function
@@ -156,7 +157,8 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         require(answeredInRound >= roundId, "Chainlink stale data");
         require(timestamp != 0, "Chainlink round not complete");
 
-        emit PositionStart(newPositionId, assets, roundId, block.timestamp);
+        positionStartRoundId[currentPosition] = roundId;
+        emit PositionStart(currentPosition, assets, roundId, block.timestamp);
 
         // https://docs.aave.com/developers/v/2.0/the-core-protocol/lendingpool#borrow
         // assetsToDeposit has price uints `asset`, price has units `asset / borrowAsset` ratio. so we divide by price
