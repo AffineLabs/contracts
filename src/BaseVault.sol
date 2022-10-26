@@ -258,17 +258,8 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
             emit StrategyRemoved(strategy);
             _organizeWithdrawalQueue();
 
-            // Take all money out of strategy
-            uint256 oldBal = stratInfo.balance;
-            uint256 amountWithdrawn = _withdrawFromStrategy(strategy, strategy.totalLockedValue());
-
-            // In this case, we've made a profit since we extracted more money than we thought we had
-            // This increases the vaultTVL. In order to avoid frontrunning, we unlock this profit as in harvest()
-            // NOTE: Updating maxLockedProfit this way is fine since removeStrategy will always be called with harvest()
-            // via multicall
-            if (amountWithdrawn > oldBal) {
-                maxLockedProfit += uint128(oldBal - amountWithdrawn);
-            }
+            // Take all money out of strategy.
+            _withdrawFromStrategy(strategy, strategy.totalLockedValue());
             break;
         }
     }
