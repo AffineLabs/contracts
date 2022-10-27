@@ -118,7 +118,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      */
     function setWithdrawalQueue(Strategy[MAX_STRATEGIES] calldata newQueue) external onlyGovernance {
         // Ensure the new queue is not larger than the maximum queue size.
-        require(newQueue.length <= MAX_STRATEGIES, "BV: queue too big");
+        require(newQueue.length == MAX_STRATEGIES, "BV: bad qu size");
 
         // Replace the withdrawal queue.
         withdrawalQueue = newQueue;
