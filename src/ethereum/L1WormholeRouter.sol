@@ -10,10 +10,9 @@ contract L1WormholeRouter is WormholeRouter {
     L1Vault public immutable vault;
 
     constructor(L1Vault _vault, IWormhole _wormhole, uint16 _otherLayerWormholeChainId)
-        WormholeRouter(_wormhole, _otherLayerWormholeChainId)
+        WormholeRouter(_vault.governance(), _wormhole, _otherLayerWormholeChainId)
     {
         vault = _vault;
-        governance = vault.governance();
     }
 
     function reportTVL(uint256 tvl, bool received) external payable {

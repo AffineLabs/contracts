@@ -10,10 +10,9 @@ contract L2WormholeRouter is WormholeRouter {
     L2Vault immutable vault;
 
     constructor(L2Vault _vault, IWormhole _wormhole, uint16 _otherLayerWormholeChainId)
-        WormholeRouter(_wormhole, _otherLayerWormholeChainId)
+        WormholeRouter(_vault.governance(), _wormhole, _otherLayerWormholeChainId)
     {
         vault = _vault;
-        governance = vault.governance();
     }
 
     function reportTransferredFund(uint256 amount) external payable {

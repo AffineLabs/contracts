@@ -17,7 +17,7 @@ contract MockL2Vault is L2Vault {
     }
 
     function setMockRebalanceDelta(uint256 _rebalanceDelta) external {
-        rebalanceDelta = _rebalanceDelta;
+        rebalanceDelta = uint224(_rebalanceDelta);
     }
 }
 

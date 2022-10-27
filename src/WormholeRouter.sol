@@ -3,11 +3,10 @@ pragma solidity =0.8.16;
 
 import {IWormhole} from "./interfaces/IWormhole.sol";
 import {BaseVault} from "./BaseVault.sol";
-import {AffineGovernable} from "./AffineGovernable.sol";
-import {OwnedInitializable} from "./Initializable.sol";
+import {ImmutableGovernable} from "./ImmutableGovernable.sol";
 
-contract WormholeRouter is AffineGovernable, OwnedInitializable {
-    constructor(IWormhole _wormhole, uint16 _otherLayerWormholeChainId) {
+contract WormholeRouter is ImmutableGovernable {
+    constructor(address _gov, IWormhole _wormhole, uint16 _otherLayerWormholeChainId) ImmutableGovernable(_gov) {
         wormhole = _wormhole;
         otherLayerWormholeChainId = _otherLayerWormholeChainId;
     }
