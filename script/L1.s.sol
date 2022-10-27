@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.16;
+pragma solidity 0.8.16;
 
 import "forge-std/Script.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
 import {L1Vault} from "../src/ethereum/L1Vault.sol";
-import {Create3Deployer} from "../src/Create3Deployer.sol";
+import {ICREATE3Factory} from "../src/interfaces/ICreate3Factory.sol";
 import {IRootChainManager} from "../src/interfaces/IRootChainManager.sol";
 import {IWormhole} from "../src/interfaces/IWormhole.sol";
 import {BridgeEscrow} from "../src/BridgeEscrow.sol";
@@ -28,9 +28,8 @@ import {IConvexBooster} from "../src/interfaces/convex/IConvexBooster.sol";
 import {IConvexClaimZap} from "../src/interfaces/convex/IConvexClaimZap.sol";
 import {IConvexCrvRewards} from "../src/interfaces/convex/IConvexCrvRewards.sol";
 
-
 contract Deploy is Script {
-    Create3Deployer create3 = Create3Deployer(0x10A4aA784D2bE45e6e67B909c5cf7E588aA7A257);
+    ICREATE3Factory create3 = ICREATE3Factory(0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf);
 
     function _getSalt(string memory fileName) internal returns (bytes32 salt) {
         string[] memory inputs = new string[](4);
@@ -53,8 +52,8 @@ contract Deploy is Script {
         bytes32 routerSalt = _getSalt("salts/router.salt");
         require(escrowSalt != routerSalt, "Salts not unique");
 
-        BridgeEscrow escrow = BridgeEscrow(create3.getDeployed(escrowSalt));
-        L1WormholeRouter router = L1WormholeRouter(create3.getDeployed(routerSalt));
+        BridgeEscrow escrow = BridgeEscrow(create3.getDeployed(deployer, escrowSalt));
+        L1WormholeRouter router = L1WormholeRouter(create3.getDeployed(deployer, routerSalt));
 
         // Deploy L1Vault
         L1Vault impl = new L1Vault();
@@ -80,8 +79,7 @@ contract Deploy is Script {
             abi.encodePacked(
                 type(BridgeEscrow).creationCode,
                 abi.encode(address(vault), IRootChainManager(0xA0c68C638235ee32657e8f720a23ceC1bFc77C77))
-            ),
-            0
+            )
         );
 
         require(escrow.vault() == address(vault));
@@ -98,14 +96,12 @@ contract Deploy is Script {
                     wormhole,
                     uint16(5) // polygon wormhole id is 5
                 )
-            ),
-            0
+            )
         );
 
         require(router.vault() == vault);
         require(router.wormhole() == wormhole);
         require(router.otherLayerChainId() == uint16(5));
-
 
         // Compound strat
         L1CompoundStrategy comp = new L1CompoundStrategy(vault, ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563), 
@@ -134,7 +130,7 @@ contract Deploy is Script {
             IConvexCrvRewards(0x7e880867363A7e321f5d260Cade2B0Bb2F717B02),
             IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D)
         );
-        require(address(cvx.asset()) == vault.asset()); 
+        require(address(cvx.asset()) == vault.asset());
 
         vm.stopBroadcast();
     }

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.16;
+pragma solidity 0.8.16;
 
 import "forge-std/Script.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
 import {L2Vault} from "../src/polygon/L2Vault.sol";
-import {Create3Deployer} from "../src/Create3Deployer.sol";
+import {ICREATE3Factory} from "../src/interfaces/ICreate3Factory.sol";
 import {IWormhole} from "../src/interfaces/IWormhole.sol";
 import {IRootChainManager} from "../src/interfaces/IRootChainManager.sol";
 import {BridgeEscrow} from "../src/BridgeEscrow.sol";
@@ -20,7 +20,7 @@ import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUn
 import {L2AAVEStrategy} from "../src/polygon/L2AAVEStrategy.sol";
 
 contract Deploy is Script {
-    Create3Deployer create3 = Create3Deployer(0x5185fe072f9eE947bF017C7854470e11C2cFb32a);
+    ICREATE3Factory create3 = ICREATE3Factory(0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf);
 
     function _getSaltBasic() internal returns (bytes32 salt) {
         string[] memory inputs = new string[](4);
@@ -49,9 +49,9 @@ contract Deploy is Script {
         console.logBytes32(routerSalt);
         require(escrowSalt != routerSalt, "Salts not unique");
 
-        BridgeEscrow escrow = BridgeEscrow(create3.getDeployed(escrowSalt));
-        L2WormholeRouter router = L2WormholeRouter(create3.getDeployed(routerSalt));
-        EmergencyWithdrawalQueue queue = EmergencyWithdrawalQueue(create3.getDeployed(ewqSalt));
+        BridgeEscrow escrow = BridgeEscrow(create3.getDeployed(deployer, escrowSalt));
+        L2WormholeRouter router = L2WormholeRouter(create3.getDeployed(deployer, routerSalt));
+        EmergencyWithdrawalQueue queue = EmergencyWithdrawalQueue(create3.getDeployed(deployer, ewqSalt));
         Forwarder forwarder = new Forwarder();
 
         // Deploy Vault
@@ -82,8 +82,7 @@ contract Deploy is Script {
         // Deploy helper contracts (escrow, router, and ewq)
         create3.deploy(
             escrowSalt,
-            abi.encodePacked(type(BridgeEscrow).creationCode, abi.encode(address(vault), IRootChainManager(address(0)))),
-            0
+            abi.encodePacked(type(BridgeEscrow).creationCode, abi.encode(address(vault), IRootChainManager(address(0))))
         );
         require(escrow.vault() == address(vault));
         require(address(escrow.token()) == vault.asset());
@@ -99,14 +98,13 @@ contract Deploy is Script {
                     wormhole,
                     uint16(2) // ethereum wormhole id is 2
                 )
-            ),
-            0
+            )
         );
         require(router.vault() == vault);
         require(router.wormhole() == wormhole);
         require(router.otherLayerChainId() == uint16(2));
 
-        create3.deploy(ewqSalt, abi.encodePacked(type(EmergencyWithdrawalQueue).creationCode, abi.encode(vault)), 0);
+        create3.deploy(ewqSalt, abi.encodePacked(type(EmergencyWithdrawalQueue).creationCode, abi.encode(vault)));
         require(queue.vault() == vault);
 
         Router router4626 = new Router("affine-router-v1", address(forwarder));
