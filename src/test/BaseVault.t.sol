@@ -234,7 +234,7 @@ contract BaseVaultTest is TestPlus {
         strategyList[0] = strat1;
         strategyList[1] = strat2;
 
-        uint256[] memory bpsList = new uint256[](2);
+        uint16[] memory bpsList = new uint16[](2);
         bpsList[0] = 100;
         bpsList[1] = 200;
 
