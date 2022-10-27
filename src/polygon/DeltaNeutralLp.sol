@@ -135,9 +135,9 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
 
         // Convert assetsToDeposit into `borrowAsset` (e.g. WMATIC) units
         (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = borrowAssetFeed.latestRoundData();
-        require(price > 0, "Chainlink price <= 0");
-        require(answeredInRound >= roundId, "Chainlink stale data");
-        require(timestamp != 0, "Chainlink round not complete");
+        require(price > 0, "DNLP: price <= 0");
+        require(answeredInRound >= roundId, "DNLP: stale data");
+        require(timestamp != 0, "DNLP: round not done");
 
         emit PositionStart(newPositionId, assets, roundId, block.timestamp);
 

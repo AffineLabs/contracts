@@ -172,7 +172,7 @@ contract L2Vault is
     /// @notice See {IERC4262-deposit}
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
         shares = previewDeposit(assets);
-        require(shares > 0, "MIN_DEPOSIT_ERR");
+        require(shares > 0, "L2Vault: zero shares");
         address caller = _msgSender();
 
         _asset.safeTransferFrom(caller, address(this), assets);
@@ -459,7 +459,7 @@ contract L2Vault is
     }
 
     function receiveTVL(uint256 tvl, bool received) external {
-        require(msg.sender == wormholeRouter, "Only wormhole router");
+        require(msg.sender == wormholeRouter, "L2Vault: only router");
 
         // If L1 has received the last transfer we sent it, unlock the L2->L1 bridge
         if (received && !canTransferToL1) {
@@ -545,7 +545,7 @@ contract L2Vault is
     }
 
     function afterReceive(uint256 amount) external {
-        require(_msgSender() == address(bridgeEscrow), "Only L2 BridgeEscrow.");
+        require(_msgSender() == address(bridgeEscrow), "L2Vault: only escrow");
         l1TotalLockedValue -= amount;
         canRequestFromL1 = true;
         emit ReceiveFromL1(amount);

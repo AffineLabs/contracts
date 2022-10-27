@@ -31,12 +31,12 @@ contract BridgeEscrow {
 
     // Transfer to L1
     function l2Withdraw(uint256 amount) external {
-        require(msg.sender == vault, "Only vault");
+        require(msg.sender == vault, "BE: Only vault");
         IChildERC20(address(token)).withdraw(amount);
     }
 
     function l2ClearFund(uint256 amount) external {
-        require(msg.sender == wormholeRouter, "Only wormhole router");
+        require(msg.sender == wormholeRouter, "BE: Only wormhole router");
         _l2Clear(amount);
     }
 
@@ -54,7 +54,7 @@ contract BridgeEscrow {
     }
 
     function l1ClearFund(uint256 amount, bytes calldata exitProof) external {
-        require(msg.sender == wormholeRouter, "Only wormhole router");
+        require(msg.sender == wormholeRouter, "BE: Only wormhole router");
         _l1Clear(amount, exitProof);
     }
 

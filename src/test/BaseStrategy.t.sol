@@ -24,13 +24,13 @@ contract BaseStrategyTest is TestPlus {
 
     function testSweep() public {
         // Will revert if non governance tries to call it
-        vm.expectRevert(bytes("ONLY_GOVERNANCE"));
+        vm.expectRevert("BS: only governance");
         changePrank(alice); // vitalik
         strategy.sweep(rewardToken);
 
         // Will revert if trying to sell `token` of BaseStrategy
         ERC20 assetToken = ERC20(strategy.vault().asset());
-        vm.expectRevert(bytes("!asset"));
+        vm.expectRevert("BS: !asset");
         changePrank(governance);
         strategy.sweep(assetToken);
 

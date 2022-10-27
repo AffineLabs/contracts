@@ -16,7 +16,7 @@ contract Forwarder is MinimalForwarder {
             start += 65;
             end += 65;
             (bool success,) = execute(req, sig);
-            require(success, "CALL_FAILED");
+            require(success, "Fwd: call failed");
         }
     }
 }
