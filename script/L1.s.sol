@@ -45,8 +45,8 @@ contract Deploy is Script {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
         // Get salts
-        bytes32 escrowSalt = _getSalt("salts/escrow.salt");
-        bytes32 routerSalt = _getSalt("salts/router.salt");
+        bytes32 escrowSalt = _getSalt("escrow.salt");
+        bytes32 routerSalt = _getSalt("router.salt");
         require(escrowSalt != routerSalt, "Salts not unique");
 
         BridgeEscrow escrow = BridgeEscrow(create3.getDeployed(deployer, escrowSalt));

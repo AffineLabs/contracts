@@ -41,8 +41,8 @@ contract Deploy is Script {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
         // Get salts
-        bytes32 escrowSalt = _getSaltFile("salts/escrow.salt");
-        bytes32 routerSalt = _getSaltFile("salts/router.salt");
+        bytes32 escrowSalt = _getSaltFile("escrow.salt");
+        bytes32 routerSalt = _getSaltFile("router.salt");
         bytes32 ewqSalt = _getSaltBasic();
 
         console.logBytes32(escrowSalt);
