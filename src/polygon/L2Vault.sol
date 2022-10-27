@@ -39,37 +39,6 @@ contract L2Vault is
     using FixedPointMathLib for uint256;
 
     /**
-     * FEES
-     *
-     */
-
-    // Fee charged to vault over a year, number is in bps
-    uint256 public managementFee;
-    // fee charged on redemption of shares, number is in bps
-    uint256 public withdrawalFee;
-
-    function setManagementFee(uint256 feeBps) external onlyGovernance {
-        managementFee = feeBps;
-    }
-
-    function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
-        withdrawalFee = feeBps;
-    }
-
-    function _assessFees() internal override {
-        // duration / SECS_PER_YEAR * feebps / MAX_BPS * totalSupply
-        uint256 duration = block.timestamp - lastHarvest;
-
-        uint256 feesBps = (duration * managementFee) / SECS_PER_YEAR;
-        uint256 numSharesToMint = (feesBps * totalSupply()) / MAX_BPS;
-
-        if (numSharesToMint == 0) {
-            return;
-        }
-        _mint(governance, numSharesToMint);
-    }
-
-    /**
      * INITIALIZATION
      *
      */
@@ -81,8 +50,8 @@ contract L2Vault is
         BridgeEscrow _bridgeEscrow,
         EmergencyWithdrawalQueue _emergencyWithdrawalQueue,
         address forwarder,
-        uint256 _l1Ratio,
-        uint256 _l2Ratio,
+        uint8 _l1Ratio,
+        uint8 _l2Ratio,
         uint256[2] memory fees
     ) public initializer {
         __ERC20_init("Alpine Save", "alpSave");
@@ -163,6 +132,37 @@ contract L2Vault is
     /// @notice Unpause the contract
     function unpause() external onlyRole(GUARDIAN_ROLE) {
         _unpause();
+    }
+
+    /**
+     * FEES
+     *
+     */
+
+    // Fee charged to vault over a year, number is in bps
+    uint256 public managementFee;
+    // fee charged on redemption of shares, number is in bps
+    uint256 public withdrawalFee;
+
+    function setManagementFee(uint256 feeBps) external onlyGovernance {
+        managementFee = feeBps;
+    }
+
+    function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
+        withdrawalFee = feeBps;
+    }
+
+    function _assessFees() internal override {
+        // duration / SECS_PER_YEAR * feebps / MAX_BPS * totalSupply
+        uint256 duration = block.timestamp - lastHarvest;
+
+        uint256 feesBps = (duration * managementFee) / SECS_PER_YEAR;
+        uint256 numSharesToMint = (feesBps * totalSupply()) / MAX_BPS;
+
+        if (numSharesToMint == 0) {
+            return;
+        }
+        _mint(governance, numSharesToMint);
     }
 
     /**
@@ -400,45 +400,45 @@ contract L2Vault is
      * CROSS-CHAIN REBALANCING
      *
      */
+    /// @notice TVL of L1 denominated in `asset` (e.g. USDC). This value will be updated by wormhole messages.
+    uint256 public l1TotalLockedValue;
 
     // Represents the amount of tvl (in `token`) that should exist on L1 and L2
     // E.g. if layer1 == 1 and layer2 == 2 then 1/3 of the TVL should be on L1
-    uint256 public l1Ratio;
-    uint256 public l2Ratio;
+    uint8 public l1Ratio;
+    uint8 public l2Ratio;
+
+    // Whether we can send or receive money from L1
+    bool public canTransferToL1;
+    bool public canRequestFromL1;
+
+    /**
+     * @notice The delta required to trigger a rebalance. The delta is the difference between current and ideal tvl
+     * on a given layer
+     * @dev Fits into the same slot as the four above variables.
+     */
+    uint224 public rebalanceDelta;
 
     /**
      * @notice Set the layer ratios
      * @param _l1Ratio The layer 1 ratio
      * @param _l2Ratio The layer 2 ratio
      */
-    function setLayerRatios(uint256 _l1Ratio, uint256 _l2Ratio) external onlyGovernance {
+    function setLayerRatios(uint8 _l1Ratio, uint8 _l2Ratio) external onlyGovernance {
         l1Ratio = _l1Ratio;
         l2Ratio = _l2Ratio;
     }
 
     /**
-     * @notice The delta required to trigger a rebalance. The delta is the difference between current and ideal tvl
-     * on a given layer
-     */
-    uint256 public rebalanceDelta;
-
-    /**
      * @notice Set the rebalance delta
      * @param _rebalanceDelta The new rebalance delta
      */
-    function setRebalanceDelta(uint256 _rebalanceDelta) external onlyGovernance {
+    function setRebalanceDelta(uint224 _rebalanceDelta) external onlyGovernance {
         rebalanceDelta = _rebalanceDelta;
     }
 
-    // Whether we can send or receive money from L1
-    bool public canTransferToL1;
-    bool public canRequestFromL1;
-
     event TransferToL1(uint256 amount);
     event ReceiveFromL1(uint256 amount);
-
-    /// @notice TVL of L1 denominated in `asset` (e.g. USDC). This value will be updated by wormhole messages.
-    uint256 public l1TotalLockedValue;
 
     /// @notice The last time the tvl was updated. We need this to let L1 tvl updates unlock over time
     uint128 public lastTVLUpdate;
