@@ -38,8 +38,8 @@ contract WormholeRouter is ImmutableGovernable {
      *
      */
     function _validateWormholeMessageEmitter(IWormhole.VM memory vm) internal view {
-        require(vm.emitterAddress == bytes32(uint256(uint160(address(this)))), "Wrong emitter address");
-        require(vm.emitterChainId == otherLayerWormholeChainId, "Wrong emitter chain");
-        require(vm.nonce >= nextValidNonce, "Old transaction");
+        require(vm.emitterAddress == bytes32(uint256(uint160(address(this)))), "WR: bad emitter address");
+        require(vm.emitterChainId == otherLayerWormholeChainId, "WR: bad emitter chain");
+        require(vm.nonce >= nextValidNonce, "WR: old transaction");
     }
 }

@@ -290,9 +290,9 @@ contract TwoAssetBasket is
         AggregatorV3Interface feed = tokenToOracle[token];
 
         (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = feed.latestRoundData();
-        require(price > 0, "Chainlink price <= 0");
-        require(answeredInRound >= roundId, "Chainlink stale data");
-        require(timestamp != 0, "Chainlink round not complete");
+        require(price > 0, "TAB: price <= 0");
+        require(answeredInRound >= roundId, "TAB: stale data");
+        require(timestamp != 0, "TAB: round not done");
         return Dollar.wrap(uint256(price));
     }
 

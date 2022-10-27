@@ -46,7 +46,7 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         assertEq(emergencyWithdrawalQueue.size(), 1);
     }
 
-    function testEnqueueOnlyVaultCanEnqueue() external {
+    function testEnqueueCanEnqueue() external {
         vm.expectRevert("EWQ: only vault");
         // Only vault should be able to enqueue.
         emergencyWithdrawalQueue.enqueue(bob, alice, 1000);

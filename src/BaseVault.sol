@@ -118,7 +118,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      */
     function setWithdrawalQueue(Strategy[MAX_STRATEGIES] calldata newQueue) external onlyGovernance {
         // Ensure the new queue is not larger than the maximum queue size.
-        require(newQueue.length <= MAX_STRATEGIES, "QUEUE_TOO_BIG");
+        require(newQueue.length == MAX_STRATEGIES, "BV: bad qu size");
 
         // Replace the withdrawal queue.
         withdrawalQueue = newQueue;
@@ -209,7 +209,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
     /// @notice A helper function for increasing `totalBps`. Used when adding strategies or updating strategy allocs
     function _increaseTVLBps(uint256 tvlBps) internal {
         uint256 newTotalBps = totalBps + tvlBps;
-        require(newTotalBps <= MAX_BPS, "TVL_ALLOC_TOO_BIG");
+        require(newTotalBps <= MAX_BPS, "BV: too many bps");
         totalBps = newTotalBps;
     }
 
@@ -407,7 +407,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      */
     function harvest(Strategy[] calldata strategyList) external onlyRole(harvesterRole) {
         // Profit must not be unlocking
-        require(block.timestamp >= lastHarvest + lockInterval, "PROFIT_UNLOCKING");
+        require(block.timestamp >= lastHarvest + lockInterval, "BV: profit unlocking");
 
         // Get the Vault's current total strategy holdings.
         uint256 oldTotalStrategyHoldings = totalStrategyHoldings;

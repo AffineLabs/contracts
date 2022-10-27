@@ -120,7 +120,7 @@ contract L2VaultTest is TestPlus {
         asset.approve(address(vault), type(uint256).max);
 
         // If we're minting zero shares we revert
-        vm.expectRevert("MIN_DEPOSIT_ERR");
+        vm.expectRevert("L2Vault: zero shares");
         vault.deposit(0, user);
 
         vault.deposit(100, user);
@@ -195,7 +195,7 @@ contract L2VaultTest is TestPlus {
         vault.setMockRebalanceDelta(1e6);
 
         vm.prank(alice);
-        vm.expectRevert("Only wormhole router");
+        vm.expectRevert("L2Vault: only router");
         vault.receiveTVL(0, false);
 
         // If L1 has received our last transfer, we can transfer again

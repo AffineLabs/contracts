@@ -69,7 +69,7 @@ contract EmergencyWithdrawalQueue {
 
     /// @notice Dequeue user withdrawal requests.
     function dequeue() external {
-        require(tailPtr >= headPtr, "Queue is empty");
+        require(tailPtr >= headPtr, "EWQ: queue is empty");
         WithdrawalRequest memory withdrawalRequest = queue[headPtr];
         delete queue[headPtr];
         shareDebt -= withdrawalRequest.shares;
@@ -94,7 +94,7 @@ contract EmergencyWithdrawalQueue {
 
     /// @notice Dequeue user withdrawal requests in a batch.
     function dequeueBatch(uint256 batchSize) external {
-        require(size() >= batchSize, "Batch size too big");
+        require(size() >= batchSize, "EWQ: batch too big");
 
         uint256 batchTailPtr = headPtr + batchSize;
         uint256 shareDebtReduction;
