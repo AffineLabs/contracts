@@ -38,9 +38,6 @@ contract L2Vault is
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
-    uint256 public l1TotalLockedValue;
-
     /**
      * FEES
      *
@@ -99,7 +96,7 @@ contract L2Vault is
         rebalanceDelta = 10_000 * _asset.decimals();
         canTransferToL1 = true;
         canRequestFromL1 = true;
-        lastTVLUpdate = block.timestamp;
+        lastTVLUpdate = uint128(block.timestamp);
 
         _grantRole(GUARDIAN_ROLE, _governance);
         _setTrustedForwarder(forwarder);
@@ -440,20 +437,25 @@ contract L2Vault is
     event TransferToL1(uint256 amount);
     event ReceiveFromL1(uint256 amount);
 
+    /// @notice TVL of L1 denominated in `asset` (e.g. USDC). This value will be updated by wormhole messages.
+    uint256 public l1TotalLockedValue;
+
     /// @notice The last time the tvl was updated. We need this to let L1 tvl updates unlock over time
-    uint256 public lastTVLUpdate;
+    uint128 public lastTVLUpdate;
 
     /// @notice See maxLockedProfit
-    uint256 public maxLockedTVL;
+    uint128 public maxLockedTVL;
 
     /// @notice See lockedProfit. This is the same, except we are profiting from L1 tvl info
     function lockedTVL() public view returns (uint256) {
-        if (block.timestamp >= lastTVLUpdate + lockInterval) {
+        uint256 _maxLockedTVL = maxLockedTVL;
+        uint256 _lastTVLUpdate = lastTVLUpdate;
+        if (block.timestamp >= _lastTVLUpdate + lockInterval) {
             return 0;
         }
 
-        uint256 unlockedTVL = (maxLockedTVL * (block.timestamp - lastTVLUpdate)) / lockInterval;
-        return maxLockedTVL - unlockedTVL;
+        uint256 unlockedTVL = (_maxLockedTVL * (block.timestamp - _lastTVLUpdate)) / lockInterval;
+        return _maxLockedTVL - unlockedTVL;
     }
 
     function receiveTVL(uint256 tvl, bool received) external {
@@ -476,8 +478,8 @@ contract L2Vault is
         // Any increase in L1's tvl will unlock linearly, just as when harvesting from strategies
         uint256 oldL1TVL = l1TotalLockedValue;
         uint256 totalProfit = tvl > oldL1TVL ? tvl - oldL1TVL : 0;
-        maxLockedTVL = lockedTVL() + totalProfit;
-        lastTVLUpdate = block.timestamp;
+        maxLockedTVL = uint128(totalProfit + lockedTVL());
+        lastTVLUpdate = uint128(block.timestamp);
         l1TotalLockedValue = tvl;
 
         (bool invest, uint256 delta) = _computeRebalance();
