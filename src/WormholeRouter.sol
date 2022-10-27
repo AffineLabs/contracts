@@ -4,9 +4,8 @@ pragma solidity =0.8.16;
 import {IWormhole} from "./interfaces/IWormhole.sol";
 import {BaseVault} from "./BaseVault.sol";
 import {AffineGovernable} from "./AffineGovernable.sol";
-import {OwnedInitializable} from "./Initializable.sol";
 
-contract WormholeRouter is AffineGovernable, OwnedInitializable {
+contract WormholeRouter is AffineGovernable {
     constructor(IWormhole _wormhole, uint16 _otherLayerWormholeChainId) {
         wormhole = _wormhole;
         otherLayerWormholeChainId = _otherLayerWormholeChainId;

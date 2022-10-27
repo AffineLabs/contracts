@@ -5,6 +5,9 @@ import {L2Vault} from "./L2Vault.sol";
 import {uncheckedInc} from "../Unchecked.sol";
 
 contract EmergencyWithdrawalQueue {
+    /// @notice Address of Alpine vault.
+    L2Vault public immutable vault;
+
     /// @notice Struct representing withdrawalRequest stored in each queue node.
     struct WithdrawalRequest {
         address owner;
@@ -22,12 +25,9 @@ contract EmergencyWithdrawalQueue {
      * After an enqueue we have tail(1) == head(1)
      */
     /// @notice Pointer to head of the queue.
-    uint256 public headPtr = 1;
+    uint128 public headPtr = 1;
     /// @notice Pointer to tail of the queue.
-    uint256 public tailPtr = 0;
-
-    /// @notice Address of Alpine vault.
-    L2Vault public immutable vault;
+    uint128 public tailPtr = 0;
 
     /// @notice Debt in shares unit.
     uint256 public shareDebt;
@@ -120,6 +120,6 @@ contract EmergencyWithdrawalQueue {
             }
         }
         shareDebt -= shareDebtReduction;
-        headPtr += batchSize;
+        headPtr += uint128(batchSize);
     }
 }
