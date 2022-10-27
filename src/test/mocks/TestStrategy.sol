@@ -8,7 +8,7 @@ import {MockERC20} from "./MockERC20.sol";
 contract TestStrategy is BaseStrategy {
     constructor(BaseVault _vault) BaseStrategy(_vault) {}
 
-    function divest(uint256 amount) public virtual override returns (uint256) {
+    function _divest(uint256 amount) internal virtual override returns (uint256) {
         uint256 amountToSend = amount > balanceOfAsset() ? balanceOfAsset() : amount;
         asset.transfer(address(vault), amountToSend);
         return amountToSend;
@@ -22,7 +22,7 @@ contract TestStrategy is BaseStrategy {
 contract TestStrategyDivestSlippage is TestStrategy {
     constructor(BaseVault _vault) TestStrategy(_vault) {}
 
-    function divest(uint256 amount) public virtual override returns (uint256) {
+    function _divest(uint256 amount) internal virtual override returns (uint256) {
         uint256 amountToSend = amount > balanceOfAsset() ? balanceOfAsset() : amount;
         asset.transfer(address(vault), amountToSend / 2);
         return amountToSend;
