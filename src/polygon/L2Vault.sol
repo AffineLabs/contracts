@@ -238,7 +238,7 @@ contract L2Vault is
         }
 
         // The ewq does not need approval to burn shares
-        if (caller != owner && caller != address(emergencyWithdrawalQueue)) {
+        if (caller != owner && caller != address(ewq)) {
             _spendAllowance(owner, caller, shares);
         }
 

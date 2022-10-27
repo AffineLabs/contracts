@@ -227,7 +227,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
             if (address(strategy) == address(0)) {
                 offset += 1;
             } else if (offset > 0) {
-                // idx of first empty value seen takes on value of `strategy`
+                // index of first empty value seen takes on value of `strategy`
                 withdrawalQueue[i - offset] = strategy;
                 withdrawalQueue[i] = Strategy(address(0));
             }
@@ -246,12 +246,11 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
                 continue;
             }
 
-            StrategyInfo storage stratInfo = strategies[strategy];
-            stratInfo.isActive = false;
+            strategies[strategy].isActive = false;
 
             // The vault can re-allocate bps to a new strategy
-            totalBps -= stratInfo.tvlBps;
-            stratInfo.tvlBps = 0;
+            totalBps -= strategies[strategy].tvlBps;
+            strategies[strategy].tvlBps = 0;
 
             // Remove strategy from withdrawal queue
             withdrawalQueue[i] = Strategy(address(0));
@@ -283,8 +282,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
             }
 
             // update tvl bps
-            uint256 oldBps = strategies[strategy].tvlBps;
-            totalBps -= oldBps;
+            totalBps -= strategies[strategy].tvlBps;
             _increaseTVLBps(strategyBps[i]);
             strategies[strategy].tvlBps = strategyBps[i];
         }
