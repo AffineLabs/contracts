@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
@@ -108,7 +108,7 @@ contract BaseVaultTest is TestPlus {
         vault.harvest(strategies);
 
         // Divest (make sure divest is called on the strategy)
-        vm.expectCall(address(strategy), abi.encodeCall(BaseStrategy.divest, (type(uint256).max)));
+        vm.expectCall(address(strategy), abi.encodeCall(BaseStrategy.divest, (strategy.totalLockedValue())));
         vault.removeStrategy(strategy);
 
         // The vault removed all money from the strategy
@@ -234,7 +234,7 @@ contract BaseVaultTest is TestPlus {
         strategyList[0] = strat1;
         strategyList[1] = strat2;
 
-        uint256[] memory bpsList = new uint256[](2);
+        uint16[] memory bpsList = new uint16[](2);
         bpsList[0] = 100;
         bpsList[1] = 200;
 
@@ -244,5 +244,25 @@ contract BaseVaultTest is TestPlus {
 
         assertEq(strat1TvlBps, 100);
         assertEq(strat2TvlBps, 200);
+    }
+
+    function testSetWormRouter() public {
+        address wormRouter = makeAddr("worm_router");
+        vault.setWormholeRouter(wormRouter);
+        assertEq(vault.wormholeRouter(), wormRouter);
+        // only gov can call
+        vm.prank(alice);
+        vm.expectRevert("Only Governance.");
+        vault.setWormholeRouter(address(0));
+    }
+
+    function testBridgeEscrow() public {
+        BridgeEscrow escrow = BridgeEscrow(makeAddr("worm_router"));
+        vault.setBridgeEscrow(escrow);
+        assertEq(address(vault.bridgeEscrow()), address(escrow));
+        // only gov can call
+        vm.prank(alice);
+        vm.expectRevert("Only Governance.");
+        vault.setBridgeEscrow(BridgeEscrow(address(0)));
     }
 }

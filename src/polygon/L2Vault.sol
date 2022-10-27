@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
@@ -38,40 +38,6 @@ contract L2Vault is
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    // TVL of L1 denominated in `token` (e.g. USDC). This value will be updated by oracle.
-    uint256 public l1TotalLockedValue;
-
-    /**
-     * FEES
-     *
-     */
-
-    // Fee charged to vault over a year, number is in bps
-    uint256 public managementFee;
-    // fee charged on redemption of shares, number is in bps
-    uint256 public withdrawalFee;
-
-    function setManagementFee(uint256 feeBps) external onlyGovernance {
-        managementFee = feeBps;
-    }
-
-    function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
-        withdrawalFee = feeBps;
-    }
-
-    function _assessFees() internal override {
-        // duration / SECS_PER_YEAR * feebps / MAX_BPS * totalSupply
-        uint256 duration = block.timestamp - lastHarvest;
-
-        uint256 feesBps = (duration * managementFee) / SECS_PER_YEAR;
-        uint256 numSharesToMint = (feesBps * totalSupply()) / MAX_BPS;
-
-        if (numSharesToMint == 0) {
-            return;
-        }
-        _mint(governance, numSharesToMint);
-    }
-
     /**
      * INITIALIZATION
      *
@@ -84,8 +50,8 @@ contract L2Vault is
         BridgeEscrow _bridgeEscrow,
         EmergencyWithdrawalQueue _emergencyWithdrawalQueue,
         address forwarder,
-        uint256 _l1Ratio,
-        uint256 _l2Ratio,
+        uint8 _l1Ratio,
+        uint8 _l2Ratio,
         uint256[2] memory fees
     ) public initializer {
         __ERC20_init("Alpine Save", "alpSave");
@@ -96,9 +62,10 @@ contract L2Vault is
         emergencyWithdrawalQueue = _emergencyWithdrawalQueue;
         l1Ratio = _l1Ratio;
         l2Ratio = _l2Ratio;
+        rebalanceDelta = 10_000 * _asset.decimals();
         canTransferToL1 = true;
         canRequestFromL1 = true;
-        lastTVLUpdate = block.timestamp;
+        lastTVLUpdate = uint128(block.timestamp);
 
         _grantRole(GUARDIAN_ROLE, _governance);
         _setTrustedForwarder(forwarder);
@@ -149,7 +116,10 @@ contract L2Vault is
     }
 
     function decimals() public view override returns (uint8) {
-        return _asset.decimals();
+        // E.g. for USDC, we want the initial price of a share to be $100.
+        // For an initial price of 1 USDC / share we would have 1e6 * 1e8 / 1 = 1e14 shares given that we have 14 (6 + 8) decimals
+        // in our share token. But since we want 100 USDC / share for the intial price, we add an extra two decimal places
+        return _asset.decimals() + 10;
     }
 
     bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN");
@@ -165,13 +135,44 @@ contract L2Vault is
     }
 
     /**
+     * FEES
+     *
+     */
+
+    // Fee charged to vault over a year, number is in bps
+    uint256 public managementFee;
+    // fee charged on redemption of shares, number is in bps
+    uint256 public withdrawalFee;
+
+    function setManagementFee(uint256 feeBps) external onlyGovernance {
+        managementFee = feeBps;
+    }
+
+    function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
+        withdrawalFee = feeBps;
+    }
+
+    function _assessFees() internal override {
+        // duration / SECS_PER_YEAR * feebps / MAX_BPS * totalSupply
+        uint256 duration = block.timestamp - lastHarvest;
+
+        uint256 feesBps = (duration * managementFee) / SECS_PER_YEAR;
+        uint256 numSharesToMint = (feesBps * totalSupply()) / MAX_BPS;
+
+        if (numSharesToMint == 0) {
+            return;
+        }
+        _mint(governance, numSharesToMint);
+    }
+
+    /**
      * DEPOSIT
      *
      */
     /// @notice See {IERC4262-deposit}
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
         shares = previewDeposit(assets);
-        require(shares > 0, "MIN_DEPOSIT_ERR");
+        require(shares > 0, "L2Vault: zero shares");
         address caller = _msgSender();
 
         _asset.safeTransferFrom(caller, address(this), assets);
@@ -198,72 +199,48 @@ contract L2Vault is
      * WITHDRAW / REDEEM
      *
      */
-
     EmergencyWithdrawalQueue public emergencyWithdrawalQueue;
 
-    event EmergencyWithdrawalQueueRequestDropped(
-        uint256 indexed pos, address indexed owner, address indexed receiver, uint256 shares
-    );
-
-    /// @notice Redeem logic when done via emeregency withdrawal queue.
-    function redeemByEmergencyWithdrawalQueue(uint256 pos, uint256 shares, address receiver, address owner)
-        external
-        whenNotPaused
-        returns (uint256 assets)
-    {
-        address caller = _msgSender();
-        require(caller == address(emergencyWithdrawalQueue), "Only emergency withdrawal queue");
-        // Owner doesn't have enough shares. Can happen if owner transfers some ALP token to other
-        // accounts while the request is in the queue.
-        if (balanceOf(owner) < shares) {
-            emit EmergencyWithdrawalQueueRequestDropped(pos, owner, receiver, shares);
-            return 0;
-        }
-        (uint256 assetsToUser, uint256 assetsFee) = _previewRedeem(shares);
-        assets = assetsToUser;
-
-        uint256 requiredAssets = assets + assetsFee;
-        _liquidate(requiredAssets);
-        require(_asset.balanceOf(address(this)) >= requiredAssets, "Not enough assets");
-
-        // Burn shares and give user equivalent value in `_asset` (minus withdrawal fees)
-        _burn(owner, shares);
-
-        emit Withdraw(caller, receiver, owner, assets, shares);
-
-        _asset.safeTransfer(receiver, assets);
-        _asset.safeTransfer(governance, assetsFee);
+    /**
+     * @notice Update the address of the emergency withdrawal queue.
+     * @param _ewq The new queue.
+     */
+    function setEwq(EmergencyWithdrawalQueue _ewq) external onlyGovernance {
+        emergencyWithdrawalQueue = _ewq;
     }
 
     /// @notice See {IERC4262-redeem}
     function redeem(uint256 shares, address receiver, address owner) external whenNotPaused returns (uint256 assets) {
-        require(shares + emergencyWithdrawalQueue.debtToOwner(owner) <= balanceOf(owner), "L2Vault: min shares");
+        address caller = _msgSender();
+        EmergencyWithdrawalQueue ewq = emergencyWithdrawalQueue;
+
+        // Only real share amounts are allowed since we might create an ewq request
+        require(balanceOf(owner) >= shares, "L2Vault: min shares");
         (uint256 assetsToUser, uint256 assetsFee) = _previewRedeem(shares);
         assets = assetsToUser;
 
-        address caller = _msgSender();
-        uint256 assetDemand = emergencyWithdrawalQueue.totalDebt() + assets + assetsFee;
+        uint256 assetDemand = assets + assetsFee;
         _liquidate(assetDemand);
 
         // Add to emergency withdrawal queue if there is not enough liquidity.
-        if (_asset.balanceOf(address(this)) < assetDemand) {
-            // Before pushing a request to emergency withdrawal queue we make sure every request
-            // in the queue is valid, so that, when the emergency withdrawal queue calls `redeem` we skip
-            // all the checks and execute the burns and transfers.
-            if (caller != owner) {
-                _spendAllowance(owner, caller, shares);
+        if (caller != address(ewq)) {
+            if (ewq.size() > 0 || _asset.balanceOf(address(this)) < assetDemand) {
+                ewq.enqueue(owner, receiver, shares);
+                return 0;
             }
-            emergencyWithdrawalQueue.enqueue(owner, receiver, shares);
-            return 0;
+        } else {
+            if (_asset.balanceOf(address(this)) < assetDemand) {
+                revert("L2Vault: bad dequeue");
+            }
         }
 
-        if (caller != owner) {
+        // The ewq does not need approval to burn shares
+        if (caller != owner && caller != address(ewq)) {
             _spendAllowance(owner, caller, shares);
         }
 
         // Burn shares and give user equivalent value in `_asset` (minus withdrawal fees)
         _burn(owner, shares);
-
         emit Withdraw(caller, receiver, owner, assets, shares);
 
         _asset.safeTransfer(receiver, assets);
@@ -276,23 +253,19 @@ contract L2Vault is
         whenNotPaused
         returns (uint256 shares)
     {
-        shares = previewWithdraw(assets);
-        require(shares + emergencyWithdrawalQueue.debtToOwner(owner) <= balanceOf(owner), "L2Vault: min shares");
-
         address caller = _msgSender();
+        EmergencyWithdrawalQueue ewq = emergencyWithdrawalQueue;
 
-        uint256 assetDemand = emergencyWithdrawalQueue.totalDebt() + assets;
+        shares = previewWithdraw(assets);
+        // Only real share amounts are allowed since we might create an ewq request
+        require(balanceOf(owner) >= shares, "L2Vault: min shares");
+
+        uint256 assetDemand = assets;
         _liquidate(assetDemand);
 
         // Add to emergency withdrawal queue if there is not enough liquidity.
-        if (_asset.balanceOf(address(this)) < assetDemand) {
-            // Before pushing a request to emergency withdrawal queue we make sure every request
-            // in the queue is valid, so that, when the emergency withdrawal queue calls `redeem` we skip
-            // all the checks and execute the burns and transfers.
-            if (caller != owner) {
-                _spendAllowance(owner, caller, shares);
-            }
-            emergencyWithdrawalQueue.enqueue(owner, receiver, shares);
+        if (ewq.size() > 0 || _asset.balanceOf(address(this)) < assetDemand) {
+            ewq.enqueue(owner, receiver, shares);
             return 0;
         }
 
@@ -332,18 +305,19 @@ contract L2Vault is
 
     /// @dev In previewDeposit we want to round down, but in previewWithdraw we want to round up
     function _convertToShares(uint256 assets, Rounding roundingDirection) internal view returns (uint256 shares) {
-        uint256 totalShares = totalSupply();
-        // E.g. for USDC, we want the initial price of a share to be $100.
-        // Apparently testnet users confused AlpSave with a stablecoin
-        if (totalShares == 0) {
-            shares = assets / 100;
+        // Even if there are no shares or assets in the vault, we start with 1 wei of asset and 1e8 shares
+        // This helps mitigate price inflation attacks: https://github.com/transmissions11/solmate/issues/178
+        // See https://www.rileyholterhus.com/writing/bunni as well.
+        // The solution is inspired by YieldBox
+        uint256 totalShares = totalSupply() + 1e8;
+        uint256 _totalAssets = totalAssets() + 1;
+
+        if (roundingDirection == Rounding.Up) {
+            shares = assets.mulDivUp(totalShares, _totalAssets);
         } else {
-            if (roundingDirection == Rounding.Up) {
-                shares = assets.mulDivUp(totalShares, totalAssets());
-            } else {
-                shares = assets.mulDivDown(totalShares, totalAssets());
-            }
+            shares = assets.mulDivDown(totalShares, _totalAssets);
         }
+        shares;
     }
 
     /// @notice See {IERC4262-convertToAssets}
@@ -353,16 +327,13 @@ contract L2Vault is
 
     /// @dev In previewMint, we want to round up, but in previewRedeem we want to round down
     function _convertToAssets(uint256 shares, Rounding roundingDirection) internal view returns (uint256 assets) {
-        uint256 totalShares = totalSupply();
-        if (totalShares == 0) {
-            // see _convertToShares
-            assets = shares * 100;
+        uint256 totalShares = totalSupply() + 1e8;
+        uint256 _totalAssets = totalAssets() + 1;
+
+        if (roundingDirection == Rounding.Up) {
+            assets = shares.mulDivUp(_totalAssets, totalShares);
         } else {
-            if (roundingDirection == Rounding.Up) {
-                assets = shares.mulDivUp(totalAssets(), totalShares);
-            } else {
-                assets = shares.mulDivDown(totalAssets(), totalShares);
-            }
+            assets = shares.mulDivDown(_totalAssets, totalShares);
         }
     }
 
@@ -429,47 +400,66 @@ contract L2Vault is
      * CROSS-CHAIN REBALANCING
      *
      */
+    /// @notice TVL of L1 denominated in `asset` (e.g. USDC). This value will be updated by wormhole messages.
+    uint256 public l1TotalLockedValue;
 
     // Represents the amount of tvl (in `token`) that should exist on L1 and L2
     // E.g. if layer1 == 1 and layer2 == 2 then 1/3 of the TVL should be on L1
-    uint256 public l1Ratio;
-    uint256 public l2Ratio;
+    uint8 public l1Ratio;
+    uint8 public l2Ratio;
+
+    // Whether we can send or receive money from L1
+    bool public canTransferToL1;
+    bool public canRequestFromL1;
+
+    /**
+     * @notice The delta required to trigger a rebalance. The delta is the difference between current and ideal tvl
+     * on a given layer
+     * @dev Fits into the same slot as the four above variables.
+     */
+    uint224 public rebalanceDelta;
 
     /**
      * @notice Set the layer ratios
      * @param _l1Ratio The layer 1 ratio
      * @param _l2Ratio The layer 2 ratio
      */
-    function setLayerRatios(uint256 _l1Ratio, uint256 _l2Ratio) external onlyGovernance {
+    function setLayerRatios(uint8 _l1Ratio, uint8 _l2Ratio) external onlyGovernance {
         l1Ratio = _l1Ratio;
         l2Ratio = _l2Ratio;
     }
 
-    // Whether we can send or receive money from L1
-    bool public canTransferToL1;
-    bool public canRequestFromL1;
+    /**
+     * @notice Set the rebalance delta
+     * @param _rebalanceDelta The new rebalance delta
+     */
+    function setRebalanceDelta(uint224 _rebalanceDelta) external onlyGovernance {
+        rebalanceDelta = _rebalanceDelta;
+    }
 
     event TransferToL1(uint256 amount);
     event ReceiveFromL1(uint256 amount);
 
     /// @notice The last time the tvl was updated. We need this to let L1 tvl updates unlock over time
-    uint256 public lastTVLUpdate;
+    uint128 public lastTVLUpdate;
 
     /// @notice See maxLockedProfit
-    uint256 public maxLockedTVL;
+    uint128 public maxLockedTVL;
 
     /// @notice See lockedProfit. This is the same, except we are profiting from L1 tvl info
     function lockedTVL() public view returns (uint256) {
-        if (block.timestamp >= lastTVLUpdate + lockInterval) {
+        uint256 _maxLockedTVL = maxLockedTVL;
+        uint256 _lastTVLUpdate = lastTVLUpdate;
+        if (block.timestamp >= _lastTVLUpdate + lockInterval) {
             return 0;
         }
 
-        uint256 unlockedTVL = (maxLockedTVL * (block.timestamp - lastTVLUpdate)) / lockInterval;
-        return maxLockedTVL - unlockedTVL;
+        uint256 unlockedTVL = (_maxLockedTVL * (block.timestamp - _lastTVLUpdate)) / lockInterval;
+        return _maxLockedTVL - unlockedTVL;
     }
 
     function receiveTVL(uint256 tvl, bool received) external {
-        require(msg.sender == wormholeRouter, "Only wormhole router");
+        require(msg.sender == wormholeRouter, "L2Vault: only router");
 
         // If L1 has received the last transfer we sent it, unlock the L2->L1 bridge
         if (received && !canTransferToL1) {
@@ -488,12 +478,12 @@ contract L2Vault is
         // Any increase in L1's tvl will unlock linearly, just as when harvesting from strategies
         uint256 oldL1TVL = l1TotalLockedValue;
         uint256 totalProfit = tvl > oldL1TVL ? tvl - oldL1TVL : 0;
-        maxLockedTVL = lockedTVL() + totalProfit;
-        lastTVLUpdate = block.timestamp;
+        maxLockedTVL = uint128(totalProfit + lockedTVL());
+        lastTVLUpdate = uint128(block.timestamp);
         l1TotalLockedValue = tvl;
 
         (bool invest, uint256 delta) = _computeRebalance();
-        if (delta == 0) {
+        if (delta < rebalanceDelta) {
             return;
         }
         _l1L2Rebalance(invest, delta);
@@ -555,7 +545,7 @@ contract L2Vault is
     }
 
     function afterReceive(uint256 amount) external {
-        require(_msgSender() == address(bridgeEscrow), "Only L2 BridgeEscrow.");
+        require(_msgSender() == address(bridgeEscrow), "L2Vault: only escrow");
         l1TotalLockedValue -= amount;
         canRequestFromL1 = true;
         emit ReceiveFromL1(amount);
@@ -565,16 +555,12 @@ contract L2Vault is
      * DETAILED PRICE INFO
      *
      */
-
-    /// @dev The vault has as many decimals as the input token does
     function detailedTVL() external view override returns (Number memory tvl) {
-        tvl = Number({num: totalAssets(), decimals: decimals()});
+        tvl = Number({num: totalAssets(), decimals: _asset.decimals()});
     }
 
     function detailedPrice() external view override returns (Number memory price) {
-        // If there are no shares, simply say that the price is 100
-        uint256 rawPrice = totalSupply() > 0 ? (totalAssets() * 10 ** decimals()) / totalSupply() : 100 ** decimals();
-        price = Number({num: rawPrice, decimals: decimals()});
+        price = Number({num: convertToAssets(10 ** decimals()), decimals: _asset.decimals()});
     }
 
     function detailedTotalSupply() external view override returns (Number memory supply) {

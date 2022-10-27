@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.16;
+pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
@@ -91,15 +91,10 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         return balanceOfAsset() + assetsMatic + aToken.balanceOf(address(this)) + assetsLP - assetsDebt;
     }
 
-    function invest(uint256 amount) external override {
-        asset.safeTransferFrom(msg.sender, address(this), amount);
-    }
-
     uint32 public currentPosition;
     bool public canStartNewPos;
-    mapping(uint256 => uint256) public getPositionTime;
 
-    event PositionStart(uint32 indexed position, uint256 timestamp);
+    event PositionStart(uint32 indexed position, uint256 assetBalance, uint256 chainlinkRoundId, uint256 timestamp);
 
     uint256 public slippageTolerance;
     /// @notice Fixed point number describing the percentage of the position with which to go long. 1e18 = 1 = 100%
@@ -125,9 +120,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         require(canStartNewPos, "DNLP: position is active");
         uint32 newPositionId = currentPosition + 1;
         currentPosition = newPositionId;
-        getPositionTime[newPositionId] = block.timestamp;
         canStartNewPos = false;
-        emit PositionStart(newPositionId, block.timestamp);
 
         // Some amount of the assets will be used to buy matic at the end of this function
         uint256 assets = asset.balanceOf(address(this));
@@ -142,9 +135,11 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
 
         // Convert assetsToDeposit into `borrowAsset` (e.g. WMATIC) units
         (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = borrowAssetFeed.latestRoundData();
-        require(price > 0, "Chainlink price <= 0");
-        require(answeredInRound >= roundId, "Chainlink stale data");
-        require(timestamp != 0, "Chainlink round not complete");
+        require(price > 0, "DNLP: price <= 0");
+        require(answeredInRound >= roundId, "DNLP: stale data");
+        require(timestamp != 0, "DNLP: round not done");
+
+        emit PositionStart(newPositionId, assets, roundId, block.timestamp);
 
         // https://docs.aave.com/developers/v/2.0/the-core-protocol/lendingpool#borrow
         // assetsToDeposit has price uints `asset`, price has units `asset / borrowAsset` ratio. so we divide by price
@@ -190,17 +185,17 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
 
     /// @dev This strategy should be put at the end of the WQ so that we rarely divest from it. Divestment
     /// ideally occurs when the strategy does not have an open position
-    function divest(uint256 amount) external override onlyVault returns (uint256) {
+    function _divest(uint256 assets) internal override returns (uint256) {
         // Totally unwind the position
         if (!canStartNewPos) _endPosition();
 
-        uint256 amountToSend = Math.min(amount, balanceOfAsset());
+        uint256 amountToSend = Math.min(assets, balanceOfAsset());
         asset.safeTransfer(address(vault), amountToSend);
         // Return the given amount
         return amountToSend;
     }
 
-    event PositionEnd(uint32 indexed position, uint256 timestamp);
+    event PositionEnd(uint32 indexed position, uint256 assetBalance, uint256 timestamp);
 
     function endPosition() external onlyOwner {
         _endPosition();
@@ -210,7 +205,6 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
         // Set position metadata
         require(!canStartNewPos, "DNLP: position is inactive");
         canStartNewPos = true;
-        emit PositionEnd(currentPosition, block.timestamp);
 
         // Remove liquidity
         // TODO: handle slippage
@@ -261,5 +255,7 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
 
         // Withdraw from aave
         lendingPool.withdraw({asset: address(asset), amount: aToken.balanceOf(address(this)), to: address(this)});
+
+        emit PositionEnd(currentPosition, asset.balanceOf(address(this)), block.timestamp);
     }
 }

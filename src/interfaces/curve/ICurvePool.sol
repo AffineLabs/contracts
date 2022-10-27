@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.16;
+pragma solidity =0.8.16;
 
 // See https://curve.readthedocs.io/exchange-deposits.html#curve-stableswap-exchange-deposit-contracts
 /*  solhint-disable func-name-mixedcase, var-name-mixedcase */
-interface ICurveUSDCStableSwapZap {
+interface ICurvePool {
     function lp_token() external view returns (address);
 
     function add_liquidity(uint256[2] memory depositAmounts, uint256 minMintAmount) external returns (uint256);
@@ -17,5 +17,6 @@ interface ICurveUSDCStableSwapZap {
         returns (uint256);
 
     function calc_withdraw_one_coin(uint256 _token_amount, int128 i) external view returns (uint256);
+    function get_virtual_price() external view returns (uint256);
 }
 /*  solhint-disable func-name-mixedcase, var-name-mixedcase */

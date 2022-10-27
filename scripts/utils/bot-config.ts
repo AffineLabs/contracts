@@ -19,7 +19,7 @@ const shouldRelay = process.env.SHOULD_RELAY === "1" ? true : false;
 
 const ethNetworkName = process.env.ETH_NETWORK || "eth-goerli-fork";
 const polygonNetworkName = process.env.POLYGON_NETWORK || "polygon-mumbai-fork";
-const isMainnet = ethNetworkName == "eth-mainnet" && polygonNetworkName == "polygon-mainnet";
+const isMainnet = ethNetworkName.includes("mainnet") && polygonNetworkName.includes("mainnet");
 
 const ethNetworkConfig = config.networks[ethNetworkName] as HttpNetworkConfig;
 const polygonNetworkConfig = config.networks[polygonNetworkName] as HttpNetworkConfig;

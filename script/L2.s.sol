@@ -102,7 +102,7 @@ contract Deploy is Script {
         );
         require(router.vault() == vault);
         require(router.wormhole() == wormhole);
-        require(router.otherLayerChainId() == uint16(2));
+        require(router.otherLayerWormholeChainId() == uint16(2));
 
         create3.deploy(ewqSalt, abi.encodePacked(type(EmergencyWithdrawalQueue).creationCode, abi.encode(vault)));
         require(queue.vault() == vault);
@@ -135,8 +135,7 @@ contract Deploy is Script {
         require(basket.btc() == ERC20(0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6));
         require(basket.weth() == ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619));
 
-        L2AAVEStrategy aave =
-        new L2AAVEStrategy(vault, 0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19, address(0), address(0), address(0), address(0));
+        L2AAVEStrategy aave = new L2AAVEStrategy(vault, 0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19);
         require(address(aave.asset()) == vault.asset());
         vm.stopBroadcast();
     }

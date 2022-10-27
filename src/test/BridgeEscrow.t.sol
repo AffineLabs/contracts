@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
@@ -43,12 +43,13 @@ contract L2BridgeEscrowTest is TestPlus {
         escrow = new BridgeEscrow(address(vault), manager);
 
         // Set the bridgeEscrow
+        vm.prank(governance);
         vault.setBridgeEscrow(escrow);
     }
 
     function testL2Withdraw() public {
         // Only the vault can send a certain amount to L1 (withdraw)
-        vm.expectRevert("Only vault");
+        vm.expectRevert("BE: Only vault");
         vm.prank(alice);
         escrow.l2Withdraw(100);
 
@@ -77,7 +78,7 @@ contract L2BridgeEscrowTest is TestPlus {
     }
 
     function testL2ClearFundInvariants() public {
-        vm.expectRevert("Only wormhole router");
+        vm.expectRevert("BE: Only wormhole router");
         vm.prank(alice);
         escrow.l2ClearFund(100);
 
@@ -86,7 +87,7 @@ contract L2BridgeEscrowTest is TestPlus {
         deal(address(asset), address(escrow), 100);
 
         changePrank(wormholeRouter);
-        vm.expectRevert("Funds not received");
+        vm.expectRevert("BE: Funds not received");
         escrow.l2ClearFund(200);
     }
 }
@@ -96,7 +97,7 @@ contract L1BridgeEscrowTest is TestPlus {
     MockL1Vault vault;
     address wormholeRouter;
     ERC20 asset;
-    IRootChainManager manager = IRootChainManager(makeAddr("chain_manager"));
+    IRootChainManager manager;
 
     function setUp() public {
         // Not forking because getting a valid exitProof in l1ClearFund is tricky
@@ -104,9 +105,11 @@ contract L1BridgeEscrowTest is TestPlus {
         asset = ERC20(vault.asset());
         wormholeRouter = vault.wormholeRouter();
 
+        manager = IRootChainManager(address(asset)); // Any call to exit() will revert!
         escrow = new BridgeEscrow(address(vault), manager);
 
         // Set the bridgeEscrow
+        vm.prank(governance);
         vault.setBridgeEscrow(escrow);
     }
 
@@ -128,7 +131,7 @@ contract L1BridgeEscrowTest is TestPlus {
     }
 
     function testL1ClearFundInvariants() public {
-        vm.expectRevert("Only wormhole router");
+        vm.expectRevert("BE: Only wormhole router");
         vm.prank(alice);
         escrow.l1ClearFund(100, "");
 
@@ -139,7 +142,24 @@ contract L1BridgeEscrowTest is TestPlus {
         vm.mockCall(address(manager), abi.encodeCall(IRootChainManager.exit, (exitProof)), "");
 
         changePrank(wormholeRouter);
-        vm.expectRevert("Funds not received");
+        vm.expectRevert("BE: Funds not received");
         escrow.l1ClearFund(200, "");
+    }
+
+    function testL1ClearFundWithBadProof() public {
+        // Give escrow some money
+        deal(address(asset), address(escrow), 100);
+
+        // Send money to vault (clear funds)
+        changePrank(wormholeRouter);
+        vm.expectCall(address(vault), abi.encodeCall(L1Vault.afterReceive, ()));
+
+        // We don't pass a valid exitProof, so we know rootchainmanager.exit() will fail
+        // Even though that external call fails, the funds still get cleared
+        escrow.l1ClearFund(100, "");
+
+        assertEq(asset.balanceOf(address(vault)), 100);
+        // afterReceive was called on the vault
+        assertTrue(vault.received());
     }
 }

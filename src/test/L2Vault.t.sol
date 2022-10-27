@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity =0.8.16;
 
 import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
@@ -26,6 +26,7 @@ contract L2VaultTest is TestPlus {
     function setUp() public {
         vault = Deploy.deployL2Vault();
         asset = MockERC20(vault.asset());
+        vault.setMockRebalanceDelta(0);
     }
 
     // Adding this since this test contract is used as a strategy
@@ -42,7 +43,7 @@ contract L2VaultTest is TestPlus {
     );
 
     function testDeploy() public {
-        assertEq(vault.decimals(), asset.decimals());
+        assertEq(vault.decimals(), asset.decimals() + 10);
         // this makes sure that the first time we assess management fees we get a reasonable number
         // since management fees are calculated based on block.timestamp - lastHarvest
         assertEq(vault.lastHarvest(), block.timestamp);
@@ -52,73 +53,65 @@ contract L2VaultTest is TestPlus {
         assertTrue(vault.canRequestFromL1());
     }
 
-    function testDepositRedeem(uint128 amountAsset) public {
+    function testDepositRedeem(uint64 amountAsset) public {
         vm.assume(amountAsset > 99);
         // Running into overflow issues on the call to vault.redeem
         address user = address(this);
         asset.mint(user, amountAsset);
 
+        uint256 expectedShares = uint256(amountAsset) * 1e8;
         // user gives max approval to vault for asset
         asset.approve(address(vault), type(uint256).max);
-        vm.expectEmit(true, true, true, true);
-        emit Deposit(user, user, amountAsset, amountAsset / 100);
         vault.deposit(amountAsset, user);
 
-        // If vault is empty, assets are converted to shares at 100:1
-        uint256 numShares = vault.balanceOf(user);
-        uint256 expectedShares = amountAsset / 100;
-        assertEq(numShares, expectedShares);
+        assertEq(vault.balanceOf(user), expectedShares);
         assertEq(asset.balanceOf(address(user)), 0);
-        assertEq(asset.balanceOf(address(vault)), amountAsset);
 
-        vm.expectEmit(true, true, true, true);
-        emit Withdraw(user, user, user, amountAsset, amountAsset / 100);
-        uint256 assetsReceived = vault.redeem(numShares, user, user);
-
+        uint256 assetsReceived = vault.redeem(expectedShares, user, user);
         assertEq(vault.balanceOf(user), 0);
         assertEq(assetsReceived, amountAsset);
     }
 
-    function testDepositWithdraw(uint128 amountAsset) public {
+    function testDepositWithdraw(uint64 amountAsset) public {
         vm.assume(amountAsset > 99);
-        // Using a uint128 since we multiply totalSupply by amountAsset in sharesFromTokens
-        // Using a uint128 makes sure the calculation will not overflow
+        // shares = assets * totalShares / totalAssets but totalShares will actually be bigger than a uint128
+        // so the `assets * totalShares` calc will overflow if using a uint128
         address user = address(this);
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
 
+        // If vault is empty, assets are converted to shares at 1:1e8 ratio
+        uint256 expectedShares = uint256(amountAsset) * 1e8; // cast to uint256 to prevent overflow
+
         vm.expectEmit(true, true, true, true);
-        emit Deposit(address(this), address(this), amountAsset, amountAsset / 100);
+        emit Deposit(address(this), address(this), amountAsset, expectedShares);
         vault.deposit(amountAsset, user);
 
-        // If vault is empty, assets are converted to shares at 100:1
-        assertEq(vault.balanceOf(user), amountAsset / 100);
+        assertEq(vault.balanceOf(user), expectedShares);
         assertEq(asset.balanceOf(user), 0);
 
-        vm.expectEmit(true, true, true, true);
-        emit Withdraw(user, user, user, amountAsset, amountAsset / 100);
+        // vm.expectEmit(true, true, true, true);
+        // emit Withdraw(user, user, user, amountAsset, expectedShares);
+        // emit log_named_uint("expected  shares: ",  vault.convertToShares(uint(amountAsset)));
         vault.withdraw(amountAsset, user, user);
         assertEq(vault.balanceOf(user), 0);
         assertEq(asset.balanceOf(user), amountAsset);
     }
 
-    function testMint(uint128 amountAsset) public {
+    function testMint(uint64 amountAsset) public {
         vm.assume(amountAsset > 99);
         address user = address(this);
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
 
-        uint256 numShares = amountAsset / 100;
+        // If vault is empty, assets are converted to shares at 1:1e8 ratio
+        uint256 expectedShares = uint256(amountAsset) * 1e8; // cast to uint256 to prevent overflow
+
         vm.expectEmit(true, true, true, true);
-        emit Deposit(address(this), address(this), numShares * 100, numShares);
-        vault.mint(numShares, user);
+        emit Deposit(address(this), address(this), amountAsset, expectedShares);
+        vault.mint(expectedShares, user);
 
-        // If vault is empty, assets are converted to shares at 100:1
-        assertEq(vault.balanceOf(user), numShares);
-
-        // E.g. is amountAsset is 201, numShares is 2 and we actually have 1 in asset left
-        assertEq(asset.balanceOf(user), amountAsset - (numShares * 100));
-        assertEq(asset.balanceOf(address(vault)), numShares * 100);
+        assertEq(vault.balanceOf(user), expectedShares);
     }
 
     function testMinDeposit() public {
@@ -126,9 +119,9 @@ contract L2VaultTest is TestPlus {
         asset.mint(user, 100);
         asset.approve(address(vault), type(uint256).max);
 
-        // shares = assets / 100. If you give less than 100 in assets we revert
-        vm.expectRevert("MIN_DEPOSIT_ERR");
-        vault.deposit(99, user);
+        // If we're minting zero shares we revert
+        vm.expectRevert("L2Vault: zero shares");
+        vault.deposit(0, user);
 
         vault.deposit(100, user);
     }
@@ -198,13 +191,14 @@ contract L2VaultTest is TestPlus {
      */
 
     function testReceiveTVL() public {
+        // No rebalancing should actually occur
+        vault.setMockRebalanceDelta(1e6);
+
         vm.prank(alice);
-        vm.expectRevert("Only wormhole router");
+        vm.expectRevert("L2Vault: only router");
         vault.receiveTVL(0, false);
 
         // If L1 has received our last transfer, we can transfer again
-        // We mint some money so that we don't trigger any actual rebalancing
-        asset.mint(address(vault), 100);
         vault.setCanTransferToL1(false);
         vm.startPrank(vault.wormholeRouter());
         vault.receiveTVL(100, true);
@@ -233,7 +227,6 @@ contract L2VaultTest is TestPlus {
         // canRequestFromL1 is true, canTransferToL1 is true
         vault.setCanRequestFromL1(true);
         vault.setCanTransferToL1(true);
-        asset.mint(address(vault), 20); // mint so that we don't try to request money from L1
         vault.receiveTVL(120, true);
 
         assertEq(vault.canTransferToL1(), true);
@@ -241,27 +234,27 @@ contract L2VaultTest is TestPlus {
     }
 
     function testLockedTVL() public {
+        // No rebalancing should actually occur
+        vault.setMockRebalanceDelta(1e6);
         assertEq(vault.lockedTVL(), 0);
 
-        // We mint some money so that we don't trigger any actual rebalancing
-        asset.mint(address(vault), 100);
         vault.setCanTransferToL1(false);
         vm.startPrank(vault.wormholeRouter());
         vault.receiveTVL(100, true);
 
         assertEq(vault.l1TotalLockedValue(), 100);
         assertEq(vault.lockedTVL(), 100);
-        assertEq(vault.totalAssets(), 100);
+        assertEq(vault.totalAssets(), 0);
 
         // Using up 50% of lockInterval unlocks 50% of tvl
         vm.warp(block.timestamp + vault.lockInterval() / 2);
         assertEq(vault.lockedTVL(), 50);
-        assertEq(vault.totalAssets(), 150);
+        assertEq(vault.totalAssets(), 50);
 
         // Using up all of lock interval unlocks all of tvl
         vm.warp(block.timestamp + vault.lockInterval());
         assertEq(vault.lockedTVL(), 0);
-        assertEq(vault.totalAssets(), 200);
+        assertEq(vault.totalAssets(), 100);
     }
 
     function testL1ToL2Rebalance() public {
@@ -407,7 +400,7 @@ contract L2VaultTest is TestPlus {
         uint256 indexed pos, address indexed owner, address indexed receiver, uint256 amount
     );
 
-    function testEmergencyWithdrawal(uint128 amountAsset) public {
+    function testEmergencyWithdrawal(uint64 amountAsset) public {
         vm.assume(amountAsset > 99);
         address user = address(this);
         asset.mint(user, amountAsset);
@@ -422,10 +415,8 @@ contract L2VaultTest is TestPlus {
             bytes32(uint256(amountAsset))
         );
 
-        vm.startPrank(user);
-
-        vm.expectEmit(true, true, false, true);
-        emit EmergencyWithdrawalQueueEnqueue(1, user, user, vault.previewWithdraw(amountAsset));
+        vm.expectEmit(true, true, true, false);
+        emit EmergencyWithdrawalQueueEnqueue(1, user, user, vault.convertToShares(amountAsset));
 
         // Trigger emergency withdrawal as vault doesn't have any asset.
         vault.withdraw(amountAsset, user, user);
@@ -442,7 +433,7 @@ contract L2VaultTest is TestPlus {
         assertEq(asset.balanceOf(user), amountAsset);
     }
 
-    function testEmergencyWithdrawalWithRedeem(uint128 amountAsset) public {
+    function testEmergencyWithdrawalWithRedeem(uint64 amountAsset) public {
         vm.assume(amountAsset > 99);
         address user = address(this);
         asset.mint(user, amountAsset);
@@ -457,9 +448,8 @@ contract L2VaultTest is TestPlus {
             bytes32(uint256(amountAsset))
         );
 
-        vm.startPrank(user);
         uint256 numShares = vault.convertToShares(amountAsset);
-        vm.expectEmit(true, true, false, true);
+        vm.expectEmit(true, true, true, true);
         emit EmergencyWithdrawalQueueEnqueue(1, user, user, numShares);
 
         // Trigger emergency withdrawal as vault doesn't have any asset.
@@ -512,9 +502,6 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.emergencyWithdrawalQueue().size(), 2);
         vm.stopPrank();
 
-        vault.emergencyWithdrawalQueue().dequeue();
-        assertEq(asset.balanceOf(user1), halfUSDC);
-
         // Simulate funds being bridged from L1 to L2 vault.
         asset.mint(address(vault), halfUSDC);
         vm.store(
@@ -522,6 +509,9 @@ contract L2VaultTest is TestPlus {
             bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(0))
         );
+
+        vault.emergencyWithdrawalQueue().dequeue();
+        assertEq(asset.balanceOf(user1), halfUSDC);
 
         vault.emergencyWithdrawalQueue().dequeue();
         assertEq(asset.balanceOf(user2), halfUSDC);
@@ -552,7 +542,6 @@ contract L2VaultTest is TestPlus {
             bytes32(uint256(0))
         );
 
-        vm.expectRevert("L2Vault: min shares");
         // At this point alice can withdraw at most half usdc. So trying to withdraw
         // half usdc + 1 should fail.
         vault.withdraw(halfUSDC + 1, alice, alice);
@@ -560,7 +549,7 @@ contract L2VaultTest is TestPlus {
         vault.withdraw(halfUSDC, alice, alice);
         vault.emergencyWithdrawalQueue().dequeue();
 
-        assertEq(asset.balanceOf(alice), oneUSDC);
+        assertEq(asset.balanceOf(alice), halfUSDC);
     }
 
     function testCheckEmeregencyWithdrawalQueueBeforeRedeem() public {
@@ -589,7 +578,6 @@ contract L2VaultTest is TestPlus {
             bytes32(uint256(0))
         );
 
-        vm.expectRevert("L2Vault: min shares");
         // At this point alice can redeem at most half usdc worth of vault token. So trying
         // to redeem half usdc worth of vault token + 1 should fail.
         vault.redeem(halfUSDCInShare + 1, alice, alice);
@@ -597,70 +585,52 @@ contract L2VaultTest is TestPlus {
         vault.redeem(halfUSDCInShare, alice, alice);
         vault.emergencyWithdrawalQueue().dequeue();
 
-        assertEq(asset.balanceOf(alice), oneUSDC);
-    }
-
-    function testEmergencyWithdrawalRequestDrop() public {
-        asset.mint(alice, oneUSDC);
-
-        vm.startPrank(alice);
-        asset.approve(address(vault), type(uint256).max);
-        vault.deposit(oneUSDC, alice);
-
-        // simulate vault assets being transferred to L1.
-        asset.burn(address(vault), halfUSDC);
-        vm.store(
-            address(vault),
-            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
-            bytes32(uint256(halfUSDC))
-        );
-
-        // This will trigger an emergency withdrawal queue enqueue as there is no asset in L2 vault.
-        vault.withdraw(oneUSDC, alice, alice);
-        // Transfer ALP tokens to bob.
-        vault.transfer(bob, vault.balanceOf(alice));
-
-        // Simulate funds being bridged from L1 to L2 vault.
-        asset.mint(address(vault), halfUSDC);
-        vm.store(
-            address(vault),
-            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
-            bytes32(uint256(0))
-        );
-
-        vm.expectEmit(true, true, false, true);
-        emit EmergencyWithdrawalQueueRequestDropped(1, alice, alice, vault.convertToShares(oneUSDC));
-        vault.emergencyWithdrawalQueue().dequeue();
-        // The emergency withdrawal request should be dropped.
-        assertEq(asset.balanceOf(alice), 0);
+        assertEq(asset.balanceOf(alice), halfUSDC);
     }
 
     function testDetailedPrice() public {
         // This function should work even if there is nothing in the vault
         L2Vault.Number memory price = vault.detailedPrice();
-        assertEq(price.num, 100 ** vault.decimals());
+        assertEq(price.num, 100 * 10 ** uint256(asset.decimals()));
 
-        address user = address(this);
-        asset.mint(user, 2e18);
-        asset.approve(address(vault), type(uint256).max);
+        asset.mint(address(vault), 2e18);
 
-        vault.deposit(1e18, user);
-        asset.transfer(address(vault), 1e18);
-
-        // initial price is $100, but if we increase tvl by two it will be 200
+        // initial price is $100, but if we increase tvl the price increases
         L2Vault.Number memory price2 = vault.detailedPrice();
-        assertEq(price2.num, 200 * 10 ** vault.decimals());
+        assertTrue(price2.num > price.num);
     }
 
     function testSettingForwarder() public {
-        changePrank(governance);
-        address newForwarder = 0x8f954E7D7ec3A31D9568316fb0F472B03fc2a7d5;
+        vm.prank(governance);
+        address newForwarder = makeAddr("new_forwarder");
         vault.setTrustedForwarder(newForwarder);
         assertEq(vault.trustedForwarder(), newForwarder);
 
         // only gov can call
-        changePrank(alice);
+        vm.prank(alice);
         vm.expectRevert("Only Governance.");
         vault.setTrustedForwarder(address(0));
+    }
+
+    function testSetEwq() public {
+        EmergencyWithdrawalQueue newQ = EmergencyWithdrawalQueue(makeAddr("new_queue"));
+        vm.prank(governance);
+        vault.setEwq(newQ);
+        assertEq(address(vault.emergencyWithdrawalQueue()), address(newQ));
+
+        // only gov can call
+        vm.prank(alice);
+        vm.expectRevert("Only Governance.");
+        vault.setEwq(EmergencyWithdrawalQueue(address(0)));
+    }
+
+    function testSettingRebalanceDelta() public {
+        vm.prank(governance);
+        vault.setRebalanceDelta(100);
+        assertEq(vault.rebalanceDelta(), 100);
+
+        vm.prank(alice);
+        vm.expectRevert("Only Governance.");
+        vault.setRebalanceDelta(0);
     }
 }

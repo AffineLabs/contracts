@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
@@ -74,7 +74,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
 
     // Process a request for funds from L2 vault
     function processFundRequest(uint256 amountRequested) external {
-        require(msg.sender == address(wormholeRouter), "Only wormhole router");
+        require(msg.sender == address(wormholeRouter), "L1: only router");
         _liquidate(amountRequested);
         uint256 amountToSend = Math.min(_asset.balanceOf(address(this)), amountRequested);
         _transferFundsToL2(amountToSend);
@@ -93,7 +93,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     }
 
     function afterReceive() external {
-        require(msg.sender == address(bridgeEscrow), "Only L1 BridgeEscrow.");
+        require(msg.sender == address(bridgeEscrow), "L1: only escrow");
         received = true;
         // Whenever we receive funds from L1, immediately deposit them all into strategies
         _depositIntoStrategies();

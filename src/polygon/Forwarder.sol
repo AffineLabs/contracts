@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity =0.8.16;
 
 import {MinimalForwarder} from "@openzeppelin/contracts/metatx/MinimalForwarder.sol";
 import {uncheckedInc} from "../Unchecked.sol";
@@ -16,7 +16,7 @@ contract Forwarder is MinimalForwarder {
             start += 65;
             end += 65;
             (bool success,) = execute(req, sig);
-            require(success, "CALL_FAILED");
+            require(success, "Fwd: call failed");
         }
     }
 }
