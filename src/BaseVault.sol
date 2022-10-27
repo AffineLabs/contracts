@@ -282,8 +282,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
             }
 
             // update tvl bps
-            uint256 oldBps = strategies[strategy].tvlBps;
-            totalBps -= oldBps;
+            totalBps -= strategies[strategy].tvlBps;
             _increaseTVLBps(strategyBps[i]);
             strategies[strategy].tvlBps = strategyBps[i];
         }
