@@ -469,14 +469,14 @@ contract L2VaultTest is TestPlus {
         assertEq(asset.balanceOf(user), amountAsset);
     }
 
-    function testEmergencyWithdrawalQueueNotStarved() public {
-        (address user1, address user2) = (address(1), address(2));
-        asset.mint(user1, halfUSDC);
-        asset.mint(user2, halfUSDC);
+    function testEwqDebt() public {
+        // We take the ewq debt into account when processing withdrawals
+        asset.mint(alice, halfUSDC);
+        asset.mint(bob, halfUSDC);
 
-        vm.startPrank(user1);
+        vm.startPrank(alice);
         asset.approve(address(vault), type(uint256).max);
-        vault.deposit(halfUSDC, user1);
+        vault.deposit(halfUSDC, alice);
 
         // simulate vault assets being transferred to L1.
         asset.burn(address(vault), halfUSDC);
@@ -487,17 +487,17 @@ contract L2VaultTest is TestPlus {
         );
 
         // This will trigger an emergency withdrawal queue enqueue as there is no asset in L2 vault.
-        vault.withdraw(halfUSDC, user1, user1);
+        vault.withdraw(halfUSDC, alice, alice);
         vm.stopPrank();
 
-        vm.startPrank(user2);
+        vm.startPrank(bob);
         asset.approve(address(vault), type(uint256).max);
-        vault.deposit(halfUSDC, user2);
+        vault.deposit(halfUSDC, bob);
 
-        // Now the vault has half USDC, but if user2 wants to withdraw half USDC, it will
-        // again trigger an emergency withdrawal queue enqueue as this half USDC is reserved
+        // Now the vault has 0.5 USDC, but if bob wants to withdraw 0.5 USDC, it will
+        // again trigger an emergency withdrawal queue enqueue as this 0.5 USDC is reserved
         // for withdrawals in the emergency withdrawal queue.
-        vault.withdraw(halfUSDC, user2, user2);
+        vault.withdraw(halfUSDC, bob, bob);
 
         assertEq(vault.emergencyWithdrawalQueue().size(), 2);
         vm.stopPrank();
@@ -511,13 +511,13 @@ contract L2VaultTest is TestPlus {
         );
 
         vault.emergencyWithdrawalQueue().dequeue();
-        assertEq(asset.balanceOf(user1), halfUSDC);
+        assertEq(asset.balanceOf(alice), halfUSDC);
 
         vault.emergencyWithdrawalQueue().dequeue();
-        assertEq(asset.balanceOf(user2), halfUSDC);
+        assertEq(asset.balanceOf(bob), halfUSDC);
     }
 
-    function testCheckEmeregencyWithdrawalQueueBeforeWithdraw() public {
+    function testEwqWithdraw() public {
         asset.mint(alice, oneUSDC);
 
         vm.startPrank(alice);
@@ -531,7 +531,7 @@ contract L2VaultTest is TestPlus {
             bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(oneUSDC))
         );
-        // Triggier emergency withdrawal queue enqueue.
+        // Trigger emergency withdrawal queue enqueue.
         vault.withdraw(halfUSDC, alice, alice);
 
         // Simulate funds being bridged from L1 to L2 vault.
@@ -542,23 +542,17 @@ contract L2VaultTest is TestPlus {
             bytes32(uint256(0))
         );
 
-        // At this point alice can withdraw at most half usdc. So trying to withdraw
-        // half usdc + 1 should fail.
-        vault.withdraw(halfUSDC + 1, alice, alice);
-
-        vault.withdraw(halfUSDC, alice, alice);
         vault.emergencyWithdrawalQueue().dequeue();
-
         assertEq(asset.balanceOf(alice), halfUSDC);
     }
 
-    function testCheckEmeregencyWithdrawalQueueBeforeRedeem() public {
+    function testEwqRedeem() public {
         asset.mint(alice, oneUSDC);
-        uint256 halfUSDCInShare = vault.previewWithdraw(halfUSDC);
-
         vm.startPrank(alice);
         asset.approve(address(vault), type(uint256).max);
         vault.deposit(oneUSDC, alice);
+
+        uint256 aliceShares = vault.balanceOf(alice);
 
         // simulate vault assets being transferred to L1.
         asset.burn(address(vault), oneUSDC);
@@ -567,8 +561,8 @@ contract L2VaultTest is TestPlus {
             bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
             bytes32(uint256(oneUSDC))
         );
-        // Triggier emergency withdrawal queue enqueue.
-        vault.redeem(halfUSDCInShare, alice, alice);
+        // Trigger emergency withdrawal queue enqueue.
+        vault.redeem(aliceShares, alice, alice);
 
         // Simulate funds being bridged from L1 to L2 vault.
         asset.mint(address(vault), oneUSDC);
@@ -578,14 +572,8 @@ contract L2VaultTest is TestPlus {
             bytes32(uint256(0))
         );
 
-        // At this point alice can redeem at most half usdc worth of vault token. So trying
-        // to redeem half usdc worth of vault token + 1 should fail.
-        vault.redeem(halfUSDCInShare + 1, alice, alice);
-
-        vault.redeem(halfUSDCInShare, alice, alice);
         vault.emergencyWithdrawalQueue().dequeue();
-
-        assertEq(asset.balanceOf(alice), halfUSDC);
+        assertEq(asset.balanceOf(alice), oneUSDC);
     }
 
     function testDetailedPrice() public {
