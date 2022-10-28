@@ -1,5 +1,5 @@
 import axios from "axios";
-import utils from "../test/utils";
+import * as utils from "./utils/wormhole";
 import { ethers } from "hardhat";
 
 import { BOT_CONFIG } from "./utils/bot-config";
