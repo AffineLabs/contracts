@@ -1,7 +1,10 @@
 import { getSignedVAA, getEmitterAddressEth, ChainId } from "@certusone/wormhole-sdk";
 import { NodeHttpTransport } from "@improbable-eng/grpc-web-node-http-transport";
 import { BigNumber } from "ethers";
-import { sleep } from "./wait-utils";
+
+export async function sleep(ms: number) {
+  return new Promise(f => setTimeout(f, ms));
+}
 
 export async function attemptGettingVAA(
   wormholeAPIURL: string,

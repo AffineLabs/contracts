@@ -12,7 +12,7 @@
     "script": "ts-node scripts/fork.ts script",
     "build": "forge build",
     "build-hh": "hardhat compile",
-    "lint": "solhint src/**/*.sol",
+    "lint": "solhint {src,script}/**/*.sol",
     "lint:fix": "solhint --fix src/**/*.sol",
     "format": "prettier --check \"**/*.{ts,js}\" && forge fmt --check",
     "format:fix": "prettier --write \"**/*.{ts,js}\" && forge fmt",

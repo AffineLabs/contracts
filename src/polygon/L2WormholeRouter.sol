@@ -7,7 +7,7 @@ import {WormholeRouter} from "../WormholeRouter.sol";
 import {Constants} from "../Constants.sol";
 
 contract L2WormholeRouter is WormholeRouter {
-    L2Vault immutable vault;
+    L2Vault public immutable vault;
 
     constructor(L2Vault _vault, IWormhole _wormhole, uint16 _otherLayerWormholeChainId)
         WormholeRouter(_vault.governance(), _wormhole, _otherLayerWormholeChainId)
