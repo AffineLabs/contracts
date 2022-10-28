@@ -222,8 +222,11 @@ contract L2Vault is
         uint256 assetDemand = assets + assetsFee + ewq.totalDebt();
         _liquidate(assetDemand);
 
-        // Add to emergency withdrawal queue if there is not enough liquidity.
         address caller = _msgSender();
+        // The ewq does not need approval to burn shares
+        if (caller != owner && caller != address(ewq)) _spendAllowance(owner, caller, shares);
+
+        // Add to emergency withdrawal queue if there is not enough liquidity.
         if (_asset.balanceOf(address(this)) < assetDemand) {
             if (caller != address(ewq)) {
                 ewq.enqueue(owner, receiver, shares);
@@ -231,11 +234,6 @@ contract L2Vault is
             } else {
                 revert("L2Vault: bad dequeue");
             }
-        }
-
-        // The ewq does not need approval to burn shares
-        if (caller != owner && caller != address(ewq)) {
-            _spendAllowance(owner, caller, shares);
         }
 
         // Burn shares and give user equivalent value in `_asset` (minus withdrawal fees)
@@ -252,7 +250,6 @@ contract L2Vault is
         whenNotPaused
         returns (uint256 shares)
     {
-        // Only real share amounts are allowed since we might create an ewq request
         shares = previewWithdraw(assets);
         EmergencyWithdrawalQueue ewq = emergencyWithdrawalQueue;
         require(shares <= balanceOf(owner) + ewq.ownerToDebt(owner), "L2Vault: min shares");
@@ -260,16 +257,14 @@ contract L2Vault is
         uint256 assetDemand = assets + ewq.totalDebt();
         _liquidate(assetDemand);
 
-        // Add to emergency withdrawal queue if there is not enough liquidity.
         address caller = _msgSender();
+        if (caller != owner) _spendAllowance(owner, caller, shares);
+
         if (_asset.balanceOf(address(this)) < assetDemand) {
             ewq.enqueue(owner, receiver, shares);
             return 0;
         }
 
-        if (caller != owner) {
-            _spendAllowance(owner, caller, shares);
-        }
         _burn(owner, shares);
 
         // Calculate withdrawal fee
