@@ -96,7 +96,6 @@ contract Deploy is Test {
         basket.initialize(
             governance, // governance,
             address(0), // forwarder
-            IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506), // sushiswap router
             usdc, // mintable usdc
             // WBTC AND WETH
             [btc, weth],

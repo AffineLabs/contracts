@@ -94,7 +94,7 @@ Run slither:
 $ slither .
 ```
 
-### Running a Script
+### Running a Hardhat Script
 
 To run a script run `yarn script <script>`. Pass in the ethereum and polygon networks you want to use with the `-eth` and `-p` flags. The two network names will be in the `ETH_NETWORK` and `POLYGON_NETWORK` environment variables. In the script, use `hre.changeNetwork` to change the current network. If run without the `--no-fork` flag `yarn script` will bring up two hardhat nodes, one which forks the selected ethereum network, and one which forks the selected polygon network.
 
@@ -106,7 +106,10 @@ $ yarn script scripts/deploy-all.ts -eth ropsten -p mumbai
 
 ### Deploying the Contracts
 
-The deploy script can currently be found under `scripts/deploy-all.ts`. It is meant to work with the goerli/mumbai testnets only. **NOTE**: You must manually deploy a forwarder contract and add its address to `scripts/utils/config.ts` before deploying the rest of the contracts. Additionally, you should add the forwarder/usdc contracts to the biconomy dashboard in order to allow meta-transactions with these contracts.
+Testnet: `yarn ts-node scripts/deploy.ts -l <1 or 2> -t`
+Mainnet: `yarn ts-node scripts/deploy.ts -l <1 or 2> -t`
+
+Add -b to actually deploy the contracts
 
 ### Validate a contract with etherscan
 

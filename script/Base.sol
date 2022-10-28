@@ -23,10 +23,13 @@ abstract contract Base is Script {
     }
 
     struct L2Config {
+        address aaveRegistry;
         Feeds feeds;
         address governance;
         uint256 managementFee;
         address usdc;
+        address wbtc;
+        address weth;
         uint256 withdrawFee;
         address wormhole;
     }

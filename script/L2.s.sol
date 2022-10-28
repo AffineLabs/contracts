@@ -20,8 +20,9 @@ import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUn
 import {L2AAVEStrategy} from "../src/polygon/L2AAVEStrategy.sol";
 
 import {Salt} from "./Salt.sol";
+import {Base} from "./Base.sol";
 
-contract Deploy is Script, Salt {
+contract Deploy is Script, Salt, Base {
     ICREATE3Factory create3 = ICREATE3Factory(0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf);
 
     function _getSaltFile(string memory fileName) internal returns (bytes32 salt) {
@@ -29,7 +30,59 @@ contract Deploy is Script, Salt {
         salt = bytes32(saltData);
     }
 
+    function _deployVault(
+        Base.L2Config memory config,
+        L2WormholeRouter router,
+        BridgeEscrow escrow,
+        EmergencyWithdrawalQueue queue,
+        Forwarder forwarder
+    ) internal returns (L2Vault vault) {
+        // Deploy Vault
+        L2Vault impl = new L2Vault();
+        // Need to declare array in memory to avoud stack too deep error
+        uint256[2] memory fees = [config.withdrawFee, config.managementFee]; // withdrawal and AUM fees;
+        bytes memory initData = abi.encodeCall(
+            L2Vault.initialize,
+            (config.governance, ERC20(config.usdc), address(router), escrow, queue, address(forwarder), 9, 1, fees)
+        );
+
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        vault = L2Vault(address(proxy));
+        require(vault.asset() == config.usdc);
+        require(vault.l1Ratio() == 9);
+        require(vault.l2Ratio() == 1);
+        require(vault.withdrawalFee() == config.withdrawFee);
+        require(vault.managementFee() == config.managementFee);
+    }
+
+    function _deployBasket(Base.L2Config memory config, Forwarder forwarder) internal {
+        TwoAssetBasket basketImpl = new TwoAssetBasket();
+        bytes memory basketInitData = abi.encodeCall(
+            TwoAssetBasket.initialize,
+            (
+                config.governance,
+                address(forwarder),
+                ERC20(config.usdc),
+                [ERC20(config.wbtc), ERC20(config.weth)],
+                [uint256(1), uint256(1)], // ratios
+                // Price feeds (USDC/USDC, BTC/USD, ETH/USD)
+                [
+                    AggregatorV3Interface(config.feeds.usdc),
+                    AggregatorV3Interface(config.feeds.wbtc),
+                    AggregatorV3Interface(config.feeds.weth)
+                ]
+            )
+        );
+
+        ERC1967Proxy basketProxy = new ERC1967Proxy(address(basketImpl), basketInitData);
+        TwoAssetBasket basket = TwoAssetBasket(address(basketProxy));
+        require(address(basket.btc()) == config.wbtc);
+        require(address(basket.weth()) == config.weth);
+    }
+
     function run() external {
+        Base.L2Config memory config = abi.decode(_getConfigJson({mainnet: true, layer1: false}), (Base.L2Config));
+
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
         // Get salts
@@ -46,30 +99,7 @@ contract Deploy is Script, Salt {
         EmergencyWithdrawalQueue queue = EmergencyWithdrawalQueue(create3.getDeployed(deployer, ewqSalt));
         Forwarder forwarder = new Forwarder();
 
-        // Deploy Vault
-        L2Vault impl = new L2Vault();
-        bytes memory initData = abi.encodeCall(
-            L2Vault.initialize,
-            (
-                0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0,
-                ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174),
-                address(router),
-                escrow,
-                queue,
-                address(forwarder),
-                9,
-                1,
-                [uint256(0), uint256(200)] // withdrawal and AUM fees
-            )
-        );
-
-        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
-        L2Vault vault = L2Vault(address(proxy));
-        require(vault.asset() == 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
-        require(vault.l1Ratio() == 9);
-        require(vault.l2Ratio() == 1);
-        require(vault.withdrawalFee() == 0);
-        require(vault.managementFee() == 200);
+        L2Vault vault = _deployVault(config, router, escrow, queue, forwarder);
 
         // Deploy helper contracts (escrow, router, and ewq)
         create3.deploy(
@@ -96,36 +126,16 @@ contract Deploy is Script, Salt {
         require(router.wormhole() == wormhole);
         require(router.otherLayerWormholeChainId() == uint16(2));
 
+        // Deploy Ewq
         create3.deploy(ewqSalt, abi.encodePacked(type(EmergencyWithdrawalQueue).creationCode, abi.encode(vault)));
         require(queue.vault() == vault);
 
+        // Deploy Router
         Router router4626 = new Router("affine-router-v1", address(forwarder));
         require(router4626.trustedForwarder() == address(forwarder));
 
-        TwoAssetBasket basketImpl = new TwoAssetBasket();
-        bytes memory basketInitData = abi.encodeCall(
-            TwoAssetBasket.initialize,
-            (
-                0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0, // governance,
-                address(forwarder), // forwarder
-                IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506), // sushiswap router
-                ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174), // usdc
-                // WBTC AND WETH
-                [ERC20(0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6), ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619)],
-                [uint256(1), uint256(1)], // ratios
-                // Price feeds (USDC/USDC, BTC/USD, ETH/USD)
-                [
-                    AggregatorV3Interface(0xfE4A8cc5b5B2366C1B58Bea3858e81843581b2F7),
-                    AggregatorV3Interface(0xc907E116054Ad103354f2D350FD2514433D57F6f),
-                    AggregatorV3Interface(0xF9680D99D6C9589e2a93a78A04A279e509205945)
-                ]
-            )
-        );
-
-        ERC1967Proxy basketProxy = new ERC1967Proxy(address(basketImpl), basketInitData);
-        TwoAssetBasket basket = TwoAssetBasket(address(basketProxy));
-        require(basket.btc() == ERC20(0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6));
-        require(basket.weth() == ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619));
+        // Deploy TwoAssetBasket
+        _deployBasket(config, forwarder);
 
         L2AAVEStrategy aave = new L2AAVEStrategy(vault, 0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19);
         require(address(aave.asset()) == vault.asset());

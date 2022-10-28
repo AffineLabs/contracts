@@ -39,7 +39,7 @@ contract TwoAssetBasket is
 
     uint256[2] public ratios;
 
-    IUniswapV2Router02 public uniRouter;
+    IUniswapV2Router02 public constant uniRouter = IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
 
     // These must be USD price feeds for btc and weth
     mapping(ERC20 => AggregatorV3Interface) public tokenToOracle;
@@ -47,7 +47,6 @@ contract TwoAssetBasket is
     function initialize(
         address _governance,
         address forwarder,
-        IUniswapV2Router02 _uniRouter,
         ERC20 _asset,
         ERC20[2] memory _tokens,
         uint256[2] memory _ratios,
@@ -62,7 +61,6 @@ contract TwoAssetBasket is
         (btc, weth) = (_tokens[0], _tokens[1]);
         asset = _asset;
         ratios = _ratios;
-        uniRouter = _uniRouter;
 
         tokenToOracle[asset] = _priceFeeds[0];
         tokenToOracle[btc] = _priceFeeds[1];
