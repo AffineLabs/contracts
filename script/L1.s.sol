@@ -2,6 +2,7 @@
 pragma solidity 0.8.16;
 
 import "forge-std/Script.sol";
+import "forge-std/StdJson.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
@@ -26,8 +27,11 @@ import {ICurvePool} from "../src/interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "../src/interfaces/convex.sol";
 
 import {Salt} from "./Salt.sol";
+import {Base} from "./Base.sol";
 
-contract Deploy is Script, Salt {
+contract Deploy is Script, Salt, Base {
+    using stdJson for string;
+
     ICREATE3Factory create3 = ICREATE3Factory(0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf);
 
     function _getSaltAndWrite(string memory fileName) internal returns (bytes32 salt) {
@@ -38,6 +42,10 @@ contract Deploy is Script, Salt {
     }
 
     function run() external {
+        bytes memory configBytes = _getConfigJson({mainnet: true, layer1: true});
+        Base.L1Config memory config = abi.decode(configBytes, (Base.L1Config));
+        console.log("config usdc: ", config.usdc);
+
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
         // Get salts
@@ -53,18 +61,21 @@ contract Deploy is Script, Salt {
         bytes memory initData = abi.encodeCall(
             L1Vault.initialize,
             (
-                0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e,
-                ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48),
+                config.governance,
+                ERC20(config.usdc),
                 address(router),
                 escrow,
-                IRootChainManager(0xA0c68C638235ee32657e8f720a23ceC1bFc77C77),
-                0x9923263fA127b3d1484cFD649df8f1831c2A74e4
+                IRootChainManager(config.chainManager),
+                config.ERC20Predicate
             )
         );
 
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
         L1Vault vault = L1Vault(address(proxy));
-        require(vault.asset() == 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+        require(vault.asset() == config.usdc);
+        require(vault.governance() == config.governance);
+        require(address(vault.chainManager()) == config.chainManager);
+        require(vault.predicate() == config.ERC20Predicate);
 
         // Deploy helper contracts (escrow and router)
         create3.deploy(
@@ -74,7 +85,6 @@ contract Deploy is Script, Salt {
                 abi.encode(address(vault), IRootChainManager(0xA0c68C638235ee32657e8f720a23ceC1bFc77C77))
             )
         );
-
         require(escrow.vault() == address(vault));
         require(address(escrow.token()) == vault.asset());
         require(escrow.wormholeRouter() == vault.wormholeRouter());
