@@ -25,17 +25,13 @@ import {ConvexStrategy} from "../src/ethereum/ConvexStrategy.sol";
 import {ICurvePool} from "../src/interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "../src/interfaces/convex.sol";
 
-contract Deploy is Script {
+import {Salt} from "./Salt.sol";
+
+contract Deploy is Script, Salt {
     ICREATE3Factory create3 = ICREATE3Factory(0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf);
 
-    function _getSalt(string memory fileName) internal returns (bytes32 salt) {
-        string[] memory inputs = new string[](4);
-        inputs[0] = "yarn";
-        inputs[1] = "--silent";
-        inputs[2] = "ts-node";
-        inputs[3] = "scripts/utils/get-bytes.ts";
-        bytes memory res = vm.ffi(inputs);
-        salt = keccak256(res);
+    function _getSaltAndWrite(string memory fileName) internal returns (bytes32 salt) {
+        salt = _getSalt();
         console.log("about to log bytes salt");
         console.logBytes(abi.encodePacked(salt));
         vm.writeFileBinary(fileName, abi.encodePacked(salt));
@@ -45,8 +41,8 @@ contract Deploy is Script {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
         // Get salts
-        bytes32 escrowSalt = _getSalt("escrow.salt");
-        bytes32 routerSalt = _getSalt("router.salt");
+        bytes32 escrowSalt = _getSaltAndWrite("escrow.salt");
+        bytes32 routerSalt = _getSaltAndWrite("router.salt");
         require(escrowSalt != routerSalt, "Salts not unique");
 
         BridgeEscrow escrow = BridgeEscrow(create3.getDeployed(deployer, escrowSalt));

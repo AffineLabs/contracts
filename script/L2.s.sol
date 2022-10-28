@@ -19,18 +19,10 @@ import {AggregatorV3Interface} from "../src/interfaces/AggregatorV3Interface.sol
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {L2AAVEStrategy} from "../src/polygon/L2AAVEStrategy.sol";
 
-contract Deploy is Script {
-    ICREATE3Factory create3 = ICREATE3Factory(0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf);
+import {Salt} from "./Salt.sol";
 
-    function _getSaltBasic() internal returns (bytes32 salt) {
-        string[] memory inputs = new string[](4);
-        inputs[0] = "yarn";
-        inputs[1] = "--silent";
-        inputs[2] = "ts-node";
-        inputs[3] = "scripts/utils/get-bytes.ts";
-        bytes memory res = vm.ffi(inputs);
-        salt = keccak256(res);
-    }
+contract Deploy is Script, Salt {
+    ICREATE3Factory create3 = ICREATE3Factory(0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf);
 
     function _getSaltFile(string memory fileName) internal returns (bytes32 salt) {
         bytes memory saltData = vm.readFileBinary(fileName);
@@ -43,7 +35,7 @@ contract Deploy is Script {
         // Get salts
         bytes32 escrowSalt = _getSaltFile("escrow.salt");
         bytes32 routerSalt = _getSaltFile("router.salt");
-        bytes32 ewqSalt = _getSaltBasic();
+        bytes32 ewqSalt = _getSalt();
 
         console.logBytes32(escrowSalt);
         console.logBytes32(routerSalt);
