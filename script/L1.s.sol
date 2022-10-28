@@ -26,10 +26,10 @@ import {ConvexStrategy} from "../src/ethereum/ConvexStrategy.sol";
 import {ICurvePool} from "../src/interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "../src/interfaces/convex.sol";
 
-import {Salt} from "./Salt.sol";
 import {Base} from "./Base.sol";
 
-contract Deploy is Script, Salt, Base {
+/*  solhint-disable reason-string */
+contract Deploy is Script, Base {
     using stdJson for string;
 
     ICREATE3Factory create3 = ICREATE3Factory(0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf);

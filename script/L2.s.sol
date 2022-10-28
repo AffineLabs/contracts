@@ -19,10 +19,10 @@ import {AggregatorV3Interface} from "../src/interfaces/AggregatorV3Interface.sol
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {L2AAVEStrategy} from "../src/polygon/L2AAVEStrategy.sol";
 
-import {Salt} from "./Salt.sol";
 import {Base} from "./Base.sol";
 
-contract Deploy is Script, Salt, Base {
+/*  solhint-disable reason-string */
+contract Deploy is Script, Base {
     ICREATE3Factory create3 = ICREATE3Factory(0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf);
 
     function _getSaltFile(string memory fileName) internal returns (bytes32 salt) {
@@ -78,6 +78,9 @@ contract Deploy is Script, Salt, Base {
         TwoAssetBasket basket = TwoAssetBasket(address(basketProxy));
         require(address(basket.btc()) == config.wbtc);
         require(address(basket.weth()) == config.weth);
+        require(address(basket.tokenToOracle(basket.asset())) == config.feeds.usdc);
+        require(address(basket.tokenToOracle(basket.btc())) == config.feeds.wbtc);
+        require(address(basket.tokenToOracle(basket.weth())) == config.feeds.weth);
     }
 
     function run() external {
