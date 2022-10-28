@@ -213,7 +213,7 @@ contract L2Vault is
     function redeem(uint256 shares, address receiver, address owner) external whenNotPaused returns (uint256 assets) {
         // Only real share amounts are allowed since we might create an ewq request
         EmergencyWithdrawalQueue ewq = emergencyWithdrawalQueue;
-        require(shares <= balanceOf(owner) + ewq.debtToOwner(owner), "L2Vault: min shares");
+        require(shares <= balanceOf(owner) + ewq.ownerToDebt(owner), "L2Vault: min shares");
 
         (uint256 assetsToUser, uint256 assetsFee) = _previewRedeem(shares);
         assets = assetsToUser;
@@ -255,7 +255,7 @@ contract L2Vault is
         // Only real share amounts are allowed since we might create an ewq request
         shares = previewWithdraw(assets);
         EmergencyWithdrawalQueue ewq = emergencyWithdrawalQueue;
-        require(shares <= balanceOf(owner) + ewq.debtToOwner(owner), "L2Vault: min shares");
+        require(shares <= balanceOf(owner) + ewq.ownerToDebt(owner), "L2Vault: min shares");
 
         uint256 assetDemand = assets + ewq.totalDebt();
         _liquidate(assetDemand);
