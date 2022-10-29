@@ -114,20 +114,10 @@ contract Deploy is Script, Base {
         require(escrow.wormholeRouter() == vault.wormholeRouter());
 
         IWormhole wormhole = IWormhole(0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7);
-        create3.deploy(
-            routerSalt,
-            abi.encodePacked(
-                type(L2WormholeRouter).creationCode,
-                abi.encode(
-                    vault,
-                    wormhole,
-                    uint16(2) // ethereum wormhole id is 2
-                )
-            )
-        );
+        create3.deploy(routerSalt, abi.encodePacked(type(L2WormholeRouter).creationCode, abi.encode(vault, wormhole)));
         require(router.vault() == vault);
         require(router.wormhole() == wormhole);
-        require(router.otherLayerWormholeChainId() == uint16(2));
+        require(router.otherLayerWormholeId() == uint16(2));
 
         // Deploy Ewq
         create3.deploy(ewqSalt, abi.encodePacked(type(EmergencyWithdrawalQueue).creationCode, abi.encode(vault)));

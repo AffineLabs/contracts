@@ -82,7 +82,7 @@ contract Deploy is Test {
         vault.initialize(
             governance, // governance
             asset, // asset
-            address(new L1WormholeRouter(vault, IWormhole(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B), uint16(0))),
+            address(new L1WormholeRouter(vault, IWormhole(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B))),
             escrow,
             manager, // chain manager
             0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf // predicate (eth mainnet)

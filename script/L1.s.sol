@@ -90,21 +90,11 @@ contract Deploy is Script, Base {
         require(escrow.wormholeRouter() == vault.wormholeRouter());
 
         IWormhole wormhole = IWormhole(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B);
-        create3.deploy(
-            routerSalt,
-            abi.encodePacked(
-                type(L1WormholeRouter).creationCode,
-                abi.encode(
-                    vault,
-                    wormhole,
-                    uint16(5) // polygon wormhole id is 5
-                )
-            )
-        );
+        create3.deploy(routerSalt, abi.encodePacked(type(L1WormholeRouter).creationCode, abi.encode(vault, wormhole)));
 
         require(router.vault() == vault);
         require(router.wormhole() == wormhole);
-        require(router.otherLayerWormholeChainId() == uint16(5));
+        require(router.otherLayerWormholeId() == uint16(5));
 
         // Compound strat
         L1CompoundStrategy comp = new L1CompoundStrategy(vault, ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563));

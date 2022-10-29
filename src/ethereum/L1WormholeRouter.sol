@@ -9,9 +9,11 @@ import {Constants} from "../libs/Constants.sol";
 contract L1WormholeRouter is WormholeRouter {
     L1Vault public immutable vault;
 
-    constructor(L1Vault _vault, IWormhole _wormhole, uint16 _otherLayerWormholeChainId)
-        WormholeRouter(_vault.governance(), _wormhole, _otherLayerWormholeChainId)
-    {
+    function otherLayerWormholeId() public view override returns (uint16) {
+        return 5;
+    }
+
+    constructor(L1Vault _vault, IWormhole _wormhole) WormholeRouter(_vault.governance(), _wormhole) {
         vault = _vault;
     }
 

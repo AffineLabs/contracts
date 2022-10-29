@@ -5,18 +5,14 @@ import {IWormhole} from "./interfaces/IWormhole.sol";
 import {BaseVault} from "./BaseVault.sol";
 import {ImmutableGovernable} from "./ImmutableGovernable.sol";
 
-contract WormholeRouter is ImmutableGovernable {
-    constructor(address _gov, IWormhole _wormhole, uint16 _otherLayerWormholeChainId) ImmutableGovernable(_gov) {
+abstract contract WormholeRouter is ImmutableGovernable {
+    constructor(address _gov, IWormhole _wormhole) ImmutableGovernable(_gov) {
         wormhole = _wormhole;
-        otherLayerWormholeChainId = _otherLayerWormholeChainId;
     }
     /**
      * WORMHOLE CONFIGURATION
      *
      */
-
-    uint16 public immutable otherLayerWormholeChainId;
-    uint256 public nextValidNonce;
 
     /// @notice The address of the core wormhole contract
     IWormhole public immutable wormhole;
@@ -33,13 +29,19 @@ contract WormholeRouter is ImmutableGovernable {
         consistencyLevel = _consistencyLevel;
     }
 
+    // Wormhole state
+
+    function otherLayerWormholeId() public view virtual returns (uint16) {}
+
+    uint256 public nextValidNonce;
+
     /**
      * VALIDATION
      *
      */
     function _validateWormholeMessageEmitter(IWormhole.VM memory vm) internal view {
         require(vm.emitterAddress == bytes32(uint256(uint160(address(this)))), "WR: bad emitter address");
-        require(vm.emitterChainId == otherLayerWormholeChainId, "WR: bad emitter chain");
+        require(vm.emitterChainId == otherLayerWormholeId(), "WR: bad emitter chain");
         require(vm.nonce >= nextValidNonce, "WR: old transaction");
     }
 }
