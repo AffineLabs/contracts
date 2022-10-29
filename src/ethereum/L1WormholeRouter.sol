@@ -4,7 +4,7 @@ pragma solidity =0.8.16;
 import {IWormhole} from "../interfaces/IWormhole.sol";
 import {L1Vault} from "./L1Vault.sol";
 import {WormholeRouter} from "../WormholeRouter.sol";
-import {Constants} from "../Constants.sol";
+import {Constants} from "../libs/Constants.sol";
 
 contract L1WormholeRouter is WormholeRouter {
     L1Vault public immutable vault;

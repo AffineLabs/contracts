@@ -17,7 +17,7 @@ import {BaseRelayRecipient} from "@opengsn/contracts/src/BaseRelayRecipient.sol"
 import {AffineGovernable} from "../AffineGovernable.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
-import {Dollar, DollarMath} from "../DollarMath.sol";
+import {Dollar, DollarMath} from "../libs/DollarMath.sol";
 import {DetailedShare} from "./Detailed.sol";
 
 contract TwoAssetBasket is

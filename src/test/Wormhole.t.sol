@@ -13,7 +13,7 @@ import {IWormhole} from "../interfaces/IWormhole.sol";
 import {L1WormholeRouter} from "../ethereum/L1WormholeRouter.sol";
 import {L2WormholeRouter} from "../polygon/L2WormholeRouter.sol";
 import {WormholeRouter} from "../WormholeRouter.sol";
-import {Constants} from "../Constants.sol";
+import {Constants} from "../libs/Constants.sol";
 
 // This contract exists solely to test the internal view
 contract MockRouter is L2WormholeRouter {
