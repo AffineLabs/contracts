@@ -3,10 +3,14 @@ pragma solidity =0.8.16;
 
 import {IWormhole} from "./interfaces/IWormhole.sol";
 import {BaseVault} from "./BaseVault.sol";
-import {ImmutableGovernable} from "./ImmutableGovernable.sol";
+import {AffineGovernable} from "./AffineGovernable.sol";
 
-abstract contract WormholeRouter is ImmutableGovernable {
-    constructor(address _gov, IWormhole _wormhole) ImmutableGovernable(_gov) {
+abstract contract WormholeRouter is AffineGovernable {
+    BaseVault public immutable vault;
+
+    constructor(BaseVault _vault, IWormhole _wormhole) {
+        vault = _vault;
+        governance = vault.governance();
         wormhole = _wormhole;
     }
     /**

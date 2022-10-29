@@ -7,15 +7,11 @@ import {WormholeRouter} from "../WormholeRouter.sol";
 import {Constants} from "../libs/Constants.sol";
 
 contract L2WormholeRouter is WormholeRouter {
-    L2Vault public immutable vault;
-
-    function otherLayerWormholeId() public view override returns (uint16) {
+    function otherLayerWormholeId() public pure override returns (uint16) {
         return 2;
     }
 
-    constructor(L2Vault _vault, IWormhole _wormhole) WormholeRouter(_vault.governance(), _wormhole) {
-        vault = _vault;
-    }
+    constructor(L2Vault _vault, IWormhole _wormhole) WormholeRouter(_vault, _wormhole) {}
 
     function reportTransferredFund(uint256 amount) external payable {
         require(msg.sender == address(vault), "WR: Only vault");
