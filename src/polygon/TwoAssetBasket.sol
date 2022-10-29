@@ -35,7 +35,6 @@ contract TwoAssetBasket is
     ERC20 public asset;
     ERC20 public btc;
     ERC20 public weth;
-    address public wmatic;
 
     uint256[2] public ratios;
 
