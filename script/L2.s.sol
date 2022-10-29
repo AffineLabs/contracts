@@ -113,11 +113,10 @@ contract Deploy is Script, Base {
         require(address(escrow.token()) == vault.asset());
         require(escrow.wormholeRouter() == vault.wormholeRouter());
 
-        IWormhole wormhole = IWormhole(0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7);
+        IWormhole wormhole = IWormhole(config.wormhole);
         create3.deploy(routerSalt, abi.encodePacked(type(L2WormholeRouter).creationCode, abi.encode(vault, wormhole)));
         require(router.vault() == vault);
         require(router.wormhole() == wormhole);
-        require(router.otherLayerWormholeId() == uint16(2));
 
         // Deploy Ewq
         create3.deploy(ewqSalt, abi.encodePacked(type(EmergencyWithdrawalQueue).creationCode, abi.encode(vault)));
@@ -130,7 +129,7 @@ contract Deploy is Script, Base {
         // Deploy TwoAssetBasket
         _deployBasket(config, forwarder);
 
-        L2AAVEStrategy aave = new L2AAVEStrategy(vault, 0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19);
+        L2AAVEStrategy aave = new L2AAVEStrategy(vault, config.aaveRegistry);
         require(address(aave.asset()) == vault.asset());
         vm.stopBroadcast();
     }
