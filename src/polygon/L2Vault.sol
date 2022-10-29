@@ -110,7 +110,7 @@ contract L2Vault is
      *
      */
 
-    /// @notice See {IERC4262-asset}
+    /// @notice See {IERC4626-asset}
     function asset() public view override (BaseVault, IERC4626) returns (address assetTokenAddress) {
         return address(_asset);
     }
@@ -169,7 +169,7 @@ contract L2Vault is
      * DEPOSIT
      *
      */
-    /// @notice See {IERC4262-deposit}
+    /// @notice See {IERC4626-deposit}
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
         shares = previewDeposit(assets);
         require(shares > 0, "L2Vault: zero shares");
@@ -179,11 +179,11 @@ contract L2Vault is
         _mint(receiver, shares);
         emit Deposit(caller, receiver, assets, shares);
 
-        // deposit entire balance of `_asset` into strategies
+        // Deposit entire balance of `_asset` into strategies
         _depositIntoStrategies();
     }
 
-    /// @notice See {IERC4262-mint}
+    /// @notice See {IERC4626-mint}
     function mint(uint256 shares, address receiver) external whenNotPaused returns (uint256 assets) {
         assets = previewMint(shares);
         address caller = _msgSender();
@@ -209,34 +209,31 @@ contract L2Vault is
         emergencyWithdrawalQueue = _ewq;
     }
 
-    /// @notice See {IERC4262-redeem}
+    /// @notice See {IERC4626-redeem}
     function redeem(uint256 shares, address receiver, address owner) external whenNotPaused returns (uint256 assets) {
-        address caller = _msgSender();
-        EmergencyWithdrawalQueue ewq = emergencyWithdrawalQueue;
-
         // Only real share amounts are allowed since we might create an ewq request
-        require(balanceOf(owner) >= shares, "L2Vault: min shares");
+        EmergencyWithdrawalQueue ewq = emergencyWithdrawalQueue;
+        require(shares <= balanceOf(owner) + ewq.ownerToDebt(owner), "L2Vault: min shares");
+
         (uint256 assetsToUser, uint256 assetsFee) = _previewRedeem(shares);
         assets = assetsToUser;
 
-        uint256 assetDemand = assets + assetsFee;
+        // We must be able to repay all queued users and the current user
+        uint256 assetDemand = assets + assetsFee + ewq.totalDebt();
         _liquidate(assetDemand);
 
+        address caller = _msgSender();
+        // The ewq does not need approval to burn shares
+        if (caller != owner && caller != address(ewq)) _spendAllowance(owner, caller, shares);
+
         // Add to emergency withdrawal queue if there is not enough liquidity.
-        if (caller != address(ewq)) {
-            if (ewq.size() > 0 || _asset.balanceOf(address(this)) < assetDemand) {
+        if (_asset.balanceOf(address(this)) < assetDemand) {
+            if (caller != address(ewq)) {
                 ewq.enqueue(owner, receiver, shares);
                 return 0;
-            }
-        } else {
-            if (_asset.balanceOf(address(this)) < assetDemand) {
+            } else {
                 revert("L2Vault: bad dequeue");
             }
-        }
-
-        // The ewq does not need approval to burn shares
-        if (caller != owner && caller != address(ewq)) {
-            _spendAllowance(owner, caller, shares);
         }
 
         // Burn shares and give user equivalent value in `_asset` (minus withdrawal fees)
@@ -247,31 +244,27 @@ contract L2Vault is
         _asset.safeTransfer(governance, assetsFee);
     }
 
-    /// @notice See {IERC4262-withdraw}
+    /// @notice See {IERC4626-withdraw}
     function withdraw(uint256 assets, address receiver, address owner)
         external
         whenNotPaused
         returns (uint256 shares)
     {
-        address caller = _msgSender();
-        EmergencyWithdrawalQueue ewq = emergencyWithdrawalQueue;
-
         shares = previewWithdraw(assets);
-        // Only real share amounts are allowed since we might create an ewq request
-        require(balanceOf(owner) >= shares, "L2Vault: min shares");
+        EmergencyWithdrawalQueue ewq = emergencyWithdrawalQueue;
+        require(shares <= balanceOf(owner) + ewq.ownerToDebt(owner), "L2Vault: min shares");
 
-        uint256 assetDemand = assets;
+        uint256 assetDemand = assets + ewq.totalDebt();
         _liquidate(assetDemand);
 
-        // Add to emergency withdrawal queue if there is not enough liquidity.
-        if (ewq.size() > 0 || _asset.balanceOf(address(this)) < assetDemand) {
+        address caller = _msgSender();
+        if (caller != owner) _spendAllowance(owner, caller, shares);
+
+        if (_asset.balanceOf(address(this)) < assetDemand) {
             ewq.enqueue(owner, receiver, shares);
             return 0;
         }
 
-        if (caller != owner) {
-            _spendAllowance(owner, caller, shares);
-        }
         _burn(owner, shares);
 
         // Calculate withdrawal fee
@@ -293,12 +286,12 @@ contract L2Vault is
         Zero // Toward zero
     }
 
-    /// @notice See {IERC4262-totalAssets}
+    /// @notice See {IERC4626-totalAssets}
     function totalAssets() public view returns (uint256 totalManagedAssets) {
         return vaultTVL() + l1TotalLockedValue - lockedProfit() - lockedTVL();
     }
 
-    /// @notice See {IERC4262-convertToShares}
+    /// @notice See {IERC4626-convertToShares}
     function convertToShares(uint256 assets) public view returns (uint256 shares) {
         shares = _convertToShares(assets, Rounding.Down);
     }
@@ -317,10 +310,9 @@ contract L2Vault is
         } else {
             shares = assets.mulDivDown(totalShares, _totalAssets);
         }
-        shares;
     }
 
-    /// @notice See {IERC4262-convertToAssets}
+    /// @notice See {IERC4626-convertToAssets}
     function convertToAssets(uint256 shares) public view returns (uint256 assets) {
         assets = _convertToAssets(shares, Rounding.Down);
     }
@@ -337,22 +329,22 @@ contract L2Vault is
         }
     }
 
-    /// @notice See {IERC4262-previewDeposit}
+    /// @notice See {IERC4626-previewDeposit}
     function previewDeposit(uint256 assets) public view returns (uint256 shares) {
         return _convertToShares(assets, Rounding.Down);
     }
 
-    /// @notice See {IERC4262-previewMint}
+    /// @notice See {IERC4626-previewMint}
     function previewMint(uint256 shares) public view returns (uint256 assets) {
         assets = _convertToAssets(shares, Rounding.Up);
     }
 
-    /// @notice See {IERC4262-previewWithdraw}
+    /// @notice See {IERC4626-previewWithdraw}
     function previewWithdraw(uint256 assets) public view returns (uint256 shares) {
         shares = _convertToShares(assets, Rounding.Up);
     }
 
-    /// @notice See {IERC4262-previewRedeem}
+    /// @notice See {IERC4626-previewRedeem}
     function previewRedeem(uint256 shares) public view returns (uint256 assets) {
         (assets,) = _previewRedeem(shares);
     }
@@ -372,26 +364,25 @@ contract L2Vault is
 
     /**
      * DEPOSIT/WITHDRAWAL LIMITS
-     *
      */
-    /// @notice See {IERC4262-maxDeposit}
+    /// @notice See {IERC4626-maxDeposit}
     function maxDeposit(address receiver) public pure returns (uint256 maxAssets) {
         receiver;
         maxAssets = type(uint256).max;
     }
 
-    /// @notice See {IERC4262-maxMint}
+    /// @notice See {IERC4626-maxMint}
     function maxMint(address receiver) public pure returns (uint256 maxShares) {
         receiver;
         maxShares = type(uint256).max;
     }
 
-    /// @notice See {IERC4262-maxRedeem}
+    /// @notice See {IERC4626-maxRedeem}
     function maxRedeem(address owner) public view returns (uint256 maxShares) {
         maxShares = balanceOf(owner);
     }
 
-    /// @notice See {IERC4262-maxWithdraw}
+    /// @notice See {IERC4626-maxWithdraw}
     function maxWithdraw(address owner) public view returns (uint256 maxAssets) {
         maxAssets = _convertToAssets(balanceOf(owner), Rounding.Down);
     }

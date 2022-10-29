@@ -33,7 +33,7 @@ contract EmergencyWithdrawalQueue {
     uint256 public shareDebt;
 
     // @notice User debts in share unit
-    mapping(address => uint256) public debtToOwner;
+    mapping(address => uint256) public ownerToDebt;
 
     /// @notice Envents
     event EmergencyWithdrawalQueueEnqueue(
@@ -63,7 +63,7 @@ contract EmergencyWithdrawalQueue {
         tailPtr += 1;
         queue[tailPtr] = WithdrawalRequest(owner, receiver, shares, block.timestamp);
         shareDebt += shares;
-        debtToOwner[owner] += shares;
+        ownerToDebt[owner] += shares;
         emit EmergencyWithdrawalQueueEnqueue(tailPtr, owner, receiver, shares);
     }
 
@@ -73,7 +73,7 @@ contract EmergencyWithdrawalQueue {
         WithdrawalRequest memory withdrawalRequest = queue[headPtr];
         delete queue[headPtr];
         shareDebt -= withdrawalRequest.shares;
-        debtToOwner[withdrawalRequest.owner] -= withdrawalRequest.shares;
+        ownerToDebt[withdrawalRequest.owner] -= withdrawalRequest.shares;
 
         try vault.redeem(withdrawalRequest.shares, withdrawalRequest.receiver, withdrawalRequest.owner) {
             emit EmergencyWithdrawalQueueDequeue(
@@ -103,7 +103,7 @@ contract EmergencyWithdrawalQueue {
             WithdrawalRequest memory withdrawalRequest = queue[ptr];
             delete queue[ptr];
             shareDebtReduction += withdrawalRequest.shares;
-            debtToOwner[withdrawalRequest.owner] -= withdrawalRequest.shares;
+            ownerToDebt[withdrawalRequest.owner] -= withdrawalRequest.shares;
 
             try vault.redeem(withdrawalRequest.shares, withdrawalRequest.receiver, withdrawalRequest.owner) {
                 emit EmergencyWithdrawalQueueDequeue(

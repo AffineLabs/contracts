@@ -107,7 +107,7 @@ $ yarn script scripts/deploy-all.ts -eth ropsten -p mumbai
 ### Deploying the Contracts
 
 Testnet: `yarn ts-node scripts/deploy.ts -l <1 or 2> -t`
-Mainnet: `yarn ts-node scripts/deploy.ts -l <1 or 2> -t`
+Mainnet: `yarn ts-node scripts/deploy.ts -l <1 or 2>`
 
 Add -b to actually deploy the contracts
 
