@@ -66,7 +66,7 @@ contract CurveStrategy is BaseStrategy, AccessControl {
         gauge.deposit(metaPool.balanceOf(address(this)));
     }
 
-    function divest(uint256 assets) external override onlyVault returns (uint256) {
+    function _divest(uint256 assets) internal override returns (uint256) {
         _withdraw(assets);
 
         uint256 amountToSend = Math.min(asset.balanceOf(address(this)), assets);

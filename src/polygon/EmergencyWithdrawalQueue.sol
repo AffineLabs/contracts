@@ -5,6 +5,9 @@ import {L2Vault} from "./L2Vault.sol";
 import {uncheckedInc} from "../Unchecked.sol";
 
 contract EmergencyWithdrawalQueue {
+    /// @notice Address of Alpine vault.
+    L2Vault public immutable vault;
+
     /// @notice Struct representing withdrawalRequest stored in each queue node.
     struct WithdrawalRequest {
         address owner;
@@ -22,18 +25,15 @@ contract EmergencyWithdrawalQueue {
      * After an enqueue we have tail(1) == head(1)
      */
     /// @notice Pointer to head of the queue.
-    uint256 public headPtr = 1;
+    uint128 public headPtr = 1;
     /// @notice Pointer to tail of the queue.
-    uint256 public tailPtr = 0;
-
-    /// @notice Address of Alpine vault.
-    L2Vault public immutable vault;
+    uint128 public tailPtr = 0;
 
     /// @notice Debt in shares unit.
     uint256 public shareDebt;
 
     // @notice User debts in share unit
-    mapping(address => uint256) public debtToOwner;
+    mapping(address => uint256) public ownerToDebt;
 
     /// @notice Envents
     event EmergencyWithdrawalQueueEnqueue(
@@ -63,17 +63,17 @@ contract EmergencyWithdrawalQueue {
         tailPtr += 1;
         queue[tailPtr] = WithdrawalRequest(owner, receiver, shares, block.timestamp);
         shareDebt += shares;
-        debtToOwner[owner] += shares;
+        ownerToDebt[owner] += shares;
         emit EmergencyWithdrawalQueueEnqueue(tailPtr, owner, receiver, shares);
     }
 
     /// @notice Dequeue user withdrawal requests.
     function dequeue() external {
-        require(tailPtr >= headPtr, "Queue is empty");
+        require(tailPtr >= headPtr, "EWQ: queue is empty");
         WithdrawalRequest memory withdrawalRequest = queue[headPtr];
         delete queue[headPtr];
         shareDebt -= withdrawalRequest.shares;
-        debtToOwner[withdrawalRequest.owner] -= withdrawalRequest.shares;
+        ownerToDebt[withdrawalRequest.owner] -= withdrawalRequest.shares;
 
         try vault.redeem(withdrawalRequest.shares, withdrawalRequest.receiver, withdrawalRequest.owner) {
             emit EmergencyWithdrawalQueueDequeue(
@@ -94,7 +94,7 @@ contract EmergencyWithdrawalQueue {
 
     /// @notice Dequeue user withdrawal requests in a batch.
     function dequeueBatch(uint256 batchSize) external {
-        require(size() >= batchSize, "Batch size too big");
+        require(size() >= batchSize, "EWQ: batch too big");
 
         uint256 batchTailPtr = headPtr + batchSize;
         uint256 shareDebtReduction;
@@ -103,7 +103,7 @@ contract EmergencyWithdrawalQueue {
             WithdrawalRequest memory withdrawalRequest = queue[ptr];
             delete queue[ptr];
             shareDebtReduction += withdrawalRequest.shares;
-            debtToOwner[withdrawalRequest.owner] -= withdrawalRequest.shares;
+            ownerToDebt[withdrawalRequest.owner] -= withdrawalRequest.shares;
 
             try vault.redeem(withdrawalRequest.shares, withdrawalRequest.receiver, withdrawalRequest.owner) {
                 emit EmergencyWithdrawalQueueDequeue(
@@ -120,6 +120,6 @@ contract EmergencyWithdrawalQueue {
             }
         }
         shareDebt -= shareDebtReduction;
-        headPtr += batchSize;
+        headPtr += uint128(batchSize);
     }
 }

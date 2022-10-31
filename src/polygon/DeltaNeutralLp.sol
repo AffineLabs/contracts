@@ -135,9 +135,9 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
 
         // Convert assetsToDeposit into `borrowAsset` (e.g. WMATIC) units
         (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = borrowAssetFeed.latestRoundData();
-        require(price > 0, "Chainlink price <= 0");
-        require(answeredInRound >= roundId, "Chainlink stale data");
-        require(timestamp != 0, "Chainlink round not complete");
+        require(price > 0, "DNLP: price <= 0");
+        require(answeredInRound >= roundId, "DNLP: stale data");
+        require(timestamp != 0, "DNLP: round not done");
 
         emit PositionStart(newPositionId, assets, roundId, block.timestamp);
 
@@ -185,11 +185,11 @@ contract DeltaNeutralLp is BaseStrategy, Ownable {
 
     /// @dev This strategy should be put at the end of the WQ so that we rarely divest from it. Divestment
     /// ideally occurs when the strategy does not have an open position
-    function divest(uint256 amount) external override onlyVault returns (uint256) {
+    function _divest(uint256 assets) internal override returns (uint256) {
         // Totally unwind the position
         if (!canStartNewPos) _endPosition();
 
-        uint256 amountToSend = Math.min(amount, balanceOfAsset());
+        uint256 amountToSend = Math.min(assets, balanceOfAsset());
         asset.safeTransfer(address(vault), amountToSend);
         // Return the given amount
         return amountToSend;

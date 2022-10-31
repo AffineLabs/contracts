@@ -39,7 +39,7 @@ contract TwoAssetBasket is
 
     uint256[2] public ratios;
 
-    IUniswapV2Router02 public uniRouter;
+    IUniswapV2Router02 public constant ROUTER = IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
 
     // These must be USD price feeds for btc and weth
     mapping(ERC20 => AggregatorV3Interface) public tokenToOracle;
@@ -47,7 +47,6 @@ contract TwoAssetBasket is
     function initialize(
         address _governance,
         address forwarder,
-        IUniswapV2Router02 _uniRouter,
         ERC20 _asset,
         ERC20[2] memory _tokens,
         uint256[2] memory _ratios,
@@ -62,16 +61,15 @@ contract TwoAssetBasket is
         (btc, weth) = (_tokens[0], _tokens[1]);
         asset = _asset;
         ratios = _ratios;
-        uniRouter = _uniRouter;
 
         tokenToOracle[asset] = _priceFeeds[0];
         tokenToOracle[btc] = _priceFeeds[1];
         tokenToOracle[weth] = _priceFeeds[2];
 
-        // Allow uniRouter to spend all tokens that we may swap
-        asset.safeApprove(address(uniRouter), type(uint256).max);
-        btc.safeApprove(address(uniRouter), type(uint256).max);
-        weth.safeApprove(address(uniRouter), type(uint256).max);
+        // Allow ROUTER to spend all tokens that we may swap
+        asset.safeApprove(address(ROUTER), type(uint256).max);
+        btc.safeApprove(address(ROUTER), type(uint256).max);
+        weth.safeApprove(address(ROUTER), type(uint256).max);
     }
 
     function versionRecipient() external pure override returns (string memory) {
@@ -140,14 +138,14 @@ contract TwoAssetBasket is
         uint256 btcReceived;
         if (assetsToBtc > 0) {
             uint256[] memory btcAmounts =
-                uniRouter.swapExactTokensForTokens(assetsToBtc, 0, _pathBtc(true), address(this), block.timestamp);
+                ROUTER.swapExactTokensForTokens(assetsToBtc, 0, _pathBtc(true), address(this), block.timestamp);
             btcReceived = btcAmounts[btcAmounts.length - 1];
         }
 
         uint256 ethReceived;
         if (assetsToEth > 0) {
             uint256[] memory ethAmounts =
-                uniRouter.swapExactTokensForTokens(assetsToEth, 0, _pathEth(true), address(this), block.timestamp);
+                ROUTER.swapExactTokensForTokens(assetsToEth, 0, _pathEth(true), address(this), block.timestamp);
             ethReceived = ethAmounts[ethAmounts.length - 1];
         }
 
@@ -250,7 +248,7 @@ contract TwoAssetBasket is
 
     function _sell(Dollar dollarsFromBtc, Dollar dollarsFromEth) internal returns (uint256 assetsReceived) {
         if (Dollar.unwrap(dollarsFromBtc) > 0) {
-            uint256[] memory btcAmounts = uniRouter.swapExactTokensForTokens(
+            uint256[] memory btcAmounts = ROUTER.swapExactTokensForTokens(
                 // asset token => dollars => btc conversion
                 Math.min(_tokensFromDollars(btc, dollarsFromBtc), btc.balanceOf(address(this))),
                 0,
@@ -262,7 +260,7 @@ contract TwoAssetBasket is
         }
 
         if (Dollar.unwrap(dollarsFromEth) > 0) {
-            uint256[] memory ethAmounts = uniRouter.swapExactTokensForTokens(
+            uint256[] memory ethAmounts = ROUTER.swapExactTokensForTokens(
                 // asset token => dollars => eth conversion
                 Math.min(_tokensFromDollars(weth, dollarsFromEth), weth.balanceOf(address(this))),
                 0,
@@ -290,9 +288,9 @@ contract TwoAssetBasket is
         AggregatorV3Interface feed = tokenToOracle[token];
 
         (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = feed.latestRoundData();
-        require(price > 0, "Chainlink price <= 0");
-        require(answeredInRound >= roundId, "Chainlink stale data");
-        require(timestamp != 0, "Chainlink round not complete");
+        require(price > 0, "TAB: price <= 0");
+        require(answeredInRound >= roundId, "TAB: stale data");
+        require(timestamp != 0, "TAB: round not done");
         return Dollar.wrap(uint256(price));
     }
 

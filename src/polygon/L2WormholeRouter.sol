@@ -7,24 +7,23 @@ import {WormholeRouter} from "../WormholeRouter.sol";
 import {Constants} from "../Constants.sol";
 
 contract L2WormholeRouter is WormholeRouter {
-    L2Vault vault;
+    L2Vault public immutable vault;
 
     constructor(L2Vault _vault, IWormhole _wormhole, uint16 _otherLayerWormholeChainId)
-        WormholeRouter(_wormhole, _otherLayerWormholeChainId)
+        WormholeRouter(_vault.governance(), _wormhole, _otherLayerWormholeChainId)
     {
         vault = _vault;
-        governance = vault.governance();
     }
 
     function reportTransferredFund(uint256 amount) external payable {
-        require(msg.sender == address(vault), "Only vault");
+        require(msg.sender == address(vault), "WR: Only vault");
         bytes memory payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
         wormhole.publishMessage{value: msg.value}(uint32(sequence), payload, consistencyLevel);
     }
 
     function requestFunds(uint256 amount) external payable {
-        require(msg.sender == address(vault), "Only vault");
+        require(msg.sender == address(vault), "WR: Only vault");
         bytes memory payload = abi.encode(Constants.L2_FUND_REQUEST, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
         wormhole.publishMessage{value: msg.value}(uint32(sequence), payload, consistencyLevel);
