@@ -150,6 +150,7 @@ async function _polygonDefender(forking: boolean, testnet: boolean) {
   const deployData = await readJSON(lastestL2DeployPath);
   const txs: Array<Transaction> = deployData.transactions;
   const offset = testnet ? 1 : 0; // We have to deploy the create3 factory on mumbai testnet
+  const forwarderAddr = txs[0 + offset].contractAddress;
   const l2VaultAddr = txs[2 + offset].contractAddress;
   // In this create3Deployer.deploy() tx, we call create2 to create the small proxy and then call create (via the proxy)
   // to create the actual contract
@@ -160,6 +161,7 @@ async function _polygonDefender(forking: boolean, testnet: boolean) {
   const basketAddr = txs[8 + offset].contractAddress;
 
   console.log({ l2VaultAddr, escrowAddr, routerAddr, ewqAddr, router4626Addr });
+  await addToAddressBookAndDefender(network, "Forwarder", "Forwarder", forwarderAddr, [], false);
   await addToAddressBookAndDefender(network, "PolygonAlpSave", "L2Vault", l2VaultAddr);
   await addToAddressBookAndDefender(network, "PolygonWormholeRouter", "L2WormholeRouter", routerAddr, [], false);
   await addToAddressBookAndDefender(network, "ERC4626Router", "Router", router4626Addr, [], false);
