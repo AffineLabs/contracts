@@ -35,6 +35,11 @@ jobs:
         with:
           node-version: "16.x"
 
+      - name: Install Foundry
+        uses: onbjerg/foundry-toolchain@v1
+        with:
+          version: nightly
+
       - name: Install yarn dependencies, Ignore lifecycle hooks
         run: yarn --frozen-lockfile --ignore-scripts
 
