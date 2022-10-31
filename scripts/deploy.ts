@@ -23,10 +23,10 @@ function executeScript(options: { layer: "1" | "2"; testnet: boolean; broadcast:
     : `https://polygon-${polygonNet}.g.alchemy.com/v2/${ALCHEMY_POLYGON_KEY}`;
 
   const contract = isLayer1 ? "L1.s.sol:Deploy" : "L2.s.sol:Deploy";
-
   const broadcast = options.broadcast ? "--broadcast" : "";
+  const testEnv = isTest ? "true" : "false";
 
-  const scriptCommand = `forge script script/${contract} --rpc-url ${rpcUrl} --ffi -vvv ${broadcast}`;
+  const scriptCommand = `TEST=${testEnv} forge script script/${contract} --rpc-url ${rpcUrl} --ffi -vvv ${broadcast}`;
   execSync(scriptCommand, { stdio: "inherit" });
   if (isLayer1) defenderEth(!options.broadcast, isTest);
   else defenderPolygon(!options.broadcast, isTest);

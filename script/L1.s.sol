@@ -41,8 +41,33 @@ contract Deploy is Script, Base {
         vm.writeFileBinary(fileName, abi.encodePacked(salt));
     }
 
+    function _deployStrategies(L1Vault vault) internal {
+        // Compound strat
+        L1CompoundStrategy comp = new L1CompoundStrategy(vault, ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563));
+        require(address(comp.asset()) == vault.asset());
+
+        // Curve Strat
+        CurveStrategy curve = new CurveStrategy(vault, 
+                         ERC20(0x5a6A4D54456819380173272A5E8E9B9904BdF41B),
+                         I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359), 
+                         2,
+                         ILiquidityGauge(0xd8b712d29381748dB89c36BCa0138d7c75866ddF)
+                         );
+        require(address(curve.asset()) == vault.asset());
+
+        // Convex strat
+        ConvexStrategy cvx = new ConvexStrategy(
+           vault, 
+            ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
+            100,
+            IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31));
+        require(address(cvx.asset()) == vault.asset());
+    }
+
     function run() external {
-        bytes memory configBytes = _getConfigJson({mainnet: true, layer1: true});
+        bool testnet = vm.envBool("TEST");
+        console.log("test: ", testnet ? 1 : 0);
+        bytes memory configBytes = _getConfigJson({mainnet: !testnet, layer1: true});
         Base.L1Config memory config = abi.decode(configBytes, (Base.L1Config));
         console.log("config usdc: ", config.usdc);
 
@@ -95,27 +120,7 @@ contract Deploy is Script, Base {
         require(router.vault() == vault);
         require(router.wormhole() == wormhole);
 
-        // Compound strat
-        L1CompoundStrategy comp = new L1CompoundStrategy(vault, ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563));
-        require(address(comp.asset()) == vault.asset());
-
-        // Curve Strat
-        CurveStrategy curve = new CurveStrategy(vault, 
-                         ERC20(0x5a6A4D54456819380173272A5E8E9B9904BdF41B),
-                         I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359), 
-                         2,
-                         ILiquidityGauge(0xd8b712d29381748dB89c36BCa0138d7c75866ddF)
-                         );
-        require(address(curve.asset()) == vault.asset());
-
-        // Convex strat
-        ConvexStrategy cvx = new ConvexStrategy(
-           vault, 
-            ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
-            100,
-            IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31));
-        require(address(cvx.asset()) == vault.asset());
-
+        if (!testnet) _deployStrategies(vault);
         vm.stopBroadcast();
     }
 }

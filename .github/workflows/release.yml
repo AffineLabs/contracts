@@ -40,7 +40,7 @@ jobs:
         run: yarn hardhat export-abi
 
       - name: Run deployment scripts
-        run: yarn script scripts/deploy-test.ts --no-fork -eth goerli -p mumbai
+        run: yarn ts-node scripts/deploy.ts -l 1 -t && yarn ts-node scripts/deploy.ts -l 2 -t
 
       - name: Uploading addressbook and typechain to S3 bucket in version specific subdirectory
         uses: jakejarvis/s3-sync-action@master
