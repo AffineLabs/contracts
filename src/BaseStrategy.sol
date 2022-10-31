@@ -23,22 +23,6 @@ abstract contract BaseStrategy {
         _;
     }
 
-    modifier onlyRole(bytes32 role) {
-        require(
-            vault.hasRole(role, msg.sender),
-            string(
-                abi.encodePacked(
-                    "AccessControl: account ",
-                    Strings.toHexString(uint160(msg.sender), 20),
-                    " is missing role ",
-                    Strings.toHexString(uint256(role), 32),
-                    " in parent vault"
-                )
-            )
-        );
-        _;
-    }
-
     modifier onlyGovernance() {
         require(msg.sender == vault.governance(), "ONLY_GOVERNANCE");
         _;

@@ -41,7 +41,7 @@ contract CompoundStratTest is TestPlus {
 
         // To be able to call functions restricted to strategist role.
         vm.startPrank(vault.governance());
-        vault.grantRole(vault.STRATEGIST(), address(this));
+        strategy.grantRole(strategy.STRATEGIST(), address(this));
         vm.stopPrank();
     }
 
@@ -74,7 +74,7 @@ contract CompoundStratTest is TestPlus {
         depositOneUSDCToVault();
         investHalfOfVaultAssetInCompund();
 
-        deal(address(strategy.comp()), address(strategy), 2e18);
+        deal(address(strategy.COMP()), address(strategy), 2e18);
         strategy.claimRewards(0);
         assertGt(strategy.totalLockedValue(), halfUSDC);
     }
@@ -138,7 +138,7 @@ contract CompoundStratTest is TestPlus {
     }
 
     function testCanSellRewards() public {
-        deal(address(strategy.comp()), address(strategy), 1e18);
+        deal(address(strategy.COMP()), address(strategy), 1e18);
 
         // Only the owner can call withdrawAssets
         vm.prank(alice);

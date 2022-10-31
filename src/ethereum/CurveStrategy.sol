@@ -5,13 +5,14 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
 import {I3CrvMetaPoolZap, ILiquidityGauge, ICurvePool, IMinter} from "../interfaces/curve.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
-contract CurveStrategy is BaseStrategy {
+contract CurveStrategy is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -31,6 +32,9 @@ contract CurveStrategy is BaseStrategy {
     ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
     address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
+    /// @notice Role with authority to manage strategies.
+    bytes32 public constant STRATEGIST = keccak256("STRATEGIST");
+
     constructor(BaseVault _vault, ERC20 _metaPool, I3CrvMetaPoolZap _zapper, int128 _assetIndex, ILiquidityGauge _gauge)
         BaseStrategy(_vault)
     {
@@ -46,9 +50,13 @@ contract CurveStrategy is BaseStrategy {
 
         // For trading CRV
         CRV.safeApprove(address(ROUTER), type(uint256).max);
+        
+        // Grant roles
+        _grantRole(DEFAULT_ADMIN_ROLE, vault.governance());
+        _grantRole(STRATEGIST, vault.governance());
     }
 
-    function deposit(uint256 assets, uint256 minLpTokens) external onlyRole(vault.STRATEGIST()) {
+    function deposit(uint256 assets, uint256 minLpTokens) external onlyRole(STRATEGIST) {
         // e.g. in a MIM-3CRV metapool, the 0 index is for MIM and the next three are for the underlying
         // coins of 3CRV
         // In this particular metapool, the 1st, 2nd, and 3rd indices are for DAI, USDC, and USDT
@@ -66,7 +74,7 @@ contract CurveStrategy is BaseStrategy {
         return amountToSend;
     }
 
-    function claimRewards(uint256 minAssetsFromCrv) external onlyRole(vault.STRATEGIST()) {
+    function claimRewards(uint256 minAssetsFromCrv) external onlyRole(STRATEGIST) {
         gauge.claim_rewards();
         MINTER.mint(address(gauge));
         uint256 crvBal = CRV.balanceOf(address(this));
@@ -87,7 +95,7 @@ contract CurveStrategy is BaseStrategy {
         }
     }
 
-    function withdrawAssets(uint256 assets) external onlyRole(vault.STRATEGIST()) {
+    function withdrawAssets(uint256 assets) external onlyRole(STRATEGIST) {
         _withdraw(assets);
     }
 

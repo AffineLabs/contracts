@@ -5,6 +5,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
@@ -12,7 +13,7 @@ import {ICurvePool} from "../interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "../interfaces/convex.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
-contract ConvexStrategy is BaseStrategy {
+contract ConvexStrategy is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -37,6 +38,10 @@ contract ConvexStrategy is BaseStrategy {
     ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
     ERC20 public constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
 
+
+    /// @notice Role with authority to manage strategies.
+    bytes32 public constant STRATEGIST = keccak256("STRATEGIST");
+
     constructor(BaseVault _vault, ICurvePool _curvePool, uint256 _convexPid, IConvexBooster _convexBooster)
         BaseStrategy(_vault)
     {
@@ -55,9 +60,13 @@ contract ConvexStrategy is BaseStrategy {
         // For trading CVX and CRV
         CRV.safeApprove(address(ROUTER), type(uint256).max);
         CVX.safeApprove(address(ROUTER), type(uint256).max);
+
+        // Grant roles
+        _grantRole(DEFAULT_ADMIN_ROLE, vault.governance());
+        _grantRole(STRATEGIST, vault.governance());
     }
 
-    function deposit(uint256 assets, uint256 minLpTokens) external onlyRole(vault.STRATEGIST()) {
+    function deposit(uint256 assets, uint256 minLpTokens) external onlyRole(STRATEGIST) {
         // e.g. in a FRAX-USDC stableswap pool, the 0 index is for FRAX and the index 1 is for USDC.
         uint256[2] memory depositAmounts = [uint256(0), 0];
         depositAmounts[uint256(uint128(ASSET_INDEX))] = assets;
@@ -78,17 +87,17 @@ contract ConvexStrategy is BaseStrategy {
      * @dev Useful in the case that we want to do multiple withdrawals ahead of a big divestment from the vault. Doing the
      * withdrawals manually (in chunks) will give us less slippage
      */
-    function withdrawAssets(uint256 assets) external onlyRole(vault.STRATEGIST()) {
+    function withdrawAssets(uint256 assets) external onlyRole(STRATEGIST) {
         _withdraw(assets);
     }
 
-    function claimRewards() external onlyRole(vault.STRATEGIST()) {
+    function claimRewards() external onlyRole(STRATEGIST) {
         cvxRewarder.getReward();
     }
 
     function claimAndSellRewards(uint256 minAssetsFromCrv, uint256 minAssetsFromCvx)
         external
-        onlyRole(vault.STRATEGIST())
+        onlyRole(STRATEGIST)
     {
         cvxRewarder.getReward();
         // Sell CRV rewards if we have at least MIN_TOKEN_AMT tokens

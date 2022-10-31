@@ -5,6 +5,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 import {ICToken} from "../interfaces/compound/ICToken.sol";
 import {IComptroller} from "../interfaces/compound/IComptroller.sol";
@@ -12,7 +13,7 @@ import {IComptroller} from "../interfaces/compound/IComptroller.sol";
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
 
-contract L1CompoundStrategy is BaseStrategy {
+contract L1CompoundStrategy is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
 
     /// @notice The COMPTROLLER
@@ -28,12 +29,19 @@ contract L1CompoundStrategy is BaseStrategy {
     /// @notice Uni ROUTER for swapping COMP to `asset`
     IUniswapV2Router02 public constant ROUTER = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 
+    /// @notice Role with authority to manage strategies.
+    bytes32 public constant STRATEGIST = keccak256("STRATEGIST");
+
     constructor(BaseVault _vault, ICToken _cToken) BaseStrategy(_vault) {
         cToken = _cToken;
 
         // We can mint cToken and also sell it
         asset.safeApprove(address(cToken), type(uint256).max);
         COMP.safeApprove(address(ROUTER), type(uint256).max);
+
+        // Grant roles
+        _grantRole(DEFAULT_ADMIN_ROLE, vault.governance());
+        _grantRole(STRATEGIST, vault.governance());
     }
 
     /**
@@ -63,7 +71,7 @@ contract L1CompoundStrategy is BaseStrategy {
         return amountToSend;
     }
 
-    function claimRewards(uint256 minAssetsFromReward) external onlyRole(vault.STRATEGIST()) {
+    function claimRewards(uint256 minAssetsFromReward) external onlyRole(STRATEGIST) {
         COMPTROLLER.claimComp(address(this));
         uint256 compBalance = COMP.balanceOf(address(this));
 

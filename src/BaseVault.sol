@@ -48,7 +48,6 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
         // governance has the admin role and can grant/remove a role to any account
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
         _grantRole(HARVESTER, governance);
-        _grantRole(STRATEGIST, governance);
 
         lastHarvest = uint128(block.timestamp);
     }
@@ -89,9 +88,6 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
 
     /// @notice Role with authority to call "harvest", i.e. update this vault's tvl
     bytes32 public constant HARVESTER = keccak256("HARVESTER");
-
-    /// @notice Role with authority to manage strategies.
-    bytes32 public constant STRATEGIST = keccak256("STRATEGIST");
 
     /**
      * WITHDRAWAL QUEUE

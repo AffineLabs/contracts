@@ -25,7 +25,7 @@ contract Deploy is Test {
     address governance = makeAddr("governance");
 
     function deployL2Vault() internal returns (MockL2Vault vault) {
-        Create3Deployer create3 = new Create3Deployer();
+        // TODO: Create3Deployer create3 = new Create3Deployer();
 
         MockERC20 asset = new MockERC20("Mock", "MT", 6);
         vault = new MockL2Vault();
