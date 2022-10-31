@@ -13,7 +13,7 @@ import {AffineGovernable} from "./AffineGovernable.sol";
 import {BridgeEscrow} from "./BridgeEscrow.sol";
 import {WormholeRouter} from "./WormholeRouter.sol";
 import {Multicallable} from "solady/src/utils/Multicallable.sol";
-import {uncheckedInc} from "./Unchecked.sol";
+import {uncheckedInc} from "./libs/Unchecked.sol";
 
 /**
  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding
@@ -47,7 +47,8 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
         // All roles use the default admin role
         // governance has the admin role and can grant/remove a role to any account
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
-        _grantRole(harvesterRole, governance);
+        _grantRole(HARVESTER, governance);
+
         lastHarvest = uint128(block.timestamp);
     }
 
@@ -86,7 +87,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      */
 
     /// @notice Role with authority to call "harvest", i.e. update this vault's tvl
-    bytes32 public constant harvesterRole = keccak256("HARVESTER");
+    bytes32 public constant HARVESTER = keccak256("HARVESTER");
 
     /**
      * WITHDRAWAL QUEUE
@@ -118,7 +119,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      */
     function setWithdrawalQueue(Strategy[MAX_STRATEGIES] calldata newQueue) external onlyGovernance {
         // Ensure the new queue is not larger than the maximum queue size.
-        require(newQueue.length <= MAX_STRATEGIES, "QUEUE_TOO_BIG");
+        require(newQueue.length == MAX_STRATEGIES, "BV: bad qu size");
 
         // Replace the withdrawal queue.
         withdrawalQueue = newQueue;
@@ -176,14 +177,14 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
 
     struct StrategyInfo {
         bool isActive;
-        uint256 tvlBps;
-        uint256 balance;
+        uint16 tvlBps;
+        uint232 balance;
     }
     /// @notice A map of strategy addresses to details about the strategy
 
     mapping(Strategy => StrategyInfo) public strategies;
 
-    uint256 public constant MAX_BPS = 10_000;
+    uint256 constant MAX_BPS = 10_000;
     /// @notice The number of bps of the vault's tvl which may be given to strategies (at most MAX_BPS)
     uint256 public totalBps;
 
@@ -197,7 +198,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      * @param strategy The strategy to add
      * @param tvlBps The number of bps of our tvl the strategy will get when funds are distributed to strategies
      */
-    function addStrategy(Strategy strategy, uint256 tvlBps) external onlyGovernance {
+    function addStrategy(Strategy strategy, uint16 tvlBps) external onlyGovernance {
         _increaseTVLBps(tvlBps);
         strategies[strategy] = StrategyInfo({isActive: true, tvlBps: tvlBps, balance: 0});
         //  Add strategy to withdrawal queue
@@ -209,7 +210,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
     /// @notice A helper function for increasing `totalBps`. Used when adding strategies or updating strategy allocs
     function _increaseTVLBps(uint256 tvlBps) internal {
         uint256 newTotalBps = totalBps + tvlBps;
-        require(newTotalBps <= MAX_BPS, "TVL_ALLOC_TOO_BIG");
+        require(newTotalBps <= MAX_BPS, "BV: too many bps");
         totalBps = newTotalBps;
     }
 
@@ -227,7 +228,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
             if (address(strategy) == address(0)) {
                 offset += 1;
             } else if (offset > 0) {
-                // idx of first empty value seen takes on value of `strategy`
+                // index of first empty value seen takes on value of `strategy`
                 withdrawalQueue[i - offset] = strategy;
                 withdrawalQueue[i] = Strategy(address(0));
             }
@@ -246,29 +247,19 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
                 continue;
             }
 
-            StrategyInfo storage stratInfo = strategies[strategy];
-            stratInfo.isActive = false;
+            strategies[strategy].isActive = false;
 
             // The vault can re-allocate bps to a new strategy
-            totalBps -= stratInfo.tvlBps;
-            stratInfo.tvlBps = 0;
+            totalBps -= strategies[strategy].tvlBps;
+            strategies[strategy].tvlBps = 0;
 
             // Remove strategy from withdrawal queue
             withdrawalQueue[i] = Strategy(address(0));
             emit StrategyRemoved(strategy);
             _organizeWithdrawalQueue();
 
-            // Take all money out of strategy
-            uint256 oldBal = stratInfo.balance;
-            uint256 amountWithdrawn = _withdrawFromStrategy(strategy, strategy.totalLockedValue());
-
-            // In this case, we've made a profit since we extracted more money than we thought we had
-            // This increases the vaultTVL. In order to avoid frontrunning, we unlock this profit as in harvest()
-            // NOTE: Updating maxLockedProfit this way is fine since removeStrategy will always be called with harvest()
-            // via multicall
-            if (amountWithdrawn > oldBal) {
-                maxLockedProfit += uint128(oldBal - amountWithdrawn);
-            }
+            // Take all money out of strategy.
+            _withdrawFromStrategy(strategy, strategy.totalLockedValue());
             break;
         }
     }
@@ -278,9 +269,9 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      * @param strategyList The list of strategies
      * @param strategyBps The new bps
      */
-    function updateStrategyAllocations(Strategy[] calldata strategyList, uint256[] calldata strategyBps)
+    function updateStrategyAllocations(Strategy[] calldata strategyList, uint16[] calldata strategyBps)
         external
-        onlyRole(harvesterRole)
+        onlyRole(HARVESTER)
     {
         for (uint256 i = 0; i < strategyList.length; i = uncheckedInc(i)) {
             // Get the strategy at the current index.
@@ -292,8 +283,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
             }
 
             // update tvl bps
-            uint256 oldBps = strategies[strategy].tvlBps;
-            totalBps -= oldBps;
+            totalBps -= strategies[strategy].tvlBps;
             _increaseTVLBps(strategyBps[i]);
             strategies[strategy].tvlBps = strategyBps[i];
         }
@@ -318,7 +308,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      */
     event StrategyWithdrawal(Strategy indexed strategy, uint256 assets);
 
-    /// @notice Deposit entire balance of `token` into strategies according to each strategies' `tvlBps`.
+    /// @notice Deposit entire balance of `asset` into strategies according to each strategy's `tvlBps`.
     function _depositIntoStrategies() internal {
         uint256 totalBal = _asset.balanceOf(address(this));
         // All non-zero strategies are active
@@ -327,29 +317,31 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
             if (address(strategy) == address(0)) {
                 break;
             }
-
-            uint256 assets = (totalBal * strategies[strategy].tvlBps) / MAX_BPS;
-            // Increase totalStrategyHoldings to account for the deposit.
-            totalStrategyHoldings += assets;
-
-            unchecked {
-                // Without this the next harvest would count the deposit as profit.
-                // Cannot overflow as the balance of one strategy can't exceed the sum of all.
-                strategies[strategy].balance += assets;
-            }
-
-            // Approve assets to the strategy so we can deposit.
-            _asset.safeApprove(address(strategy), assets);
-
-            // Deposit into the strategy, will revert upon failure
-            strategy.invest(assets);
-            emit StrategyDeposit(strategy, assets);
+            _depositIntoStrategy(strategy, (totalBal * strategies[strategy].tvlBps) / MAX_BPS);
         }
+    }
+
+    function _depositIntoStrategy(Strategy strategy, uint256 assets) internal {
+        // Increase totalStrategyHoldings to account for the deposit.
+        totalStrategyHoldings += assets;
+
+        unchecked {
+            // Without this the next harvest would count the deposit as profit.
+            // Cannot overflow as the balance of one strategy can't exceed the sum of all.
+            strategies[strategy].balance += uint232(assets);
+        }
+
+        // Approve assets to the strategy so we can deposit.
+        _asset.safeApprove(address(strategy), assets);
+
+        // Deposit into the strategy, will revert upon failure
+        strategy.invest(assets);
+        emit StrategyDeposit(strategy, assets);
     }
 
     /**
      * @notice Withdraw a specific amount of underlying tokens from a strategy.
-     * @dev This will not revert if the assets is not withdrawn. It could potentially withdraw nothing.
+     * @dev This is "best effort" withdrawal. It could potentially withdraw nothing.
      * @param strategy The strategy to withdraw from.
      * @param assets  The amount of underlying tokens to withdraw.
      * @return The amount of underlying tokens withdrawn from the strategy.
@@ -357,13 +349,19 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
     function _withdrawFromStrategy(Strategy strategy, uint256 assets) internal returns (uint256) {
         // Withdraw from the strategy
         uint256 amountWithdrawn = _divest(strategy, assets);
+
         // Without this the next harvest would count the withdrawal as a loss.
-        strategies[strategy].balance -= amountWithdrawn;
+        // We update the balance to the current tvl because a withdrawal can reduce the tvl by more than the amount
+        // withdrawn (e.g. fees during a swap)
+        uint256 oldStratTVL = strategies[strategy].balance;
+        uint256 newStratTvl = strategy.totalLockedValue();
+        strategies[strategy].balance = uint232(newStratTvl);
 
         unchecked {
             // Decrease totalStrategyHoldings to account for the withdrawal.
             // Cannot underflow as the balance of one strategy will never exceed the sum of all.
-            totalStrategyHoldings -= amountWithdrawn;
+            // If we haven't harvested in a long time, newStratTvl could be smaller than oldStratTvl, even with the withdrawal
+            totalStrategyHoldings -= oldStratTVL > newStratTvl ? oldStratTVL - newStratTvl : 0;
         }
 
         emit StrategyWithdrawal(strategy, amountWithdrawn);
@@ -408,9 +406,9 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      * @param strategyList The trusted strategies to harvest.
      * @dev Will always revert if profit from last harvest has not finished unlocking.
      */
-    function harvest(Strategy[] calldata strategyList) external onlyRole(harvesterRole) {
+    function harvest(Strategy[] calldata strategyList) external onlyRole(HARVESTER) {
         // Profit must not be unlocking
-        require(block.timestamp >= lastHarvest + lockInterval, "PROFIT_UNLOCKING");
+        require(block.timestamp >= lastHarvest + lockInterval, "BV: profit unlocking");
 
         // Get the Vault's current total strategy holdings.
         uint256 oldTotalStrategyHoldings = totalStrategyHoldings;
@@ -432,11 +430,11 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
             }
 
             // Get the strategy's previous and current balance.
-            uint256 balanceLastHarvest = strategies[strategy].balance;
+            uint232 balanceLastHarvest = strategies[strategy].balance;
             uint256 balanceThisHarvest = strategy.totalLockedValue();
 
             // Update the strategy's stored balance.
-            strategies[strategy].balance = balanceThisHarvest;
+            strategies[strategy].balance = uint232(balanceThisHarvest);
 
             // Increase/decrease newTotalStrategyHoldings based on the profit/loss registered.
             // We cannot wrap the subtraction in parenthesis as it would underflow if the strategy had a loss.
@@ -528,7 +526,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
     function _assessFees() internal virtual {}
 
     /// @notice  Rebalance strategies according to given tvl bps
-    function rebalance() external onlyRole(harvesterRole) {
+    function rebalance() external onlyRole(HARVESTER) {
         uint256 tvl = vaultTVL();
 
         // Loop through all strategies. Divesting from those whose tvl is too high,
@@ -568,10 +566,8 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
             if (amountToInvest == 0) {
                 break;
             }
-
-            Strategy strategy = withdrawalQueue[i];
-            _asset.safeApprove(address(strategy), amountToInvest);
-            strategy.invest(amountToInvest);
+            // Deposit into strategy, making sure to not count this investment as a profit
+            _depositIntoStrategy(withdrawalQueue[i], amountToInvest);
         }
     }
 }

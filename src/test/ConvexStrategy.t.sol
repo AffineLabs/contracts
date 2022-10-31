@@ -37,8 +37,14 @@ contract ConvexStratTest is TestPlus {
             ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
             100,
             IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31));
-        crv = strategy.crv();
-        cvx = strategy.cvx();
+
+        // To be able to call functions restricted to strategist role.
+        vm.startPrank(vault.governance());
+        strategy.grantRole(strategy.STRATEGIST(), address(this));
+        vm.stopPrank();
+
+        crv = strategy.CRV();
+        cvx = strategy.CVX();
     }
 
     function testCanDeposit() public {
@@ -98,27 +104,25 @@ contract ConvexStratTest is TestPlus {
     function testRewards() public {
         deal(address(usdc), address(strategy), 1e12);
         strategy.deposit(1e12, 0);
-
-        uint256 prevTVL = strategy.totalLockedValue();
         vm.warp(block.timestamp + 365 days);
 
         strategy.claimRewards();
 
-        assertGt(strategy.cvx().balanceOf(address(strategy)), 0);
-        assertGt(strategy.crv().balanceOf(address(strategy)), 0);
+        assertGt(strategy.CVX().balanceOf(address(strategy)), 0);
+        assertGt(strategy.CRV().balanceOf(address(strategy)), 0);
     }
 
     function testCanSellRewards() public {
-        deal(address(strategy.crv()), address(strategy), strategy.MIN_TOKEN_AMT() * 10);
-        deal(address(strategy.cvx()), address(strategy), strategy.MIN_TOKEN_AMT() * 10);
+        deal(address(strategy.CRV()), address(strategy), strategy.MIN_TOKEN_AMT() * 10);
+        deal(address(strategy.CVX()), address(strategy), strategy.MIN_TOKEN_AMT() * 10);
 
         strategy.claimAndSellRewards(0, 0);
 
         // We have usdc
         assertTrue(usdc.balanceOf(address(strategy)) > 0);
         // We sold all of our crv
-        assertEq(strategy.crv().balanceOf(address(strategy)), 0);
-        assertEq(strategy.cvx().balanceOf(address(strategy)), 0);
+        assertEq(strategy.CRV().balanceOf(address(strategy)), 0);
+        assertEq(strategy.CVX().balanceOf(address(strategy)), 0);
     }
 
     function testTVLFuzz(uint64 lpTokens, uint64 cvxLpTokens) public {

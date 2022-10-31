@@ -49,7 +49,7 @@ contract L2BridgeEscrowTest is TestPlus {
 
     function testL2Withdraw() public {
         // Only the vault can send a certain amount to L1 (withdraw)
-        vm.expectRevert("Only vault");
+        vm.expectRevert("BE: Only vault");
         vm.prank(alice);
         escrow.l2Withdraw(100);
 
@@ -78,7 +78,7 @@ contract L2BridgeEscrowTest is TestPlus {
     }
 
     function testL2ClearFundInvariants() public {
-        vm.expectRevert("Only wormhole router");
+        vm.expectRevert("BE: Only wormhole router");
         vm.prank(alice);
         escrow.l2ClearFund(100);
 
@@ -131,7 +131,7 @@ contract L1BridgeEscrowTest is TestPlus {
     }
 
     function testL1ClearFundInvariants() public {
-        vm.expectRevert("Only wormhole router");
+        vm.expectRevert("BE: Only wormhole router");
         vm.prank(alice);
         escrow.l1ClearFund(100, "");
 

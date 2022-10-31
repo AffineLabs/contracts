@@ -4,31 +4,27 @@ pragma solidity =0.8.16;
 import {IWormhole} from "../interfaces/IWormhole.sol";
 import {L1Vault} from "./L1Vault.sol";
 import {WormholeRouter} from "../WormholeRouter.sol";
-import {Constants} from "../Constants.sol";
+import {Constants} from "../libs/Constants.sol";
 
 contract L1WormholeRouter is WormholeRouter {
-    L1Vault vault;
-
-    constructor(L1Vault _vault, IWormhole _wormhole, uint16 _otherLayerWormholeChainId)
-        WormholeRouter(_wormhole, _otherLayerWormholeChainId)
-    {
-        vault = _vault;
-        governance = vault.governance();
+    function otherLayerWormholeId() public pure override returns (uint16) {
+        return 5;
     }
 
+    constructor(L1Vault _vault, IWormhole _wormhole) WormholeRouter(_vault, _wormhole) {}
+
     function reportTVL(uint256 tvl, bool received) external payable {
-        require(msg.sender == address(vault), "Only vault");
+        require(msg.sender == address(vault), "WR: only vault");
         bytes memory payload = abi.encode(Constants.L1_TVL, tvl, received);
-        // NOTE: We use the current tx count (to wormhole) of this contract
+        // We use the current tx count (to wormhole) of this contract
         // as a nonce when publishing messages
-        // This casting is fine so long as we send less than 2 ** 32 - 1 (~ 4 billion) messages
         uint64 sequence = wormhole.nextSequence(address(this));
 
         wormhole.publishMessage{value: msg.value}(uint32(sequence), payload, consistencyLevel);
     }
 
     function reportTransferredFund(uint256 amount) external payable {
-        require(msg.sender == address(vault), "Only vault");
+        require(msg.sender == address(vault), "WR: only vault");
         bytes memory payload = abi.encode(Constants.L1_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
 

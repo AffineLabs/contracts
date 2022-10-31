@@ -8,14 +8,14 @@ interface I3CrvMetaPoolZap {
         external
         returns (uint256);
 
-    function remove_liquidity_one_coin(address _pool, uint256 _burn_amount, int128 i, uint256 _min_amount)
+    function remove_liquidity_one_coin(address pool, uint256 burnAmount, int128 index, uint256 minAmount)
         external
         returns (uint256);
 
-    function remove_liquidity_imbalance(address _pool, uint256[4] memory _amounts, uint256 _max_burn_amount)
+    function remove_liquidity_imbalance(address _pool, uint256[4] memory _amounts, uint256 _maxBurnAmount)
         external
         returns (uint256);
 
-    function calc_withdraw_one_coin(address pool, uint256 _token_amount, int128 i) external view returns (uint256);
+    function calc_withdraw_one_coin(address pool, uint256 tokenAmount, int128 index) external view returns (uint256);
 }
 /*  solhint-disable func-name-mixedcase, var-name-mixedcase */

@@ -16,13 +16,16 @@ import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 import {L1WormholeRouter} from "../ethereum/L1WormholeRouter.sol";
 import {L2WormholeRouter} from "../polygon/L2WormholeRouter.sol";
 import {EmergencyWithdrawalQueue} from "../polygon/EmergencyWithdrawalQueue.sol";
-import {Create3Deployer} from "../Create3Deployer.sol";
+import {Create3Deployer} from "./Create3Deployer.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockL2Vault, MockL1Vault} from "./mocks/index.sol";
 
 contract Deploy is Test {
     address governance = makeAddr("governance");
+    bytes32 escrowSalt = keccak256("escrow");
+    bytes32 ewqSalt = keccak256("ewq");
+    bytes32 routerSalt = keccak256("router");
 
     function deployL2Vault() internal returns (MockL2Vault vault) {
         Create3Deployer create3 = new Create3Deployer();
@@ -30,21 +33,39 @@ contract Deploy is Test {
         MockERC20 asset = new MockERC20("Mock", "MT", 6);
         vault = new MockL2Vault();
 
-        // TODO: actually use create3
+        // Deploy helper contracts (escrow and router)
+        BridgeEscrow escrow = BridgeEscrow(create3.getDeployed(escrowSalt));
+        L2WormholeRouter router = L2WormholeRouter(create3.getDeployed(routerSalt));
         EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(vault);
-        BridgeEscrow escrow = new BridgeEscrow(address(vault),  IRootChainManager(address(0)));
 
         vault.initialize(
             governance, // governance
             asset, // asset
-            // See https://book.wormhole.com/reference/contracts.html for address
-            address(new L2WormholeRouter(vault, IWormhole(0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7), uint16(0))),
+            address(router),
             escrow,
             emergencyWithdrawalQueue,
             address(0), // forwarder
             1, // l1 ratio
             1, // l2 ratio
             [uint256(0), uint256(200)] // withdrawal and AUM fees
+        );
+
+        create3.deploy(
+            escrowSalt,
+            abi.encodePacked(type(BridgeEscrow).creationCode, abi.encode(address(vault), IRootChainManager(address(0)))),
+            0
+        );
+        create3.deploy(
+            routerSalt,
+            abi.encodePacked(
+                type(L2WormholeRouter).creationCode,
+                abi.encode(
+                    vault,
+                    IWormhole(0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7),
+                    uint16(2) // ethereum wormhole id is 2
+                )
+            ),
+            0
         );
     }
 
@@ -61,7 +82,7 @@ contract Deploy is Test {
         vault.initialize(
             governance, // governance
             asset, // asset
-            address(new L1WormholeRouter(vault, IWormhole(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B), uint16(0))),
+            address(new L1WormholeRouter(vault, IWormhole(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B))),
             escrow,
             manager, // chain manager
             0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf // predicate (eth mainnet)
@@ -75,7 +96,6 @@ contract Deploy is Test {
         basket.initialize(
             governance, // governance,
             address(0), // forwarder
-            IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506), // sushiswap router
             usdc, // mintable usdc
             // WBTC AND WETH
             [btc, weth],

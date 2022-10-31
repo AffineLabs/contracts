@@ -4,20 +4,19 @@ pragma solidity =0.8.16;
 import {IWormhole} from "./interfaces/IWormhole.sol";
 import {BaseVault} from "./BaseVault.sol";
 import {AffineGovernable} from "./AffineGovernable.sol";
-import {OwnedInitializable} from "./Initializable.sol";
 
-contract WormholeRouter is AffineGovernable, OwnedInitializable {
-    constructor(IWormhole _wormhole, uint16 _otherLayerWormholeChainId) {
+abstract contract WormholeRouter is AffineGovernable {
+    BaseVault public immutable vault;
+
+    constructor(BaseVault _vault, IWormhole _wormhole) {
+        vault = _vault;
+        governance = vault.governance();
         wormhole = _wormhole;
-        otherLayerWormholeChainId = _otherLayerWormholeChainId;
     }
     /**
      * WORMHOLE CONFIGURATION
      *
      */
-
-    uint16 public immutable otherLayerWormholeChainId;
-    uint256 public nextValidNonce;
 
     /// @notice The address of the core wormhole contract
     IWormhole public immutable wormhole;
@@ -34,13 +33,19 @@ contract WormholeRouter is AffineGovernable, OwnedInitializable {
         consistencyLevel = _consistencyLevel;
     }
 
+    // Wormhole state
+
+    function otherLayerWormholeId() public view virtual returns (uint16) {}
+
+    uint256 public nextValidNonce;
+
     /**
      * VALIDATION
      *
      */
     function _validateWormholeMessageEmitter(IWormhole.VM memory vm) internal view {
-        require(vm.emitterAddress == bytes32(uint256(uint160(address(this)))), "Wrong emitter address");
-        require(vm.emitterChainId == otherLayerWormholeChainId, "Wrong emitter chain");
-        require(vm.nonce >= nextValidNonce, "Old transaction");
+        require(vm.emitterAddress == bytes32(uint256(uint160(address(this)))), "WR: bad emitter address");
+        require(vm.emitterChainId == otherLayerWormholeId(), "WR: bad emitter chain");
+        require(vm.nonce >= nextValidNonce, "WR: old transaction");
     }
 }

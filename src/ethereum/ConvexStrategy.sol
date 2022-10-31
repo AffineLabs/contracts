@@ -4,8 +4,8 @@ pragma solidity =0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
@@ -34,11 +34,12 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
     /// @notice BaseRewardPool address
     IConvexRewards public immutable cvxRewarder;
 
-    IUniswapV2Router02 public constant router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-    ERC20 public constant crv = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
-    ERC20 public constant cvx = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+    IUniswapV2Router02 public constant ROUTER = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+    ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
+    ERC20 public constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
 
-    bytes32 public constant OWNER = keccak256("OWNER");
+    /// @notice Role with authority to manage strategies.
+    bytes32 public constant STRATEGIST = keccak256("STRATEGIST");
 
     constructor(BaseVault _vault, ICurvePool _curvePool, uint256 _convexPid, IConvexBooster _convexBooster)
         BaseStrategy(_vault)
@@ -55,15 +56,16 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
         asset.safeApprove(address(curvePool), type(uint256).max);
         curveLpToken.safeApprove(address(convexBooster), type(uint256).max);
 
-        // For trading cvx and crv
-        crv.safeApprove(address(router), type(uint256).max);
-        cvx.safeApprove(address(router), type(uint256).max);
+        // For trading CVX and CRV
+        CRV.safeApprove(address(ROUTER), type(uint256).max);
+        CVX.safeApprove(address(ROUTER), type(uint256).max);
 
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(OWNER, msg.sender);
+        // Grant roles
+        _grantRole(DEFAULT_ADMIN_ROLE, vault.governance());
+        _grantRole(STRATEGIST, vault.governance());
     }
 
-    function deposit(uint256 assets, uint256 minLpTokens) external onlyRole(OWNER) {
+    function deposit(uint256 assets, uint256 minLpTokens) external onlyRole(STRATEGIST) {
         // e.g. in a FRAX-USDC stableswap pool, the 0 index is for FRAX and the index 1 is for USDC.
         uint256[2] memory depositAmounts = [uint256(0), 0];
         depositAmounts[uint256(uint128(ASSET_INDEX))] = assets;
@@ -71,7 +73,7 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
         convexBooster.depositAll(convexPid, true);
     }
 
-    function divest(uint256 assets) external override onlyVault returns (uint256) {
+    function _divest(uint256 assets) internal override returns (uint256) {
         _withdraw(assets);
 
         uint256 amountToSend = Math.min(asset.balanceOf(address(this)), assets);
@@ -80,30 +82,30 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
     }
 
     /**
-     * @notice Withdraw from crv + convex and try to increase balance of `asset` to `assets`.
+     * @notice Withdraw from CRV + convex and try to increase balance of `asset` to `assets`.
      * @dev Useful in the case that we want to do multiple withdrawals ahead of a big divestment from the vault. Doing the
      * withdrawals manually (in chunks) will give us less slippage
      */
-    function withdrawAssets(uint256 assets) external onlyRole(OWNER) {
+    function withdrawAssets(uint256 assets) external onlyRole(STRATEGIST) {
         _withdraw(assets);
     }
 
-    function claimRewards() external onlyRole(OWNER) {
+    function claimRewards() external onlyRole(STRATEGIST) {
         cvxRewarder.getReward();
     }
 
-    function claimAndSellRewards(uint256 minAssetsFromCrv, uint256 minAssetsFromCvx) external onlyRole(OWNER) {
+    function claimAndSellRewards(uint256 minAssetsFromCrv, uint256 minAssetsFromCvx) external onlyRole(STRATEGIST) {
         cvxRewarder.getReward();
-        // Sell crv rewards if we have at least MIN_TOKEN_AMT tokens
+        // Sell CRV rewards if we have at least MIN_TOKEN_AMT tokens
         // Routing through WETH for high liquidity
         address[] memory crvPath = new address[](3);
-        crvPath[0] = address(crv);
+        crvPath[0] = address(CRV);
         crvPath[1] = WETH;
         crvPath[2] = address(asset);
 
-        uint256 crvBal = crv.balanceOf(address(this));
+        uint256 crvBal = CRV.balanceOf(address(this));
         if (crvBal >= MIN_TOKEN_AMT) {
-            router.swapExactTokensForTokens({
+            ROUTER.swapExactTokensForTokens({
                 amountIn: crvBal,
                 amountOutMin: minAssetsFromCrv,
                 path: crvPath,
@@ -112,15 +114,15 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
             });
         }
 
-        // Sell cvx rewards if we have at least MIN_TOKEN_AMT tokens
+        // Sell CVX rewards if we have at least MIN_TOKEN_AMT tokens
         address[] memory cvxPath = new address[](3);
-        cvxPath[0] = address(cvx);
+        cvxPath[0] = address(CVX);
         cvxPath[1] = WETH;
         cvxPath[2] = address(asset);
 
-        uint256 cvxBal = cvx.balanceOf(address(this));
+        uint256 cvxBal = CVX.balanceOf(address(this));
         if (cvxBal >= MIN_TOKEN_AMT) {
-            router.swapExactTokensForTokens({
+            ROUTER.swapExactTokensForTokens({
                 amountIn: cvxBal,
                 amountOutMin: minAssetsFromCvx,
                 path: cvxPath,
@@ -154,7 +156,7 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
         // Increase the cap on lp tokens by 1% to account for curve's trading fees
         uint256 maxLpTokensToBurn = Math.min(lpTokenBal, lpTokensToDivest.mulDivDown(101, 100));
 
-        // Withdraw from cvx rewarder contract if needed to get correct amount of lp tokens
+        // Withdraw from CVX rewarder contract if needed to get correct amount of lp tokens
         if (maxLpTokensToBurn > currLpBal) {
             cvxRewarder.withdrawAndUnwrap(maxLpTokensToBurn - currLpBal, true);
         }

@@ -4,27 +4,24 @@ pragma solidity =0.8.16;
 import {IWormhole} from "../interfaces/IWormhole.sol";
 import {L2Vault} from "./L2Vault.sol";
 import {WormholeRouter} from "../WormholeRouter.sol";
-import {Constants} from "../Constants.sol";
+import {Constants} from "../libs/Constants.sol";
 
 contract L2WormholeRouter is WormholeRouter {
-    L2Vault vault;
-
-    constructor(L2Vault _vault, IWormhole _wormhole, uint16 _otherLayerWormholeChainId)
-        WormholeRouter(_wormhole, _otherLayerWormholeChainId)
-    {
-        vault = _vault;
-        governance = vault.governance();
+    function otherLayerWormholeId() public pure override returns (uint16) {
+        return 2;
     }
 
+    constructor(L2Vault _vault, IWormhole _wormhole) WormholeRouter(_vault, _wormhole) {}
+
     function reportTransferredFund(uint256 amount) external payable {
-        require(msg.sender == address(vault), "Only vault");
+        require(msg.sender == address(vault), "WR: Only vault");
         bytes memory payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
         wormhole.publishMessage{value: msg.value}(uint32(sequence), payload, consistencyLevel);
     }
 
     function requestFunds(uint256 amount) external payable {
-        require(msg.sender == address(vault), "Only vault");
+        require(msg.sender == address(vault), "WR: Only vault");
         bytes memory payload = abi.encode(Constants.L2_FUND_REQUEST, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
         wormhole.publishMessage{value: msg.value}(uint32(sequence), payload, consistencyLevel);

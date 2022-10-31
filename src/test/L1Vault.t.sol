@@ -7,7 +7,7 @@ import {Deploy} from "./Deploy.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 
 import {IWormhole} from "../interfaces/IWormhole.sol";
-import {Constants} from "../Constants.sol";
+import {Constants} from "../libs/Constants.sol";
 import {L2Vault} from "../polygon/L2Vault.sol";
 import {L1Vault} from "../ethereum/L1Vault.sol";
 import {L1WormholeRouter} from "../ethereum/L1WormholeRouter.sol";
