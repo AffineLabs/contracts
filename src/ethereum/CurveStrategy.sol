@@ -50,7 +50,7 @@ contract CurveStrategy is BaseStrategy, AccessControl {
 
         // For trading CRV
         CRV.safeApprove(address(ROUTER), type(uint256).max);
-        
+
         // Grant roles
         _grantRole(DEFAULT_ADMIN_ROLE, vault.governance());
         _grantRole(STRATEGIST, vault.governance());

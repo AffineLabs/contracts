@@ -38,7 +38,6 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
     ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
     ERC20 public constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
 
-
     /// @notice Role with authority to manage strategies.
     bytes32 public constant STRATEGIST = keccak256("STRATEGIST");
 
@@ -95,10 +94,7 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
         cvxRewarder.getReward();
     }
 
-    function claimAndSellRewards(uint256 minAssetsFromCrv, uint256 minAssetsFromCvx)
-        external
-        onlyRole(STRATEGIST)
-    {
+    function claimAndSellRewards(uint256 minAssetsFromCrv, uint256 minAssetsFromCvx) external onlyRole(STRATEGIST) {
         cvxRewarder.getReward();
         // Sell CRV rewards if we have at least MIN_TOKEN_AMT tokens
         // Routing through WETH for high liquidity
