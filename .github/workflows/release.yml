@@ -38,8 +38,8 @@ jobs:
         with:
           version: nightly
 
-      - name: Install yarn dependencies, Ignore lifecycle hooks
-        run: yarn --frozen-lockfile --ignore-scripts
+      - name: Install yarn dependencies, Run postinstall hooks
+        run: yarn --frozen-lockfile
 
       - name: Generate the ABIs
         run: yarn hardhat export-abi
