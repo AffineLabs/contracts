@@ -28,8 +28,6 @@ contract BaseStrategyTest is TestPlus {
         changePrank(alice); // vitalik
         strategy.sweep(rewardToken);
 
-        // Will revert if trying to sell `token` of BaseStrategy
-        vm.expectRevert("BS: !asset");
         changePrank(governance);
         // award the strategy some tokens
         rewardToken.mint(address(strategy), 1e18);
