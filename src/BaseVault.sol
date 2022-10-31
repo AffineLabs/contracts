@@ -13,7 +13,7 @@ import {AffineGovernable} from "./AffineGovernable.sol";
 import {BridgeEscrow} from "./BridgeEscrow.sol";
 import {WormholeRouter} from "./WormholeRouter.sol";
 import {Multicallable} from "solady/src/utils/Multicallable.sol";
-import {uncheckedInc} from "./Unchecked.sol";
+import {uncheckedInc} from "./libs/Unchecked.sol";
 
 /**
  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding

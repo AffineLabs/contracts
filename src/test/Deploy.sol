@@ -16,7 +16,7 @@ import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 import {L1WormholeRouter} from "../ethereum/L1WormholeRouter.sol";
 import {L2WormholeRouter} from "../polygon/L2WormholeRouter.sol";
 import {EmergencyWithdrawalQueue} from "../polygon/EmergencyWithdrawalQueue.sol";
-import {Create3Deployer} from "../Create3Deployer.sol";
+import {Create3Deployer} from "./Create3Deployer.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockL2Vault, MockL1Vault} from "./mocks/index.sol";
@@ -82,7 +82,7 @@ contract Deploy is Test {
         vault.initialize(
             governance, // governance
             asset, // asset
-            address(new L1WormholeRouter(vault, IWormhole(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B), uint16(0))),
+            address(new L1WormholeRouter(vault, IWormhole(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B))),
             escrow,
             manager, // chain manager
             0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf // predicate (eth mainnet)

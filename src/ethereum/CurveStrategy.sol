@@ -62,7 +62,7 @@ contract CurveStrategy is BaseStrategy, AccessControl {
         // In this particular metapool, the 1st, 2nd, and 3rd indices are for DAI, USDC, and USDT
         uint256[4] memory depositAmounts = [uint256(0), 0, 0, 0];
         depositAmounts[uint256(uint128(assetIndex))] = assets;
-        zapper.add_liquidity(address(metaPool), depositAmounts, minLpTokens);
+        zapper.add_liquidity({pool: address(metaPool), depositAmounts: depositAmounts, minMintAmount: minLpTokens});
         gauge.deposit(metaPool.balanceOf(address(this)));
     }
 
@@ -132,14 +132,20 @@ contract CurveStrategy is BaseStrategy, AccessControl {
             require(success1, "Crv: gauge withdraw");
         }
 
-        zapper.remove_liquidity_one_coin(address(metaPool), maxLpTokensToBurn, assetIndex, minAssetsReceived);
+        zapper.remove_liquidity_one_coin({
+            pool: address(metaPool),
+            burnAmount: maxLpTokensToBurn,
+            index: assetIndex,
+            minAmount: minAssetsReceived
+        });
     }
 
     function totalLockedValue() external override returns (uint256) {
         uint256 assetsLp;
         uint256 lpTokenBal = metaPool.balanceOf(address(this)) + gauge.balanceOf(address(this));
         if (lpTokenBal > MIN_LP_AMOUNT) {
-            assetsLp = zapper.calc_withdraw_one_coin(address(metaPool), lpTokenBal, assetIndex);
+            assetsLp =
+                zapper.calc_withdraw_one_coin({pool: address(metaPool), tokenAmount: lpTokenBal, index: assetIndex});
         }
         return balanceOfAsset() + assetsLp;
     }

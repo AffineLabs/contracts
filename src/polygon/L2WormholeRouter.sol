@@ -4,16 +4,14 @@ pragma solidity =0.8.16;
 import {IWormhole} from "../interfaces/IWormhole.sol";
 import {L2Vault} from "./L2Vault.sol";
 import {WormholeRouter} from "../WormholeRouter.sol";
-import {Constants} from "../Constants.sol";
+import {Constants} from "../libs/Constants.sol";
 
 contract L2WormholeRouter is WormholeRouter {
-    L2Vault public immutable vault;
-
-    constructor(L2Vault _vault, IWormhole _wormhole, uint16 _otherLayerWormholeChainId)
-        WormholeRouter(_vault.governance(), _wormhole, _otherLayerWormholeChainId)
-    {
-        vault = _vault;
+    function otherLayerWormholeId() public pure override returns (uint16) {
+        return 2;
     }
+
+    constructor(L2Vault _vault, IWormhole _wormhole) WormholeRouter(_vault, _wormhole) {}
 
     function reportTransferredFund(uint256 amount) external payable {
         require(msg.sender == address(vault), "WR: Only vault");

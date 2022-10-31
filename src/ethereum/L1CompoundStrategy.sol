@@ -72,7 +72,9 @@ contract L1CompoundStrategy is BaseStrategy, AccessControl {
     }
 
     function claimRewards(uint256 minAssetsFromReward) external onlyRole(STRATEGIST) {
-        COMPTROLLER.claimComp(address(this));
+        ICToken[] memory cTokens = new ICToken[](1);
+        cTokens[0] = cToken;
+        COMPTROLLER.claimComp(address(this), cTokens);
         uint256 compBalance = COMP.balanceOf(address(this));
 
         address[] memory path = new address[](3);
