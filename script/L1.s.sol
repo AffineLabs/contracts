@@ -17,6 +17,7 @@ import {L1CompoundStrategy} from "../src/ethereum/L1CompoundStrategy.sol";
 import {ICToken} from "../src/interfaces/compound/ICToken.sol";
 import {IComptroller} from "../src/interfaces/compound/IComptroller.sol";
 import {L1CompoundStrategy} from "../src/ethereum/L1CompoundStrategy.sol";
+import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 import {CurveStrategy} from "../src/ethereum/CurveStrategy.sol";
@@ -25,6 +26,11 @@ import {I3CrvMetaPoolZap, ILiquidityGauge, ICurvePool, IMinter} from "../src/int
 import {ConvexStrategy} from "../src/ethereum/ConvexStrategy.sol";
 import {ICurvePool} from "../src/interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "../src/interfaces/convex.sol";
+
+import {DeltaNeutralLp} from "../src/ethereum/DeltaNeutralLp.sol";
+import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
+import {ILendingPoolAddressesProviderRegistry} from "../interfaces/aave.sol";
+import {IMasterChef} from "../interfaces/sushiswap/IMasterChef.sol";
 
 import {Base} from "./Base.sol";
 
@@ -115,6 +121,21 @@ contract Deploy is Script, Base {
             100,
             IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31));
         require(address(cvx.asset()) == vault.asset());
+
+        // SSLP strat
+        uint256 longPct = 10**15;
+        uint256 masterChefPID = 1;
+        DeltaNeutralLp dnlp = new DeltaNeutralLp(
+           vault, 
+            longPct,
+            ILendingPoolAddressesProviderRegistry(0x52D306e36E3B6B02c153d0266ff0f85d18BCD413),
+            ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), // Asset to borrow (WETH)
+            AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419),
+            IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F),
+            IUniswapV2Factory(0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac),
+            IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd),
+            masterChefPID);
+        require(address(dnlp.asset()) == vault.asset());
 
         vm.stopBroadcast();
     }
