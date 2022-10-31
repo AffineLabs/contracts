@@ -28,9 +28,9 @@ import {ICurvePool} from "../src/interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "../src/interfaces/convex.sol";
 
 import {DeltaNeutralLp} from "../src/ethereum/DeltaNeutralLp.sol";
-import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
-import {ILendingPoolAddressesProviderRegistry} from "../interfaces/aave.sol";
-import {IMasterChef} from "../interfaces/sushiswap/IMasterChef.sol";
+import {AggregatorV3Interface} from "../src/interfaces/AggregatorV3Interface.sol";
+import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol";
+import {IMasterChef} from "../src/interfaces/sushiswap/IMasterChef.sol";
 
 import {Base} from "./Base.sol";
 
