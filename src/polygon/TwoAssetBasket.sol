@@ -17,7 +17,7 @@ import {BaseRelayRecipient} from "@opengsn/contracts/src/BaseRelayRecipient.sol"
 import {AffineGovernable} from "../AffineGovernable.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
-import {Dollar, DollarMath} from "../DollarMath.sol";
+import {Dollar, DollarMath} from "../libs/DollarMath.sol";
 import {DetailedShare} from "./Detailed.sol";
 
 contract TwoAssetBasket is
@@ -35,7 +35,6 @@ contract TwoAssetBasket is
     ERC20 public asset;
     ERC20 public btc;
     ERC20 public weth;
-    address public wmatic;
 
     uint256[2] public ratios;
 
@@ -137,15 +136,25 @@ contract TwoAssetBasket is
         asset.safeTransferFrom(_msgSender(), address(this), assets);
         uint256 btcReceived;
         if (assetsToBtc > 0) {
-            uint256[] memory btcAmounts =
-                ROUTER.swapExactTokensForTokens(assetsToBtc, 0, _pathBtc(true), address(this), block.timestamp);
+            uint256[] memory btcAmounts = ROUTER.swapExactTokensForTokens({
+                amountIn: assetsToBtc,
+                amountOutMin: 0,
+                path: _pathBtc(true),
+                to: address(this),
+                deadline: block.timestamp
+            });
             btcReceived = btcAmounts[btcAmounts.length - 1];
         }
 
         uint256 ethReceived;
         if (assetsToEth > 0) {
-            uint256[] memory ethAmounts =
-                ROUTER.swapExactTokensForTokens(assetsToEth, 0, _pathEth(true), address(this), block.timestamp);
+            uint256[] memory ethAmounts = ROUTER.swapExactTokensForTokens({
+                amountIn: assetsToEth,
+                amountOutMin: 0,
+                path: _pathEth(true),
+                to: address(this),
+                deadline: block.timestamp
+            });
             ethReceived = ethAmounts[ethAmounts.length - 1];
         }
 
@@ -248,26 +257,26 @@ contract TwoAssetBasket is
 
     function _sell(Dollar dollarsFromBtc, Dollar dollarsFromEth) internal returns (uint256 assetsReceived) {
         if (Dollar.unwrap(dollarsFromBtc) > 0) {
-            uint256[] memory btcAmounts = ROUTER.swapExactTokensForTokens(
+            uint256[] memory btcAmounts = ROUTER.swapExactTokensForTokens({
                 // asset token => dollars => btc conversion
-                Math.min(_tokensFromDollars(btc, dollarsFromBtc), btc.balanceOf(address(this))),
-                0,
-                _pathBtc(false),
-                address(this),
-                block.timestamp
-            );
+                amountIn: Math.min(_tokensFromDollars(btc, dollarsFromBtc), btc.balanceOf(address(this))),
+                amountOutMin: 0,
+                path: _pathBtc(false),
+                to: address(this),
+                deadline: block.timestamp
+            });
             assetsReceived += btcAmounts[btcAmounts.length - 1];
         }
 
         if (Dollar.unwrap(dollarsFromEth) > 0) {
-            uint256[] memory ethAmounts = ROUTER.swapExactTokensForTokens(
+            uint256[] memory ethAmounts = ROUTER.swapExactTokensForTokens({
                 // asset token => dollars => eth conversion
-                Math.min(_tokensFromDollars(weth, dollarsFromEth), weth.balanceOf(address(this))),
-                0,
-                _pathEth(false),
-                address(this),
-                block.timestamp
-            );
+                amountIn: Math.min(_tokensFromDollars(weth, dollarsFromEth), weth.balanceOf(address(this))),
+                amountOutMin: 0,
+                path: _pathEth(false),
+                to: address(this),
+                deadline: block.timestamp
+            });
             assetsReceived += ethAmounts[ethAmounts.length - 1];
         }
     }

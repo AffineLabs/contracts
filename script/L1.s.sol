@@ -81,30 +81,19 @@ contract Deploy is Script, Base {
         create3.deploy(
             escrowSalt,
             abi.encodePacked(
-                type(BridgeEscrow).creationCode,
-                abi.encode(address(vault), IRootChainManager(0xA0c68C638235ee32657e8f720a23ceC1bFc77C77))
+                type(BridgeEscrow).creationCode, abi.encode(address(vault), IRootChainManager(config.chainManager))
             )
         );
         require(escrow.vault() == address(vault));
         require(address(escrow.token()) == vault.asset());
         require(escrow.wormholeRouter() == vault.wormholeRouter());
+        require(vault.chainManager() == escrow.rootChainManager());
 
-        IWormhole wormhole = IWormhole(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B);
-        create3.deploy(
-            routerSalt,
-            abi.encodePacked(
-                type(L1WormholeRouter).creationCode,
-                abi.encode(
-                    vault,
-                    wormhole,
-                    uint16(5) // polygon wormhole id is 5
-                )
-            )
-        );
+        IWormhole wormhole = IWormhole(config.wormhole);
+        create3.deploy(routerSalt, abi.encodePacked(type(L1WormholeRouter).creationCode, abi.encode(vault, wormhole)));
 
         require(router.vault() == vault);
         require(router.wormhole() == wormhole);
-        require(router.otherLayerWormholeChainId() == uint16(5));
 
         // Compound strat
         L1CompoundStrategy comp = new L1CompoundStrategy(vault, ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563));

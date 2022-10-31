@@ -13,13 +13,11 @@ import {IWormhole} from "../interfaces/IWormhole.sol";
 import {L1WormholeRouter} from "../ethereum/L1WormholeRouter.sol";
 import {L2WormholeRouter} from "../polygon/L2WormholeRouter.sol";
 import {WormholeRouter} from "../WormholeRouter.sol";
-import {Constants} from "../Constants.sol";
+import {Constants} from "../libs/Constants.sol";
 
 // This contract exists solely to test the internal view
 contract MockRouter is L2WormholeRouter {
-    constructor(L2Vault _vault, IWormhole _wormhole, uint16 _otherLayerWormholeChainId)
-        L2WormholeRouter(_vault, _wormhole, _otherLayerWormholeChainId)
-    {}
+    constructor(L2Vault _vault, IWormhole _wormhole) L2WormholeRouter(_vault, _wormhole) {}
 
     function validateWormholeMessageEmitter(IWormhole.VM memory vm) public view {
         return _validateWormholeMessageEmitter(vm);
@@ -85,8 +83,8 @@ contract L2WormholeRouterTest is TestPlus {
     }
 
     function testMessageValidation() public {
-        MockRouter mockRouter = new MockRouter(vault, wormhole, uint16(1));
-        uint16 emitter = uint16(1);
+        MockRouter mockRouter = new MockRouter(vault, wormhole);
+        uint16 emitter = uint16(2);
 
         IWormhole.VM memory vaa;
         vaa.emitterChainId = emitter;
@@ -254,6 +252,7 @@ contract L1WormholeRouterTest is TestPlus {
     L1Vault vault;
     address rebalancer = makeAddr("randomAddr");
     IWormhole wormhole;
+    uint16 emitterChainId = uint16(5);
 
     function setUp() public {
         vm.createSelectFork("ethereum", 14_971_385);
@@ -329,6 +328,7 @@ contract L1WormholeRouterTest is TestPlus {
         vaa.nonce = 2;
         vaa.payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, l2TransferAmount);
         vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
+        vaa.emitterChainId = emitterChainId;
 
         bytes memory fakeVAA = bytes("VAA_FROM_L2_TRANSFER");
         vm.mockCall(
@@ -352,6 +352,7 @@ contract L1WormholeRouterTest is TestPlus {
         IWormhole.VM memory vaa;
         vaa.payload = abi.encode(Constants.L2_FUND_REQUEST, requestAmount);
         vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
+        vaa.emitterChainId = emitterChainId;
 
         bytes memory fakeVAA = bytes("L2_FUND_REQ");
         vm.mockCall(
