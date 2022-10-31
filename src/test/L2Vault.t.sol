@@ -376,7 +376,7 @@ contract L2VaultTest is TestPlus {
         vm.stopPrank();
         testDepositWithdraw(1e18);
 
-        // Only the harvesterRole address can call pause or unpause
+        // Only the HARVESTER address can call pause or unpause
         string memory errString = string(
             abi.encodePacked(
                 "AccessControl: account ",

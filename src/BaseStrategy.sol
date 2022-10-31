@@ -4,6 +4,7 @@ pragma solidity =0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {BaseVault} from "./BaseVault.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 /// @notice Base strategy contract
 abstract contract BaseStrategy {
@@ -16,6 +17,16 @@ abstract contract BaseStrategy {
 
     /// @notice The vault which will deposit/withdraw from the this contract
     BaseVault public immutable vault;
+
+    modifier onlyVault() {
+        require(msg.sender == address(vault), "BS: only vault");
+        _;
+    }
+
+    modifier onlyGovernance() {
+        require(msg.sender == vault.governance(), "BS: only governance");
+        _;
+    }
 
     /// @notice Returns the underlying ERC20 asset the strategy accepts.
     ERC20 public immutable asset;
@@ -43,8 +54,7 @@ abstract contract BaseStrategy {
     /// @notice Withdraw vault's underlying asset from strategy.
     /// @param amount The amount to withdraw.
     /// @return The amount of `asset` divested from the strategy
-    function divest(uint256 amount) external returns (uint256) {
-        require(msg.sender == address(vault), "BS: only vault");
+    function divest(uint256 amount) external onlyVault returns (uint256) {
         return _divest(amount);
     }
 
@@ -56,9 +66,7 @@ abstract contract BaseStrategy {
     /// @return The strategy tvl
     function totalLockedValue() external virtual returns (uint256);
 
-    function sweep(ERC20 rewardToken) external {
-        require(msg.sender == vault.governance(), "BS: only governance");
-        require(rewardToken != asset, "BS: !asset");
-        rewardToken.safeTransfer(vault.governance(), rewardToken.balanceOf(address(this)));
+    function sweep(ERC20 token) external onlyGovernance {
+        token.safeTransfer(vault.governance(), token.balanceOf(address(this)));
     }
 }

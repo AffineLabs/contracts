@@ -19,7 +19,7 @@ contract BaseStrategyTest is TestPlus {
     function setUp() public {
         rewardToken = new MockERC20("Mock Token", "MT", 18);
         BaseVault vault = Deploy.deployL2Vault();
-        strategy = new TestStrategy( vault);
+        strategy = new TestStrategy(vault);
     }
 
     function testSweep() public {
@@ -28,12 +28,7 @@ contract BaseStrategyTest is TestPlus {
         changePrank(alice); // vitalik
         strategy.sweep(rewardToken);
 
-        // Will revert if trying to sell `token` of BaseStrategy
-        ERC20 assetToken = ERC20(strategy.vault().asset());
-        vm.expectRevert("BS: !asset");
         changePrank(governance);
-        strategy.sweep(assetToken);
-
         // award the strategy some tokens
         rewardToken.mint(address(strategy), 1e18);
         strategy.sweep(rewardToken);
