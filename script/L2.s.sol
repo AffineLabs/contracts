@@ -22,6 +22,17 @@ import {L2AAVEStrategy} from "../src/polygon/L2AAVEStrategy.sol";
 
 import {Base} from "./Base.sol";
 
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
+
+contract MockERC20 is ERC20 {
+    constructor(string memory _name, string memory _symbol, uint8 _decimals) ERC20(_name, _symbol, _decimals) {}
+
+    function mint(address to, uint256 value) public virtual {
+        _mint(to, value);
+    }
+}
+
 /*  solhint-disable reason-string */
 contract Deploy is Script, Base {
     ICREATE3Factory create3;
@@ -97,6 +108,23 @@ contract Deploy is Script, Base {
 
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
+        console.log("deployer", deployer);
+
+        {
+            MockERC20 btc = MockERC20(0xc8BA1fdaf17c1f16C68778fde5f78F3D37cD1509);
+            MockERC20 weth = MockERC20(0x3dd7F3CF122e0460Dba8A75d191b3486752B6A61);
+            btc.mint(deployer, 5000 * 1e18);
+            weth.mint(deployer, 100_000 * 1e18);
+            IUniswapV2Router02 uni = IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
+            uni.addLiquidity(
+                address(btc), address(weth), 5000 * 1e18, 100_000 * 1e18, 0, 0, address(this), block.timestamp * 2
+            );
+            address res = IUniswapV2Factory(uni.factory()).getPair(address(btc), address(weth));
+            console.log("pair", res);
+            console.log("btc amount", btc.balanceOf(res));
+            console.log("eth amount", weth.balanceOf(res));
+        }
+        return;
 
         // The create3 factory contract (https://github.com/ZeframLou/create3-factory) does not exist on mumbai
         // So we just deploy it here. NOTE: This means rebalances won't work on testnet

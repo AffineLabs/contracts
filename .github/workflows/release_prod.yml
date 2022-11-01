@@ -49,6 +49,6 @@ jobs:
       - name: Uploading addressbook and typechain to S3 bucket in version specific subdirectory
         uses: jakejarvis/s3-sync-action@master
         with:
-          args: --follow-symlinks --delete --exclude '*' --include 'addressbook.json' --include 'abi/*.json' --include 'typechain/*'
+          args: --follow-symlinks --delete --exclude '*' --include 'addressbook.json' --include 'typechain/*'
         env:
           DEST_DIR: ${{ env.VERSION }}
