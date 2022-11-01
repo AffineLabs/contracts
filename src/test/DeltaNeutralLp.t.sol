@@ -25,6 +25,8 @@ contract DeltaNeutralTest is TestPlus {
     ERC20 asset;
     ERC20 borrowAsset;
 
+    uint256 public constant IDEAL_SLIPPAGE_BPS = 10;
+
     function setUp() public {
         vm.createSelectFork("ethereum", 15_624_364);
         vault = deployL1Vault();
@@ -64,7 +66,7 @@ contract DeltaNeutralTest is TestPlus {
                 Strings.toHexString(uint256(strategy.STRATEGIST_ROLE()), 32)
             )
         );
-        strategy.startPosition();
+        strategy.startPosition(200);
     }
 
     function testCreatePosition() public {
@@ -82,7 +84,7 @@ contract DeltaNeutralTest is TestPlus {
 
         vm.startPrank(vault.governance());
 
-        strategy.startPosition();
+        strategy.startPosition(200);
         assertFalse(strategy.canStartNewPos());
 
         // I got the right amount of matic
@@ -106,7 +108,7 @@ contract DeltaNeutralTest is TestPlus {
         deal(address(asset), address(strategy), 1000e6);
 
         vm.startPrank(vault.governance());
-        strategy.startPosition();
+        strategy.startPosition(200);
 
         changePrank(alice);
         vm.expectRevert(
@@ -117,17 +119,17 @@ contract DeltaNeutralTest is TestPlus {
                 Strings.toHexString(uint256(strategy.STRATEGIST_ROLE()), 32)
             )
         );
-        strategy.endPosition();
+        strategy.endPosition(200);
     }
 
     function testEndPosition() public {
         deal(address(asset), address(strategy), 1000e6);
 
         vm.startPrank(vault.governance());
-        strategy.startPosition();
+        strategy.startPosition(200);
 
         changePrank(vault.governance());
-        strategy.endPosition();
+        strategy.endPosition(200);
 
         assertTrue(strategy.canStartNewPos());
         assertApproxEqRel(asset.balanceOf(address(strategy)), 1000e6, 0.02e18);
@@ -140,7 +142,7 @@ contract DeltaNeutralTest is TestPlus {
         deal(address(asset), address(strategy), 1000e6);
 
         vm.prank(vault.governance());
-        strategy.startPosition();
+        strategy.startPosition(200);
 
         assertApproxEqRel(strategy.totalLockedValue(), 1000e6, 0.02e18);
     }
@@ -155,7 +157,7 @@ contract DeltaNeutralTest is TestPlus {
         deal(address(asset), address(strategy), 1000e6);
 
         vm.prank(vault.governance());
-        strategy.startPosition();
+        strategy.startPosition(200);
 
         // We unwind position if there is a one
         vm.prank(address(vault));
@@ -176,7 +178,7 @@ contract DeltaNeutralTest is TestPlus {
         deal(address(asset), address(strategy), 1000e6);
 
         vm.prank(vault.governance());
-        strategy.startPosition();
+        strategy.startPosition(200);
 
         vm.roll(block.number + 1000);
 

@@ -123,7 +123,7 @@ contract Deploy is Script, Base {
         require(address(cvx.asset()) == vault.asset());
 
         // SSLP strat
-        uint256 longPct = 10**15;
+        uint256 longPct = 10 ** 15;
         uint256 masterChefPID = 1;
         DeltaNeutralLp dnlp = new DeltaNeutralLp(
            vault, 

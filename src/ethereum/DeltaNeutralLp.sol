@@ -4,6 +4,7 @@ pragma solidity =0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
+import {SlippageUtils} from "../libs/SlippageUtils.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
@@ -23,6 +24,7 @@ import {IMasterChef} from "../interfaces/sushiswap/IMasterChef.sol";
 contract DeltaNeutralLp is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
+    using SlippageUtils for uint256;
 
     constructor(
         BaseVault _vault,
@@ -73,8 +75,9 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     }
 
     bytes32 public constant STRATEGIST_ROLE = keccak256("STRATEGIST");
+    uint256 public constant MAX_BPS = 10_000;
 
-    /// @notice Convert `borrowAsset` (e.g. MATIC) to `asset` (e.g. USDC)
+    /// @notice Convert `borrowAsset` (e.g. WETH) to `asset` (e.g. USDC)
     function _borrowToAsset(uint256 amountB) internal view returns (uint256 assets) {
         if (amountB == 0) {
             assets = 0;
@@ -87,6 +90,21 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
 
         uint256[] memory amounts = router.getAmountsOut({amountIn: amountB, path: path});
         assets = amounts[1];
+    }
+
+    /// @notice Convert `asset` (e.g. USDC) to `borrowAsset` (e.g. WETH)
+    function _assetToBorrow(uint256 amountA) internal view returns (uint256 borrows) {
+        if (amountA == 0) {
+            borrows = 0;
+            return borrows;
+        }
+
+        address[] memory path = new address[](2);
+        path[0] = address(asset);
+        path[1] = address(borrowAsset);
+
+        uint256[] memory amounts = router.getAmountsOut({amountIn: amountA, path: path});
+        borrows = amounts[1];
     }
 
     function totalLockedValue() public view override returns (uint256) {
@@ -107,7 +125,6 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
 
     uint32 public currentPosition;
     bool public canStartNewPos;
-    mapping(uint256 => uint256) positionStartRoundId;
 
     IMasterChef public masterChef;
     uint256 public masterChefPid;
@@ -115,7 +132,6 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
 
     event PositionStart(uint32 indexed position, uint256 assetBalance, uint256 chainlinkRoundId, uint256 timestamp);
 
-    uint256 public slippageTolerance;
     /// @notice Fixed point number describing the percentage of the position with which to go long. 1e18 = 1 = 100%
     uint256 public longPercentage;
 
@@ -134,70 +150,84 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     /// @notice Gives ratio of vault asset to borrow asset, e.g. WETH/USD (assuming usdc = usd)
     AggregatorV3Interface immutable borrowAssetFeed;
 
-    function startPosition() external onlyRole(STRATEGIST_ROLE) {
+    function startPosition(uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
+        uint256 initTVL = totalLockedValue();
         // Set position metadata
         require(canStartNewPos, "DNLP: position is active");
         currentPosition += 1;
         canStartNewPos = false;
+        // Scope to avoid stack too deep error. See https://ethereum.stackexchange.com/a/84378
+        {
+            // Some amount of the assets will be used to buy eth at the end of this function
+            uint256 assetsBalance = asset.balanceOf(address(this));
+            uint256 borrowBalance = borrowAsset.balanceOf(address(this));
 
-        // Some amount of the assets will be used to buy eth at the end of this function
-        uint256 assets = asset.balanceOf(address(this));
-        uint256 assetsToEth = assets.mulWadDown(longPercentage);
-
+            // USDC -> WETH path
+            address[] memory path = new address[](2);
+            path[0] = address(asset);
+            path[1] = address(borrowAsset);
+            uint256 assetsToEth = assetsBalance.mulWadDown(longPercentage) - _borrowToAsset(borrowBalance);
+            uint256 ethOutMin = _assetToBorrow(assetsToEth).slippageDown(slippageToleranceBps);
+            if (assetsToEth > 0) {
+                router.swapExactTokensForTokens({
+                    amountIn: assetsToEth,
+                    amountOutMin: ethOutMin,
+                    path: path,
+                    to: address(this),
+                    deadline: block.timestamp
+                });
+            }
+        }
         // Borrow Eth at 75% (88% liquidation threshold and 85.5% max LTV)
         // If x is amount we want to deposit into aave
         // .75x = Total - x => 1.75x = Total => x = Total / 1.75 => Total * 4/7
         // Deposit asset in aave
-        uint256 assetsToDeposit = (assets - assetsToEth).mulDivDown(4, 7);
-        lendingPool.deposit({asset: address(asset), amount: assetsToDeposit, onBehalfOf: address(this), referralCode: 0});
+        {
+            uint256 assetsBalance = asset.balanceOf(address(this));
+            uint256 assetsToDeposit = assetsBalance.mulDivDown(4, 7);
+            lendingPool.deposit({
+                asset: address(asset),
+                amount: assetsToDeposit,
+                onBehalfOf: address(this),
+                referralCode: 0
+            });
 
-        // Convert assetsToDeposit into `borrowAsset` (e.g. WETH) units
-        (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = borrowAssetFeed.latestRoundData();
-        require(price > 0, "DNLP: price <= 0");
-        require(answeredInRound >= roundId, "DNLP: stale data");
-        require(timestamp != 0, "DNLP: round not done");
+            // Convert assetsToDeposit into `borrowAsset` (e.g. WETH) units
+            (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) =
+                borrowAssetFeed.latestRoundData();
+            require(price > 0, "DNLP: price <= 0");
+            require(answeredInRound >= roundId, "DNLP: stale data");
+            require(timestamp != 0, "DNLP: round not done");
 
-        positionStartRoundId[currentPosition] = roundId;
-        emit PositionStart(currentPosition, assets, roundId, block.timestamp);
+            emit PositionStart(currentPosition, initTVL, roundId, block.timestamp);
 
-        // https://docs.aave.com/developers/v/2.0/the-core-protocol/lendingpool#borrow
-        // assetsToDeposit has price uints `asset`, price has units `asset / borrowAsset` ratio. so we divide by price
-        // Scaling `asset` to 8 decimals since chainlink provides 8: https://docs.chain.link/docs/data-feeds/price-feeds/
-        // TODO: handle both cases (assetDecimals > priceDecimals as well)
-        uint256 borrowAssetsDeposited = (assetsToDeposit * 1e2).divWadDown(uint256(price));
-        lendingPool.borrow({
-            asset: address(borrowAsset),
-            amount: borrowAssetsDeposited.mulDivDown(3, 4),
-            interestRateMode: 2,
-            referralCode: 0,
-            onBehalfOf: address(this)
-        });
+            // https://docs.aave.com/developers/v/2.0/the-core-protocol/lendingpool#borrow
+            // assetsToDeposit has price uints `asset`, price has units `asset / borrowAsset` ratio. so we divide by price
+            // Scaling `asset` to 8 decimals since chainlink provides 8: https://docs.chain.link/docs/data-feeds/price-feeds/
+            // TODO: handle both cases (assetDecimals > priceDecimals as well)
+            uint256 borrowAssetsDeposited = (assetsToDeposit * 1e2).divWadDown(uint256(price));
+            lendingPool.borrow({
+                asset: address(borrowAsset),
+                amount: borrowAssetsDeposited.mulDivDown(3, 4),
+                interestRateMode: 2,
+                referralCode: 0,
+                onBehalfOf: address(this)
+            });
+        }
+        {
+            // Provide liquidity on uniswap
+            uint256 borrowBalance = borrowAsset.balanceOf(address(this));
+            uint256 assetsBalance = asset.balanceOf(address(this));
+            uint256 assetsInMin = assetsBalance.slippageDown(slippageToleranceBps);
+            uint256 borrowInMin = assetsBalance.slippageDown(slippageToleranceBps);
 
-        // Provide liquidity on uniswap
-        // TODO: make slippage parameterizable by caller
-        uint256 bBal = borrowAsset.balanceOf(address(this));
-        uint256 aBal = assets - assetsToEth - assetsToDeposit;
-        router.addLiquidity({
-            tokenA: address(asset),
-            tokenB: address(borrowAsset),
-            amountADesired: aBal,
-            amountBDesired: bBal,
-            amountAMin: aBal.mulDivDown(98, 100),
-            amountBMin: bBal.mulDivDown(98, 100),
-            to: address(this),
-            deadline: block.timestamp
-        });
-
-        // Buy Eth. The strat now holds only lp tokens and a little bit of eth
-        address[] memory path = new address[](2);
-        path[0] = address(asset);
-        path[1] = address(borrowAsset);
-
-        if (assetsToEth > 0) {
-            router.swapExactTokensForTokens({
-                amountIn: assetsToEth,
-                amountOutMin: 0,
-                path: path,
+            router.addLiquidity({
+                tokenA: address(asset),
+                tokenB: address(borrowAsset),
+                amountADesired: assetsBalance,
+                amountBDesired: borrowBalance,
+                amountAMin: assetsInMin,
+                amountBMin: borrowInMin,
                 to: address(this),
                 deadline: block.timestamp
             });
@@ -211,7 +241,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     /// ideally occurs when the strategy does not have an open position
     function _divest(uint256 assets) internal override returns (uint256) {
         // Totally unwind the position
-        if (!canStartNewPos) _endPosition();
+        if (!canStartNewPos) _endPosition(MAX_BPS);
 
         uint256 amountToSend = Math.min(assets, balanceOfAsset());
         asset.safeTransfer(address(vault), amountToSend);
@@ -221,11 +251,16 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
 
     event PositionEnd(uint32 indexed position, uint256 assetBalance, uint256 timestamp);
 
-    function endPosition() external onlyRole(STRATEGIST_ROLE) {
-        _endPosition();
+    function endPosition(uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
+        _endPosition(slippageToleranceBps);
     }
 
-    function _endPosition() internal {
+    function claimRewardsAndEndPosition(uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
+        _claimRewards();
+        _endPosition(slippageToleranceBps);
+    }
+
+    function _endPosition(uint256 slippageToleranceBps) internal {
         // Set position metadata
         require(!canStartNewPos, "DNLP: position is inactive");
         canStartNewPos = true;
@@ -260,7 +295,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
 
             router.swapTokensForExactTokens({
                 amountOut: ethToBuy,
-                amountInMax: asset.balanceOf(address(this)),
+                amountInMax: _borrowToAsset(ethToBuy).slippageUp(slippageToleranceBps),
                 path: path,
                 to: address(this),
                 deadline: block.timestamp
@@ -272,7 +307,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
             path[1] = address(asset);
             router.swapExactTokensForTokens({
                 amountIn: ethToSell,
-                amountOutMin: 0,
+                amountOutMin: _borrowToAsset(ethToSell).slippageDown(slippageToleranceBps),
                 path: path,
                 to: address(this),
                 deadline: block.timestamp
@@ -289,6 +324,10 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     }
 
     function claimRewards() external onlyRole(STRATEGIST_ROLE) {
+        _claimRewards();
+    }
+
+    function _claimRewards() internal {
         // Sell SUSHI tokens to USDC
         uint256 sushiBalance = sushiToken.balanceOf(address(this));
         if (sushiBalance > 0) {
