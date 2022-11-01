@@ -7,6 +7,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
 import {L2Vault} from "../src/polygon/L2Vault.sol";
 import {ICREATE3Factory} from "../src/interfaces/ICreate3Factory.sol";
+import {CREATE3Factory} from "../src/test/CREATE3Factory.sol";
 import {IWormhole} from "../src/interfaces/IWormhole.sol";
 import {IRootChainManager} from "../src/interfaces/IRootChainManager.sol";
 import {BridgeEscrow} from "../src/BridgeEscrow.sol";
@@ -21,9 +22,20 @@ import {L2AAVEStrategy} from "../src/polygon/L2AAVEStrategy.sol";
 
 import {Base} from "./Base.sol";
 
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
+
+contract MockERC20 is ERC20 {
+    constructor(string memory _name, string memory _symbol, uint8 _decimals) ERC20(_name, _symbol, _decimals) {}
+
+    function mint(address to, uint256 value) public virtual {
+        _mint(to, value);
+    }
+}
+
 /*  solhint-disable reason-string */
 contract Deploy is Script, Base {
-    ICREATE3Factory create3 = ICREATE3Factory(0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf);
+    ICREATE3Factory create3;
 
     function _getSaltFile(string memory fileName) internal returns (bytes32 salt) {
         bytes memory saltData = vm.readFileBinary(fileName);
@@ -83,11 +95,45 @@ contract Deploy is Script, Base {
         require(address(basket.tokenToOracle(basket.weth())) == config.feeds.weth);
     }
 
+    function _deployStrategies(Base.L2Config memory config, L2Vault vault) internal {
+        L2AAVEStrategy aave = new L2AAVEStrategy(vault, config.aaveRegistry);
+        require(address(aave.asset()) == vault.asset());
+    }
+
     function run() external {
-        Base.L2Config memory config = abi.decode(_getConfigJson({mainnet: true, layer1: false}), (Base.L2Config));
+        bool testnet = vm.envBool("TEST");
+        Base.L2Config memory config = abi.decode(_getConfigJson({mainnet: !testnet, layer1: false}), (Base.L2Config));
+        console.log("config registry: ", config.aaveRegistry);
+        console.log("config usdc: ", config.usdc);
 
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
+        console.log("deployer", deployer);
+
+        {
+            MockERC20 btc = MockERC20(0xc8BA1fdaf17c1f16C68778fde5f78F3D37cD1509);
+            MockERC20 weth = MockERC20(0x3dd7F3CF122e0460Dba8A75d191b3486752B6A61);
+            btc.mint(deployer, 5000 * 1e18);
+            weth.mint(deployer, 100_000 * 1e18);
+            IUniswapV2Router02 uni = IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
+            uni.addLiquidity(
+                address(btc), address(weth), 5000 * 1e18, 100_000 * 1e18, 0, 0, address(this), block.timestamp * 2
+            );
+            address res = IUniswapV2Factory(uni.factory()).getPair(address(btc), address(weth));
+            console.log("pair", res);
+            console.log("btc amount", btc.balanceOf(res));
+            console.log("eth amount", weth.balanceOf(res));
+        }
+        return;
+
+        // The create3 factory contract (https://github.com/ZeframLou/create3-factory) does not exist on mumbai
+        // So we just deploy it here. NOTE: This means rebalances won't work on testnet
+        if (testnet) {
+            create3 = ICREATE3Factory(address(new CREATE3Factory()));
+        } else {
+            create3 = ICREATE3Factory(0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf);
+        }
+
         // Get salts
         bytes32 escrowSalt = _getSaltFile("escrow.salt");
         bytes32 routerSalt = _getSaltFile("router.salt");
@@ -129,8 +175,9 @@ contract Deploy is Script, Base {
         // Deploy TwoAssetBasket
         _deployBasket(config, forwarder);
 
-        L2AAVEStrategy aave = new L2AAVEStrategy(vault, config.aaveRegistry);
-        require(address(aave.asset()) == vault.asset());
+        // Deploy strategies
+        if (!testnet) _deployStrategies(config, vault);
+
         vm.stopBroadcast();
     }
 }
