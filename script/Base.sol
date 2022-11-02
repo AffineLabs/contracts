@@ -27,6 +27,7 @@ abstract contract Base is Script {
         Feeds feeds;
         address governance;
         uint256 managementFee;
+        uint256 ewqEnqueueFee;
         address usdc;
         address wbtc;
         address weth;

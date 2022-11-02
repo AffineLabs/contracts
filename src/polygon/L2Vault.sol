@@ -52,7 +52,7 @@ contract L2Vault is
         address forwarder,
         uint8 _l1Ratio,
         uint8 _l2Ratio,
-        uint256[2] memory fees
+        uint256[3] memory fees
     ) public initializer {
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
@@ -72,6 +72,7 @@ contract L2Vault is
 
         withdrawalFee = fees[0];
         managementFee = fees[1];
+        ewqEnqueueFee = fees[2];
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
@@ -143,6 +144,8 @@ contract L2Vault is
     uint256 public managementFee;
     // fee charged on redemption of shares, number is in bps
     uint256 public withdrawalFee;
+    // minimal fee charged if withdrawal or redeem request is added to ewq, number is in bps
+    uint256 public ewqEnqueueFee;
 
     function setManagementFee(uint256 feeBps) external onlyGovernance {
         managementFee = feeBps;
@@ -150,6 +153,10 @@ contract L2Vault is
 
     function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
         withdrawalFee = feeBps;
+    }
+
+    function setEwqEnqueueFee(uint256 feeUSDC) external onlyGovernance {
+        ewqEnqueueFee = feeUSDC;
     }
 
     function _assessFees() internal override {
@@ -215,20 +222,27 @@ contract L2Vault is
         EmergencyWithdrawalQueue ewq = emergencyWithdrawalQueue;
         require(shares <= balanceOf(owner) + ewq.ownerToDebt(owner), "L2Vault: min shares");
 
-        (uint256 assetsToUser, uint256 assetsFee) = _previewRedeem(shares);
+        address caller = _msgSender();
+        (uint256 assetsToUser, uint256 assetsFee) =
+            (caller == address(ewq)) ? _previewRedeemEwq(shares) : _previewRedeem(shares);
         assets = assetsToUser;
 
         // We must be able to repay all queued users and the current user
         uint256 assetDemand = assets + assetsFee + ewq.totalDebt();
         _liquidate(assetDemand);
 
-        address caller = _msgSender();
         // The ewq does not need approval to burn shares
         if (caller != owner && caller != address(ewq)) _spendAllowance(owner, caller, shares);
 
         // Add to emergency withdrawal queue if there is not enough liquidity.
         if (_asset.balanceOf(address(this)) < assetDemand) {
             if (caller != address(ewq)) {
+                // We need to enqueue, make sure that the requested amount is large enough.
+                uint256 rawAssets = _convertToAssets(shares, Rounding.Down);
+                uint256 expectedFee = Math.max(ewqEnqueueFee, getWithdrawalFee(rawAssets));
+                if (rawAssets < expectedFee) {
+                    revert("L2Vault: bad enqueue, min shares");
+                }
                 ewq.enqueue(owner, receiver, shares);
                 return 0;
             } else {
@@ -240,7 +254,9 @@ contract L2Vault is
         _burn(owner, shares);
         emit Withdraw(caller, receiver, owner, assets, shares);
 
-        _asset.safeTransfer(receiver, assets);
+        if (assets > 0) {
+            _asset.safeTransfer(receiver, assets);
+        }
         _asset.safeTransfer(governance, assetsFee);
     }
 
@@ -261,6 +277,11 @@ contract L2Vault is
         if (caller != owner) _spendAllowance(owner, caller, shares);
 
         if (_asset.balanceOf(address(this)) < assetDemand) {
+            // We need to enqueue, make sure that the requested amount is large enough.
+            uint256 expectedFee = Math.max(ewqEnqueueFee, getWithdrawalFee(assets));
+            if (assets < expectedFee) {
+                revert("L2Vault: bad enqueue, min assets");
+            }
             ewq.enqueue(owner, receiver, shares);
             return 0;
         }
@@ -353,6 +374,13 @@ contract L2Vault is
     function _previewRedeem(uint256 shares) internal view returns (uint256 assets, uint256 assetsFee) {
         uint256 rawAssets = _convertToAssets(shares, Rounding.Down);
         assetsFee = getWithdrawalFee(rawAssets);
+        assets = rawAssets - assetsFee;
+    }
+
+    /// @dev  A little helper that gets us the amount of assets to send to the user and governance during ewq redeem.
+    function _previewRedeemEwq(uint256 shares) internal view returns (uint256 assets, uint256 assetsFee) {
+        uint256 rawAssets = _convertToAssets(shares, Rounding.Down);
+        assetsFee = Math.min(rawAssets, Math.max(ewqEnqueueFee, getWithdrawalFee(rawAssets)));
         assets = rawAssets - assetsFee;
     }
 
