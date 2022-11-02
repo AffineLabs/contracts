@@ -66,7 +66,7 @@ contract DeltaNeutralTest is TestPlus {
                 Strings.toHexString(uint256(strategy.STRATEGIST_ROLE()), 32)
             )
         );
-        strategy.startPosition(200);
+        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
     }
 
     function testCreatePosition() public {
@@ -84,11 +84,11 @@ contract DeltaNeutralTest is TestPlus {
 
         vm.startPrank(vault.governance());
 
-        strategy.startPosition(200);
+        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
         assertFalse(strategy.canStartNewPos());
 
         // I got the right amount of matic
-        assertApproxEqAbs(amountMatic, strategy.borrowAsset().balanceOf(address(strategy)), 1e18);
+        assertApproxEqAbs(amountMatic, strategy.borrowAsset().balanceOf(address(strategy)), .01e18);
 
         // I have the right amount of aUSDC
         assertEq(strategy.aToken().balanceOf(address(strategy)), (startAssets - assetsToMatic) * 4 / 7);
@@ -108,7 +108,7 @@ contract DeltaNeutralTest is TestPlus {
         deal(address(asset), address(strategy), 1000e6);
 
         vm.startPrank(vault.governance());
-        strategy.startPosition(200);
+        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
 
         changePrank(alice);
         vm.expectRevert(
@@ -119,20 +119,18 @@ contract DeltaNeutralTest is TestPlus {
                 Strings.toHexString(uint256(strategy.STRATEGIST_ROLE()), 32)
             )
         );
-        strategy.endPosition(200);
+        strategy.endPosition(IDEAL_SLIPPAGE_BPS);
     }
 
     function testEndPosition() public {
         deal(address(asset), address(strategy), 1000e6);
 
         vm.startPrank(vault.governance());
-        strategy.startPosition(200);
-
-        changePrank(vault.governance());
-        strategy.endPosition(200);
+        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
+        strategy.endPosition(IDEAL_SLIPPAGE_BPS);
 
         assertTrue(strategy.canStartNewPos());
-        assertApproxEqRel(asset.balanceOf(address(strategy)), 1000e6, 0.02e18);
+        assertApproxEqRel(asset.balanceOf(address(strategy)), 1000e6, 0.02e6);
         assertEq(borrowAsset.balanceOf(address(strategy)), 0);
         assertEq(abPair.balanceOf(address(strategy)), 0);
     }
@@ -141,10 +139,12 @@ contract DeltaNeutralTest is TestPlus {
         assertEq(strategy.totalLockedValue(), 0);
         deal(address(asset), address(strategy), 1000e6);
 
-        vm.prank(vault.governance());
-        strategy.startPosition(200);
+        assertApproxEqRel(strategy.totalLockedValue(), 1000e6, 0.02e6);
 
-        assertApproxEqRel(strategy.totalLockedValue(), 1000e6, 0.02e18);
+        vm.prank(vault.governance());
+        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
+
+        assertApproxEqRel(strategy.totalLockedValue(), 1000e6, 0.02e6);
     }
 
     function testDivest() public {
@@ -157,7 +157,7 @@ contract DeltaNeutralTest is TestPlus {
         deal(address(asset), address(strategy), 1000e6);
 
         vm.prank(vault.governance());
-        strategy.startPosition(200);
+        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
 
         // We unwind position if there is a one
         vm.prank(address(vault));
@@ -165,7 +165,7 @@ contract DeltaNeutralTest is TestPlus {
 
         assertTrue(strategy.canStartNewPos());
         assertEq(strategy.totalLockedValue(), 0);
-        assertApproxEqRel(asset.balanceOf(address(vault)), 1000e6, 0.02e18);
+        assertApproxEqRel(asset.balanceOf(address(vault)), 1000e6, 0.02e6);
     }
 
     function testClaimRewards() public {
@@ -178,7 +178,7 @@ contract DeltaNeutralTest is TestPlus {
         deal(address(asset), address(strategy), 1000e6);
 
         vm.prank(vault.governance());
-        strategy.startPosition(200);
+        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
 
         vm.roll(block.number + 1000);
 

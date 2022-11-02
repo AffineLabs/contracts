@@ -256,7 +256,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     }
 
     function claimRewardsAndEndPosition(uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
-        _claimRewards();
+        _claimRewards(slippageToleranceBps);
         _endPosition(slippageToleranceBps);
     }
 
@@ -323,11 +323,11 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         emit PositionEnd(currentPosition, asset.balanceOf(address(this)), block.timestamp);
     }
 
-    function claimRewards() external onlyRole(STRATEGIST_ROLE) {
-        _claimRewards();
+    function claimRewards(uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
+        _claimRewards(slippageToleranceBps);
     }
 
-    function _claimRewards() internal {
+    function _claimRewards(uint256 slippageToleranceBps) internal {
         // Sell SUSHI tokens to USDC
         uint256 sushiBalance = sushiToken.balanceOf(address(this));
         if (sushiBalance > 0) {
@@ -336,9 +336,11 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
             path[1] = address(borrowAsset);
             path[2] = address(asset);
 
+            uint256[] memory amounts = router.getAmountsOut({amountIn: sushiBalance, path: path});
+            uint256 minAmountOut = amounts[2].slippageDown(slippageToleranceBps);
             router.swapExactTokensForTokens({
                 amountIn: sushiBalance,
-                amountOutMin: 0,
+                amountOutMin: minAmountOut,
                 path: path,
                 to: address(this),
                 deadline: block.timestamp
