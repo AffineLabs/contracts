@@ -552,10 +552,7 @@ contract L2Vault is
         require(_msgSender() == address(bridgeEscrow), "L2Vault: only escrow");
         l1TotalLockedValue -= amount;
         canRequestFromL1 = true;
-        emit ReceiveFromL1(amount);
     }
-
-    event ReceiveFromL1(uint256 amount);
 
     /**
      * DETAILED PRICE INFO
