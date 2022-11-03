@@ -142,20 +142,25 @@ contract L2Vault is
      *
      */
 
-    // Fee charged to vault over a year, number is in bps
+    /// @notice Fee charged to vault over a year, number is in bps
     uint256 public managementFee;
-    // fee charged on redemption of shares, number is in bps
+    /// @notice  Fee charged on redemption of shares, number is in bps
     uint256 public withdrawalFee;
     // minimal fee charged if withdrawal or redeem request is added to ewq, number is in assets amount.
     uint256 public ewqEnqueueFee;
     // minimal amount needed to enqueue a request to ewq, number is in assets amount.
     uint256 public ewqMinEnqueueAmount;
 
+    event ManagementFeeSet(uint256 oldFee, uint256 newFee);
+    event WithdrawalFeeSet(uint256 oldFee, uint256 newFee);
+
     function setManagementFee(uint256 feeBps) external onlyGovernance {
+        emit ManagementFeeSet({oldFee: managementFee, newFee: feeBps});
         managementFee = feeBps;
     }
 
     function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
+        emit WithdrawalFeeSet({oldFee: withdrawalFee, newFee: feeBps});
         withdrawalFee = feeBps;
     }
 
@@ -216,11 +221,14 @@ contract L2Vault is
      */
     EmergencyWithdrawalQueue public emergencyWithdrawalQueue;
 
+    event EwqSet(EmergencyWithdrawalQueue indexed oldQ, EmergencyWithdrawalQueue indexed newQ);
+
     /**
      * @notice Update the address of the emergency withdrawal queue.
      * @param _ewq The new queue.
      */
     function setEwq(EmergencyWithdrawalQueue _ewq) external onlyGovernance {
+        emit EwqSet({oldQ: emergencyWithdrawalQueue, newQ: _ewq});
         emergencyWithdrawalQueue = _ewq;
     }
 
@@ -447,18 +455,21 @@ contract L2Vault is
     function setLayerRatios(uint8 _l1Ratio, uint8 _l2Ratio) external onlyGovernance {
         l1Ratio = _l1Ratio;
         l2Ratio = _l2Ratio;
+        emit LayerRatiosSet({l1Ratio: l1Ratio, l2Ratio: l2Ratio});
     }
+
+    event LayerRatiosSet(uint8 l1Ratio, uint8 l2Ratio);
 
     /**
      * @notice Set the rebalance delta
      * @param _rebalanceDelta The new rebalance delta
      */
     function setRebalanceDelta(uint224 _rebalanceDelta) external onlyGovernance {
+        emit RebalanceDeltaSet({oldDelta: rebalanceDelta, newDelta: _rebalanceDelta});
         rebalanceDelta = _rebalanceDelta;
     }
 
-    event TransferToL1(uint256 amount);
-    event ReceiveFromL1(uint256 amount);
+    event RebalanceDeltaSet(uint224 oldDelta, uint224 newDelta);
 
     /// @notice The last time the tvl was updated. We need this to let L1 tvl updates unlock over time
     uint128 public lastTVLUpdate;
@@ -553,10 +564,10 @@ contract L2Vault is
         l1TotalLockedValue += amount;
 
         // Let L1 know how much money we sent
-        L2WormholeRouter(wormholeRouter).reportTransferredFund(amount);
+        L2WormholeRouter(wormholeRouter).reportFundTransfer(amount);
     }
 
-    event RequestFromL1(uint256 amount);
+    event TransferToL1(uint256 amount);
 
     function _divestFromL1(uint256 amount) internal {
         L2WormholeRouter(wormholeRouter).requestFunds(amount);
@@ -564,11 +575,12 @@ contract L2Vault is
         emit RequestFromL1(amount);
     }
 
+    event RequestFromL1(uint256 amount);
+
     function afterReceive(uint256 amount) external {
         require(_msgSender() == address(bridgeEscrow), "L2Vault: only escrow");
         l1TotalLockedValue -= amount;
         canRequestFromL1 = true;
-        emit ReceiveFromL1(amount);
     }
 
     /**

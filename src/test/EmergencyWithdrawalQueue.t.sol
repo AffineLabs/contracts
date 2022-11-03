@@ -20,12 +20,8 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
     L2Vault vault;
 
     event Transfer(address indexed from, address indexed to, uint256 amount);
-    event EmergencyWithdrawalQueueEnqueue(
-        uint256 indexed pos, address indexed owner, address indexed receiver, uint256 amount
-    );
-    event EmergencyWithdrawalQueueDequeue(
-        uint256 indexed pos, address indexed owner, address indexed receiver, uint256 amount
-    );
+    event Push(uint256 indexed pos, address indexed owner, address indexed receiver, uint256 amount);
+    event Pop(uint256 indexed pos, address indexed owner, address indexed receiver, uint256 amount);
 
     function setUp() public {
         vault = Deploy.deployL2Vault();
@@ -36,7 +32,7 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
 
     function testEnqueueSuccess() external {
         vm.expectEmit(true, true, false, true);
-        emit EmergencyWithdrawalQueueEnqueue(1, bob, alice, 1000);
+        emit Push(1, bob, alice, 1000);
         // Impersonate vault
         vm.startPrank(address(vault));
         // Only vault should be able to enqueue.
@@ -57,15 +53,15 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         vm.startPrank(address(vault));
 
         vm.expectEmit(true, true, false, true);
-        emit EmergencyWithdrawalQueueEnqueue(1, bob, alice, 1000);
+        emit Push(1, bob, alice, 1000);
         emergencyWithdrawalQueue.enqueue(bob, alice, 1000);
 
         vm.expectEmit(true, true, false, true);
-        emit EmergencyWithdrawalQueueEnqueue(2, alice, bob, 2000);
+        emit Push(2, alice, bob, 2000);
         emergencyWithdrawalQueue.enqueue(alice, bob, 2000);
 
         vm.expectEmit(true, true, false, true);
-        emit EmergencyWithdrawalQueueEnqueue(3, bob, alice, 3000);
+        emit Push(3, bob, alice, 3000);
         emergencyWithdrawalQueue.enqueue(bob, alice, 3000);
 
         vm.stopPrank();
@@ -86,16 +82,16 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         vm.mockCall(address(vault), abi.encodeWithSelector(L2Vault.redeem.selector), abi.encode(2000, alice, bob));
 
         vm.expectEmit(true, true, true, true);
-        emit EmergencyWithdrawalQueueDequeue(1, bob, alice, 1000);
+        emit Pop(1, bob, alice, 1000);
         vm.expectCall(address(vault), abi.encodeWithSelector(L2Vault.redeem.selector, 1000, alice, bob));
         emergencyWithdrawalQueue.dequeue();
         assertEq(emergencyWithdrawalQueue.size(), 2);
 
         vm.expectEmit(true, true, true, true);
-        emit EmergencyWithdrawalQueueDequeue(2, alice, bob, 2000);
+        emit Pop(2, alice, bob, 2000);
         vm.expectCall(address(vault), abi.encodeWithSelector(L2Vault.redeem.selector, 2000, bob, alice));
         vm.expectEmit(true, true, true, true);
-        emit EmergencyWithdrawalQueueDequeue(3, bob, alice, 3000);
+        emit Pop(3, bob, alice, 3000);
         vm.expectCall(address(vault), abi.encodeWithSelector(L2Vault.redeem.selector, 3000, alice, bob));
         emit log_named_uint("head1: ", emergencyWithdrawalQueue.headPtr());
         emit log_named_uint("tail1: ", emergencyWithdrawalQueue.tailPtr());

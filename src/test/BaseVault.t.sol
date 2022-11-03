@@ -124,14 +124,8 @@ contract BaseVaultTest is TestPlus {
         }
     }
 
-    event WithdrawalQueueSet(address indexed user, BaseStrategy[MAX_STRATEGIES] replacedWithdrawalQueue);
-
     event WithdrawalQueueIndexesSwapped(
-        address indexed user,
-        uint256 index1,
-        uint256 index2,
-        BaseStrategy indexed newStrategy1,
-        BaseStrategy indexed newStrategy2
+        uint256 index1, uint256 index2, BaseStrategy indexed newStrategy1, BaseStrategy indexed newStrategy2
     );
 
     function testSetWithdrawalQueue() public {
@@ -151,7 +145,7 @@ contract BaseVaultTest is TestPlus {
         BaseStrategy newStrategy1 = vault.withdrawalQueue(0);
         BaseStrategy newStrategy2 = vault.withdrawalQueue(1);
         vm.expectEmit(true, true, true, true);
-        emit WithdrawalQueueIndexesSwapped(address(this), 0, 1, newStrategy2, newStrategy1);
+        emit WithdrawalQueueIndexesSwapped(0, 1, newStrategy2, newStrategy1);
         vault.swapWithdrawalQueueIndexes(0, 1);
         assertTrue(newStrategy1 == vault.withdrawalQueue(1));
         assertTrue(newStrategy2 == vault.withdrawalQueue(0));

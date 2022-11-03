@@ -35,13 +35,17 @@ contract EmergencyWithdrawalQueue {
     // @notice User debts in share unit
     mapping(address => uint256) public ownerToDebt;
 
-    /// @notice Envents
-    event EmergencyWithdrawalQueueEnqueue(
-        uint256 indexed pos, address indexed owner, address indexed receiver, uint256 shares
-    );
-    event EmergencyWithdrawalQueueDequeue(
-        uint256 indexed pos, address indexed owner, address indexed receiver, uint256 shares
-    );
+    /**
+     * @notice Emitted when we push onto the queue.
+     * @param pos The users position in the queue.
+     * @param owner The owner of the shares.
+     * @param receiver The user who will receive the assets during share redemption
+     * @param shares The number of shares to redeem.
+     */
+    event Push(uint256 indexed pos, address indexed owner, address indexed receiver, uint256 shares);
+    /// @notice Emitted when we pop a request from the queue. See `Push` for the parameter info
+    /// @dev This is only emitted when we successfully burn the user's shares. Invalid requests are skipped.
+    event Pop(uint256 indexed pos, address indexed owner, address indexed receiver, uint256 shares);
 
     constructor(L2Vault _vault) {
         vault = _vault;
@@ -64,7 +68,7 @@ contract EmergencyWithdrawalQueue {
         queue[tailPtr] = WithdrawalRequest(owner, receiver, shares, block.timestamp);
         shareDebt += shares;
         ownerToDebt[owner] += shares;
-        emit EmergencyWithdrawalQueueEnqueue(tailPtr, owner, receiver, shares);
+        emit Push(tailPtr, owner, receiver, shares);
     }
 
     /// @notice Dequeue user withdrawal requests.
@@ -76,9 +80,7 @@ contract EmergencyWithdrawalQueue {
         ownerToDebt[withdrawalRequest.owner] -= withdrawalRequest.shares;
 
         try vault.redeem(withdrawalRequest.shares, withdrawalRequest.receiver, withdrawalRequest.owner) {
-            emit EmergencyWithdrawalQueueDequeue(
-                headPtr, withdrawalRequest.owner, withdrawalRequest.receiver, withdrawalRequest.shares
-                );
+            emit Pop(headPtr, withdrawalRequest.owner, withdrawalRequest.receiver, withdrawalRequest.shares);
             headPtr += 1;
         } catch Error(string memory reason) {
             if (keccak256(bytes(reason)) == keccak256("L2Vault: bad dequeue")) {
@@ -106,9 +108,7 @@ contract EmergencyWithdrawalQueue {
             ownerToDebt[withdrawalRequest.owner] -= withdrawalRequest.shares;
 
             try vault.redeem(withdrawalRequest.shares, withdrawalRequest.receiver, withdrawalRequest.owner) {
-                emit EmergencyWithdrawalQueueDequeue(
-                    ptr, withdrawalRequest.owner, withdrawalRequest.receiver, withdrawalRequest.shares
-                    );
+                emit Pop(ptr, withdrawalRequest.owner, withdrawalRequest.receiver, withdrawalRequest.shares);
             } catch Error(string memory reason) {
                 if (keccak256(bytes(reason)) == keccak256("L2Vault: bad dequeue")) {
                     // Not enough assets

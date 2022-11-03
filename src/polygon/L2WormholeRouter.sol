@@ -13,7 +13,7 @@ contract L2WormholeRouter is WormholeRouter {
 
     constructor(L2Vault _vault, IWormhole _wormhole) WormholeRouter(_vault, _wormhole) {}
 
-    function reportTransferredFund(uint256 amount) external payable {
+    function reportFundTransfer(uint256 amount) external payable {
         require(msg.sender == address(vault), "WR: Only vault");
         bytes memory payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
@@ -27,8 +27,6 @@ contract L2WormholeRouter is WormholeRouter {
         wormhole.publishMessage{value: msg.value}(uint32(sequence), payload, consistencyLevel);
     }
 
-    event TransferFromL1(uint256 amount);
-
     function receiveFunds(bytes calldata message) external {
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
@@ -37,7 +35,6 @@ contract L2WormholeRouter is WormholeRouter {
         (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
         require(msgType == Constants.L1_FUND_TRANSFER_REPORT, "WR: bad msg type");
         vault.bridgeEscrow().l2ClearFund(amount);
-        emit TransferFromL1(amount);
     }
 
     function receiveTVL(bytes calldata message) external {
