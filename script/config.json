@@ -13,6 +13,8 @@
       "wormhole": "0x0CBE91CF822c73C2315FB05100C2F714765d5c20",
       "withdrawFee": 50,
       "managementFee": 200,
+      "ewqEnqueueFee": 100000,
+      "ewqEnqueueMinAmount": 1000000,
       "wbtc": "0xc8BA1fdaf17c1f16C68778fde5f78F3D37cD1509",
       "weth": "0x3dd7F3CF122e0460Dba8A75d191b3486752B6A61",
       "feeds": {
@@ -37,6 +39,8 @@
       "wormhole": "0x0CBE91CF822c73C2315FB05100C2F714765d5c20",
       "withdrawFee": 0,
       "managementFee": 0,
+      "ewqEnqueueFee": 100000,
+      "ewqEnqueueMinAmount": 1000000,
       "wbtc": "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6",
       "weth": "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
       "feeds": {
