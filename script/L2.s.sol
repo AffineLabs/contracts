@@ -7,6 +7,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
 import {L2Vault} from "../src/polygon/L2Vault.sol";
 import {ICREATE3Factory} from "../src/interfaces/ICreate3Factory.sol";
+import {CREATE3Factory} from "../src/test/CREATE3Factory.sol";
 import {IWormhole} from "../src/interfaces/IWormhole.sol";
 import {IRootChainManager} from "../src/interfaces/IRootChainManager.sol";
 import {BridgeEscrow} from "../src/BridgeEscrow.sol";
@@ -23,7 +24,7 @@ import {Base} from "./Base.sol";
 
 /*  solhint-disable reason-string */
 contract Deploy is Script, Base {
-    ICREATE3Factory create3 = ICREATE3Factory(0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf);
+    ICREATE3Factory create3;
 
     function _getSaltFile(string memory fileName) internal returns (bytes32 salt) {
         bytes memory saltData = vm.readFileBinary(fileName);
@@ -40,10 +41,22 @@ contract Deploy is Script, Base {
         // Deploy Vault
         L2Vault impl = new L2Vault();
         // Need to declare array in memory to avoud stack too deep error
-        uint256[2] memory fees = [config.withdrawFee, config.managementFee]; // withdrawal and AUM fees;
+        uint256[3] memory fees = [config.withdrawFee, config.managementFee, config.ewqEnqueueFee]; // withdrawal and AUM fees;
+        uint256 ewqEnqueueMinAmount = config.ewqEnqueueMinAmount;
         bytes memory initData = abi.encodeCall(
             L2Vault.initialize,
-            (config.governance, ERC20(config.usdc), address(router), escrow, queue, address(forwarder), 9, 1, fees)
+            (
+                config.governance,
+                ERC20(config.usdc),
+                address(router),
+                escrow,
+                queue,
+                address(forwarder),
+                9,
+                1,
+                fees,
+                ewqEnqueueMinAmount
+            )
         );
 
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
@@ -83,11 +96,28 @@ contract Deploy is Script, Base {
         require(address(basket.tokenToOracle(basket.weth())) == config.feeds.weth);
     }
 
+    function _deployStrategies(Base.L2Config memory config, L2Vault vault) internal {
+        L2AAVEStrategy aave = new L2AAVEStrategy(vault, config.aaveRegistry);
+        require(address(aave.asset()) == vault.asset());
+    }
+
     function run() external {
-        Base.L2Config memory config = abi.decode(_getConfigJson({mainnet: true, layer1: false}), (Base.L2Config));
+        bool testnet = vm.envBool("TEST");
+        Base.L2Config memory config = abi.decode(_getConfigJson({mainnet: !testnet, layer1: false}), (Base.L2Config));
+        console.log("config registry: ", config.aaveRegistry);
+        console.log("config usdc: ", config.usdc);
 
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
+
+        // The create3 factory contract (https://github.com/ZeframLou/create3-factory) does not exist on mumbai
+        // So we just deploy it here. NOTE: This means rebalances won't work on testnet
+        if (testnet) {
+            create3 = ICREATE3Factory(address(new CREATE3Factory()));
+        } else {
+            create3 = ICREATE3Factory(0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf);
+        }
+
         // Get salts
         bytes32 escrowSalt = _getSaltFile("escrow.salt");
         bytes32 routerSalt = _getSaltFile("router.salt");
@@ -129,8 +159,9 @@ contract Deploy is Script, Base {
         // Deploy TwoAssetBasket
         _deployBasket(config, forwarder);
 
-        L2AAVEStrategy aave = new L2AAVEStrategy(vault, config.aaveRegistry);
-        require(address(aave.asset()) == vault.asset());
+        // Deploy strategies
+        if (!testnet) _deployStrategies(config, vault);
+
         vm.stopBroadcast();
     }
 }

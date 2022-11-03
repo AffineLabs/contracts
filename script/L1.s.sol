@@ -47,8 +47,48 @@ contract Deploy is Script, Base {
         vm.writeFileBinary(fileName, abi.encodePacked(salt));
     }
 
+    function _deployStrategies(L1Vault vault) internal {
+        // Compound strat
+        L1CompoundStrategy comp = new L1CompoundStrategy(vault, ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563));
+        require(address(comp.asset()) == vault.asset());
+
+        // Curve Strat
+        CurveStrategy curve = new CurveStrategy(vault, 
+                         ERC20(0x5a6A4D54456819380173272A5E8E9B9904BdF41B),
+                         I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359), 
+                         2,
+                         ILiquidityGauge(0xd8b712d29381748dB89c36BCa0138d7c75866ddF)
+                         );
+        require(address(curve.asset()) == vault.asset());
+
+        // Convex strat
+        ConvexStrategy cvx = new ConvexStrategy(
+           vault, 
+            ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
+            100,
+            IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31));
+        require(address(cvx.asset()) == vault.asset());
+
+        // SSLP strat
+        uint256 longPct = 10 ** 15;
+        uint256 masterChefPID = 1;
+        DeltaNeutralLp dnlp = new DeltaNeutralLp(
+           vault, 
+            longPct,
+            ILendingPoolAddressesProviderRegistry(0x52D306e36E3B6B02c153d0266ff0f85d18BCD413),
+            ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), // Asset to borrow (WETH)
+            AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419),
+            IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F),
+            IUniswapV2Factory(0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac),
+            IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd),
+            masterChefPID);
+        require(address(dnlp.asset()) == vault.asset());
+    }
+
     function run() external {
-        bytes memory configBytes = _getConfigJson({mainnet: true, layer1: true});
+        bool testnet = vm.envBool("TEST");
+        console.log("test: ", testnet ? 1 : 0);
+        bytes memory configBytes = _getConfigJson({mainnet: !testnet, layer1: true});
         Base.L1Config memory config = abi.decode(configBytes, (Base.L1Config));
         console.log("config usdc: ", config.usdc);
 
@@ -101,42 +141,7 @@ contract Deploy is Script, Base {
         require(router.vault() == vault);
         require(router.wormhole() == wormhole);
 
-        // Compound strat
-        L1CompoundStrategy comp = new L1CompoundStrategy(vault, ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563));
-        require(address(comp.asset()) == vault.asset());
-
-        // Curve Strat
-        CurveStrategy curve = new CurveStrategy(vault, 
-                         ERC20(0x5a6A4D54456819380173272A5E8E9B9904BdF41B),
-                         I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359), 
-                         2,
-                         ILiquidityGauge(0xd8b712d29381748dB89c36BCa0138d7c75866ddF)
-                         );
-        require(address(curve.asset()) == vault.asset());
-
-        // Convex strat
-        ConvexStrategy cvx = new ConvexStrategy(
-           vault, 
-            ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
-            100,
-            IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31));
-        require(address(cvx.asset()) == vault.asset());
-
-        // SSLP strat
-        uint256 longPct = 10 ** 15;
-        uint256 masterChefPID = 1;
-        DeltaNeutralLp dnlp = new DeltaNeutralLp(
-           vault, 
-            longPct,
-            ILendingPoolAddressesProviderRegistry(0x52D306e36E3B6B02c153d0266ff0f85d18BCD413),
-            ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), // Asset to borrow (WETH)
-            AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419),
-            IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F),
-            IUniswapV2Factory(0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac),
-            IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd),
-            masterChefPID);
-        require(address(dnlp.asset()) == vault.asset());
-
+        if (!testnet) _deployStrategies(vault);
         vm.stopBroadcast();
     }
 }

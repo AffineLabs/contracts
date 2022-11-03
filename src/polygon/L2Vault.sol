@@ -52,7 +52,8 @@ contract L2Vault is
         address forwarder,
         uint8 _l1Ratio,
         uint8 _l2Ratio,
-        uint256[2] memory fees
+        uint256[3] memory fees,
+        uint256 _ewqMinEnqueueAmount
     ) public initializer {
         __ERC20_init("Alpine Save", "alpSave");
         __UUPSUpgradeable_init();
@@ -72,6 +73,8 @@ contract L2Vault is
 
         withdrawalFee = fees[0];
         managementFee = fees[1];
+        ewqEnqueueFee = fees[2];
+        ewqMinEnqueueAmount = _ewqMinEnqueueAmount;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
@@ -143,6 +146,10 @@ contract L2Vault is
     uint256 public managementFee;
     // fee charged on redemption of shares, number is in bps
     uint256 public withdrawalFee;
+    // minimal fee charged if withdrawal or redeem request is added to ewq, number is in assets amount.
+    uint256 public ewqEnqueueFee;
+    // minimal amount needed to enqueue a request to ewq, number is in assets amount.
+    uint256 public ewqMinEnqueueAmount;
 
     function setManagementFee(uint256 feeBps) external onlyGovernance {
         managementFee = feeBps;
@@ -150,6 +157,14 @@ contract L2Vault is
 
     function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
         withdrawalFee = feeBps;
+    }
+
+    function setEwqEnqueueFee(uint256 assetsFee) external onlyGovernance {
+        ewqEnqueueFee = assetsFee;
+    }
+
+    function setEwqMinEnqueueAmount(uint256 amount) external onlyGovernance {
+        ewqMinEnqueueAmount = amount;
     }
 
     function _assessFees() internal override {
@@ -215,20 +230,28 @@ contract L2Vault is
         EmergencyWithdrawalQueue ewq = emergencyWithdrawalQueue;
         require(shares <= balanceOf(owner) + ewq.ownerToDebt(owner), "L2Vault: min shares");
 
-        (uint256 assetsToUser, uint256 assetsFee) = _previewRedeem(shares);
-        assets = assetsToUser;
+        address caller = _msgSender();
+        uint256 rawAssets = _convertToAssets(shares, Rounding.Down);
+        uint256 assetsFee = getWithdrawalFee(rawAssets);
+        if (caller == address(ewq)) {
+            assetsFee = Math.min(rawAssets, Math.max(ewqEnqueueFee, assetsFee));
+        }
+        assets = rawAssets - assetsFee;
 
         // We must be able to repay all queued users and the current user
         uint256 assetDemand = assets + assetsFee + ewq.totalDebt();
         _liquidate(assetDemand);
 
-        address caller = _msgSender();
         // The ewq does not need approval to burn shares
         if (caller != owner && caller != address(ewq)) _spendAllowance(owner, caller, shares);
 
         // Add to emergency withdrawal queue if there is not enough liquidity.
         if (_asset.balanceOf(address(this)) < assetDemand) {
             if (caller != address(ewq)) {
+                // We need to enqueue, make sure that the requested amount is large enough.
+                if (rawAssets < ewqMinEnqueueAmount) {
+                    revert("L2Vault: bad enqueue, min shares");
+                }
                 ewq.enqueue(owner, receiver, shares);
                 return 0;
             } else {
@@ -240,7 +263,9 @@ contract L2Vault is
         _burn(owner, shares);
         emit Withdraw(caller, receiver, owner, assets, shares);
 
-        _asset.safeTransfer(receiver, assets);
+        if (assets > 0) {
+            _asset.safeTransfer(receiver, assets);
+        }
         _asset.safeTransfer(governance, assetsFee);
     }
 
@@ -261,6 +286,10 @@ contract L2Vault is
         if (caller != owner) _spendAllowance(owner, caller, shares);
 
         if (_asset.balanceOf(address(this)) < assetDemand) {
+            // We need to enqueue, make sure that the requested amount is large enough.
+            if (assets < ewqMinEnqueueAmount) {
+                revert("L2Vault: bad enqueue, min assets");
+            }
             ewq.enqueue(owner, receiver, shares);
             return 0;
         }
