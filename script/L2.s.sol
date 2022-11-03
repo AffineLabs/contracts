@@ -41,10 +41,22 @@ contract Deploy is Script, Base {
         // Deploy Vault
         L2Vault impl = new L2Vault();
         // Need to declare array in memory to avoud stack too deep error
-        uint256[2] memory fees = [config.withdrawFee, config.managementFee]; // withdrawal and AUM fees;
+        uint256[3] memory fees = [config.withdrawFee, config.managementFee, config.ewqEnqueueFee]; // withdrawal and AUM fees;
+        uint256 ewqEnqueueMinAmount = config.ewqEnqueueMinAmount;
         bytes memory initData = abi.encodeCall(
             L2Vault.initialize,
-            (config.governance, ERC20(config.usdc), address(router), escrow, queue, address(forwarder), 9, 1, fees)
+            (
+                config.governance,
+                ERC20(config.usdc),
+                address(router),
+                escrow,
+                queue,
+                address(forwarder),
+                9,
+                1,
+                fees,
+                ewqEnqueueMinAmount
+            )
         );
 
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
