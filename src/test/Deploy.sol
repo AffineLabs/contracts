@@ -47,7 +47,7 @@ contract Deploy is Test {
             address(0), // forwarder
             1, // l1 ratio
             1, // l2 ratio
-            [uint256(0), uint256(200), uint256(100000)] // withdrawal and AUM fees
+            [uint256(0), uint256(200), uint256(100_000)] // withdrawal and AUM fees
         );
 
         create3.deploy(
