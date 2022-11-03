@@ -20,14 +20,17 @@ contract L2VaultTest is TestPlus {
 
     MockL2Vault vault;
     MockERC20 asset;
-    uint256 oneUSDC = 1_000_000;
-    uint256 halfUSDC = oneUSDC / 2;
-    uint256 ewqEnqueueFee = 100_000;
+    uint256 tenUSDC = 10_000_000;
+    uint256 fiveUSDC = tenUSDC / 2;
+    uint256 ewqEnqueueFee;
+    uint256 ewqEnqueueMinAmount;
 
     function setUp() public {
         vault = Deploy.deployL2Vault();
         asset = MockERC20(vault.asset());
         vault.setMockRebalanceDelta(0);
+        ewqEnqueueFee = vault.ewqEnqueueFee();
+        ewqEnqueueMinAmount = vault.ewqMinEnqueueAmount();
     }
 
     // Adding this since this test contract is used as a strategy
@@ -402,7 +405,7 @@ contract L2VaultTest is TestPlus {
     );
 
     function testEmergencyWithdrawal(uint64 amountAsset) public {
-        vm.assume(amountAsset > ewqEnqueueFee);
+        vm.assume(amountAsset > ewqEnqueueMinAmount);
         address user = address(this);
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
@@ -435,7 +438,7 @@ contract L2VaultTest is TestPlus {
     }
 
     function testEmergencyWithdrawalWithRedeem(uint64 amountAsset) public {
-        vm.assume(amountAsset > ewqEnqueueFee);
+        vm.assume(amountAsset > ewqEnqueueMinAmount);
         address user = address(this);
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
@@ -472,39 +475,39 @@ contract L2VaultTest is TestPlus {
 
     function testEwqDebt() public {
         // We take the ewq debt into account when processing withdrawals
-        asset.mint(alice, halfUSDC);
-        asset.mint(bob, halfUSDC);
+        asset.mint(alice, fiveUSDC);
+        asset.mint(bob, fiveUSDC);
 
         vm.startPrank(alice);
         asset.approve(address(vault), type(uint256).max);
-        vault.deposit(halfUSDC, alice);
+        vault.deposit(fiveUSDC, alice);
 
         // simulate vault assets being transferred to L1.
-        asset.burn(address(vault), halfUSDC);
+        asset.burn(address(vault), fiveUSDC);
         vm.store(
             address(vault),
             bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
-            bytes32(uint256(halfUSDC))
+            bytes32(uint256(fiveUSDC))
         );
 
         // This will trigger an emergency withdrawal queue enqueue as there is no asset in L2 vault.
-        vault.withdraw(halfUSDC, alice, alice);
+        vault.withdraw(fiveUSDC, alice, alice);
         vm.stopPrank();
 
         vm.startPrank(bob);
         asset.approve(address(vault), type(uint256).max);
-        vault.deposit(halfUSDC, bob);
+        vault.deposit(fiveUSDC, bob);
 
         // Now the vault has 0.5 USDC, but if bob wants to withdraw 0.5 USDC, it will
         // again trigger an emergency withdrawal queue enqueue as this 0.5 USDC is reserved
         // for withdrawals in the emergency withdrawal queue.
-        vault.withdraw(halfUSDC, bob, bob);
+        vault.withdraw(fiveUSDC, bob, bob);
 
         assertEq(vault.emergencyWithdrawalQueue().size(), 2);
         vm.stopPrank();
 
         // Simulate funds being bridged from L1 to L2 vault.
-        asset.mint(address(vault), halfUSDC);
+        asset.mint(address(vault), fiveUSDC);
         vm.store(
             address(vault),
             bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
@@ -512,31 +515,31 @@ contract L2VaultTest is TestPlus {
         );
 
         vault.emergencyWithdrawalQueue().dequeue();
-        assertEq(asset.balanceOf(alice), halfUSDC - ewqEnqueueFee);
+        assertEq(asset.balanceOf(alice), fiveUSDC - ewqEnqueueFee);
 
         vault.emergencyWithdrawalQueue().dequeue();
-        assertEq(asset.balanceOf(bob), halfUSDC - ewqEnqueueFee);
+        assertEq(asset.balanceOf(bob), fiveUSDC - ewqEnqueueFee);
     }
 
     function testEwqWithdraw() public {
-        asset.mint(alice, oneUSDC);
+        asset.mint(alice, tenUSDC);
 
         vm.startPrank(alice);
         asset.approve(address(vault), type(uint256).max);
-        vault.deposit(oneUSDC, alice);
+        vault.deposit(tenUSDC, alice);
 
         // simulate vault assets being transferred to L1.
-        asset.burn(address(vault), oneUSDC);
+        asset.burn(address(vault), tenUSDC);
         vm.store(
             address(vault),
             bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
-            bytes32(uint256(oneUSDC))
+            bytes32(uint256(tenUSDC))
         );
         // Trigger emergency withdrawal queue enqueue.
-        vault.withdraw(halfUSDC, alice, alice);
+        vault.withdraw(fiveUSDC, alice, alice);
 
         // Simulate funds being bridged from L1 to L2 vault.
-        asset.mint(address(vault), oneUSDC);
+        asset.mint(address(vault), tenUSDC);
         vm.store(
             address(vault),
             bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
@@ -544,29 +547,29 @@ contract L2VaultTest is TestPlus {
         );
 
         vault.emergencyWithdrawalQueue().dequeue();
-        assertEq(asset.balanceOf(alice), halfUSDC - ewqEnqueueFee);
+        assertEq(asset.balanceOf(alice), fiveUSDC - ewqEnqueueFee);
     }
 
     function testEwqRedeem() public {
-        asset.mint(alice, oneUSDC);
+        asset.mint(alice, tenUSDC);
         vm.startPrank(alice);
         asset.approve(address(vault), type(uint256).max);
-        vault.deposit(oneUSDC, alice);
+        vault.deposit(tenUSDC, alice);
 
         uint256 aliceShares = vault.balanceOf(alice);
 
         // simulate vault assets being transferred to L1.
-        asset.burn(address(vault), oneUSDC);
+        asset.burn(address(vault), tenUSDC);
         vm.store(
             address(vault),
             bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
-            bytes32(uint256(oneUSDC))
+            bytes32(uint256(tenUSDC))
         );
         // Trigger emergency withdrawal queue enqueue.
         vault.redeem(aliceShares, alice, alice);
 
         // Simulate funds being bridged from L1 to L2 vault.
-        asset.mint(address(vault), oneUSDC);
+        asset.mint(address(vault), tenUSDC);
         vm.store(
             address(vault),
             bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
@@ -574,7 +577,7 @@ contract L2VaultTest is TestPlus {
         );
 
         vault.emergencyWithdrawalQueue().dequeue();
-        assertEq(asset.balanceOf(alice), oneUSDC - vault.ewqEnqueueFee());
+        assertEq(asset.balanceOf(alice), tenUSDC - vault.ewqEnqueueFee());
     }
 
     function testEwqMinRedeem() public {

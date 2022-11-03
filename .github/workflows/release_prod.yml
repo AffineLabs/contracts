@@ -35,18 +35,20 @@ jobs:
         with:
           node-version: "16.x"
 
-      - name: Install yarn dependencies, Ignore lifecycle hooks
-        run: yarn --frozen-lockfile --ignore-scripts
+      - name: Install Foundry
+        uses: onbjerg/foundry-toolchain@v1
+        with:
+          version: nightly
 
-      - name: Generate the ABIs
-        run: yarn hardhat export-abi
+      - name: Install yarn dependencies, Run postinstall hooks
+        run: yarn --frozen-lockfile
 
       - name: Run deployment scripts
-        run: yarn script scripts/deploy-all.ts --no-fork -eth mainnet -p mainnet
+        run: yarn ts-node scripts/deploy.ts -l 1 -b && yarn ts-node scripts/deploy.ts -l 2 -b
 
       - name: Uploading addressbook and typechain to S3 bucket in version specific subdirectory
         uses: jakejarvis/s3-sync-action@master
         with:
-          args: --follow-symlinks --delete --exclude '*' --include 'addressbook.json' --include 'abi/*.json' --include 'typechain/*'
+          args: --follow-symlinks --delete --exclude '*' --include 'addressbook.json' --include 'typechain/*'
         env:
           DEST_DIR: ${{ env.VERSION }}
