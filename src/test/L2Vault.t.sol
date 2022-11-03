@@ -396,9 +396,7 @@ contract L2VaultTest is TestPlus {
         vault.unpause();
     }
 
-    event EmergencyWithdrawalQueueEnqueue(
-        uint256 indexed pos, address indexed owner, address indexed receiver, uint256 amount
-    );
+    event Push(uint256 indexed pos, address indexed owner, address indexed receiver, uint256 amount);
 
     function testEmergencyWithdrawal(uint64 amountAsset) public {
         vm.assume(amountAsset > 99);
@@ -416,7 +414,7 @@ contract L2VaultTest is TestPlus {
         );
 
         vm.expectEmit(true, true, true, false);
-        emit EmergencyWithdrawalQueueEnqueue(1, user, user, vault.convertToShares(amountAsset));
+        emit Push(1, user, user, vault.convertToShares(amountAsset));
 
         // Trigger emergency withdrawal as vault doesn't have any asset.
         vault.withdraw(amountAsset, user, user);
@@ -450,7 +448,7 @@ contract L2VaultTest is TestPlus {
 
         uint256 numShares = vault.convertToShares(amountAsset);
         vm.expectEmit(true, true, true, true);
-        emit EmergencyWithdrawalQueueEnqueue(1, user, user, numShares);
+        emit Push(1, user, user, numShares);
 
         // Trigger emergency withdrawal as vault doesn't have any asset.
         vault.redeem(numShares, user, user);
