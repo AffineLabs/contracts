@@ -56,6 +56,10 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         return 0;
     }
 
+    /**
+     * @notice Emitted whenever we send our tvl to l2
+     * @param tvl The current tvl of this vault.
+     */
     event SendTVL(uint256 tvl);
 
     function sendTVL() external {
@@ -77,20 +81,20 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         require(msg.sender == address(wormholeRouter), "L1: only router");
         _liquidate(amountRequested);
         uint256 amountToSend = Math.min(_asset.balanceOf(address(this)), amountRequested);
-        _transferFundsToL2(amountToSend);
-    }
-
-    event FundTransferToL2(uint256 amount);
-
-    // Send `asset` to L2 BridgeEscrow via polygon bridge
-    function _transferFundsToL2(uint256 amount) internal {
-        _asset.safeApprove(predicate, amount);
-        chainManager.depositFor(address(bridgeEscrow), address(_asset), abi.encodePacked(amount));
+        _asset.safeApprove(predicate, amountToSend);
+        chainManager.depositFor(address(bridgeEscrow), address(_asset), abi.encodePacked(amountToSend));
 
         // Let L2 know how much money we sent
-        L1WormholeRouter(wormholeRouter).reportTransferredFund(amount);
-        emit FundTransferToL2(amount);
+        L1WormholeRouter(wormholeRouter).reportTransferredFund(amountToSend);
+        emit TransferToL2({assetsRequested: amountRequested, assetsSent: amountToSend});
     }
+
+    /**
+     * @notice Emitted whenever we send assets to L2.
+     * @param assetsRequested The assets requested by L2.
+     * @param assetsSent The assets we actually sent.
+     */
+    event TransferToL2(uint256 assetsRequested, uint256 assetsSent);
 
     function afterReceive() external {
         require(msg.sender == address(bridgeEscrow), "L1: only escrow");
