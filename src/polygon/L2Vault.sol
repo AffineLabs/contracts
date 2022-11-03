@@ -535,7 +535,7 @@ contract L2Vault is
         l1TotalLockedValue += amount;
 
         // Let L1 know how much money we sent
-        L2WormholeRouter(wormholeRouter).reportTransferredFund(amount);
+        L2WormholeRouter(wormholeRouter).reportFundTransfer(amount);
     }
 
     event TransferToL1(uint256 amount);

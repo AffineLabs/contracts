@@ -56,7 +56,7 @@ contract L2WormholeRouterTest is TestPlus {
         // Only invariant is that the vault is the only caller
         vm.prank(alice);
         vm.expectRevert("WR: Only vault");
-        router.reportTransferredFund(0);
+        router.reportFundTransfer(0);
 
         uint256 transferAmount = 100;
         bytes memory payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, transferAmount);
@@ -66,7 +66,7 @@ contract L2WormholeRouterTest is TestPlus {
         );
 
         vm.prank(address(vault));
-        router.reportTransferredFund(transferAmount);
+        router.reportFundTransfer(transferAmount);
 
         // Turn on a fee (wormhole reverts if you send a msg.value != wormhole.messageFee)
         uint256 fee = 1 ether;
@@ -79,7 +79,7 @@ contract L2WormholeRouterTest is TestPlus {
             abi.encodeCall(IWormhole.publishMessage, (uint32(1), payload, router.consistencyLevel()))
         );
         hoax(address(vault), fee);
-        router.reportTransferredFund{value: fee}(transferAmount);
+        router.reportFundTransfer{value: fee}(transferAmount);
     }
 
     function testMessageValidation() public {
@@ -291,11 +291,11 @@ contract L1WormholeRouterTest is TestPlus {
         router.reportTVL{value: fee}(tvl, received);
     }
 
-    function testReportTransferredFund() public {
+    function testreportFundTransfer() public {
         // Only invariant is that the vault is the only caller
         vm.prank(alice);
         vm.expectRevert("WR: only vault");
-        router.reportTransferredFund(0);
+        router.reportFundTransfer(0);
 
         uint256 requestAmount = 100;
         bytes memory payload = abi.encode(Constants.L1_FUND_TRANSFER_REPORT, requestAmount);
@@ -305,7 +305,7 @@ contract L1WormholeRouterTest is TestPlus {
         );
 
         vm.prank(address(vault));
-        router.reportTransferredFund(requestAmount);
+        router.reportFundTransfer(requestAmount);
 
         uint256 fee = 1 ether;
         stdstore.target(address(wormhole)).sig("messageFee()").checked_write(fee);
@@ -317,7 +317,7 @@ contract L1WormholeRouterTest is TestPlus {
             abi.encodeCall(IWormhole.publishMessage, (uint32(1), payload, router.consistencyLevel()))
         );
         hoax(address(vault), fee);
-        router.reportTransferredFund{value: fee}(requestAmount);
+        router.reportFundTransfer{value: fee}(requestAmount);
     }
 
     function testReceiveFunds() public {

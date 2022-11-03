@@ -85,7 +85,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         chainManager.depositFor(address(bridgeEscrow), address(_asset), abi.encodePacked(amountToSend));
 
         // Let L2 know how much money we sent
-        L1WormholeRouter(wormholeRouter).reportTransferredFund(amountToSend);
+        L1WormholeRouter(wormholeRouter).reportFundTransfer(amountToSend);
         emit TransferToL2({assetsRequested: amountRequested, assetsSent: amountToSend});
     }
 

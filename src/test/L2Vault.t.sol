@@ -294,13 +294,13 @@ contract L2VaultTest is TestPlus {
 
     function testL2ToL1Rebalance() public {
         // Any call to the wormholerouter will do nothing, and we won't actually attempt to bridge funds
-        vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportTransferredFund, (25)), "");
+        vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportFundTransfer, (25)), "");
         vm.mockCall(address(vault.bridgeEscrow()), abi.encodeCall(BridgeEscrow.l2Withdraw, (25)), "");
 
         // L2Vault has to send 25 to meet the 1:1 ratio between layers
         asset.mint(address(vault), 100);
         vm.startPrank(vault.wormholeRouter());
-        vm.expectCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportTransferredFund, (25)));
+        vm.expectCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportFundTransfer, (25)));
         vault.receiveTVL(50, false);
 
         assertEq(vault.canTransferToL1(), false);
@@ -309,7 +309,7 @@ contract L2VaultTest is TestPlus {
     function testL2ToL1RebalanceWithEmergencyWithdrawalQueueDebt() public {
         // Relevant calls to the wormholerouter and bridge escrow will do nothing, and we won't
         // actually attempt to bridge funds
-        vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportTransferredFund, (50)), "");
+        vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportFundTransfer, (50)), "");
         vm.mockCall(address(vault.bridgeEscrow()), abi.encodeCall(BridgeEscrow.l2Withdraw, (50)), "");
         // Simulate having 50 debt to emergency withdrawal queue.
         vm.mockCall(
@@ -321,7 +321,7 @@ contract L2VaultTest is TestPlus {
         // We have a tvl of 200 excluding the withdrawal queue, so each layer gets 100
         asset.mint(address(vault), 200);
         vm.startPrank(vault.wormholeRouter());
-        vm.expectCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportTransferredFund, (50)));
+        vm.expectCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportFundTransfer, (50)));
         vault.receiveTVL(50, false);
 
         assertEq(vault.canTransferToL1(), false);
