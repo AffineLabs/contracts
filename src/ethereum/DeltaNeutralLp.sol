@@ -77,7 +77,11 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     uint256 public constant MAX_BPS = 10_000;
 
     /// @notice Get prices of WETH -> USDC (borrowToAssetPrice) and USDC -> WETH (assetToBorrowPrice) with chainlink round id.
-    function _pricesFromChainlink() internal view returns (uint256 borrowToAssetPrice, uint256 assetToBorrowPrice, uint80 priceRoundId) {
+    function _pricesFromChainlink()
+        internal
+        view
+        returns (uint256 borrowToAssetPrice, uint256 assetToBorrowPrice, uint80 priceRoundId)
+    {
         (uint80 roundId, int256 borrowPrice,, uint256 timestamp, uint80 answeredInRound) =
             borrowAssetFeed.latestRoundData();
         require(borrowPrice > 0, "DNLP: price <= 0");
@@ -96,12 +100,16 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
 
     /// @notice Convert `asset` (e.g. USDC) to `borrowAsset` (e.g. WETH)
     function _assetToBorrow(uint256 amountA) internal view returns (uint256 borrows) {
-        (,uint256 assetToBorrowPrice,) = _pricesFromChainlink();
+        (, uint256 assetToBorrowPrice,) = _pricesFromChainlink();
         return assetToBorrowPrice.mulDivDown(amountA, 1e6);
     }
 
     /// @notice Get pro rata underlying assets (USDC, WETH) amounts from sushiswap lp token amount
-    function _getShushiLpUnderlyingAmounts(uint256 lpTokenAmount) internal view returns (uint256 assets, uint256 borrows) {
+    function _getShushiLpUnderlyingAmounts(uint256 lpTokenAmount)
+        internal
+        view
+        returns (uint256 assets, uint256 borrows)
+    {
         assets = lpTokenAmount.mulDivDown(asset.balanceOf(address(abPair)), abPair.totalSupply());
         borrows = lpTokenAmount.mulDivDown(borrowAsset.balanceOf(address(abPair)), abPair.totalSupply());
     }
@@ -110,19 +118,20 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         // The below are all in units of `asset`
         // balanceOfAsset + balanceOfEth + aToken value + Uni Lp value - debt
         // lp tokens * (total assets) / total lp tokens
-        
+
         // Asset value of underlying eth
         uint256 assetsEth = _borrowToAsset(borrowAsset.balanceOf(address(this)));
 
         // Underlying value of sushi LP tokens
         uint256 masterChefStakedAmount = masterChef.userInfo(masterChefPid, address(this)).amount;
         uint256 sushiTotalStakedAmount = abPair.balanceOf(address(this)) + masterChefStakedAmount;
-        (uint256 sushiUnderlyingAssets, uint256 sushiUnderlyingBorrows) = _getShushiLpUnderlyingAmounts(sushiTotalStakedAmount);
+        (uint256 sushiUnderlyingAssets, uint256 sushiUnderlyingBorrows) =
+            _getShushiLpUnderlyingAmounts(sushiTotalStakedAmount);
         uint256 sushiLpValue = sushiUnderlyingAssets + _borrowToAsset(sushiUnderlyingBorrows);
-        
+
         // Asset value of debt
         uint256 assetsDebt = _borrowToAsset(debtToken.balanceOf(address(this)));
-        
+
         return balanceOfAsset() + assetsEth + aToken.balanceOf(address(this)) + sushiLpValue - assetsDebt;
     }
 

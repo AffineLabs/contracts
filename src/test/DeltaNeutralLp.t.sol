@@ -87,7 +87,7 @@ contract DeltaNeutralTest is TestPlus {
         assertFalse(strategy.canStartNewPos());
 
         // I got the right amount of matic
-        assertApproxEqAbs(amountMatic, strategy.borrowAsset().balanceOf(address(strategy)), .01e18);
+        assertApproxEqAbs(amountMatic, strategy.borrowAsset().balanceOf(address(strategy)), 0.01e18);
 
         // I have the right amount of aUSDC
         assertEq(strategy.aToken().balanceOf(address(strategy)), (startAssets - assetsToMatic) * 4 / 7);
