@@ -25,7 +25,7 @@ contract DeltaNeutralTest is TestPlus {
     ERC20 asset;
     ERC20 borrowAsset;
 
-    uint256 public constant IDEAL_SLIPPAGE_BPS = 10;
+    uint256 public constant IDEAL_SLIPPAGE_BPS = 200;
 
     function setUp() public {
         vm.createSelectFork("ethereum", 15_624_364);
@@ -40,8 +40,7 @@ contract DeltaNeutralTest is TestPlus {
         ILendingPoolAddressesProviderRegistry(0x52D306e36E3B6B02c153d0266ff0f85d18BCD413),
         ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2),
         AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419),
-        IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F), // sushiswap
-        IUniswapV2Factory(0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac), // sushiswap
+        IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F), // sushiswap router
         IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd), // MasterChef
         1 // Masterchef PID
         );
@@ -130,7 +129,7 @@ contract DeltaNeutralTest is TestPlus {
         strategy.endPosition(IDEAL_SLIPPAGE_BPS);
 
         assertTrue(strategy.canStartNewPos());
-        assertApproxEqRel(asset.balanceOf(address(strategy)), 1000e6, 0.02e6);
+        assertApproxEqRel(asset.balanceOf(address(strategy)), 1000e6, 0.01e18);
         assertEq(borrowAsset.balanceOf(address(strategy)), 0);
         assertEq(abPair.balanceOf(address(strategy)), 0);
     }
@@ -139,12 +138,12 @@ contract DeltaNeutralTest is TestPlus {
         assertEq(strategy.totalLockedValue(), 0);
         deal(address(asset), address(strategy), 1000e6);
 
-        assertApproxEqRel(strategy.totalLockedValue(), 1000e6, 0.02e6);
+        assertApproxEqRel(strategy.totalLockedValue(), 1000e6, 0.01e18);
 
         vm.prank(vault.governance());
         strategy.startPosition(IDEAL_SLIPPAGE_BPS);
 
-        assertApproxEqRel(strategy.totalLockedValue(), 1000e6, 0.02e6);
+        assertApproxEqRel(strategy.totalLockedValue(), 1000e6, 0.01e18);
     }
 
     function testDivest() public {
@@ -165,7 +164,7 @@ contract DeltaNeutralTest is TestPlus {
 
         assertTrue(strategy.canStartNewPos());
         assertEq(strategy.totalLockedValue(), 0);
-        assertApproxEqRel(asset.balanceOf(address(vault)), 1000e6, 0.02e6);
+        assertApproxEqRel(asset.balanceOf(address(vault)), 1000e6, 0.01e18);
     }
 
     function testClaimRewards() public {
@@ -191,7 +190,7 @@ contract DeltaNeutralTest is TestPlus {
         assertGt(sushiBalance, 0);
 
         changePrank(vault.governance());
-        strategy.claimRewards();
+        strategy.claimRewards(IDEAL_SLIPPAGE_BPS);
 
         sushiBalance = strategy.sushiToken().balanceOf(address(strategy));
         emit log_named_uint("[Post] Suhsi balance", sushiBalance);

@@ -33,7 +33,6 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         ERC20 _borrowAsset,
         AggregatorV3Interface _borrowAssetFeed,
         IUniswapV2Router02 _router,
-        IUniswapV2Factory _factory,
         IMasterChef _masterChef,
         uint256 _masterChefPid
     ) BaseStrategy(_vault) {
@@ -47,7 +46,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         borrowAssetFeed = _borrowAssetFeed;
 
         router = _router;
-        abPair = ERC20(_factory.getPair(address(asset), address(borrowAsset)));
+        abPair = ERC20(IUniswapV2Factory(_router.factory()).getPair(address(asset), address(borrowAsset)));
         address[] memory providers = _registry.getAddressesProvidersList();
         ILendingPoolAddressesProvider provider = ILendingPoolAddressesProvider(providers[providers.length - 1]);
         lendingPool = ILendingPool(provider.getLendingPool());
@@ -77,50 +76,54 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     bytes32 public constant STRATEGIST_ROLE = keccak256("STRATEGIST");
     uint256 public constant MAX_BPS = 10_000;
 
+    /// @notice Get prices of WETH -> USDC (borrowToAssetPrice) and USDC -> WETH (assetToBorrowPrice) with chainlink round id.
+    function _pricesFromChainlink() internal view returns (uint256 borrowToAssetPrice, uint256 assetToBorrowPrice, uint80 priceRoundId) {
+        (uint80 roundId, int256 borrowPrice,, uint256 timestamp, uint80 answeredInRound) =
+            borrowAssetFeed.latestRoundData();
+        require(borrowPrice > 0, "DNLP: price <= 0");
+        require(answeredInRound >= roundId, "DNLP: stale data");
+        require(timestamp != 0, "DNLP: round not done");
+        borrowToAssetPrice = uint256(borrowPrice) / 1e2; // Convert 8 decimals to 6 decimals
+        assetToBorrowPrice = 1e18 / borrowToAssetPrice;
+        priceRoundId = roundId;
+    }
+
     /// @notice Convert `borrowAsset` (e.g. WETH) to `asset` (e.g. USDC)
     function _borrowToAsset(uint256 amountB) internal view returns (uint256 assets) {
-        if (amountB == 0) {
-            assets = 0;
-            return assets;
-        }
-
-        address[] memory path = new address[](2);
-        path[0] = address(borrowAsset);
-        path[1] = address(asset);
-
-        uint256[] memory amounts = router.getAmountsOut({amountIn: amountB, path: path});
-        assets = amounts[1];
+        (uint256 borrowToAssetPrice,,) = _pricesFromChainlink();
+        return borrowToAssetPrice.mulWadDown(amountB);
     }
 
     /// @notice Convert `asset` (e.g. USDC) to `borrowAsset` (e.g. WETH)
     function _assetToBorrow(uint256 amountA) internal view returns (uint256 borrows) {
-        if (amountA == 0) {
-            borrows = 0;
-            return borrows;
-        }
+        (,uint256 assetToBorrowPrice,) = _pricesFromChainlink();
+        return assetToBorrowPrice.mulDivDown(amountA, 1e6);
+    }
 
-        address[] memory path = new address[](2);
-        path[0] = address(asset);
-        path[1] = address(borrowAsset);
-
-        uint256[] memory amounts = router.getAmountsOut({amountIn: amountA, path: path});
-        borrows = amounts[1];
+    /// @notice Get pro rata underlying assets (USDC, WETH) amounts from sushiswap lp token amount
+    function _getShushiLpUnderlyingAmounts(uint256 lpTokenAmount) internal view returns (uint256 assets, uint256 borrows) {
+        assets = lpTokenAmount.mulDivDown(asset.balanceOf(address(abPair)), abPair.totalSupply());
+        borrows = lpTokenAmount.mulDivDown(borrowAsset.balanceOf(address(abPair)), abPair.totalSupply());
     }
 
     function totalLockedValue() public view override returns (uint256) {
         // The below are all in units of `asset`
         // balanceOfAsset + balanceOfEth + aToken value + Uni Lp value - debt
         // lp tokens * (total assets) / total lp tokens
-
+        
+        // Asset value of underlying eth
         uint256 assetsEth = _borrowToAsset(borrowAsset.balanceOf(address(this)));
 
+        // Underlying value of sushi LP tokens
         uint256 masterChefStakedAmount = masterChef.userInfo(masterChefPid, address(this)).amount;
-        uint256 assetsLP = (abPair.balanceOf(address(this)) + masterChefStakedAmount).mulDivDown(
-            asset.balanceOf(address(abPair)) * 2, abPair.totalSupply()
-        );
-
+        uint256 sushiTotalStakedAmount = abPair.balanceOf(address(this)) + masterChefStakedAmount;
+        (uint256 sushiUnderlyingAssets, uint256 sushiUnderlyingBorrows) = _getShushiLpUnderlyingAmounts(sushiTotalStakedAmount);
+        uint256 sushiLpValue = sushiUnderlyingAssets + _borrowToAsset(sushiUnderlyingBorrows);
+        
+        // Asset value of debt
         uint256 assetsDebt = _borrowToAsset(debtToken.balanceOf(address(this)));
-        return balanceOfAsset() + assetsEth + aToken.balanceOf(address(this)) + assetsLP - assetsDebt;
+        
+        return balanceOfAsset() + assetsEth + aToken.balanceOf(address(this)) + sushiLpValue - assetsDebt;
     }
 
     uint32 public currentPosition;
@@ -269,13 +272,15 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         masterChef.withdraw(masterChefPid, depositedSLPAmount);
 
         // Remove liquidity
-        // TODO: handle slippage
+        // abPair -> token0 or a = USDC, token1 or b = WETH.
+        uint256 abPairBalance = abPair.balanceOf(address(this));
+        (uint256 underlyingAssets, uint256 underlyingBorrows) = _getShushiLpUnderlyingAmounts(abPairBalance);
         router.removeLiquidity({
             tokenA: address(asset),
             tokenB: address(borrowAsset),
-            liquidity: abPair.balanceOf(address(this)),
-            amountAMin: 0,
-            amountBMin: 0,
+            liquidity: abPairBalance,
+            amountAMin: underlyingAssets.slippageDown(slippageToleranceBps),
+            amountBMin: underlyingBorrows.slippageDown(slippageToleranceBps),
             to: address(this),
             deadline: block.timestamp
         });

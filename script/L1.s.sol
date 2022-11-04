@@ -79,7 +79,6 @@ contract Deploy is Script, Base {
             ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), // Asset to borrow (WETH)
             AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419),
             IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F),
-            IUniswapV2Factory(0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac),
             IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd),
             masterChefPID);
         require(address(dnlp.asset()) == vault.asset());
