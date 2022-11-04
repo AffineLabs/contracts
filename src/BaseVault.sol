@@ -70,6 +70,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      * @param _router The new router.
      */
     function setWormholeRouter(address _router) external onlyGovernance {
+        emit WormholeRouterSet({oldRouter: wormholeRouter, newRouter: _router});
         wormholeRouter = _router;
     }
     /**
@@ -78,8 +79,22 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      */
 
     function setBridgeEscrow(BridgeEscrow _escrow) external onlyGovernance {
+        emit BridgeEscrowSet({oldEscrow: address(bridgeEscrow), newEscrow: address(_escrow)});
         bridgeEscrow = _escrow;
     }
+
+    /**
+     * @notice Emitted when the wormhole router is updated.
+     * @param oldRouter The old router.
+     * @param newRouter The new router.
+     */
+    event WormholeRouterSet(address indexed oldRouter, address indexed newRouter);
+    /**
+     * @notice Emitted when the escorw is updated.
+     * @param oldEscrow The old router.
+     * @param newEscrow The new router.
+     */
+    event BridgeEscrowSet(address indexed oldEscrow, address indexed newEscrow);
 
     /**
      * AUTHENTICATION
@@ -124,7 +139,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
         // Replace the withdrawal queue.
         withdrawalQueue = newQueue;
 
-        emit WithdrawalQueueSet(msg.sender, newQueue);
+        emit WithdrawalQueueSet(newQueue);
     }
 
     /**
@@ -141,30 +156,24 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
         withdrawalQueue[index1] = newStrategy1;
         withdrawalQueue[index2] = newStrategy2;
 
-        emit WithdrawalQueueIndexesSwapped(msg.sender, index1, index2, newStrategy1, newStrategy2);
+        emit WithdrawalQueueIndexesSwapped(index1, index2, newStrategy1, newStrategy2);
     }
 
     /**
      * @notice Emitted when the withdrawal queue is updated.
-     * @param user The authorized user who triggered the set.
-     * @param replacedWithdrawalQueue The new withdrawal queue.
+     * @param newQueue The new withdrawal queue.
      */
-    event WithdrawalQueueSet(address indexed user, Strategy[MAX_STRATEGIES] replacedWithdrawalQueue);
+    event WithdrawalQueueSet(Strategy[MAX_STRATEGIES] newQueue);
 
     /**
      * @notice Emitted when the strategies at two indexes are swapped.
-     * @param user The authorized user who triggered the swap.
      * @param index1 One index involved in the swap
      * @param index2 The other index involved in the swap.
      * @param newStrategy1 The strategy (previously at index2) that replaced index1.
      * @param newStrategy2 The strategy (previously at index1) that replaced index2.
      */
     event WithdrawalQueueIndexesSwapped(
-        address indexed user,
-        uint256 index1,
-        uint256 index2,
-        Strategy indexed newStrategy1,
-        Strategy indexed newStrategy2
+        uint256 index1, uint256 index2, Strategy indexed newStrategy1, Strategy indexed newStrategy2
     );
 
     /**
@@ -180,7 +189,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
         uint16 tvlBps;
         uint232 balance;
     }
-    /// @notice A map of strategy addresses to details about the strategy
+    /// @notice A map of strategy addresses to details
 
     mapping(Strategy => StrategyInfo) public strategies;
 
@@ -202,7 +211,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
         _increaseTVLBps(tvlBps);
         strategies[strategy] = StrategyInfo({isActive: true, tvlBps: tvlBps, balance: 0});
         //  Add strategy to withdrawal queue
-        withdrawalQueue[withdrawalQueue.length - 1] = strategy;
+        withdrawalQueue[MAX_STRATEGIES - 1] = strategy;
         emit StrategyAdded(strategy);
         _organizeWithdrawalQueue();
     }
@@ -278,16 +287,22 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
             Strategy strategy = strategyList[i];
 
             // Ignore inactive (removed) strategies
-            if (!strategies[strategy].isActive) {
-                continue;
-            }
+            if (!strategies[strategy].isActive) continue;
 
             // update tvl bps
             totalBps -= strategies[strategy].tvlBps;
             _increaseTVLBps(strategyBps[i]);
             strategies[strategy].tvlBps = strategyBps[i];
         }
+        emit StrategyAllocsUpdated(strategyList, strategyBps);
     }
+
+    /**
+     * @notice Emitted when we update tvl bps for a list of strategies.
+     * @param strategyList The list of strategies.
+     * @param strategyBps The new tvl bps for the strategies
+     */
+    event StrategyAllocsUpdated(Strategy[] strategyList, uint16[] strategyBps);
 
     /**
      * STRATEGY DEPOSIT/WITHDRAWAL
@@ -297,16 +312,17 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
     /**
      * @notice Emitted after the Vault deposits into a strategy contract.
      * @param strategy The strategy that was deposited into.
-     * @param assets The amount of underlying tokens that were deposited.
+     * @param assets The amount of assets deposited.
      */
     event StrategyDeposit(Strategy indexed strategy, uint256 assets);
 
     /**
      * @notice Emitted after the Vault withdraws funds from a strategy contract.
      * @param strategy The strategy that was withdrawn from.
-     * @param assets The amount of underlying tokens that were withdrawn.
+     * @param assetsRequested The amount of assets we tried to divest from the strategy.
+     * @param assetsReceived The amount of assets actually withdrawn.
      */
-    event StrategyWithdrawal(Strategy indexed strategy, uint256 assets);
+    event StrategyWithdrawal(Strategy indexed strategy, uint256 assetsRequested, uint256 assetsReceived);
 
     /// @notice Deposit entire balance of `asset` into strategies according to each strategy's `tvlBps`.
     function _depositIntoStrategies() internal {
@@ -341,10 +357,10 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
 
     /**
      * @notice Withdraw a specific amount of underlying tokens from a strategy.
-     * @dev This is "best effort" withdrawal. It could potentially withdraw nothing.
+     * @dev This is a "best effort" withdrawal. It could potentially withdraw nothing.
      * @param strategy The strategy to withdraw from.
      * @param assets  The amount of underlying tokens to withdraw.
-     * @return The amount of underlying tokens withdrawn from the strategy.
+     * @return The amount of assets actually received.
      */
     function _withdrawFromStrategy(Strategy strategy, uint256 assets) internal returns (uint256) {
         // Withdraw from the strategy
@@ -357,18 +373,14 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
         uint256 newStratTvl = strategy.totalLockedValue();
         strategies[strategy].balance = uint232(newStratTvl);
 
-        unchecked {
-            // Decrease totalStrategyHoldings to account for the withdrawal.
-            // Cannot underflow as the balance of one strategy will never exceed the sum of all.
-            // If we haven't harvested in a long time, newStratTvl could be smaller than oldStratTvl, even with the withdrawal
-            totalStrategyHoldings -= oldStratTVL > newStratTvl ? oldStratTVL - newStratTvl : 0;
-        }
-
-        emit StrategyWithdrawal(strategy, amountWithdrawn);
+        // Decrease totalStrategyHoldings to account for the withdrawal.
+        // If we haven't harvested in a long time, newStratTvl could be bigger than oldStratTvl
+        totalStrategyHoldings -= oldStratTVL > newStratTvl ? oldStratTVL - newStratTvl : 0;
+        emit StrategyWithdrawal({strategy: strategy, assetsRequested: assets, assetsReceived: amountWithdrawn});
         return amountWithdrawn;
     }
 
-    /// @notice A small wrapper around divest(). We try-catch to make sure that a bad strategy does not pause withdrawals.
+    /// @dev A small wrapper around divest(). We try-catch to make sure that a bad strategy does not pause withdrawals.
     function _divest(Strategy strategy, uint256 assets) internal returns (uint256) {
         try strategy.divest(assets) returns (uint256 amountDivested) {
             return amountDivested;
@@ -481,12 +493,12 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
     }
 
     /**
-     * @notice Emitted whenever the vault withdraws from multiple strategies
-     * @dev We liquidate from cross chain rebalancing
-     * @param amountRequested The amount we wanted to liquidate
-     * @param amountLiquidated The amount we actually liquidated
+     * @notice Emitted when the vault must make a certain amount of assets available
+     * @dev We liquidate during cross chain rebalancing or withdrawals.
+     * @param assetsRequested The amount we wanted to make available for withdrawal.
+     * @param assetsLiquidated The amount we actually liquidated.
      */
-    event Liquidation(uint256 amountRequested, uint256 amountLiquidated);
+    event Liquidation(uint256 assetsRequested, uint256 assetsLiquidated);
 
     /**
      * @notice Withdraw `amount` of underlying asset from strategies.
@@ -496,8 +508,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      */
     function _liquidate(uint256 amount) internal returns (uint256) {
         uint256 amountLiquidated;
-        uint256 length = withdrawalQueue.length;
-        for (uint256 i = 0; i < length; i = uncheckedInc(i)) {
+        for (uint256 i = 0; i < MAX_STRATEGIES; i = uncheckedInc(i)) {
             Strategy strategy = withdrawalQueue[i];
             if (address(strategy) == address(0)) {
                 break;
@@ -515,7 +526,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
             uint256 withdrawn = _withdrawFromStrategy(strategy, amountNeeded);
             amountLiquidated += withdrawn;
         }
-        emit Liquidation(amount, amountLiquidated);
+        emit Liquidation({assetsRequested: amount, assetsLiquidated: amountLiquidated});
         return amountLiquidated;
     }
 
@@ -524,6 +535,12 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      * @dev This is called during harvest() to assess management fees.
      */
     function _assessFees() internal virtual {}
+
+    /**
+     * @notice Emitted when we do a strategy rebalance, i.e. when we make the strategy tvls match their tvl bps
+     * @param caller The caller
+     */
+    event Rebalance(address indexed caller);
 
     /// @notice  Rebalance strategies according to given tvl bps
     function rebalance() external onlyRole(HARVESTER) {
@@ -569,5 +586,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
             // Deposit into strategy, making sure to not count this investment as a profit
             _depositIntoStrategy(withdrawalQueue[i], amountToInvest);
         }
+
+        emit Rebalance(msg.sender);
     }
 }

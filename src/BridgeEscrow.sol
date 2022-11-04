@@ -22,6 +22,12 @@ contract BridgeEscrow {
     IRootChainManager public immutable rootChainManager;
     address public immutable wormholeRouter;
 
+    /**
+     * @notice Emitted whenever we transfer funds from this escrow to the vault
+     * @param assets The amount of assets transferred
+     */
+    event TransferToVault(uint256 assets);
+
     constructor(address _vault, IRootChainManager manager) {
         vault = _vault;
         wormholeRouter = BaseVault(_vault).wormholeRouter();
@@ -50,6 +56,7 @@ contract BridgeEscrow {
         require(balance >= amount, "BE: Funds not received");
         token.safeTransfer(vault, balance);
 
+        emit TransferToVault(balance);
         IL2Vault(vault).afterReceive(balance);
     }
 
@@ -75,6 +82,7 @@ contract BridgeEscrow {
         require(balance >= amount, "BE: Funds not received");
         token.safeTransfer(vault, balance);
 
+        emit TransferToVault(balance);
         IL1Vault(vault).afterReceive();
     }
 }

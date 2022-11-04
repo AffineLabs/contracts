@@ -19,19 +19,15 @@ contract L1WormholeRouter is WormholeRouter {
         // We use the current tx count (to wormhole) of this contract
         // as a nonce when publishing messages
         uint64 sequence = wormhole.nextSequence(address(this));
-
         wormhole.publishMessage{value: msg.value}(uint32(sequence), payload, consistencyLevel);
     }
 
-    function reportTransferredFund(uint256 amount) external payable {
+    function reportFundTransfer(uint256 amount) external payable {
         require(msg.sender == address(vault), "WR: only vault");
         bytes memory payload = abi.encode(Constants.L1_FUND_TRANSFER_REPORT, amount);
         uint64 sequence = wormhole.nextSequence(address(this));
-
         wormhole.publishMessage{value: msg.value}(uint32(sequence), payload, consistencyLevel);
     }
-
-    event TransferFromL2(uint256 amount);
 
     function receiveFunds(bytes calldata message, bytes calldata data) external {
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
@@ -42,16 +38,15 @@ contract L1WormholeRouter is WormholeRouter {
         require(msgType == Constants.L2_FUND_TRANSFER_REPORT, "WR: bad msg type");
 
         vault.bridgeEscrow().l1ClearFund(amount, data);
-        emit TransferFromL2(amount);
     }
-
-    event TransferToL2(uint256 amount);
 
     function receiveFundRequest(bytes calldata message) external {
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
+
         _validateWormholeMessageEmitter(vm);
         nextValidNonce = vm.nonce + 1;
+
         (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
         require(msgType == Constants.L2_FUND_REQUEST, "WR: bad msg type");
 
