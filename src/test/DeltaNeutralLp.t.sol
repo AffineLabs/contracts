@@ -132,6 +132,7 @@ contract DeltaNeutralTest is TestPlus {
         assertApproxEqRel(asset.balanceOf(address(strategy)), 1000e6, 0.01e18);
         assertEq(borrowAsset.balanceOf(address(strategy)), 0);
         assertEq(abPair.balanceOf(address(strategy)), 0);
+        assertEq(strategy.debtToken().balanceOf(address(strategy)), 0);
     }
 
     function testTVL() public {
