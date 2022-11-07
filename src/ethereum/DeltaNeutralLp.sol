@@ -76,14 +76,23 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     bytes32 public constant STRATEGIST_ROLE = keccak256("STRATEGIST");
     uint256 public constant MAX_BPS = 10_000;
 
-    /// @notice Get prices of WETH -> USDC (borrowPrice) and chainlink round id.
-    function _chainlinkPriceOfBorrow() internal view returns (uint256 borrowPrice, uint80 priceRoundId) {
+    /// @notice Get price of WETH in USDC (borrowPrice) from chainlink.
+    function _chainlinkPriceOfBorrow() internal view returns (uint256 borrowPrice) {
         (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = borrowAssetFeed.latestRoundData();
         require(price > 0, "DNLP: price <= 0");
         require(answeredInRound >= roundId, "DNLP: stale data");
         require(timestamp != 0, "DNLP: round not done");
         borrowPrice = uint256(price) / 1e2; // Convert 8 decimals to 6 decimals, 1 WETH (1e18) = price USDC
-        priceRoundId = roundId;
+    }
+
+    /// @notice Get price of WETH in USDC (borrowPrice) from Sushiswap.
+    function _sushiPriceOfBorrow() internal view returns (uint256 borrowPrice) {
+        address[] memory path = new address[](2);
+        path[0] = address(borrowAsset);
+        path[1] = address(asset);
+
+        uint256[] memory amounts = router.getAmountsOut({amountIn: 1e18, path: path});
+        return amounts[1];
     }
 
     /// @notice Convert `borrowAsset` (e.g. WETH) to `asset` (e.g. USDC)
@@ -111,7 +120,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         // balanceOfAsset + balanceOfEth + aToken value + Uni Lp value - debt
         // lp tokens * (total assets) / total lp tokens
 
-        (uint256 borrowPrice,) = _chainlinkPriceOfBorrow();
+        uint256 borrowPrice = _chainlinkPriceOfBorrow();
 
         // Asset value of underlying eth
         uint256 assetsEth = _borrowToAsset(borrowPrice, borrowAsset.balanceOf(address(this)));
@@ -136,7 +145,13 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     uint256 public masterChefPid;
     ERC20 public sushiToken;
 
-    event PositionStart(uint32 indexed position, uint256 assetBalance, uint256 chainlinkRoundId, uint256 timestamp);
+    event PositionStart(
+        uint32 indexed position,
+        uint256 assetBalance,
+        uint256 borrowPriceChainlink,
+        uint256 borrowPriceSushi,
+        uint256 timestamp
+    );
 
     /// @notice Fixed point number describing the percentage of the position with which to go long. 1e18 = 1 = 100%
     uint256 public longPercentage;
@@ -156,6 +171,32 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     /// @notice Gives ratio of vault asset to borrow asset, e.g. WETH/USD (assuming usdc = usd)
     AggregatorV3Interface immutable borrowAssetFeed;
 
+    event MetricInfo(
+        uint256 indexed position,
+        uint256 step,
+        uint256 assetBalance,
+        uint256 borrowBalance,
+        uint256 abPairBalance,
+        uint256 aTokenBalance,
+        uint256 debtTokenBalance,
+        uint256 sushiBalance,
+        uint256 masterChefStakedAmount
+    );
+
+    function _exportMetricInfo(uint256 step) internal {
+        emit MetricInfo(
+            currentPosition,
+            step,
+            asset.balanceOf(address(this)),
+            borrowAsset.balanceOf(address(this)),
+            abPair.balanceOf(address(this)),
+            aToken.balanceOf(address(this)),
+            debtToken.balanceOf(address(this)),
+            sushiToken.balanceOf(address(this)),
+            masterChef.userInfo(masterChefPid, address(this)).amount
+            );
+    }
+
     function startPosition(uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
         // Set position metadata
         require(canStartNewPos, "DNLP: position is active");
@@ -163,8 +204,10 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         canStartNewPos = false;
 
         uint256 initTVL = totalLockedValue();
-        (uint256 borrowPrice, uint256 chainlinkRoundId) = _chainlinkPriceOfBorrow();
-        emit PositionStart(currentPosition, initTVL, chainlinkRoundId, block.timestamp);
+        uint256 borrowPrice = _chainlinkPriceOfBorrow();
+        emit PositionStart(currentPosition, initTVL, borrowPrice, _sushiPriceOfBorrow(), block.timestamp);
+
+        _exportMetricInfo(1);
 
         // Scope to avoid stack too deep error. See https://ethereum.stackexchange.com/a/84378
         // Some amount of the assets will be used to buy eth at the end of this scope.
@@ -187,6 +230,8 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         }
         uint256 swappedBorrowAmount = borrowAsset.balanceOf(address(this));
 
+        _exportMetricInfo(2);
+
         // Deposit asset in aave. Then borrow Eth at 75% (88% liquidation threshold and 85.5% max LTV)
         // If x is amount we want to deposit into aave .75x = Total - x => 1.75x = Total => x = Total / 1.75 => Total * 4/7
         uint256 assetsToDeposit = asset.balanceOf(address(this)).mulDivDown(4, 7);
@@ -198,6 +243,9 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
                 referralCode: 0
             });
         }
+
+        _exportMetricInfo(3);
+
         // https://docs.aave.com/developers/v/2.0/the-core-protocol/lendingpool#borrow
         // assetsToDeposit has price uints `asset`, price has units `asset / borrowAsset` ratio. so we divide by price
         // Scaling `asset` to 8 decimals since chainlink provides 8: https://docs.chain.link/docs/data-feeds/price-feeds/
@@ -212,6 +260,8 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
                 onBehalfOf: address(this)
             });
         }
+
+        _exportMetricInfo(4);
 
         // Provide liquidity on uniswap
         uint256 assetsBalance = asset.balanceOf(address(this));
@@ -230,8 +280,12 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
             deadline: block.timestamp
         });
 
+        _exportMetricInfo(5);
+
         // Deposit to MasterChef for additional SUSHI rewards.
         masterChef.deposit(masterChefPid, abPair.balanceOf(address(this)));
+
+        _exportMetricInfo(6);
     }
 
     /// @dev This strategy should be put at the end of the WQ so that we rarely divest from it. Divestment
@@ -262,10 +316,14 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         require(!canStartNewPos, "DNLP: position is inactive");
         canStartNewPos = true;
 
-        (uint256 borrowPrice,) = _chainlinkPriceOfBorrow();
+        _exportMetricInfo(7);
+
+        uint256 borrowPrice = _chainlinkPriceOfBorrow();
 
         uint256 depositedSLPAmount = masterChef.userInfo(masterChefPid, address(this)).amount;
         masterChef.withdraw(masterChefPid, depositedSLPAmount);
+
+        _exportMetricInfo(8);
 
         // Remove liquidity
         // abPair -> token0 or a = USDC, token1 or b = WETH.
@@ -281,45 +339,53 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
             deadline: block.timestamp
         });
 
+        _exportMetricInfo(9);
+
         // Buy enough eth to pay back debt
         uint256 debt = debtToken.balanceOf(address(this));
         uint256 bBal = borrowAsset.balanceOf(address(this));
-        // Either we buy eth or sell eth. If we need to buy then ethToBuy will be
-        // positive and ethToSell will be zero and vice versa.
-        uint256 ethToBuy = debt > bBal ? debt - bBal : 0;
-        uint256 ethToSell = bBal > debt ? bBal - debt : 0;
+        // Either we buy eth or sell eth. If we need to buy then borrowToBuy will be
+        // positive and borrowToSell will be zero and vice versa.
+        uint256 borrowToBuy = debt > bBal ? debt - bBal : 0;
+        uint256 borrowToSell = bBal > debt ? bBal - debt : 0;
 
-        if (ethToBuy > 0) {
+        if (borrowToBuy > 0) {
             address[] memory path = new address[](2);
             path[0] = address(asset);
             path[1] = address(borrowAsset);
 
             router.swapTokensForExactTokens({
-                amountOut: ethToBuy,
-                amountInMax: _borrowToAsset(borrowPrice, ethToBuy).slippageUp(slippageToleranceBps),
+                amountOut: borrowToBuy,
+                amountInMax: _borrowToAsset(borrowPrice, borrowToBuy).slippageUp(slippageToleranceBps),
                 path: path,
                 to: address(this),
                 deadline: block.timestamp
             });
         }
-        if (ethToSell > 0) {
+        if (borrowToSell > 0) {
             address[] memory path = new address[](2);
             path[0] = address(borrowAsset);
             path[1] = address(asset);
             router.swapExactTokensForTokens({
-                amountIn: ethToSell,
-                amountOutMin: _borrowToAsset(borrowPrice, ethToSell).slippageDown(slippageToleranceBps),
+                amountIn: borrowToSell,
+                amountOutMin: _borrowToAsset(borrowPrice, borrowToSell).slippageDown(slippageToleranceBps),
                 path: path,
                 to: address(this),
                 deadline: block.timestamp
             });
         }
 
+        _exportMetricInfo(10);
+
         // Repay debt
         lendingPool.repay({asset: address(borrowAsset), amount: debt, rateMode: 2, onBehalfOf: address(this)});
 
+        _exportMetricInfo(11);
+
         // Withdraw from aave
         lendingPool.withdraw({asset: address(asset), amount: aToken.balanceOf(address(this)), to: address(this)});
+
+        _exportMetricInfo(12);
 
         emit PositionEnd(currentPosition, asset.balanceOf(address(this)), block.timestamp);
     }
