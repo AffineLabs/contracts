@@ -3,6 +3,7 @@ libs = ['lib', 'node_modules']
 block_timestamp = 1
 verbosity = 3
 solc_version = "0.8.16"
+optimizer_runs = 10000000
 fs_permissions = [{ access = "read-write", path = "./"}]
 
 [profile.default.rpc_endpoints]
@@ -13,3 +14,6 @@ polygon = "https://polygon-mainnet.g.alchemy.com/v2/${ALCHEMY_POLYGON_MAINNET_KE
 
 [profile.default.fmt]
 number_underscore = "thousands"
+
+[profile.ci.fuzz]
+runs = 10000
