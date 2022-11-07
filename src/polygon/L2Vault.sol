@@ -466,10 +466,10 @@ contract L2Vault is
     event RebalanceDeltaSet(uint224 oldDelta, uint224 newDelta);
 
     /// @notice The last time the tvl was updated. We need this to let L1 tvl updates unlock over time
-    uint128 public lastTVLUpdate;
+    uint128 lastTVLUpdate;
 
     /// @notice See maxLockedProfit
-    uint128 public maxLockedTVL;
+    uint128 maxLockedTVL;
 
     /// @notice See lockedProfit. This is the same, except we are profiting from L1 tvl info
     function lockedTVL() public view returns (uint256) {
