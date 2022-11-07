@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity =0.8.16;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
@@ -20,7 +19,7 @@ import {uncheckedInc} from "./libs/Unchecked.sol";
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
  * strategy liquidation.
  */
-abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
+abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multicallable {
     using SafeTransferLib for ERC20;
 
     /**

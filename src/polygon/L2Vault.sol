@@ -8,7 +8,6 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
@@ -55,7 +54,7 @@ contract L2Vault is
         uint256[3] memory fees,
         uint256 _ewqMinEnqueueAmount
     ) public initializer {
-        __ERC20_init("Alpine Save", "alpSave");
+        __ERC20_init("USD Earn", "usdEarn");
         __UUPSUpgradeable_init();
         __Pausable_init();
         baseInitialize(_governance, _token, _wormholeRouter, _bridgeEscrow);
@@ -83,16 +82,11 @@ contract L2Vault is
      * META-TRANSACTION SUPPORT
      *
      */
-    function _msgSender() internal view override (Context, ContextUpgradeable, BaseRelayRecipient) returns (address) {
+    function _msgSender() internal view override (ContextUpgradeable, BaseRelayRecipient) returns (address) {
         return BaseRelayRecipient._msgSender();
     }
 
-    function _msgData()
-        internal
-        view
-        override (Context, ContextUpgradeable, BaseRelayRecipient)
-        returns (bytes calldata)
-    {
+    function _msgData() internal view override (ContextUpgradeable, BaseRelayRecipient) returns (bytes calldata) {
         return BaseRelayRecipient._msgData();
     }
 
