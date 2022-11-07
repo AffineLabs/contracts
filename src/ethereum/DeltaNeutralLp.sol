@@ -76,32 +76,24 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     bytes32 public constant STRATEGIST_ROLE = keccak256("STRATEGIST");
     uint256 public constant MAX_BPS = 10_000;
 
-    /// @notice Get prices of WETH -> USDC (borrowToAssetPrice) and USDC -> WETH (assetToBorrowPrice) with chainlink round id.
-    function _pricesFromChainlink()
-        internal
-        view
-        returns (uint256 borrowToAssetPrice, uint256 assetToBorrowPrice, uint80 priceRoundId)
-    {
-        (uint80 roundId, int256 borrowPrice,, uint256 timestamp, uint80 answeredInRound) =
-            borrowAssetFeed.latestRoundData();
-        require(borrowPrice > 0, "DNLP: price <= 0");
+    /// @notice Get prices of WETH -> USDC (borrowPrice) and chainlink round id.
+    function _chainlinkPriceOfBorrow() internal view returns (uint256 borrowPrice, uint80 priceRoundId) {
+        (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = borrowAssetFeed.latestRoundData();
+        require(price > 0, "DNLP: price <= 0");
         require(answeredInRound >= roundId, "DNLP: stale data");
         require(timestamp != 0, "DNLP: round not done");
-        borrowToAssetPrice = uint256(borrowPrice) / 1e2; // Convert 8 decimals to 6 decimals, 1 WETH (1e18) = borrowToAssetPrice USDC
-        assetToBorrowPrice = 1e24 / borrowToAssetPrice; // 1 USDC (1e6) = assetToBorrowPrice WETH
+        borrowPrice = uint256(price) / 1e2; // Convert 8 decimals to 6 decimals, 1 WETH (1e18) = price USDC
         priceRoundId = roundId;
     }
 
     /// @notice Convert `borrowAsset` (e.g. WETH) to `asset` (e.g. USDC)
-    function _borrowToAsset(uint256 amountB) internal view returns (uint256 assets) {
-        (uint256 borrowToAssetPrice,,) = _pricesFromChainlink();
-        return borrowToAssetPrice.mulWadDown(amountB);
+    function _borrowToAsset(uint256 borrowChainlinkPrice, uint256 amountB) internal pure returns (uint256 assets) {
+        assets = borrowChainlinkPrice.mulWadDown(amountB);
     }
 
     /// @notice Convert `asset` (e.g. USDC) to `borrowAsset` (e.g. WETH)
-    function _assetToBorrow(uint256 amountA) internal view returns (uint256 borrows) {
-        (, uint256 assetToBorrowPrice,) = _pricesFromChainlink();
-        return assetToBorrowPrice.mulDivDown(amountA, 1e6);
+    function _assetToBorrow(uint256 borrowChainlinkPrice, uint256 amountA) internal pure returns (uint256 borrows) {
+        borrows = amountA.divWadDown(borrowChainlinkPrice);
     }
 
     /// @notice Get pro rata underlying assets (USDC, WETH) amounts from sushiswap lp token amount
@@ -119,18 +111,20 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         // balanceOfAsset + balanceOfEth + aToken value + Uni Lp value - debt
         // lp tokens * (total assets) / total lp tokens
 
+        (uint256 borrowPrice,) = _chainlinkPriceOfBorrow();
+
         // Asset value of underlying eth
-        uint256 assetsEth = _borrowToAsset(borrowAsset.balanceOf(address(this)));
+        uint256 assetsEth = _borrowToAsset(borrowPrice, borrowAsset.balanceOf(address(this)));
 
         // Underlying value of sushi LP tokens
         uint256 masterChefStakedAmount = masterChef.userInfo(masterChefPid, address(this)).amount;
         uint256 sushiTotalStakedAmount = abPair.balanceOf(address(this)) + masterChefStakedAmount;
         (uint256 sushiUnderlyingAssets, uint256 sushiUnderlyingBorrows) =
             _getShushiLpUnderlyingAmounts(sushiTotalStakedAmount);
-        uint256 sushiLpValue = sushiUnderlyingAssets + _borrowToAsset(sushiUnderlyingBorrows);
+        uint256 sushiLpValue = sushiUnderlyingAssets + _borrowToAsset(borrowPrice, sushiUnderlyingBorrows);
 
         // Asset value of debt
-        uint256 assetsDebt = _borrowToAsset(debtToken.balanceOf(address(this)));
+        uint256 assetsDebt = _borrowToAsset(borrowPrice, debtToken.balanceOf(address(this)));
 
         return balanceOfAsset() + assetsEth + aToken.balanceOf(address(this)) + sushiLpValue - assetsDebt;
     }
@@ -163,13 +157,15 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     AggregatorV3Interface immutable borrowAssetFeed;
 
     function startPosition(uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
-        uint256 initTVL = totalLockedValue();
         // Set position metadata
         require(canStartNewPos, "DNLP: position is active");
         currentPosition += 1;
         canStartNewPos = false;
 
-        uint256 assetsBalance = asset.balanceOf(address(this));
+        uint256 initTVL = totalLockedValue();
+        (uint256 borrowPrice, uint256 chainlinkRoundId) = _chainlinkPriceOfBorrow();
+        emit PositionStart(currentPosition, initTVL, chainlinkRoundId, block.timestamp);
+
         // Scope to avoid stack too deep error. See https://ethereum.stackexchange.com/a/84378
         // Some amount of the assets will be used to buy eth at the end of this scope.
         {
@@ -177,48 +173,49 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
             address[] memory path = new address[](2);
             path[0] = address(asset);
             path[1] = address(borrowAsset);
-            uint256 assetsToEth = assetsBalance.mulWadDown(longPercentage);
-            uint256 ethOutMin = _assetToBorrow(assetsToEth).slippageDown(slippageToleranceBps);
-            if (assetsToEth > 0) {
+            uint256 assetsToBorrow = asset.balanceOf(address(this)).mulWadDown(longPercentage);
+            uint256 borrowOutMin = _assetToBorrow(borrowPrice, assetsToBorrow).slippageDown(slippageToleranceBps);
+            if (assetsToBorrow > 0) {
                 router.swapExactTokensForTokens({
-                    amountIn: assetsToEth,
-                    amountOutMin: ethOutMin,
+                    amountIn: assetsToBorrow,
+                    amountOutMin: borrowOutMin,
                     path: path,
                     to: address(this),
                     deadline: block.timestamp
                 });
             }
         }
+        uint256 swappedBorrowAmount = borrowAsset.balanceOf(address(this));
+
         // Deposit asset in aave. Then borrow Eth at 75% (88% liquidation threshold and 85.5% max LTV)
         // If x is amount we want to deposit into aave .75x = Total - x => 1.75x = Total => x = Total / 1.75 => Total * 4/7
-        assetsBalance = asset.balanceOf(address(this));
-        uint256 assetsToDeposit = assetsBalance.mulDivDown(4, 7);
-        lendingPool.deposit({asset: address(asset), amount: assetsToDeposit, onBehalfOf: address(this), referralCode: 0});
-
-        // Convert assetsToDeposit into `borrowAsset` (e.g. WETH) units
-        (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = borrowAssetFeed.latestRoundData();
-        require(price > 0, "DNLP: price <= 0");
-        require(answeredInRound >= roundId, "DNLP: stale data");
-        require(timestamp != 0, "DNLP: round not done");
-
-        emit PositionStart(currentPosition, initTVL, roundId, block.timestamp);
-
+        uint256 assetsToDeposit = asset.balanceOf(address(this)).mulDivDown(4, 7);
+        if (assetsToDeposit > 0) {
+            lendingPool.deposit({
+                asset: address(asset),
+                amount: assetsToDeposit,
+                onBehalfOf: address(this),
+                referralCode: 0
+            });
+        }
         // https://docs.aave.com/developers/v/2.0/the-core-protocol/lendingpool#borrow
         // assetsToDeposit has price uints `asset`, price has units `asset / borrowAsset` ratio. so we divide by price
         // Scaling `asset` to 8 decimals since chainlink provides 8: https://docs.chain.link/docs/data-feeds/price-feeds/
         // TODO: handle both cases (assetDecimals > priceDecimals as well)
-        uint256 borrowAssetsDeposited = _assetToBorrow(assetsToDeposit);
-        lendingPool.borrow({
-            asset: address(borrowAsset),
-            amount: borrowAssetsDeposited.mulDivDown(3, 4),
-            interestRateMode: 2,
-            referralCode: 0,
-            onBehalfOf: address(this)
-        });
+        uint256 borrowAmount = _assetToBorrow(borrowPrice, assetsToDeposit).mulDivDown(3, 4);
+        if (borrowAmount > 0) {
+            lendingPool.borrow({
+                asset: address(borrowAsset),
+                amount: borrowAmount,
+                interestRateMode: 2,
+                referralCode: 0,
+                onBehalfOf: address(this)
+            });
+        }
 
         // Provide liquidity on uniswap
-        assetsBalance = asset.balanceOf(address(this));
-        uint256 borrowBalance = borrowAsset.balanceOf(address(this));
+        uint256 assetsBalance = asset.balanceOf(address(this));
+        uint256 borrowBalance = borrowAsset.balanceOf(address(this)) - swappedBorrowAmount;
         uint256 assetsInMin = assetsBalance.slippageDown(slippageToleranceBps);
         uint256 borrowInMin = assetsBalance.slippageDown(slippageToleranceBps);
 
@@ -241,7 +238,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     /// ideally occurs when the strategy does not have an open position
     function _divest(uint256 assets) internal override returns (uint256) {
         // Totally unwind the position
-        if (!canStartNewPos) _endPosition(MAX_BPS);
+        if (!canStartNewPos) _endPosition(MAX_BPS / 20); // 5% slippage tolerance.
 
         uint256 amountToSend = Math.min(assets, balanceOfAsset());
         asset.safeTransfer(address(vault), amountToSend);
@@ -264,6 +261,8 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         // Set position metadata
         require(!canStartNewPos, "DNLP: position is inactive");
         canStartNewPos = true;
+
+        (uint256 borrowPrice,) = _chainlinkPriceOfBorrow();
 
         uint256 depositedSLPAmount = masterChef.userInfo(masterChefPid, address(this)).amount;
         masterChef.withdraw(masterChefPid, depositedSLPAmount);
@@ -297,7 +296,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
 
             router.swapTokensForExactTokens({
                 amountOut: ethToBuy,
-                amountInMax: _borrowToAsset(ethToBuy).slippageUp(slippageToleranceBps),
+                amountInMax: _borrowToAsset(borrowPrice, ethToBuy).slippageUp(slippageToleranceBps),
                 path: path,
                 to: address(this),
                 deadline: block.timestamp
@@ -309,7 +308,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
             path[1] = address(asset);
             router.swapExactTokensForTokens({
                 amountIn: ethToSell,
-                amountOutMin: _borrowToAsset(ethToSell).slippageDown(slippageToleranceBps),
+                amountOutMin: _borrowToAsset(borrowPrice, ethToSell).slippageDown(slippageToleranceBps),
                 path: path,
                 to: address(this),
                 deadline: block.timestamp
