@@ -42,6 +42,10 @@ contract AAVEStratTest is TestPlus {
         usdc.approve(address(vault), type(uint256).max);
         vault.deposit(1e6, address(this));
 
+        vm.startPrank(governance);
+        vault.depositIntoStrategies();
+        vm.stopPrank();
+
         // Go 10 days into the future and make sure that the vault makes money
         vm.warp(block.timestamp + 10 days);
 
