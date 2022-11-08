@@ -8,19 +8,12 @@ import {IRootChainManager} from "./interfaces/IRootChainManager.sol";
 import {IL1Vault, IL2Vault} from "./interfaces/IVault.sol";
 import {BaseVault} from "./BaseVault.sol";
 
-interface IChildERC20 {
-    function withdraw(uint256 amount) external;
-}
-
-contract BridgeEscrow {
+abstract contract BridgeEscrow {
     using SafeTransferLib for ERC20;
 
-    // Number of transactions sent by opposite vault to wormhole contract on opposite chain
-    int32 public vaultNonce = -1;
-    address public immutable vault;
-    ERC20 public immutable token;
-    IRootChainManager public immutable rootChainManager;
+    ERC20 public immutable asset;
     address public immutable wormholeRouter;
+    address public immutable governance;
 
     /**
      * @notice Emitted whenever we transfer funds from this escrow to the vault
@@ -28,61 +21,21 @@ contract BridgeEscrow {
      */
     event TransferToVault(uint256 assets);
 
-    constructor(address _vault, IRootChainManager manager) {
-        vault = _vault;
-        wormholeRouter = BaseVault(_vault).wormholeRouter();
-        token = ERC20(BaseVault(_vault).asset());
-        rootChainManager = manager;
+    constructor(BaseVault _vault) {
+        wormholeRouter = _vault.wormholeRouter();
+        asset = ERC20(_vault.asset());
+        governance = _vault.governance();
     }
 
-    // Transfer to L1
-    function l2Withdraw(uint256 amount) external {
-        require(msg.sender == vault, "BE: Only vault");
-        IChildERC20(address(token)).withdraw(amount);
-    }
-
-    function l2ClearFund(uint256 amount) external {
+    function clearFunds(uint256 assets, bytes calldata exitProof) external {
         require(msg.sender == wormholeRouter, "BE: Only wormhole router");
-        _l2Clear(amount);
+        _clear(assets, exitProof);
     }
 
-    function l2RescueFunds(uint256 amount) external {
-        require(msg.sender == IL1Vault(vault).governance(), "BE: Only Governance");
-        _l2Clear(amount);
+    function rescueFunds(uint256 amount, bytes calldata exitProof) external {
+        require(msg.sender == governance, "BE: Only Governance");
+        _clear(amount, exitProof);
     }
 
-    function _l2Clear(uint256 amount) internal {
-        uint256 balance = token.balanceOf(address(this));
-        require(balance >= amount, "BE: Funds not received");
-        token.safeTransfer(vault, balance);
-
-        emit TransferToVault(balance);
-        IL2Vault(vault).afterReceive(balance);
-    }
-
-    function l1ClearFund(uint256 amount, bytes calldata exitProof) external {
-        require(msg.sender == wormholeRouter, "BE: Only wormhole router");
-        _l1Clear(amount, exitProof);
-    }
-
-    /// @notice If for some reason we can't get a VAA, forcefully send the funds to the vault
-    function l1RescueFunds(uint256 amount, bytes calldata exitProof) external {
-        require(msg.sender == IL1Vault(vault).governance(), "BE: Only Governance");
-        _l1Clear(amount, exitProof);
-    }
-
-    function _l1Clear(uint256 amount, bytes calldata exitProof) internal {
-        // Exit tokens, after this the withdrawn tokens from L2 will be reflected in the L1 BridgeEscrow
-        // NOTE: This function can fail if the exitProof provided is fake or has already been processed
-        // In either case, we want to send at least `amount` to the vault since we know that the L2Vault sent `amount`
-        try rootChainManager.exit(exitProof) {} catch {}
-
-        // Transfer exited tokens to L1 Vault.
-        uint256 balance = token.balanceOf(address(this));
-        require(balance >= amount, "BE: Funds not received");
-        token.safeTransfer(vault, balance);
-
-        emit TransferToVault(balance);
-        IL1Vault(vault).afterReceive();
-    }
+    function _clear(uint256 assets, bytes calldata exitProof) internal virtual;
 }

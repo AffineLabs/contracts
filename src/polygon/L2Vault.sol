@@ -14,7 +14,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {BaseRelayRecipient} from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
 import {BaseVault} from "../BaseVault.sol";
-import {BridgeEscrow} from "../BridgeEscrow.sol";
+import {L2BridgeEscrow} from "./L2BridgeEscrow.sol";
 import {DetailedShare} from "./Detailed.sol";
 import {L2WormholeRouter} from "./L2WormholeRouter.sol";
 import {IERC4626} from "../interfaces/IERC4626.sol";
@@ -46,7 +46,7 @@ contract L2Vault is
         address _governance,
         ERC20 _token,
         address _wormholeRouter,
-        BridgeEscrow _bridgeEscrow,
+        L2BridgeEscrow _bridgeEscrow,
         EmergencyWithdrawalQueue _emergencyWithdrawalQueue,
         address forwarder,
         uint8 _l1Ratio,
@@ -522,7 +522,7 @@ contract L2Vault is
     function _transferToL1(uint256 amount) internal {
         // Send token
         _asset.safeTransfer(address(bridgeEscrow), amount);
-        bridgeEscrow.l2Withdraw(amount);
+        L2BridgeEscrow(address(bridgeEscrow)).withdraw(amount);
         emit TransferToL1(amount);
 
         // Update bridge state and L1 TVL

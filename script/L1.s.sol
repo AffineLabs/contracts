@@ -10,7 +10,7 @@ import {L1Vault} from "../src/ethereum/L1Vault.sol";
 import {ICREATE3Factory} from "../src/interfaces/ICreate3Factory.sol";
 import {IRootChainManager} from "../src/interfaces/IRootChainManager.sol";
 import {IWormhole} from "../src/interfaces/IWormhole.sol";
-import {BridgeEscrow} from "../src/BridgeEscrow.sol";
+import {L1BridgeEscrow} from "../src/ethereum/L1BridgeEscrow.sol";
 import {L1WormholeRouter} from "../src/ethereum/L1WormholeRouter.sol";
 
 import {L1CompoundStrategy} from "../src/ethereum/L1CompoundStrategy.sol";
@@ -78,7 +78,7 @@ contract Deploy is Script, Base {
         bytes32 routerSalt = _getSaltAndWrite("router.salt");
         require(escrowSalt != routerSalt, "Salts not unique");
 
-        BridgeEscrow escrow = BridgeEscrow(create3.getDeployed(deployer, escrowSalt));
+        L1BridgeEscrow escrow = L1BridgeEscrow(create3.getDeployed(deployer, escrowSalt));
         L1WormholeRouter router = L1WormholeRouter(create3.getDeployed(deployer, routerSalt));
 
         // Deploy L1Vault
@@ -106,11 +106,11 @@ contract Deploy is Script, Base {
         create3.deploy(
             escrowSalt,
             abi.encodePacked(
-                type(BridgeEscrow).creationCode, abi.encode(address(vault), IRootChainManager(config.chainManager))
+                type(L1BridgeEscrow).creationCode, abi.encode(address(vault), IRootChainManager(config.chainManager))
             )
         );
-        require(escrow.vault() == address(vault));
-        require(address(escrow.token()) == vault.asset());
+        require(escrow.vault() == vault);
+        require(address(escrow.asset()) == vault.asset());
         require(escrow.wormholeRouter() == vault.wormholeRouter());
         require(vault.chainManager() == escrow.rootChainManager());
 

@@ -34,7 +34,7 @@ contract L2WormholeRouter is WormholeRouter {
         nextValidNonce = vm.nonce + 1;
         (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
         require(msgType == Constants.L1_FUND_TRANSFER_REPORT, "WR: bad msg type");
-        vault.bridgeEscrow().l2ClearFund(amount);
+        vault.bridgeEscrow().clearFunds(amount, "");
     }
 
     function receiveTVL(bytes calldata message) external {
