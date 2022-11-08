@@ -8,7 +8,6 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
@@ -55,7 +54,7 @@ contract L2Vault is
         uint256[3] memory fees,
         uint256 _ewqMinEnqueueAmount
     ) public initializer {
-        __ERC20_init("Alpine Save", "alpSave");
+        __ERC20_init("USD Earn", "usdEarn");
         __UUPSUpgradeable_init();
         __Pausable_init();
         baseInitialize(_governance, _token, _wormholeRouter, _bridgeEscrow);
@@ -83,16 +82,11 @@ contract L2Vault is
      * META-TRANSACTION SUPPORT
      *
      */
-    function _msgSender() internal view override (Context, ContextUpgradeable, BaseRelayRecipient) returns (address) {
+    function _msgSender() internal view override (ContextUpgradeable, BaseRelayRecipient) returns (address) {
         return BaseRelayRecipient._msgSender();
     }
 
-    function _msgData()
-        internal
-        view
-        override (Context, ContextUpgradeable, BaseRelayRecipient)
-        returns (bytes calldata)
-    {
+    function _msgData() internal view override (ContextUpgradeable, BaseRelayRecipient) returns (bytes calldata) {
         return BaseRelayRecipient._msgData();
     }
 
@@ -185,6 +179,8 @@ contract L2Vault is
         _mint(governance, numSharesToMint);
     }
 
+    uint256 constant SECS_PER_YEAR = 365 days;
+
     /**
      * DEPOSIT
      *
@@ -192,17 +188,17 @@ contract L2Vault is
     /// @notice See {IERC4626-deposit}
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
         shares = previewDeposit(assets);
-        require(shares > 0, "L2Vault: zero shares");
-        address caller = _msgSender();
-
-        _asset.safeTransferFrom(caller, address(this), assets);
-        _mint(receiver, shares);
-        emit Deposit(caller, receiver, assets, shares);
+        _deposit(assets, shares, receiver);
     }
 
     /// @notice See {IERC4626-mint}
     function mint(uint256 shares, address receiver) external whenNotPaused returns (uint256 assets) {
         assets = previewMint(shares);
+        _deposit(assets, shares, receiver);
+    }
+
+    function _deposit(uint256 assets, uint256 shares, address receiver) internal {
+        require(shares > 0, "L2Vault: zero shares");
         address caller = _msgSender();
 
         _asset.safeTransferFrom(caller, address(this), assets);
@@ -239,31 +235,44 @@ contract L2Vault is
 
     /// @notice See {IERC4626-redeem}
     function redeem(uint256 shares, address receiver, address owner) external whenNotPaused returns (uint256 assets) {
-        // Only real share amounts are allowed since we might create an ewq request
+        assets = _redeem(_convertToAssets(shares, Rounding.Down), shares, receiver, owner);
+    }
+
+    /// @notice See {IERC4626-withdraw}
+    function withdraw(uint256 assets, address receiver, address owner)
+        external
+        whenNotPaused
+        returns (uint256 shares)
+    {
+        shares = previewWithdraw(assets);
+        _redeem(assets, shares, receiver, owner);
+    }
+
+    function _redeem(uint256 assets, uint256 shares, address receiver, address owner)
+        internal
+        returns (uint256 assetsToUser)
+    {
         EmergencyWithdrawalQueue ewq = emergencyWithdrawalQueue;
+        // Only real share amounts are allowed since we might create an ewq request
         require(shares <= balanceOf(owner) + ewq.ownerToDebt(owner), "L2Vault: min shares");
 
-        address caller = _msgSender();
-        uint256 rawAssets = _convertToAssets(shares, Rounding.Down);
-        uint256 assetsFee = getWithdrawalFee(rawAssets);
-        if (caller == address(ewq)) {
-            assetsFee = Math.min(rawAssets, Math.max(ewqEnqueueFee, assetsFee));
-        }
-        assets = rawAssets - assetsFee;
+        uint256 assetsFee = _getWithdrawalFee(assets);
+        assetsToUser = assets - assetsFee;
 
         // We must be able to repay all queued users and the current user
-        uint256 assetDemand = assets + assetsFee + ewq.totalDebt();
+        uint256 assetDemand = assets + ewq.totalDebt();
         _liquidate(assetDemand);
 
         // The ewq does not need approval to burn shares
+        address caller = _msgSender();
         if (caller != owner && caller != address(ewq)) _spendAllowance(owner, caller, shares);
 
         // Add to emergency withdrawal queue if there is not enough liquidity.
         if (_asset.balanceOf(address(this)) < assetDemand) {
             if (caller != address(ewq)) {
                 // We need to enqueue, make sure that the requested amount is large enough.
-                if (rawAssets < ewqMinEnqueueAmount) {
-                    revert("L2Vault: bad enqueue, min shares");
+                if (assets < ewqMinEnqueueAmount) {
+                    revert("L2Vault: bad enqueue, min assets");
                 }
                 ewq.enqueue(owner, receiver, shares);
                 return 0;
@@ -276,44 +285,6 @@ contract L2Vault is
         _burn(owner, shares);
         emit Withdraw(caller, receiver, owner, assets, shares);
 
-        if (assets > 0) {
-            _asset.safeTransfer(receiver, assets);
-        }
-        _asset.safeTransfer(governance, assetsFee);
-    }
-
-    /// @notice See {IERC4626-withdraw}
-    function withdraw(uint256 assets, address receiver, address owner)
-        external
-        whenNotPaused
-        returns (uint256 shares)
-    {
-        shares = previewWithdraw(assets);
-        EmergencyWithdrawalQueue ewq = emergencyWithdrawalQueue;
-        require(shares <= balanceOf(owner) + ewq.ownerToDebt(owner), "L2Vault: min shares");
-
-        uint256 assetDemand = assets + ewq.totalDebt();
-        _liquidate(assetDemand);
-
-        address caller = _msgSender();
-        if (caller != owner) _spendAllowance(owner, caller, shares);
-
-        if (_asset.balanceOf(address(this)) < assetDemand) {
-            // We need to enqueue, make sure that the requested amount is large enough.
-            if (assets < ewqMinEnqueueAmount) {
-                revert("L2Vault: bad enqueue, min assets");
-            }
-            ewq.enqueue(owner, receiver, shares);
-            return 0;
-        }
-
-        _burn(owner, shares);
-
-        // Calculate withdrawal fee
-        uint256 assetsFee = getWithdrawalFee(assets);
-        uint256 assetsToUser = assets - assetsFee;
-
-        emit Withdraw(caller, receiver, owner, assetsToUser, shares);
         _asset.safeTransfer(receiver, assetsToUser);
         _asset.safeTransfer(governance, assetsFee);
     }
@@ -388,19 +359,17 @@ contract L2Vault is
 
     /// @notice See {IERC4626-previewRedeem}
     function previewRedeem(uint256 shares) public view returns (uint256 assets) {
-        (assets,) = _previewRedeem(shares);
-    }
-
-    /// @dev  A little helper that gets us the amount of assets to send to the user and governance
-    function _previewRedeem(uint256 shares) internal view returns (uint256 assets, uint256 assetsFee) {
         uint256 rawAssets = _convertToAssets(shares, Rounding.Down);
-        assetsFee = getWithdrawalFee(rawAssets);
+        uint256 assetsFee = _getWithdrawalFee(rawAssets);
         assets = rawAssets - assetsFee;
     }
 
     /// @dev  Return amount of `asset` to be given to user after applying withdrawal fee
-    function getWithdrawalFee(uint256 tokenAmount) internal view returns (uint256) {
+    function _getWithdrawalFee(uint256 tokenAmount) internal view returns (uint256) {
         uint256 feeAmount = tokenAmount.mulDivUp(withdrawalFee, MAX_BPS);
+        if (_msgSender() == address(emergencyWithdrawalQueue)) {
+            feeAmount = Math.max(feeAmount, ewqEnqueueFee);
+        }
         return feeAmount;
     }
 
@@ -477,10 +446,10 @@ contract L2Vault is
     event RebalanceDeltaSet(uint224 oldDelta, uint224 newDelta);
 
     /// @notice The last time the tvl was updated. We need this to let L1 tvl updates unlock over time
-    uint128 public lastTVLUpdate;
+    uint128 lastTVLUpdate;
 
     /// @notice See maxLockedProfit
-    uint128 public maxLockedTVL;
+    uint128 maxLockedTVL;
 
     /// @notice See lockedProfit. This is the same, except we are profiting from L1 tvl info
     function lockedTVL() public view returns (uint256) {

@@ -3,11 +3,9 @@ pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
 import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
@@ -39,14 +37,6 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         baseInitialize(_governance, _token, _wormholeRouter, _bridgeEscrow);
         chainManager = _chainManager;
         predicate = _predicate;
-    }
-
-    function _msgSender() internal view override (Context, ContextUpgradeable) returns (address) {
-        return Context._msgSender();
-    }
-
-    function _msgData() internal view override (Context, ContextUpgradeable) returns (bytes calldata) {
-        return Context._msgData();
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
