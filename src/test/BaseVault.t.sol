@@ -119,7 +119,7 @@ contract BaseVaultTest is TestPlus {
         for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
             vault.addStrategy(new TestStrategy(vault), 10);
         }
-        for (uint256 i = 0; i < vault.MAX_STRATEGIES(); ++i) {
+        for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
             assertTrue(vault.getWithdrawalQueue()[i] == vault.withdrawalQueue(i));
         }
     }
@@ -137,18 +137,6 @@ contract BaseVaultTest is TestPlus {
         for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
             assertTrue(vault.withdrawalQueue(i) == newQueue[i]);
         }
-    }
-
-    function testSwapWithdrawalQueue() public {
-        vault.addStrategy(new TestStrategy(vault), 1000);
-        vault.addStrategy(new TestStrategy(vault), 2000);
-        BaseStrategy newStrategy1 = vault.withdrawalQueue(0);
-        BaseStrategy newStrategy2 = vault.withdrawalQueue(1);
-        vm.expectEmit(true, true, true, true);
-        emit WithdrawalQueueIndexesSwapped(0, 1, newStrategy2, newStrategy1);
-        vault.swapWithdrawalQueueIndexes(0, 1);
-        assertTrue(newStrategy1 == vault.withdrawalQueue(1));
-        assertTrue(newStrategy2 == vault.withdrawalQueue(0));
     }
 
     function testLiquidate() public {

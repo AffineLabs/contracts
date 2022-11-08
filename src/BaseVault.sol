@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity =0.8.16;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
+import {Multicallable} from "solady/src/utils/Multicallable.sol";
+
 import {BaseStrategy as Strategy} from "./BaseStrategy.sol";
 import {AffineGovernable} from "./AffineGovernable.sol";
 import {BridgeEscrow} from "./BridgeEscrow.sol";
 import {WormholeRouter} from "./WormholeRouter.sol";
-import {Multicallable} from "solady/src/utils/Multicallable.sol";
 import {uncheckedInc} from "./libs/Unchecked.sol";
 
 /**
@@ -20,7 +20,7 @@ import {uncheckedInc} from "./libs/Unchecked.sol";
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
  * strategy liquidation.
  */
-abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
+abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multicallable {
     using SafeTransferLib for ERC20;
 
     /**
@@ -109,7 +109,7 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
      *
      */
 
-    uint8 public constant MAX_STRATEGIES = 20;
+    uint8 constant MAX_STRATEGIES = 20;
 
     /**
      * @notice An ordered array of strategies representing the withdrawal queue. The withdrawal queue is used
@@ -143,38 +143,10 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
     }
 
     /**
-     * @notice Swaps two indexes in the withdrawal queue.
-     * @param index1 One index involved in the swap
-     * @param index2 The other index involved in the swap.
-     */
-    function swapWithdrawalQueueIndexes(uint256 index1, uint256 index2) external onlyGovernance {
-        // Get the (soon to be) new strategies at each index.
-        Strategy newStrategy2 = withdrawalQueue[index1];
-        Strategy newStrategy1 = withdrawalQueue[index2];
-
-        // Swap the strategies at both indexes.
-        withdrawalQueue[index1] = newStrategy1;
-        withdrawalQueue[index2] = newStrategy2;
-
-        emit WithdrawalQueueIndexesSwapped(index1, index2, newStrategy1, newStrategy2);
-    }
-
-    /**
      * @notice Emitted when the withdrawal queue is updated.
      * @param newQueue The new withdrawal queue.
      */
     event WithdrawalQueueSet(Strategy[MAX_STRATEGIES] newQueue);
-
-    /**
-     * @notice Emitted when the strategies at two indexes are swapped.
-     * @param index1 One index involved in the swap
-     * @param index2 The other index involved in the swap.
-     * @param newStrategy1 The strategy (previously at index2) that replaced index1.
-     * @param newStrategy2 The strategy (previously at index1) that replaced index2.
-     */
-    event WithdrawalQueueIndexesSwapped(
-        uint256 index1, uint256 index2, Strategy indexed newStrategy1, Strategy indexed newStrategy2
-    );
 
     /**
      * STRATEGIES
@@ -404,7 +376,6 @@ abstract contract BaseVault is AccessControl, AffineGovernable, Multicallable {
     uint128 public maxLockedProfit;
     /// @notice Amount of time in seconds that profit takes to fully unlock. See lockedProfit().
     uint256 public constant lockInterval = 24 hours;
-    uint256 public constant SECS_PER_YEAR = 365 days;
 
     /**
      * @notice Emitted after a successful harvest.
