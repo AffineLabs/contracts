@@ -8,9 +8,9 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
-import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
-import {BridgeEscrow} from "../BridgeEscrow.sol";
 import {BaseVault} from "../BaseVault.sol";
+import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
+import {L1BridgeEscrow} from "./L1BridgeEscrow.sol";
 import {L1WormholeRouter} from "./L1WormholeRouter.sol";
 
 contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
@@ -28,7 +28,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         address _governance,
         ERC20 _token,
         address _wormholeRouter,
-        BridgeEscrow _bridgeEscrow,
+        L1BridgeEscrow _bridgeEscrow,
         IRootChainManager _chainManager,
         address _predicate
     ) public initializer {

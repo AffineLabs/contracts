@@ -10,7 +10,7 @@ import {ICREATE3Factory} from "../src/interfaces/ICreate3Factory.sol";
 import {CREATE3Factory} from "../src/test/CREATE3Factory.sol";
 import {IWormhole} from "../src/interfaces/IWormhole.sol";
 import {IRootChainManager} from "../src/interfaces/IRootChainManager.sol";
-import {BridgeEscrow} from "../src/BridgeEscrow.sol";
+import {L2BridgeEscrow} from "../src/polygon/L2BridgeEscrow.sol";
 import {L2WormholeRouter} from "../src/polygon/L2WormholeRouter.sol";
 import {Forwarder} from "../src/polygon/Forwarder.sol";
 import {EmergencyWithdrawalQueue} from "../src/polygon/EmergencyWithdrawalQueue.sol";
@@ -34,7 +34,7 @@ contract Deploy is Script, Base {
     function _deployVault(
         Base.L2Config memory config,
         L2WormholeRouter router,
-        BridgeEscrow escrow,
+        L2BridgeEscrow escrow,
         EmergencyWithdrawalQueue queue,
         Forwarder forwarder
     ) internal returns (L2Vault vault) {
@@ -127,7 +127,7 @@ contract Deploy is Script, Base {
         console.logBytes32(routerSalt);
         require(escrowSalt != routerSalt, "Salts not unique");
 
-        BridgeEscrow escrow = BridgeEscrow(create3.getDeployed(deployer, escrowSalt));
+        L2BridgeEscrow escrow = L2BridgeEscrow(create3.getDeployed(deployer, escrowSalt));
         L2WormholeRouter router = L2WormholeRouter(create3.getDeployed(deployer, routerSalt));
         EmergencyWithdrawalQueue queue = EmergencyWithdrawalQueue(create3.getDeployed(deployer, ewqSalt));
         Forwarder forwarder = new Forwarder();
@@ -135,12 +135,9 @@ contract Deploy is Script, Base {
         L2Vault vault = _deployVault(config, router, escrow, queue, forwarder);
 
         // Deploy helper contracts (escrow, router, and ewq)
-        create3.deploy(
-            escrowSalt,
-            abi.encodePacked(type(BridgeEscrow).creationCode, abi.encode(address(vault), IRootChainManager(address(0))))
-        );
-        require(escrow.vault() == address(vault));
-        require(address(escrow.token()) == vault.asset());
+        create3.deploy(escrowSalt, abi.encodePacked(type(L2BridgeEscrow).creationCode, abi.encode(address(vault))));
+        require(escrow.vault() == vault);
+        require(address(escrow.asset()) == vault.asset());
         require(escrow.wormholeRouter() == vault.wormholeRouter());
 
         IWormhole wormhole = IWormhole(config.wormhole);

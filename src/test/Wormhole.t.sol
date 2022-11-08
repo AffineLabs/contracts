@@ -336,7 +336,7 @@ contract L1WormholeRouterTest is TestPlus {
         );
 
         // We use an empty exitProof since we are just going to mock the call to the bridgeEscrow
-        bytes memory clearFundData = abi.encodeCall(vault.bridgeEscrow().l1ClearFund, (l2TransferAmount, ""));
+        bytes memory clearFundData = abi.encodeCall(vault.bridgeEscrow().clearFunds, (l2TransferAmount, ""));
         vm.mockCall(address(vault.bridgeEscrow()), clearFundData, "");
         vm.expectCall(address(vault.bridgeEscrow()), clearFundData);
         vm.prank(rebalancer);

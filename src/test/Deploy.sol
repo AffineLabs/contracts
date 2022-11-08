@@ -8,7 +8,8 @@ import {L2Vault} from "../polygon/L2Vault.sol";
 import {BaseVault} from "../BaseVault.sol";
 import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
 import {L1Vault} from "../ethereum/L1Vault.sol";
-import {BridgeEscrow} from "../BridgeEscrow.sol";
+import {L2BridgeEscrow} from "../polygon/L2BridgeEscrow.sol";
+import {L1BridgeEscrow} from "../ethereum/L1BridgeEscrow.sol";
 import {TwoAssetBasket} from "../polygon/TwoAssetBasket.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {IWormhole} from "../interfaces/IWormhole.sol";
@@ -34,7 +35,7 @@ contract Deploy is Test {
         vault = new MockL2Vault();
 
         // Deploy helper contracts (escrow and router)
-        BridgeEscrow escrow = BridgeEscrow(create3.getDeployed(escrowSalt));
+        L2BridgeEscrow escrow = L2BridgeEscrow(create3.getDeployed(escrowSalt));
         L2WormholeRouter router = L2WormholeRouter(create3.getDeployed(routerSalt));
         EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(vault);
 
@@ -51,11 +52,7 @@ contract Deploy is Test {
             1_000_000
         );
 
-        create3.deploy(
-            escrowSalt,
-            abi.encodePacked(type(BridgeEscrow).creationCode, abi.encode(address(vault), IRootChainManager(address(0)))),
-            0
-        );
+        create3.deploy(escrowSalt, abi.encodePacked(type(L2BridgeEscrow).creationCode, abi.encode(address(vault))), 0);
         create3.deploy(
             routerSalt,
             abi.encodePacked(
@@ -78,7 +75,7 @@ contract Deploy is Test {
         vault = new MockL1Vault();
 
         IRootChainManager manager = IRootChainManager(0xA0c68C638235ee32657e8f720a23ceC1bFc77C77);
-        BridgeEscrow escrow = new BridgeEscrow(address(vault), manager);
+        L1BridgeEscrow escrow = new L1BridgeEscrow(vault, manager);
 
         vault.initialize(
             governance, // governance
