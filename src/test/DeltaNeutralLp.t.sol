@@ -201,17 +201,20 @@ contract DeltaNeutralTest is TestPlus {
     function testTVLFuzz(uint64 assets) public {
         // Max borrowable WETH available in AAVE in this block is around 1334.66 WETH or 2178919.22 USDC.
         // So technically we should be able to take position with around 2178919.22 / ((4 / 7) * (3 / 4)) = 5084144.84 USDC
-        vm.assume(assets < 4e12 && assets > 1e5);
-        assertEq(strategy.totalLockedValue(), 0);
+        vm.assume(assets < 4e12);
 
-        deal(address(asset), address(strategy), assets);
-        assertApproxEqRel(strategy.totalLockedValue(), assets, 0.01e18);
+        if (assets > 1e5) {
+            assertEq(strategy.totalLockedValue(), 0);
 
-        vm.startPrank(vault.governance());
-        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
-        assertApproxEqRel(strategy.totalLockedValue(), assets, 0.01e18);
+            deal(address(asset), address(strategy), assets);
+            assertApproxEqRel(strategy.totalLockedValue(), assets, 0.01e18);
 
-        strategy.endPosition(IDEAL_SLIPPAGE_BPS);
-        assertApproxEqRel(strategy.totalLockedValue(), assets, 0.01e18);
+            vm.startPrank(vault.governance());
+            strategy.startPosition(IDEAL_SLIPPAGE_BPS);
+            assertApproxEqRel(strategy.totalLockedValue(), assets, 0.01e18);
+
+            strategy.endPosition(IDEAL_SLIPPAGE_BPS);
+            assertApproxEqRel(strategy.totalLockedValue(), assets, 0.01e18);
+        }
     }
 }
