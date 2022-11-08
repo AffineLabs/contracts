@@ -138,15 +138,18 @@ contract L2VaultTest is TestPlus {
         asset.approve(address(vault), type(uint256).max);
 
         TestStrategy strategy = new TestStrategy(vault);
-        vm.prank(governance);
+        vm.startPrank(governance);
         vault.addStrategy(strategy, 10_000);
+        vm.stopPrank();
 
         vault.deposit(amount, user);
         assertEq(asset.balanceOf(address(vault)), amount);
 
+        vm.startPrank(governance);
         vault.depositIntoStrategies();
         assertEq(asset.balanceOf(address(vault)), 0);
         assertApproxEqAbs(vault.vaultTVL(), amount, 0.01e18);
+        vm.stopPrank();
     }
 
     function testMintNoStrategyInvest() public {
@@ -156,15 +159,18 @@ contract L2VaultTest is TestPlus {
         asset.approve(address(vault), type(uint256).max);
 
         TestStrategy strategy = new TestStrategy(vault);
-        vm.prank(governance);
+        vm.startPrank(governance);
         vault.addStrategy(strategy, 10_000);
+        vm.stopPrank();
 
         vault.mint(amount * 1e8, user); // Initially asset:share = 1:1e8.
         assertEq(asset.balanceOf(address(vault)), amount);
 
+        vm.startPrank(governance);
         vault.depositIntoStrategies();
         assertEq(asset.balanceOf(address(vault)), 0);
         assertApproxEqAbs(vault.vaultTVL(), amount, 0.01e18);
+        vm.stopPrank();
     }
 
     function testManagementFee() public {
