@@ -43,7 +43,7 @@ contract AAVEStratTest is TestPlus {
         vault.deposit(1e6, address(this));
 
         vm.startPrank(governance);
-        vault.depositIntoStrategies();
+        vault.depositIntoStrategies(1e6);
         vm.stopPrank();
 
         // Go 10 days into the future and make sure that the vault makes money

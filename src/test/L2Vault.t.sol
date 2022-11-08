@@ -146,9 +146,10 @@ contract L2VaultTest is TestPlus {
         assertEq(asset.balanceOf(address(vault)), amount);
 
         vm.startPrank(governance);
-        vault.depositIntoStrategies();
-        assertEq(asset.balanceOf(address(vault)), 0);
-        assertApproxEqAbs(vault.vaultTVL(), amount, 0.01e18);
+        uint256 capitalEfficientAmount = 50;
+        vault.depositIntoStrategies(capitalEfficientAmount);
+        assertEq(asset.balanceOf(address(vault)), amount - capitalEfficientAmount);
+        assertEq(vault.vaultTVL(), amount);
         vm.stopPrank();
     }
 
@@ -167,9 +168,10 @@ contract L2VaultTest is TestPlus {
         assertEq(asset.balanceOf(address(vault)), amount);
 
         vm.startPrank(governance);
-        vault.depositIntoStrategies();
-        assertEq(asset.balanceOf(address(vault)), 0);
-        assertApproxEqAbs(vault.vaultTVL(), amount, 0.01e18);
+        uint256 capitalEfficientAmount = 50;
+        vault.depositIntoStrategies(capitalEfficientAmount);
+        assertEq(asset.balanceOf(address(vault)), amount - capitalEfficientAmount);
+        assertEq(vault.vaultTVL(), amount);
         vm.stopPrank();
     }
 
