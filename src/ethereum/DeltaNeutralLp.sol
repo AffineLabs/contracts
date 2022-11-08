@@ -82,7 +82,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         require(price > 0, "DNLP: price <= 0");
         require(answeredInRound >= roundId, "DNLP: stale data");
         require(timestamp != 0, "DNLP: round not done");
-        borrowPrice = uint256(price) / 1e2; // Convert 8 decimals to 6 decimals, 1 WETH (1e18) = price USDC
+        borrowPrice = uint256(price); // Convert 8 decimals to 6 decimals, 1 WETH (1e18) = price USDC
     }
 
     /// @notice Get price of WETH in USDC (borrowPrice) from Sushiswap.
@@ -97,16 +97,16 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
 
     /// @notice Convert `borrowAsset` (e.g. WETH) to `asset` (e.g. USDC)
     function _borrowToAsset(uint256 borrowChainlinkPrice, uint256 amountB) internal pure returns (uint256 assets) {
-        assets = borrowChainlinkPrice.mulWadDown(amountB);
+        assets = borrowChainlinkPrice.mulWadDown(amountB) / 1e2;
     }
 
     /// @notice Convert `asset` (e.g. USDC) to `borrowAsset` (e.g. WETH)
     function _assetToBorrow(uint256 borrowChainlinkPrice, uint256 amountA) internal pure returns (uint256 borrows) {
-        borrows = amountA.divWadDown(borrowChainlinkPrice);
+        borrows = (amountA * 1e2).divWadDown(borrowChainlinkPrice);
     }
 
     /// @notice Get pro rata underlying assets (USDC, WETH) amounts from sushiswap lp token amount
-    function _getShushiLpUnderlyingAmounts(uint256 lpTokenAmount)
+    function _getSushiLpUnderlyingAmounts(uint256 lpTokenAmount)
         internal
         view
         returns (uint256 assets, uint256 borrows)
@@ -129,7 +129,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         uint256 masterChefStakedAmount = masterChef.userInfo(masterChefPid, address(this)).amount;
         uint256 sushiTotalStakedAmount = abPair.balanceOf(address(this)) + masterChefStakedAmount;
         (uint256 sushiUnderlyingAssets, uint256 sushiUnderlyingBorrows) =
-            _getShushiLpUnderlyingAmounts(sushiTotalStakedAmount);
+            _getSushiLpUnderlyingAmounts(sushiTotalStakedAmount);
         uint256 sushiLpValue = sushiUnderlyingAssets + _borrowToAsset(borrowPrice, sushiUnderlyingBorrows);
 
         // Asset value of debt
@@ -247,9 +247,6 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         _exportMetricInfo(3);
 
         // https://docs.aave.com/developers/v/2.0/the-core-protocol/lendingpool#borrow
-        // assetsToDeposit has price uints `asset`, price has units `asset / borrowAsset` ratio. so we divide by price
-        // Scaling `asset` to 8 decimals since chainlink provides 8: https://docs.chain.link/docs/data-feeds/price-feeds/
-        // TODO: handle both cases (assetDecimals > priceDecimals as well)
         uint256 borrowAmount = _assetToBorrow(borrowPrice, assetsToDeposit).mulDivDown(3, 4);
         if (borrowAmount > 0) {
             lendingPool.borrow({
@@ -326,9 +323,9 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         _exportMetricInfo(8);
 
         // Remove liquidity
-        // abPair -> token0 or a = USDC, token1 or b = WETH.
+        // a = usdc, b = weth
         uint256 abPairBalance = abPair.balanceOf(address(this));
-        (uint256 underlyingAssets, uint256 underlyingBorrows) = _getShushiLpUnderlyingAmounts(abPairBalance);
+        (uint256 underlyingAssets, uint256 underlyingBorrows) = _getSushiLpUnderlyingAmounts(abPairBalance);
         router.removeLiquidity({
             tokenA: address(asset),
             tokenB: address(borrowAsset),

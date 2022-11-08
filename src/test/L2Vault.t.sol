@@ -153,7 +153,7 @@ contract L2VaultTest is TestPlus {
         strategyList[0] = BaseStrategy(address(this));
         vault.harvest(strategyList);
 
-        vm.warp(block.timestamp + vault.SECS_PER_YEAR() / 2);
+        vm.warp(block.timestamp + 365 days / 2);
 
         // Call harvest to trigger fee assessment
         vault.harvest(strategyList);
@@ -595,7 +595,7 @@ contract L2VaultTest is TestPlus {
             bytes32(uint256(amount))
         );
         // Don't enqueue due to low shares.
-        vm.expectRevert("L2Vault: bad enqueue, min shares");
+        vm.expectRevert("L2Vault: bad enqueue, min assets");
         // Trigger emergency withdrawal queue enqueue.
         vault.redeem(aliceShares, alice, alice);
     }
