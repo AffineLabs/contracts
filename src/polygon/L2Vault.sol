@@ -204,7 +204,14 @@ contract L2Vault is
         _asset.safeTransferFrom(caller, address(this), assets);
         _mint(receiver, shares);
         emit Deposit(caller, receiver, assets, shares);
+    }
 
+    /**
+     * @notice Deposit into strategies separately from `deposit` or `mint` to make these function less complex.
+     * Having complicated execution path in `deposit` or `mint` flow leads to `out of gas` error for end users
+     * due to inaccurate gas estimations.
+     */
+    function depositIntoStrategies() external whenNotPaused onlyRole(HARVESTER) {
         // Deposit entire balance of `_asset` into strategies
         _depositIntoStrategies();
     }

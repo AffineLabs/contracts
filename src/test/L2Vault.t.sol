@@ -14,6 +14,7 @@ import {EmergencyWithdrawalQueue} from "../polygon/EmergencyWithdrawalQueue.sol"
 import {Deploy} from "./Deploy.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockL2Vault} from "./mocks/index.sol";
+import {TestStrategy} from "./mocks/TestStrategy.sol";
 
 contract L2VaultTest is TestPlus {
     using stdStorage for StdStorage;
@@ -128,6 +129,48 @@ contract L2VaultTest is TestPlus {
         vault.deposit(0, user);
 
         vault.deposit(100, user);
+    }
+
+    function testDepositNoStrategyInvest() public {
+        address user = address(this);
+        uint256 amount = 100;
+        asset.mint(user, amount);
+        asset.approve(address(vault), type(uint256).max);
+
+        TestStrategy strategy = new TestStrategy(vault);
+        vm.startPrank(governance);
+        vault.addStrategy(strategy, 10_000);
+        vm.stopPrank();
+
+        vault.deposit(amount, user);
+        assertEq(asset.balanceOf(address(vault)), amount);
+
+        vm.startPrank(governance);
+        vault.depositIntoStrategies();
+        assertEq(asset.balanceOf(address(vault)), 0);
+        assertApproxEqAbs(vault.vaultTVL(), amount, 0.01e18);
+        vm.stopPrank();
+    }
+
+    function testMintNoStrategyInvest() public {
+        address user = address(this);
+        uint256 amount = 100;
+        asset.mint(user, amount);
+        asset.approve(address(vault), type(uint256).max);
+
+        TestStrategy strategy = new TestStrategy(vault);
+        vm.startPrank(governance);
+        vault.addStrategy(strategy, 10_000);
+        vm.stopPrank();
+
+        vault.mint(amount * 1e8, user); // Initially asset:share = 1:1e8.
+        assertEq(asset.balanceOf(address(vault)), amount);
+
+        vm.startPrank(governance);
+        vault.depositIntoStrategies();
+        assertEq(asset.balanceOf(address(vault)), 0);
+        assertApproxEqAbs(vault.vaultTVL(), amount, 0.01e18);
+        vm.stopPrank();
     }
 
     function testManagementFee() public {
