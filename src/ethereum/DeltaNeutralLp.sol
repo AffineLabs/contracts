@@ -76,7 +76,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     bytes32 public constant STRATEGIST_ROLE = keccak256("STRATEGIST");
     uint256 public constant MAX_BPS = 10_000;
 
-    /// @notice Get price of WETH in USDC (borrowPrice) from chainlink.
+    /// @notice Get price of WETH in USDC (borrowPrice) from chainlink. Has 8 decimals.
     function _chainlinkPriceOfBorrow() internal view returns (uint256 borrowPrice) {
         (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = borrowAssetFeed.latestRoundData();
         require(price > 0, "DNLP: price <= 0");
@@ -85,22 +85,22 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         borrowPrice = uint256(price); // Convert 8 decimals to 6 decimals, 1 WETH (1e18) = price USDC
     }
 
-    /// @notice Get price of WETH in USDC (borrowPrice) from Sushiswap.
+    /// @notice Get price of WETH in USDC (borrowPrice) from Sushiswap. Has 8 decimals.
     function _sushiPriceOfBorrow() internal view returns (uint256 borrowPrice) {
         address[] memory path = new address[](2);
         path[0] = address(borrowAsset);
         path[1] = address(asset);
 
         uint256[] memory amounts = router.getAmountsOut({amountIn: 1e18, path: path});
-        return amounts[1];
+        return amounts[1] * 1e2;
     }
 
-    /// @notice Convert `borrowAsset` (e.g. WETH) to `asset` (e.g. USDC)
+    /// @notice Convert `borrowAsset` (e.g. WETH) to `asset` (e.g. USDC). Has 6 decimals.
     function _borrowToAsset(uint256 borrowChainlinkPrice, uint256 amountB) internal pure returns (uint256 assets) {
         assets = borrowChainlinkPrice.mulWadDown(amountB) / 1e2;
     }
 
-    /// @notice Convert `asset` (e.g. USDC) to `borrowAsset` (e.g. WETH)
+    /// @notice Convert `asset` (e.g. USDC) to `borrowAsset` (e.g. WETH). Has 18 decimals.
     function _assetToBorrow(uint256 borrowChainlinkPrice, uint256 amountA) internal pure returns (uint256 borrows) {
         borrows = (amountA * 1e2).divWadDown(borrowChainlinkPrice);
     }
@@ -115,12 +115,13 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         borrows = lpTokenAmount.mulDivDown(borrowAsset.balanceOf(address(abPair)), abPair.totalSupply());
     }
 
-    function totalLockedValue() public view override returns (uint256) {
+    function _totalLockedValue(bool useSpotPrice) public view returns (uint256) {
         // The below are all in units of `asset`
         // balanceOfAsset + balanceOfEth + aToken value + Uni Lp value - debt
         // lp tokens * (total assets) / total lp tokens
 
-        uint256 borrowPrice = _chainlinkPriceOfBorrow();
+        // Using spot price from sushiswap for calculating TVL.
+        uint256 borrowPrice = useSpotPrice ? _sushiPriceOfBorrow() : _chainlinkPriceOfBorrow();
 
         // Asset value of underlying eth
         uint256 assetsEth = _borrowToAsset(borrowPrice, borrowAsset.balanceOf(address(this)));
@@ -136,6 +137,14 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         uint256 assetsDebt = _borrowToAsset(borrowPrice, debtToken.balanceOf(address(this)));
 
         return balanceOfAsset() + assetsEth + aToken.balanceOf(address(this)) + sushiLpValue - assetsDebt;
+    }
+
+    function totalLockedValue() public view override returns (uint256) {
+        return _totalLockedValue(true);
+    }
+
+    function totalLockedValue(bool useSpotPrice) public view returns (uint256) {
+        return _totalLockedValue(useSpotPrice);
     }
 
     uint32 public currentPosition;
