@@ -109,7 +109,7 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
      *
      */
 
-    uint8 public constant MAX_STRATEGIES = 20;
+    uint8 constant MAX_STRATEGIES = 20;
 
     /**
      * @notice An ordered array of strategies representing the withdrawal queue. The withdrawal queue is used
@@ -143,38 +143,10 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
     }
 
     /**
-     * @notice Swaps two indexes in the withdrawal queue.
-     * @param index1 One index involved in the swap
-     * @param index2 The other index involved in the swap.
-     */
-    function swapWithdrawalQueueIndexes(uint256 index1, uint256 index2) external onlyGovernance {
-        // Get the (soon to be) new strategies at each index.
-        Strategy newStrategy2 = withdrawalQueue[index1];
-        Strategy newStrategy1 = withdrawalQueue[index2];
-
-        // Swap the strategies at both indexes.
-        withdrawalQueue[index1] = newStrategy1;
-        withdrawalQueue[index2] = newStrategy2;
-
-        emit WithdrawalQueueIndexesSwapped(index1, index2, newStrategy1, newStrategy2);
-    }
-
-    /**
      * @notice Emitted when the withdrawal queue is updated.
      * @param newQueue The new withdrawal queue.
      */
     event WithdrawalQueueSet(Strategy[MAX_STRATEGIES] newQueue);
-
-    /**
-     * @notice Emitted when the strategies at two indexes are swapped.
-     * @param index1 One index involved in the swap
-     * @param index2 The other index involved in the swap.
-     * @param newStrategy1 The strategy (previously at index2) that replaced index1.
-     * @param newStrategy2 The strategy (previously at index1) that replaced index2.
-     */
-    event WithdrawalQueueIndexesSwapped(
-        uint256 index1, uint256 index2, Strategy indexed newStrategy1, Strategy indexed newStrategy2
-    );
 
     /**
      * STRATEGIES
@@ -404,7 +376,6 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
     uint128 public maxLockedProfit;
     /// @notice Amount of time in seconds that profit takes to fully unlock. See lockedProfit().
     uint256 public constant lockInterval = 24 hours;
-    uint256 public constant SECS_PER_YEAR = 365 days;
 
     /**
      * @notice Emitted after a successful harvest.
