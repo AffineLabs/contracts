@@ -37,7 +37,7 @@ contract L1WormholeRouter is WormholeRouter {
         (bytes32 msgType, uint256 amount) = abi.decode(vm.payload, (bytes32, uint256));
         require(msgType == Constants.L2_FUND_TRANSFER_REPORT, "WR: bad msg type");
 
-        vault.bridgeEscrow().l1ClearFund(amount, data);
+        vault.bridgeEscrow().clearFunds(amount, data);
     }
 
     function receiveFundRequest(bytes calldata message) external {

@@ -8,7 +8,7 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {L2Vault} from "../polygon/L2Vault.sol";
 import {L2WormholeRouter} from "../polygon/L2WormholeRouter.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
-import {BridgeEscrow} from "../BridgeEscrow.sol";
+import {L2BridgeEscrow} from "../polygon/L2BridgeEscrow.sol";
 import {EmergencyWithdrawalQueue} from "../polygon/EmergencyWithdrawalQueue.sol";
 
 import {Deploy} from "./Deploy.sol";
@@ -344,7 +344,7 @@ contract L2VaultTest is TestPlus {
     function testL2ToL1Rebalance() public {
         // Any call to the wormholerouter will do nothing, and we won't actually attempt to bridge funds
         vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportFundTransfer, (25)), "");
-        vm.mockCall(address(vault.bridgeEscrow()), abi.encodeCall(BridgeEscrow.l2Withdraw, (25)), "");
+        vm.mockCall(address(vault.bridgeEscrow()), abi.encodeCall(L2BridgeEscrow.withdraw, (25)), "");
 
         // L2Vault has to send 25 to meet the 1:1 ratio between layers
         asset.mint(address(vault), 100);
@@ -359,7 +359,7 @@ contract L2VaultTest is TestPlus {
         // Relevant calls to the wormholerouter and bridge escrow will do nothing, and we won't
         // actually attempt to bridge funds
         vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportFundTransfer, (50)), "");
-        vm.mockCall(address(vault.bridgeEscrow()), abi.encodeCall(BridgeEscrow.l2Withdraw, (50)), "");
+        vm.mockCall(address(vault.bridgeEscrow()), abi.encodeCall(L2BridgeEscrow.withdraw, (50)), "");
         // Simulate having 50 debt to emergency withdrawal queue.
         vm.mockCall(
             address(vault.emergencyWithdrawalQueue()),
