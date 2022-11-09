@@ -211,9 +211,9 @@ contract L2Vault is
      * Having complicated execution path in `deposit` or `mint` flow leads to `out of gas` error for end users
      * due to inaccurate gas estimations.
      */
-    function depositIntoStrategies() external whenNotPaused onlyRole(HARVESTER) {
+    function depositIntoStrategies(uint256 amount) external whenNotPaused onlyRole(HARVESTER) {
         // Deposit entire balance of `_asset` into strategies
-        _depositIntoStrategies();
+        _depositIntoStrategies(amount);
     }
 
     /**

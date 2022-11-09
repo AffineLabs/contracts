@@ -296,16 +296,15 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
      */
     event StrategyWithdrawal(Strategy indexed strategy, uint256 assetsRequested, uint256 assetsReceived);
 
-    /// @notice Deposit entire balance of `asset` into strategies according to each strategy's `tvlBps`.
-    function _depositIntoStrategies() internal {
-        uint256 totalBal = _asset.balanceOf(address(this));
+    /// @notice Deposit `assetAmount` amount of `asset` into strategies according to each strategy's `tvlBps`.
+    function _depositIntoStrategies(uint256 assetAmount) internal {
         // All non-zero strategies are active
         for (uint256 i = 0; i < MAX_STRATEGIES; i = uncheckedInc(i)) {
             Strategy strategy = withdrawalQueue[i];
             if (address(strategy) == address(0)) {
                 break;
             }
-            _depositIntoStrategy(strategy, (totalBal * strategies[strategy].tvlBps) / MAX_BPS);
+            _depositIntoStrategy(strategy, (assetAmount * strategies[strategy].tvlBps) / MAX_BPS);
         }
     }
 
