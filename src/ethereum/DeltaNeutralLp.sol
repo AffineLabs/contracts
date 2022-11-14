@@ -306,7 +306,13 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         return amountToSend;
     }
 
-    event PositionEnd(uint32 indexed position, uint256 assetBalance, uint256 timestamp);
+    event PositionEnd(
+        uint32 indexed position,
+        uint256 assetBalance,
+        uint256 borrowPriceChainlink,
+        uint256 borrowPriceSushi,
+        uint256 timestamp
+    );
 
     function endPosition(uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
         _endPosition(slippageToleranceBps);
@@ -393,7 +399,9 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
 
         _exportMetricInfo(12);
 
-        emit PositionEnd(currentPosition, asset.balanceOf(address(this)), block.timestamp);
+        emit PositionEnd(
+            currentPosition, asset.balanceOf(address(this)), borrowPrice, _sushiPriceOfBorrow(), block.timestamp
+            );
     }
 
     function claimRewards(uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
