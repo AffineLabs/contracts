@@ -1,133 +1,96 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+
 import {ICToken} from "../interfaces/compound/ICToken.sol";
 import {IComptroller} from "../interfaces/compound/IComptroller.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
 
-contract L1CompoundStrategy is BaseStrategy {
+contract L1CompoundStrategy is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
-    // Compound protocol contracts
 
-    IComptroller public immutable comptroller;
-    // Corresponding Compound token (USDC -> cUSDC)
+    /// @notice The COMPTROLLER
+    IComptroller public constant COMPTROLLER = IComptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
+    /// @notice Corresponding Compound token for `asset`(e.g. cUSDC for USDC)
     ICToken public immutable cToken;
 
-    // Comp asset
-    address public immutable rewardToken;
-    // WETH
-    address public immutable wrappedNative;
+    /// The compound governance token
+    ERC20 public constant COMP = ERC20(0xc00e94Cb662C3520282E6f5717214004A7f26888);
+    /// @notice  WETH address. Our swap path is always COMP > WETH > asset
+    address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-    // Router for swapping reward tokens to `asset`
-    IUniswapV2Router02 public immutable router;
+    /// @notice Uni ROUTER for swapping COMP to `asset`
+    IUniswapV2Router02 public constant ROUTER = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 
-    uint256 public constant MAX_BPS = 1e4;
-    uint256 public constant PESSIMISM_FACTOR = 1000;
+    /// @notice Role with authority to manage strategies.
+    bytes32 public constant STRATEGIST = keccak256("STRATEGIST");
 
-    constructor(
-        BaseVault _vault,
-        ICToken _cToken,
-        IComptroller _comptroller,
-        IUniswapV2Router02 _router,
-        address _rewardToken,
-        address _wrappedNative
-    ) BaseStrategy(_vault) {
+    constructor(BaseVault _vault, ICToken _cToken) BaseStrategy(_vault) {
         cToken = _cToken;
-        comptroller = _comptroller;
 
-        router = _router;
-        rewardToken = _rewardToken;
-        wrappedNative = _wrappedNative;
-        // Approve transfer on the cToken contract
+        // We can mint cToken and also sell it
         asset.safeApprove(address(cToken), type(uint256).max);
-    }
+        COMP.safeApprove(address(ROUTER), type(uint256).max);
 
-    /**
-     * BALANCES
-     *
-     */
-
-    function balanceOfRewardToken() public view returns (uint256) {
-        return ERC20(rewardToken).balanceOf(address(this));
-    }
-
-    function balanceOfCToken() public view returns (uint256) {
-        return cToken.balanceOf(address(this));
-    }
-
-    function underlyingBalanceOfCToken() public returns (uint256) {
-        return cToken.balanceOfUnderlying(address(this));
+        // Grant roles
+        _grantRole(DEFAULT_ADMIN_ROLE, vault.governance());
+        _grantRole(STRATEGIST, vault.governance());
     }
 
     /**
      * INVESTMENT
      *
      */
-    function invest(uint256 amount) external override {
-        asset.safeTransferFrom(msg.sender, address(this), amount);
-        _depositWant(amount);
-    }
-
-    function _depositWant(uint256 amount) internal returns (uint256) {
-        if (amount == 0) {
-            return 0;
-        }
+    function _afterInvest(uint256 amount) internal override {
+        if (amount == 0) return;
         require(cToken.mint(amount) == 0, "CompStrat: mint failed");
-        return amount;
     }
 
     /**
      * DIVESTMENT
      *
      */
-    function divest(uint256 amount) external override onlyVault returns (uint256) {
-        _claimAndSellRewards();
-
+    function _divest(uint256 assets) internal override returns (uint256) {
         uint256 currAssets = balanceOfAsset();
-        uint256 withdrawAmount = currAssets >= amount ? 0 : amount - currAssets;
-        _withdrawWant(withdrawAmount);
+        uint256 withdrawAmount = currAssets >= assets ? 0 : assets - currAssets;
+        if (withdrawAmount == 0) return 0;
 
-        uint256 amountToSend = Math.min(amount, balanceOfAsset());
+        // Withdraw the needed amount
+        uint256 amountToRedeem = Math.min(withdrawAmount, cToken.balanceOfUnderlying(address(this)));
+        cToken.redeemUnderlying(amountToRedeem);
+
+        uint256 amountToSend = Math.min(assets, balanceOfAsset());
         asset.safeTransfer(address(vault), amountToSend);
         return amountToSend;
     }
 
-    function _withdrawWant(uint256 amount) internal returns (uint256) {
-        if (amount == 0) {
-            return 0;
-        }
-        uint256 balanceOfUnderlying = underlyingBalanceOfCToken();
-        uint256 amountToRedeem = amount;
-        if (amountToRedeem > balanceOfUnderlying) {
-            amountToRedeem = balanceOfUnderlying;
-        }
-        return cToken.redeemUnderlying(amountToRedeem);
-    }
+    function claimRewards(uint256 minAssetsFromReward) external onlyRole(STRATEGIST) {
+        ICToken[] memory cTokens = new ICToken[](1);
+        cTokens[0] = cToken;
+        COMPTROLLER.claimComp(address(this), cTokens);
+        uint256 compBalance = COMP.balanceOf(address(this));
 
-    function _claimAndSellRewards() internal {
-        comptroller.claimComp(address(this));
+        address[] memory path = new address[](3);
+        path[0] = address(COMP);
+        path[1] = WETH;
+        path[2] = address(asset);
 
-        // Sell reward tokens if we have "1" of them. This only makes sense if the reward token has 18 decimals
-        uint256 rewardTokenBalance = balanceOfRewardToken();
-        if (rewardTokenBalance < 1e18) {
-            return;
+        if (compBalance > 0.01e18) {
+            ROUTER.swapExactTokensForTokens({
+                amountIn: compBalance,
+                amountOutMin: minAssetsFromReward,
+                path: path,
+                to: address(this),
+                deadline: block.timestamp
+            });
         }
-
-        router.swapExactTokensForTokens(
-            rewardTokenBalance,
-            0,
-            getTokenOutPathV2(address(rewardToken), address(asset)),
-            address(this),
-            block.timestamp
-        );
-        return;
     }
 
     /**
@@ -135,52 +98,6 @@ contract L1CompoundStrategy is BaseStrategy {
      *
      */
     function totalLockedValue() public override returns (uint256) {
-        uint256 balanceExcludingRewards = balanceOfAsset() + underlyingBalanceOfCToken();
-
-        uint256 rewards = (estimatedRewardsInWant() * (MAX_BPS - PESSIMISM_FACTOR)) / MAX_BPS;
-
-        return balanceExcludingRewards + rewards;
-    }
-
-    function estimatedRewardsInWant() public view returns (uint256) {
-        uint256 rewardTokenBalance = balanceOfRewardToken();
-        uint256 pendingRewards = comptroller.compAccrued(address(this));
-
-        if (rewardToken == address(asset)) {
-            return rewardTokenBalance + pendingRewards;
-        } else {
-            return tokenToAsset(rewardToken, rewardTokenBalance + pendingRewards);
-        }
-    }
-
-    function tokenToAsset(address token, uint256 amountToken) internal view returns (uint256) {
-        if (amountToken == 0 || address(token) == address(asset)) {
-            return amountToken;
-        }
-
-        uint256[] memory amounts = router.getAmountsOut(amountToken, getTokenOutPathV2(token, address(asset)));
-
-        return amounts[amounts.length - 1];
-    }
-
-    function getCompoundAssets() internal view returns (ICToken[] memory assets) {
-        assets = new ICToken[](1);
-        assets[0] = cToken;
-    }
-
-    // This function will choose  a path of [A, B] if either A or B is WETH (or equivalent on other EVM chains)
-    // If neither is WETH, then it gives a path of [A, WETH, B]
-    function getTokenOutPathV2(address inToken, address outToken) internal view returns (address[] memory _path) {
-        bool isWrappedNative = inToken == address(wrappedNative) || outToken == address(wrappedNative);
-
-        _path = new address[](isWrappedNative ? 2 : 3);
-        _path[0] = inToken;
-
-        if (isWrappedNative) {
-            _path[1] = outToken;
-        } else {
-            _path[1] = address(wrappedNative);
-            _path[2] = outToken;
-        }
+        return balanceOfAsset() + cToken.balanceOfUnderlying(address(this));
     }
 }

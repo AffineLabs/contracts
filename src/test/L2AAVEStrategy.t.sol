@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
@@ -9,9 +9,6 @@ import {Deploy} from "./Deploy.sol";
 
 import {L2Vault} from "../polygon/L2Vault.sol";
 import {L2AAVEStrategy} from "../polygon/L2AAVEStrategy.sol";
-import {Deploy} from "./Deploy.sol";
-
-import {Create3Deployer} from "../Create3Deployer.sol";
 import {BridgeEscrow} from "../BridgeEscrow.sol";
 
 contract AAVEStratTest is TestPlus {
@@ -31,11 +28,7 @@ contract AAVEStratTest is TestPlus {
 
         strategy = new L2AAVEStrategy(
             vault,
-            0xE6ef11C967898F9525D550014FDEdCFAB63536B5, // aave adress provider registry
-            0x0a1AB7aea4314477D40907412554d10d30A0503F, // dummy incentives controller
-            0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff, // quickswap router on mumbai
-            0x5B67676a984807a212b1c59eBFc9B3568a474F0a, // reward token -> wrapped matic
-            0x5B67676a984807a212b1c59eBFc9B3568a474F0a // wrapped matic address
+            0xE6ef11C967898F9525D550014FDEdCFAB63536B5 // aave adress provider registry
         );
         vm.prank(governance);
         vault.addStrategy(strategy, 5000);
@@ -48,6 +41,10 @@ contract AAVEStratTest is TestPlus {
         deal(address(usdc), address(this), 1e6, false);
         usdc.approve(address(vault), type(uint256).max);
         vault.deposit(1e6, address(this));
+
+        vm.startPrank(governance);
+        vault.depositIntoStrategies(1e6);
+        vm.stopPrank();
 
         // Go 10 days into the future and make sure that the vault makes money
         vm.warp(block.timestamp + 10 days);
@@ -87,7 +84,5 @@ contract AAVEStratTest is TestPlus {
         strategy.lendingPool().deposit(address(usdc), 2e6, address(strategy), 0);
 
         assertEq(strategy.totalLockedValue(), 3e6);
-
-        // TODO: Make sure rewards get tested as well
     }
 }

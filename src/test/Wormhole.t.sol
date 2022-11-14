@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.16;
+pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
@@ -13,13 +13,11 @@ import {IWormhole} from "../interfaces/IWormhole.sol";
 import {L1WormholeRouter} from "../ethereum/L1WormholeRouter.sol";
 import {L2WormholeRouter} from "../polygon/L2WormholeRouter.sol";
 import {WormholeRouter} from "../WormholeRouter.sol";
-import {Constants} from "../Constants.sol";
+import {Constants} from "../libs/Constants.sol";
 
 // This contract exists solely to test the internal view
 contract MockRouter is L2WormholeRouter {
-    constructor(L2Vault _vault, IWormhole _wormhole, uint16 _otherLayerChainId)
-        L2WormholeRouter(_vault, _wormhole, _otherLayerChainId)
-    {}
+    constructor(L2Vault _vault, IWormhole _wormhole) L2WormholeRouter(_vault, _wormhole) {}
 
     function validateWormholeMessageEmitter(IWormhole.VM memory vm) public view {
         return _validateWormholeMessageEmitter(vm);
@@ -34,6 +32,7 @@ contract L2WormholeRouterTest is TestPlus {
     address rebalancer = makeAddr("randomAddr");
 
     IWormhole wormhole;
+    uint16 emitterChainId = uint16(2);
 
     function setUp() public {
         vm.createSelectFork("polygon", 31_824_532);
@@ -56,8 +55,8 @@ contract L2WormholeRouterTest is TestPlus {
     function testTransferReport() public {
         // Only invariant is that the vault is the only caller
         vm.prank(alice);
-        vm.expectRevert("Only vault");
-        router.reportTransferredFund(0);
+        vm.expectRevert("WR: Only vault");
+        router.reportFundTransfer(0);
 
         uint256 transferAmount = 100;
         bytes memory payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, transferAmount);
@@ -67,23 +66,36 @@ contract L2WormholeRouterTest is TestPlus {
         );
 
         vm.prank(address(vault));
-        router.reportTransferredFund(transferAmount);
+        router.reportFundTransfer(transferAmount);
+
+        // Turn on a fee (wormhole reverts if you send a msg.value != wormhole.messageFee)
+        uint256 fee = 1 ether;
+        stdstore.target(address(wormhole)).sig("messageFee()").checked_write(fee);
+
+        // We can send ether/matic
+        vm.expectCall(
+            address(router.wormhole()),
+            fee,
+            abi.encodeCall(IWormhole.publishMessage, (uint32(1), payload, router.consistencyLevel()))
+        );
+        hoax(address(vault), fee);
+        router.reportFundTransfer{value: fee}(transferAmount);
     }
 
     function testMessageValidation() public {
-        MockRouter mockRouter = new MockRouter(vault, wormhole, uint16(1));
-        uint16 emitter = uint16(1);
+        MockRouter mockRouter = new MockRouter(vault, wormhole);
+        uint16 emitter = uint16(2);
 
         IWormhole.VM memory vaa;
         vaa.emitterChainId = emitter;
         vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
-        vm.expectRevert("Wrong emitter address");
+        vm.expectRevert("WR: bad emitter address");
         mockRouter.validateWormholeMessageEmitter(vaa);
 
         IWormhole.VM memory vaa1;
         vaa1.emitterChainId = uint16(0);
         vaa1.emitterAddress = bytes32(uint256(uint160(address(mockRouter))));
-        vm.expectRevert("Wrong emitter chain");
+        vm.expectRevert("WR: bad emitter chain");
         mockRouter.validateWormholeMessageEmitter(vaa1);
 
         // This will work
@@ -96,7 +108,7 @@ contract L2WormholeRouterTest is TestPlus {
     function testRequestFunds() public {
         // Only invariant is that the vault is the only caller
         vm.prank(alice);
-        vm.expectRevert("Only vault");
+        vm.expectRevert("WR: Only vault");
         router.requestFunds(0);
 
         uint256 requestAmount = 100;
@@ -108,57 +120,70 @@ contract L2WormholeRouterTest is TestPlus {
 
         vm.prank(address(vault));
         router.requestFunds(requestAmount);
+
+        // Turn on a fee (wormhole reverts if you send a msg.value != wormhole.messageFee)
+        uint256 fee = 1 ether;
+        stdstore.target(address(wormhole)).sig("messageFee()").checked_write(fee);
+
+        // We can send ether/matic
+        vm.expectCall(
+            address(router.wormhole()),
+            fee,
+            abi.encodeCall(IWormhole.publishMessage, (uint32(1), payload, router.consistencyLevel()))
+        );
+        hoax(address(vault), fee);
+        router.requestFunds{value: fee}(requestAmount);
     }
 
-    // TODO: Uncomment this test once fixed
+    function testReceiveFunds() public {
+        uint256 l1TransferAmount = 500;
 
-    // function testReceiveFunds() public {
-    //     uint256 l1TransferAmount = 500;
+        // Mock call to wormhole.parseAndVerifyVM()
+        IWormhole.VM memory vaa;
+        vaa.nonce = 20;
+        vaa.payload = abi.encode(Constants.L1_FUND_TRANSFER_REPORT, l1TransferAmount);
+        vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
+        vaa.emitterChainId = emitterChainId;
 
-    //     // Mock call to wormhole.parseAndVerifyVM()
-    //     IWormhole.VM memory vaa;
-    //     vaa.nonce = 20;
-    //     vaa.payload = abi.encode(Constants.L1_FUND_TRANSFER_REPORT, l1TransferAmount);
-    //     vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
+        bool valid = true;
+        string memory reason = "";
 
-    //     bool valid = true;
-    //     string memory reason = "";
+        bytes memory wormholeReturnData = abi.encode(vaa, valid, reason);
 
-    //     bytes memory wormholeReturnData = abi.encode(vaa, valid, reason);
+        vm.mockCall(
+            address(router.wormhole()),
+            abi.encodeCall(IWormhole.parseAndVerifyVM, ("VAA_FROM_L1_TRANSFER")),
+            wormholeReturnData
+        );
 
-    //     vm.mockCall(
-    //         address(router.wormhole()),
-    //         abi.encodeCall(IWormhole.parseAndVerifyVM, ("VAA_FROM_L1_TRANSFER")),
-    //         wormholeReturnData
-    //     );
+        // Make sure that bridgEscrow has funds to send to the vault
+        deal(vault.asset(), address(vault.bridgeEscrow()), l1TransferAmount);
 
-    //     // Make sure that bridgEscrow has funds to send to the vault
-    //     deal(vault.asset(), address(vault.bridgeEscrow()), l1TransferAmount);
+        // Make sure that l1TotalLockedValue is above amount being transferred to L2 (or else we get an underflow)
+        vm.store(
+            address(vault),
+            bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
+            bytes32(uint256(l1TransferAmount))
+        );
 
-    //     // Make sure that l1TotalLockedValue is above amount being transferred to L2 (or else we get an underflow)
-    //     vm.store(
-    //         address(vault),
-    //         bytes32(stdstore.target(address(vault)).sig("l1TotalLockedValue()").find()),
-    //         bytes32(uint256(l1TransferAmount))
-    //     );
+        // You need the rebalancer role in the vault in order to call this function
+        // Governance gets the rebalancer role
+        vm.prank(governance);
+        router.receiveFunds("VAA_FROM_L1_TRANSFER");
 
-    //     // You need the rebalancer role in the vault in order to call this function
-    //     // Governance gets the rebalancer role
-    //     vm.prank(governance);
-    //     router.receiveFunds("VAA_FROM_L1_TRANSFER");
+        // Nonce is updated
+        assertEq(router.nextValidNonce(), vaa.nonce + 1);
 
-    //     // Nonce is updated
-    //     assertEq(router.nextValidNonce(), vaa.nonce + 1);
-
-    //     // Assert that funds get cleared
-    //     assertEq(ERC20(vault.asset()).balanceOf(address(vault)), l1TransferAmount);
-    // }
+        // Assert that funds get cleared
+        assertEq(ERC20(vault.asset()).balanceOf(address(vault)), l1TransferAmount);
+    }
 
     function testReceiveFundsInvariants() public {
         // If wormhole says the vaa is bad, we revert
         // Mock call to wormhole.parseAndVerifyVM()
         IWormhole.VM memory vaa;
         vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
+        vaa.emitterChainId = emitterChainId;
         bool valid = false;
         string memory reason = "Reason string from wormhole contract";
 
@@ -177,6 +202,7 @@ contract L2WormholeRouterTest is TestPlus {
         IWormhole.VM memory vaa2;
         vaa2.nonce = 10;
         vaa2.emitterAddress = bytes32(uint256(uint160(address(router))));
+        vaa2.emitterChainId = emitterChainId;
 
         // Make sure that l1TotalLockedValue is above amount being transferred to L2 (or else we get an underflow)
         vm.store(
@@ -191,18 +217,19 @@ contract L2WormholeRouterTest is TestPlus {
             abi.encode(vaa2, true, "")
         );
 
-        vm.expectRevert("Old transaction");
+        vm.expectRevert("WR: old transaction");
         router.receiveFunds("VAA_FROM_L1_TRANSFER");
     }
 
     function testReceiveTVL() public {
-        // Mock call to wormhole.parseAndVerifyVM()
+        // Mock call to to parseAndVerifyVM()
         uint256 tvl = 1000;
         bool received = true;
 
         IWormhole.VM memory vaa;
         vaa.payload = abi.encode(Constants.L1_TVL, tvl, received);
         vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
+        vaa.emitterChainId = emitterChainId;
 
         vm.mockCall(
             address(router.wormhole()),
@@ -224,17 +251,20 @@ contract L1WormholeRouterTest is TestPlus {
     L1WormholeRouter router;
     L1Vault vault;
     address rebalancer = makeAddr("randomAddr");
+    IWormhole wormhole;
+    uint16 emitterChainId = uint16(5);
 
     function setUp() public {
         vm.createSelectFork("ethereum", 14_971_385);
         vault = Deploy.deployL1Vault();
         router = L1WormholeRouter(vault.wormholeRouter());
+        wormhole = router.wormhole();
     }
 
     function testReportTVL() public {
         // Only invariant is that the vault is the only caller
         vm.prank(alice);
-        vm.expectRevert("Only vault");
+        vm.expectRevert("WR: only vault");
         router.reportTVL(0, false);
 
         uint256 tvl = 50_000;
@@ -247,13 +277,25 @@ contract L1WormholeRouterTest is TestPlus {
 
         vm.prank(address(vault));
         router.reportTVL(tvl, received);
+
+        uint256 fee = 1 ether;
+        stdstore.target(address(wormhole)).sig("messageFee()").checked_write(fee);
+
+        // We can send ether/matic
+        vm.expectCall(
+            address(router.wormhole()),
+            fee,
+            abi.encodeCall(IWormhole.publishMessage, (uint32(1), payload, router.consistencyLevel()))
+        );
+        hoax(address(vault), fee);
+        router.reportTVL{value: fee}(tvl, received);
     }
 
-    function testReportTransferredFund() public {
+    function testreportFundTransfer() public {
         // Only invariant is that the vault is the only caller
         vm.prank(alice);
-        vm.expectRevert("Only vault");
-        router.reportTransferredFund(0);
+        vm.expectRevert("WR: only vault");
+        router.reportFundTransfer(0);
 
         uint256 requestAmount = 100;
         bytes memory payload = abi.encode(Constants.L1_FUND_TRANSFER_REPORT, requestAmount);
@@ -263,7 +305,19 @@ contract L1WormholeRouterTest is TestPlus {
         );
 
         vm.prank(address(vault));
-        router.reportTransferredFund(requestAmount);
+        router.reportFundTransfer(requestAmount);
+
+        uint256 fee = 1 ether;
+        stdstore.target(address(wormhole)).sig("messageFee()").checked_write(fee);
+
+        // We can send ether/matic
+        vm.expectCall(
+            address(router.wormhole()),
+            fee,
+            abi.encodeCall(IWormhole.publishMessage, (uint32(1), payload, router.consistencyLevel()))
+        );
+        hoax(address(vault), fee);
+        router.reportFundTransfer{value: fee}(requestAmount);
     }
 
     function testReceiveFunds() public {
@@ -274,6 +328,7 @@ contract L1WormholeRouterTest is TestPlus {
         vaa.nonce = 2;
         vaa.payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, l2TransferAmount);
         vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
+        vaa.emitterChainId = emitterChainId;
 
         bytes memory fakeVAA = bytes("VAA_FROM_L2_TRANSFER");
         vm.mockCall(
@@ -281,7 +336,7 @@ contract L1WormholeRouterTest is TestPlus {
         );
 
         // We use an empty exitProof since we are just going to mock the call to the bridgeEscrow
-        bytes memory clearFundData = abi.encodeCall(vault.bridgeEscrow().l1ClearFund, (l2TransferAmount, ""));
+        bytes memory clearFundData = abi.encodeCall(vault.bridgeEscrow().clearFunds, (l2TransferAmount, ""));
         vm.mockCall(address(vault.bridgeEscrow()), clearFundData, "");
         vm.expectCall(address(vault.bridgeEscrow()), clearFundData);
         vm.prank(rebalancer);
@@ -297,6 +352,7 @@ contract L1WormholeRouterTest is TestPlus {
         IWormhole.VM memory vaa;
         vaa.payload = abi.encode(Constants.L2_FUND_REQUEST, requestAmount);
         vaa.emitterAddress = bytes32(uint256(uint160(address(router))));
+        vaa.emitterChainId = emitterChainId;
 
         bytes memory fakeVAA = bytes("L2_FUND_REQ");
         vm.mockCall(

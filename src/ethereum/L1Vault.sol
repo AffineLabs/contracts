@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
-import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
-import {BridgeEscrow} from "../BridgeEscrow.sol";
 import {BaseVault} from "../BaseVault.sol";
+import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
+import {L1BridgeEscrow} from "./L1BridgeEscrow.sol";
 import {L1WormholeRouter} from "./L1WormholeRouter.sol";
 
 contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
@@ -30,7 +28,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         address _governance,
         ERC20 _token,
         address _wormholeRouter,
-        BridgeEscrow _bridgeEscrow,
+        L1BridgeEscrow _bridgeEscrow,
         IRootChainManager _chainManager,
         address _predicate
     ) public initializer {
@@ -41,14 +39,6 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         predicate = _predicate;
     }
 
-    function _msgSender() internal view override (Context, ContextUpgradeable) returns (address) {
-        return Context._msgSender();
-    }
-
-    function _msgData() internal view override (Context, ContextUpgradeable) returns (bytes calldata) {
-        return Context._msgData();
-    }
-
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
     /// @dev The L1Vault's profit does not need to unlock over time, because users to do not transact with it
@@ -56,6 +46,10 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         return 0;
     }
 
+    /**
+     * @notice Emitted whenever we send our tvl to l2
+     * @param tvl The current tvl of this vault.
+     */
     event SendTVL(uint256 tvl);
 
     function sendTVL() external {
@@ -74,28 +68,28 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
 
     // Process a request for funds from L2 vault
     function processFundRequest(uint256 amountRequested) external {
-        require(msg.sender == address(wormholeRouter), "Only wormhole router");
+        require(msg.sender == address(wormholeRouter), "L1: only router");
         _liquidate(amountRequested);
         uint256 amountToSend = Math.min(_asset.balanceOf(address(this)), amountRequested);
-        _transferFundsToL2(amountToSend);
-    }
-
-    event FundTransferToL2(uint256 amount);
-
-    // Send `asset` to L2 BridgeEscrow via polygon bridge
-    function _transferFundsToL2(uint256 amount) internal {
-        _asset.safeApprove(predicate, amount);
-        chainManager.depositFor(address(bridgeEscrow), address(_asset), abi.encodePacked(amount));
+        _asset.safeApprove(predicate, amountToSend);
+        chainManager.depositFor(address(bridgeEscrow), address(_asset), abi.encodePacked(amountToSend));
 
         // Let L2 know how much money we sent
-        L1WormholeRouter(wormholeRouter).reportTransferredFund(amount);
-        emit FundTransferToL2(amount);
+        L1WormholeRouter(wormholeRouter).reportFundTransfer(amountToSend);
+        emit TransferToL2({assetsRequested: amountRequested, assetsSent: amountToSend});
     }
 
+    /**
+     * @notice Emitted whenever we send assets to L2.
+     * @param assetsRequested The assets requested by L2.
+     * @param assetsSent The assets we actually sent.
+     */
+    event TransferToL2(uint256 assetsRequested, uint256 assetsSent);
+
     function afterReceive() external {
-        require(msg.sender == address(bridgeEscrow), "Only L1 BridgeEscrow.");
+        require(msg.sender == address(bridgeEscrow), "L1: only escrow");
         received = true;
         // Whenever we receive funds from L1, immediately deposit them all into strategies
-        _depositIntoStrategies();
+        _depositIntoStrategies(_asset.balanceOf(address(this)));
     }
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity =0.8.16;
 
 import {L1Vault} from "../../ethereum/L1Vault.sol";
 import {L2Vault} from "../../polygon/L2Vault.sol";
@@ -16,13 +16,9 @@ contract MockL2Vault is L2Vault {
         canRequestFromL1 = _can;
     }
 
-    function setBridgeEscrow(BridgeEscrow escrow) external {
-        bridgeEscrow = escrow;
+    function setMockRebalanceDelta(uint256 _rebalanceDelta) external {
+        rebalanceDelta = uint224(_rebalanceDelta);
     }
 }
 
-contract MockL1Vault is L1Vault {
-    function setBridgeEscrow(BridgeEscrow escrow) external {
-        bridgeEscrow = escrow;
-    }
-}
+contract MockL1Vault is L1Vault {}

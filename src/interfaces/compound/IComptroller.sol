@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity =0.8.16;
+
+import {ICToken} from "./ICToken.sol";
 
 interface IComptroller {
-    function claimComp(address) external;
+    function claimComp(address holder, ICToken[] memory cTokens) external;
 
     function compAccrued(address) external view returns (uint256);
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
@@ -108,7 +108,7 @@ contract BaseVaultTest is TestPlus {
         vault.harvest(strategies);
 
         // Divest (make sure divest is called on the strategy)
-        vm.expectCall(address(strategy), abi.encodeCall(BaseStrategy.divest, (type(uint256).max)));
+        vm.expectCall(address(strategy), abi.encodeCall(BaseStrategy.divest, (strategy.totalLockedValue())));
         vault.removeStrategy(strategy);
 
         // The vault removed all money from the strategy
@@ -119,19 +119,13 @@ contract BaseVaultTest is TestPlus {
         for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
             vault.addStrategy(new TestStrategy(vault), 10);
         }
-        for (uint256 i = 0; i < vault.MAX_STRATEGIES(); ++i) {
+        for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
             assertTrue(vault.getWithdrawalQueue()[i] == vault.withdrawalQueue(i));
         }
     }
 
-    event WithdrawalQueueSet(address indexed user, BaseStrategy[MAX_STRATEGIES] replacedWithdrawalQueue);
-
     event WithdrawalQueueIndexesSwapped(
-        address indexed user,
-        uint256 index1,
-        uint256 index2,
-        BaseStrategy indexed newStrategy1,
-        BaseStrategy indexed newStrategy2
+        uint256 index1, uint256 index2, BaseStrategy indexed newStrategy1, BaseStrategy indexed newStrategy2
     );
 
     function testSetWithdrawalQueue() public {
@@ -143,18 +137,6 @@ contract BaseVaultTest is TestPlus {
         for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
             assertTrue(vault.withdrawalQueue(i) == newQueue[i]);
         }
-    }
-
-    function testSwapWithdrawalQueue() public {
-        vault.addStrategy(new TestStrategy(vault), 1000);
-        vault.addStrategy(new TestStrategy(vault), 2000);
-        BaseStrategy newStrategy1 = vault.withdrawalQueue(0);
-        BaseStrategy newStrategy2 = vault.withdrawalQueue(1);
-        vm.expectEmit(true, true, true, true);
-        emit WithdrawalQueueIndexesSwapped(address(this), 0, 1, newStrategy2, newStrategy1);
-        vault.swapWithdrawalQueueIndexes(0, 1);
-        assertTrue(newStrategy1 == vault.withdrawalQueue(1));
-        assertTrue(newStrategy2 == vault.withdrawalQueue(0));
     }
 
     function testLiquidate() public {
@@ -234,7 +216,7 @@ contract BaseVaultTest is TestPlus {
         strategyList[0] = strat1;
         strategyList[1] = strat2;
 
-        uint256[] memory bpsList = new uint256[](2);
+        uint16[] memory bpsList = new uint16[](2);
         bpsList[0] = 100;
         bpsList[1] = 200;
 
@@ -244,5 +226,25 @@ contract BaseVaultTest is TestPlus {
 
         assertEq(strat1TvlBps, 100);
         assertEq(strat2TvlBps, 200);
+    }
+
+    function testSetWormRouter() public {
+        address wormRouter = makeAddr("worm_router");
+        vault.setWormholeRouter(wormRouter);
+        assertEq(vault.wormholeRouter(), wormRouter);
+        // only gov can call
+        vm.prank(alice);
+        vm.expectRevert("Only Governance.");
+        vault.setWormholeRouter(address(0));
+    }
+
+    function testBridgeEscrow() public {
+        BridgeEscrow escrow = BridgeEscrow(makeAddr("worm_router"));
+        vault.setBridgeEscrow(escrow);
+        assertEq(address(vault.bridgeEscrow()), address(escrow));
+        // only gov can call
+        vm.prank(alice);
+        vm.expectRevert("Only Governance.");
+        vault.setBridgeEscrow(BridgeEscrow(address(0)));
     }
 }

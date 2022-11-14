@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.16;
+pragma solidity =0.8.16;
 
 import {ILendingPoolAddressesProvider} from "./aave/ILendingPoolAddressesProvider.sol";
 import {IAaveIncentivesController} from "./aave/IAaveIncentivesController.sol";

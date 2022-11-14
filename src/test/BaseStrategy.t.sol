@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
@@ -19,21 +19,16 @@ contract BaseStrategyTest is TestPlus {
     function setUp() public {
         rewardToken = new MockERC20("Mock Token", "MT", 18);
         BaseVault vault = Deploy.deployL2Vault();
-        strategy = new TestStrategy( vault);
+        strategy = new TestStrategy(vault);
     }
 
     function testSweep() public {
         // Will revert if non governance tries to call it
-        vm.expectRevert(bytes("ONLY_GOVERNANCE"));
+        vm.expectRevert("BS: only governance");
         changePrank(alice); // vitalik
         strategy.sweep(rewardToken);
 
-        // Will revert if trying to sell `token` of BaseStrategy
-        ERC20 assetToken = ERC20(strategy.vault().asset());
-        vm.expectRevert(bytes("!asset"));
         changePrank(governance);
-        strategy.sweep(assetToken);
-
         // award the strategy some tokens
         rewardToken.mint(address(strategy), 1e18);
         strategy.sweep(rewardToken);

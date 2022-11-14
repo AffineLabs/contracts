@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
@@ -17,7 +17,7 @@ import {BaseRelayRecipient} from "@opengsn/contracts/src/BaseRelayRecipient.sol"
 import {AffineGovernable} from "../AffineGovernable.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
-import {Dollar, DollarMath} from "../DollarMath.sol";
+import {Dollar, DollarMath} from "../libs/DollarMath.sol";
 import {DetailedShare} from "./Detailed.sol";
 
 contract TwoAssetBasket is
@@ -38,7 +38,7 @@ contract TwoAssetBasket is
 
     uint256[2] public ratios;
 
-    IUniswapV2Router02 public uniRouter;
+    IUniswapV2Router02 public constant ROUTER = IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
 
     // These must be USD price feeds for btc and weth
     mapping(ERC20 => AggregatorV3Interface) public tokenToOracle;
@@ -46,13 +46,12 @@ contract TwoAssetBasket is
     function initialize(
         address _governance,
         address forwarder,
-        IUniswapV2Router02 _uniRouter,
         ERC20 _asset,
         ERC20[2] memory _tokens,
         uint256[2] memory _ratios,
         AggregatorV3Interface[3] memory _priceFeeds
     ) public initializer {
-        __ERC20_init("Alpine Large", "alpLarge");
+        __ERC20_init("Large Cap", "largeCap");
         __UUPSUpgradeable_init();
         __Pausable_init();
 
@@ -61,16 +60,15 @@ contract TwoAssetBasket is
         (btc, weth) = (_tokens[0], _tokens[1]);
         asset = _asset;
         ratios = _ratios;
-        uniRouter = _uniRouter;
 
         tokenToOracle[asset] = _priceFeeds[0];
         tokenToOracle[btc] = _priceFeeds[1];
         tokenToOracle[weth] = _priceFeeds[2];
 
-        // Allow uniRouter to spend all tokens that we may swap
-        asset.safeApprove(address(uniRouter), type(uint256).max);
-        btc.safeApprove(address(uniRouter), type(uint256).max);
-        weth.safeApprove(address(uniRouter), type(uint256).max);
+        // Allow ROUTER to spend all tokens that we may swap
+        asset.safeApprove(address(ROUTER), type(uint256).max);
+        btc.safeApprove(address(ROUTER), type(uint256).max);
+        weth.safeApprove(address(ROUTER), type(uint256).max);
     }
 
     function versionRecipient() external pure override returns (string memory) {
@@ -93,7 +91,7 @@ contract TwoAssetBasket is
         _setTrustedForwarder(forwarder);
     }
 
-    function decimals() public view override returns (uint8) {
+    function decimals() public pure override returns (uint8) {
         return 18;
     }
 
@@ -132,31 +130,32 @@ contract TwoAssetBasket is
         uint256 vaultDollars = Dollar.unwrap(valueOfVault());
 
         // We do two swaps. The amount of dollars we swap to each coin is determined by the ratios given above
-        // See the whitepaper for the derivation of these amounts
-        // Get  of btc and eth to buy (in `asset`)
+        // Get amounts of btc and eth to buy (in `asset`)
         (uint256 assetsToBtc, uint256 assetsToEth) = _getBuySplits(assets);
 
         asset.safeTransferFrom(_msgSender(), address(this), assets);
-        address[] memory pathBtc = new address[](2);
-        pathBtc[0] = address(asset);
-        pathBtc[1] = address(btc);
-
-        address[] memory pathEth = new address[](2);
-        pathEth[0] = address(asset);
-        pathEth[1] = address(weth);
-
         uint256 btcReceived;
         if (assetsToBtc > 0) {
-            uint256[] memory btcAmounts =
-                uniRouter.swapExactTokensForTokens(assetsToBtc, 0, pathBtc, address(this), block.timestamp);
-            btcReceived = btcAmounts[1];
+            uint256[] memory btcAmounts = ROUTER.swapExactTokensForTokens({
+                amountIn: assetsToBtc,
+                amountOutMin: 0,
+                path: _pathBtc(true),
+                to: address(this),
+                deadline: block.timestamp
+            });
+            btcReceived = btcAmounts[btcAmounts.length - 1];
         }
 
         uint256 ethReceived;
         if (assetsToEth > 0) {
-            uint256[] memory ethAmounts =
-                uniRouter.swapExactTokensForTokens(assetsToEth, 0, pathEth, address(this), block.timestamp);
-            ethReceived = ethAmounts[1];
+            uint256[] memory ethAmounts = ROUTER.swapExactTokensForTokens({
+                amountIn: assetsToEth,
+                amountOutMin: 0,
+                path: _pathEth(true),
+                to: address(this),
+                deadline: block.timestamp
+            });
+            ethReceived = ethAmounts[ethAmounts.length - 1];
         }
 
         uint256 dollarsReceived = Dollar.unwrap(_valueOfToken(btc, btcReceived).add(_valueOfToken(weth, ethReceived)));
@@ -257,36 +256,28 @@ contract TwoAssetBasket is
     }
 
     function _sell(Dollar dollarsFromBtc, Dollar dollarsFromEth) internal returns (uint256 assetsReceived) {
-        address[] memory pathBtc = new address[](2);
-        pathBtc[0] = address(btc);
-        pathBtc[1] = address(asset);
-
-        address[] memory pathEth = new address[](2);
-        pathEth[0] = address(weth);
-        pathEth[1] = address(asset);
-
         if (Dollar.unwrap(dollarsFromBtc) > 0) {
-            uint256[] memory btcAmounts = uniRouter.swapExactTokensForTokens(
+            uint256[] memory btcAmounts = ROUTER.swapExactTokensForTokens({
                 // asset token => dollars => btc conversion
-                Math.min(_tokensFromDollars(btc, dollarsFromBtc), btc.balanceOf(address(this))),
-                0,
-                pathBtc,
-                address(this),
-                block.timestamp
-            );
-            assetsReceived += btcAmounts[1];
+                amountIn: Math.min(_tokensFromDollars(btc, dollarsFromBtc), btc.balanceOf(address(this))),
+                amountOutMin: 0,
+                path: _pathBtc(false),
+                to: address(this),
+                deadline: block.timestamp
+            });
+            assetsReceived += btcAmounts[btcAmounts.length - 1];
         }
 
         if (Dollar.unwrap(dollarsFromEth) > 0) {
-            uint256[] memory ethAmounts = uniRouter.swapExactTokensForTokens(
+            uint256[] memory ethAmounts = ROUTER.swapExactTokensForTokens({
                 // asset token => dollars => eth conversion
-                Math.min(_tokensFromDollars(weth, dollarsFromEth), weth.balanceOf(address(this))),
-                0,
-                pathEth,
-                address(this),
-                block.timestamp
-            );
-            assetsReceived += ethAmounts[1];
+                amountIn: Math.min(_tokensFromDollars(weth, dollarsFromEth), weth.balanceOf(address(this))),
+                amountOutMin: 0,
+                path: _pathEth(false),
+                to: address(this),
+                deadline: block.timestamp
+            });
+            assetsReceived += ethAmounts[ethAmounts.length - 1];
         }
     }
 
@@ -306,10 +297,15 @@ contract TwoAssetBasket is
         AggregatorV3Interface feed = tokenToOracle[token];
 
         (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = feed.latestRoundData();
-        require(price > 0, "Chainlink price <= 0");
-        require(answeredInRound >= roundId, "Chainlink stale data");
-        require(timestamp != 0, "Chainlink round not complete");
+        require(price > 0, "TAB: price <= 0");
+        require(answeredInRound >= roundId, "TAB: stale data");
+        require(timestamp != 0, "TAB: round not done");
         return Dollar.wrap(uint256(price));
+    }
+
+    function valueOfVault() public view returns (Dollar) {
+        (Dollar btcDollars, Dollar ethDollars) = _valueOfVaultComponents();
+        return btcDollars.add(ethDollars);
     }
 
     function _valueOfToken(ERC20 token, uint256 amount) public view returns (Dollar) {
@@ -320,11 +316,6 @@ contract TwoAssetBasket is
         uint256 tokenPrice = Dollar.unwrap(_getTokenPrice(token));
         uint256 dollarValue = (amount * tokenPrice) / (10 ** token.decimals());
         return Dollar.wrap(dollarValue);
-    }
-
-    function valueOfVault() public view returns (Dollar) {
-        (Dollar btcDollars, Dollar ethDollars) = _valueOfVaultComponents();
-        return btcDollars.add(ethDollars);
     }
 
     function _valueOfVaultComponents() public view returns (Dollar, Dollar) {
@@ -440,6 +431,30 @@ contract TwoAssetBasket is
         return (Dollar.wrap(dollarsFromBtc), Dollar.wrap(assetDollars - dollarsFromBtc));
     }
 
+    function _pathEth(bool buy) internal view returns (address[] memory path) {
+        path = new address[](2);
+        if (buy) {
+            path[0] = address(asset);
+            path[1] = address(weth);
+        } else {
+            path[0] = address(weth);
+            path[1] = address(asset);
+        }
+    }
+
+    function _pathBtc(bool buy) internal view returns (address[] memory path) {
+        path = new address[](3);
+        if (buy) {
+            path[0] = address(asset);
+            path[1] = address(weth);
+            path[2] = address(btc);
+        } else {
+            path[0] = address(btc);
+            path[1] = address(weth);
+            path[2] = address(asset);
+        }
+    }
+
     /**
      * DETAILED PRICE INFO
      *
@@ -458,7 +473,6 @@ contract TwoAssetBasket is
 
         uint256 _totalSupply = totalSupply();
 
-        // Assuming that shareDecimals > 8. TODO: reconsider
         // Price is set to 100 if there are no shares in the vault
         if (_totalSupply > 0) {
             _price = (vaultValue * (10 ** shareDecimals)) / _totalSupply;
