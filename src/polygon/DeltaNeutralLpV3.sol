@@ -48,7 +48,8 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         lpManager = _lpManager;
         pool = _pool;
         poolFee = _pool.fee();
-        assetIsToken0 = pool.token0() == address(asset);
+        token0 = pool.token0();
+        token1 = pool.token1();
 
         address[] memory providers = _registry.getAddressesProvidersList();
         ILendingPoolAddressesProvider provider = ILendingPoolAddressesProvider(providers[providers.length - 1]);
@@ -97,9 +98,8 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         if (lpId == 0) return assetsLp;
         (uint160 sqrtPriceX96,,,,,,) = pool.slot0();
         // Assume asset is token0
-        (uint256 assetsInLp, uint256 borrowAssetsInLp) = PositionValue.total(lpManager, lpId, sqrtPriceX96);
-        // Flip the amounts is asset is not token0
-        if (!assetIsToken0) (borrowAssetsInLp, assetsInLp) = (assetsInLp, borrowAssetsInLp);
+        (uint256 token0InLp, uint256 token1InLp) = PositionValue.total(lpManager, lpId, sqrtPriceX96);
+       (uint assetsInLp, uint borrowAssetsInLp) =  _convertToAB(token0InLp, token1InLp);
         assetsLp = assetsInLp + _borrowToAsset(borrowAssetsInLp);
     }
 
@@ -133,7 +133,8 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
     uint24 public immutable poolFee;
     IUniswapV3Pool public immutable pool;
     /// @notice True if `asset` is pool.token0();
-    bool public immutable assetIsToken0;
+    address immutable token0;
+    address immutable token1;
     uint256 public lpId;
     uint128 public lpLiquidity;
 
@@ -191,10 +192,6 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         _addLiquidity(aBal, bBal, 0, 0, tick - pool.tickSpacing() * 20, tick + pool.tickSpacing() * 20);
 
         // Buy WMATIC. After this trade, the strat now holds an lp NFT and a little bit of WMATIC
-        address[] memory path = new address[](2);
-        path[0] = address(asset);
-        path[1] = address(borrowAsset);
-
         _swapExactSingle(asset, borrowAsset, assetsToMatic, 0);
     }
 
@@ -233,17 +230,9 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         uint256 maticToSell = bBal > debt ? bBal - debt : 0;
 
         if (maticToBuy > 0) {
-            address[] memory path = new address[](2);
-            path[0] = address(asset);
-            path[1] = address(borrowAsset);
-
             _swapExactOutputSingle(asset, borrowAsset, maticToBuy, type(uint256).max);
         }
         if (maticToSell > 0) {
-            address[] memory path = new address[](2);
-            path[0] = address(borrowAsset);
-            path[1] = address(asset);
-
             _swapExactSingle(borrowAsset, asset, maticToSell, 0);
         }
 
@@ -254,9 +243,12 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         lendingPool.withdraw({asset: address(asset), amount: aToken.balanceOf(address(this)), to: address(this)});
     }
 
-    function _convertToAB(uint256 assets, uint256 borrowAssets) internal view returns (uint256, uint256) {
-        if (assetIsToken0) return (assets, borrowAssets);
+    function _convertTo01(uint256 assets, uint256 borrowAssets) internal view returns (uint256, uint256) {
+        if (address(asset) == token0) return (assets, borrowAssets);
         else return (borrowAssets, assets);
+    }
+    function _convertToAB(uint amount0, uint amount1) internal view returns (uint, uint) {
+      return _convertTo01(amount0, amount1);
     }
 
     function _addLiquidity(
@@ -267,11 +259,11 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         int24 minTick,
         int24 maxTick
     ) internal {
-        (uint256 amount0, uint256 amount1) = _convertToAB(amountA, amountB);
-        (uint256 amount0Min, uint256 amount1Min) = _convertToAB(amountAMin, amountBMin);
+        (uint256 amount0, uint256 amount1) = _convertTo01(amountA, amountB);
+        (uint256 amount0Min, uint256 amount1Min) = _convertTo01(amountAMin, amountBMin);
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
-            token0: assetIsToken0 ? address(asset) : address(borrowAsset),
-            token1: assetIsToken0 ? address(borrowAsset) : address(asset),
+            token0: token0,
+            token1: token1,
             fee: poolFee,
             tickLower: minTick,
             tickUpper: maxTick,
@@ -288,7 +280,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
     }
 
     function _removeLiquidity(uint256 amountAMin, uint256 amountBMin) internal {
-        (uint256 amount0Min, uint256 amount1Min) = _convertToAB(amountAMin, amountBMin);
+        (uint256 amount0Min, uint256 amount1Min) = _convertTo01(amountAMin, amountBMin);
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
             .DecreaseLiquidityParams({
             tokenId: lpId,
