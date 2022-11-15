@@ -168,6 +168,13 @@ contract BaseVaultTest is TestPlus {
         token.mint(address(strat1), 4000);
         token.mint(address(strat2), 6000);
 
+        // Harvest
+        BaseStrategy[] memory strategies = new BaseStrategy[](2);
+        strategies[0] = strat1;
+        strategies[1] = strat2;
+        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        vault.harvest(strategies);
+
         vault.rebalance();
 
         assertTrue(token.balanceOf(address(strat1)) == 6000);
