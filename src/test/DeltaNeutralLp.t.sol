@@ -12,14 +12,14 @@ import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUn
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 
 import {L1Vault} from "../ethereum/L1Vault.sol";
-import {DeltaNeutralLp, ILendingPoolAddressesProviderRegistry} from "../ethereum/DeltaNeutralLp.sol";
+import {L1DeltaNeutralLp, ILendingPoolAddressesProviderRegistry} from "../ethereum/L1DeltaNeutralLp.sol";
 import {IMasterChef} from "../interfaces/sushiswap/IMasterChef.sol";
 
 contract DeltaNeutralTest is TestPlus {
     using stdStorage for StdStorage;
 
     L1Vault vault;
-    DeltaNeutralLp strategy;
+    L1DeltaNeutralLp strategy;
     ERC20 usdc = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     ERC20 abPair;
     ERC20 asset;
@@ -34,7 +34,7 @@ contract DeltaNeutralTest is TestPlus {
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
         vm.store(address(vault), bytes32(slot), tokenAddr);
 
-        strategy = new DeltaNeutralLp(
+        strategy = new L1DeltaNeutralLp(
         vault,
         0.001e18,
         ILendingPoolAddressesProviderRegistry(0x52D306e36E3B6B02c153d0266ff0f85d18BCD413),

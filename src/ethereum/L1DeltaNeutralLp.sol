@@ -11,7 +11,7 @@ import {IMasterChef} from "../interfaces/sushiswap/IMasterChef.sol";
 
 import {BaseDeltaNeutralLpStrategy} from "../BaseDeltaNeutralLpStrategy.sol";
 
-contract DeltaNeutralLp is BaseDeltaNeutralLpStrategy {
+contract L1DeltaNeutralLp is BaseDeltaNeutralLpStrategy {
     constructor(
         BaseVault _vault,
         uint256 _longPct,

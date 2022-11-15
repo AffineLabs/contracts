@@ -27,7 +27,7 @@ import {ConvexStrategy} from "../src/ethereum/ConvexStrategy.sol";
 import {ICurvePool} from "../src/interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "../src/interfaces/convex.sol";
 
-import {DeltaNeutralLp} from "../src/ethereum/DeltaNeutralLp.sol";
+import {L1DeltaNeutralLp} from "../src/ethereum/L1DeltaNeutralLp.sol";
 import {AggregatorV3Interface} from "../src/interfaces/AggregatorV3Interface.sol";
 import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol";
 import {IMasterChef} from "../src/interfaces/sushiswap/IMasterChef.sol";
@@ -72,7 +72,7 @@ contract Deploy is Script, Base {
         // SSLP strat
         uint256 longPct = 10 ** 15;
         uint256 masterChefPID = 1;
-        DeltaNeutralLp dnlp = new DeltaNeutralLp(
+        L1DeltaNeutralLp dnlp = new L1DeltaNeutralLp(
            vault, 
             longPct,
             ILendingPoolAddressesProviderRegistry(0x52D306e36E3B6B02c153d0266ff0f85d18BCD413),
