@@ -53,6 +53,13 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
+    /**
+     * @notice Set ERC20 predicate address.
+     */
+    function setERC20Predicate(address _predicate) external onlyGovernance {
+        predicate = _predicate;
+    }
+
     /// @dev The L1Vault's profit does not need to unlock over time, because users to do not transact with it
     function lockedProfit() public pure override returns (uint256) {
         return 0;
