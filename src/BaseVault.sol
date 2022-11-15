@@ -535,7 +535,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
             uint256 idealStrategyTVL = (tvl * strategies[strategy].tvlBps) / MAX_BPS;
             uint256 currStrategyTVL = strategy.totalLockedValue();
             if (idealStrategyTVL < currStrategyTVL) {
-                strategy.divest(currStrategyTVL - idealStrategyTVL);
+                withdrawFromStrategy(strategy, currStrategyTVL - idealStrategyTVL);
             }
             if (idealStrategyTVL > currStrategyTVL) {
                 amountsToInvest[i] = idealStrategyTVL - currStrategyTVL;
@@ -550,7 +550,15 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
             Strategy strategy = withdrawalQueue[i];
 
             _asset.safeApprove(address(strategy), amountToInvest);
-            strategy.invest(amountToInvest);
+            depositIntoStrategy(strategy, amountToInvest);
         }
+    }
+
+    function resetTotalStrategyHoldings() external {
+        for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
+            Strategy strategy = withdrawalQueue[i];
+            require(address(strategy) == address(0), "BV: has active strategy");
+        }
+        totalStrategyHoldings = 0;
     }
 }
