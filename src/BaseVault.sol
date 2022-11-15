@@ -536,8 +536,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
             uint256 currStrategyTVL = strategy.totalLockedValue();
             if (idealStrategyTVL < currStrategyTVL) {
                 withdrawFromStrategy(strategy, currStrategyTVL - idealStrategyTVL);
-            }
-            if (idealStrategyTVL > currStrategyTVL) {
+            } else {
                 amountsToInvest[i] = idealStrategyTVL - currStrategyTVL;
             }
         }
@@ -546,10 +545,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
             uint256 amountToInvest = amountsToInvest[i];
             if (amountToInvest == 0) continue;
-
             Strategy strategy = withdrawalQueue[i];
-
-            _asset.safeApprove(address(strategy), amountToInvest);
             depositIntoStrategy(strategy, amountToInvest);
         }
     }
@@ -558,6 +554,7 @@ abstract contract BaseVault is Initializable, AccessControl, AffineGovernable {
         for (uint256 i = 0; i < MAX_STRATEGIES; i++) {
             Strategy strategy = withdrawalQueue[i];
             require(address(strategy) == address(0), "BV: has active strategy");
+            strategies[strategy].balance = 0;
         }
         totalStrategyHoldings = 0;
     }
