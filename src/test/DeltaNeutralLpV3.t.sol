@@ -73,6 +73,7 @@ contract DeltaNeutralV3Test is TestPlus {
     }
 
     function testEndPosition() public {
+        emit log_named_address("strategy addr: ", address(strategy));
         deal(address(asset), address(strategy), 1000e6);
         strategy.startPosition();
 
