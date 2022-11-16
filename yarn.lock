@@ -1590,9 +1590,9 @@
   resolved "https://registry.yarnpkg.com/@uniswap/v3-core/-/v3-core-1.0.2-solc-0.8-simulate.tgz#77fb42f2b502b4fec81844736d039fc059e8688c"
   integrity sha512-ALAZbsb3wvUrRzeAjrTKjv1fH7UrueJ/+D8uX4yintXHxxzbnnp78Kis2pa4D26cFQ72rwM3DrZpUES9rhsEuQ==
 
-"@uniswap/v3-periphery@https://github.com/larryob/v3-periphery.git#0.8":
+"@uniswap/v3-periphery@https://github.com/Uniswap/v3-periphery.git#0.8":
   version "1.4.2-solc-0.8"
-  resolved "https://github.com/larryob/v3-periphery.git#ed28da9044b22665a93b7b493f159fbc1a8a230c"
+  resolved "https://github.com/Uniswap/v3-periphery.git#b325bb0905d922ae61fcc7df85ee802e8df5e96c"
   dependencies:
     "@openzeppelin/contracts" "4.6.0"
     "@uniswap/v2-core" "1.0.1"
