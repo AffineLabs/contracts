@@ -133,7 +133,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
 
     event PositionStart(
         uint32 indexed position,
-        uint256 assetDebt,
+        uint256 assetCollateral,
         uint256 borrows,
         uint256 borrowPrice,
         int24 tickLow,
@@ -193,7 +193,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         // assetsToDeposit has price units `asset`, price has units `asset / borrowAsset` ratio. so we divide by price
         // Scaling `asset` to 8 decimals since chainlink provides 8: https://docs.chain.link/docs/data-feeds/price-feeds/
         // TODO: handle both cases (assetDecimals > priceDecimals as well)
-        uint borrowPrice = _getPrice();
+        uint256 borrowPrice = _getPrice();
         uint256 borrowAssetsDeposited = (assetsToDeposit * 1e2 * 1e18) / borrowPrice;
 
         // https://docs.aave.com/developers/v/2.0/the-core-protocol/lendingpool#borrow
@@ -211,17 +211,16 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         uint256 bBal = borrowAsset.balanceOf(address(this));
         (, int24 tick,,,,,) = pool.slot0();
         _addLiquidity(aBal, bBal, 0, 0, tickLow, tickHigh);
-        uint borrowsToUni = bBal - borrowAsset.balanceOf(address(this));
+        uint256 borrowsToUni = bBal - borrowAsset.balanceOf(address(this));
 
         // Buy WMATIC. After this trade, the strat now holds an lp NFT and a little bit of WMATIC
         _swapExactSingle(asset, borrowAsset, assetsToMatic, 0);
 
-  
         emit PositionStart({
             position: currentPosition,
-            assetDebt: aToken.balanceOf(address(this)),
+            assetCollateral: aToken.balanceOf(address(this)),
             borrows: debtToken.balanceOf(address(this)),
-            borrowPrice: borrowPrice / 1e2,
+            borrowPrice: borrowPrice,
             tickLow: tickLow,
             tickHigh: tickHigh,
             assetsToUni: aBal - asset.balanceOf(address(this)),
@@ -242,7 +241,24 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         return amountToSend;
     }
 
-    event PositionEnd(uint32 indexed position, uint256 timestamp);
+    /**
+     * @param assetSold True if we sold asset and bough borrow, false otherwise
+     * @param assetsOrBorrowsSold The amount of asset or borrow sold in order to repay the debt
+     */
+    event PositionEnd(
+        uint32 indexed position,
+        uint256 assetsFromUni,
+        uint256 borrowsFromUni,
+        uint256 assetFees,
+        uint256 borrowFees,
+        uint256 borrowPrice,
+        bool assetSold,
+        uint256 assetsOrBorrowsSold,
+        uint256 assetsOrBorrowsReceived,
+        uint256 assetCollateral,
+        uint256 borrowDebtPaid,
+        uint256 timestamp
+    );
 
     function endPosition() external onlyOwner {
         _endPosition();
@@ -252,30 +268,55 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         // Set position metadata
         require(!canStartNewPos, "DNLP: position is inactive");
         canStartNewPos = true;
-        emit PositionEnd(currentPosition, block.timestamp);
 
         // Remove liquidity
         // TODO: handle slippage
-        _removeLiquidity(0, 0);
+        (uint256 amount0FromUni, uint256 amount1FromUni, uint256 amount0Fees, uint256 amount1Fees) =
+            _removeLiquidity(0, 0);
+        (uint256 assetsFromUni, uint256 borrowsFromUni) = _convertToAB(amount0FromUni, amount1FromUni);
+        (uint256 assetFees, uint256 borrowFees) = _convertToAB(amount0Fees, amount1Fees);
 
         // Buy enough matic to pay back debt
-        uint256 debt = debtToken.balanceOf(address(this));
-        uint256 bBal = borrowAsset.balanceOf(address(this));
-        uint256 maticToBuy = debt > bBal ? debt - bBal : 0;
-        uint256 maticToSell = bBal > debt ? bBal - debt : 0;
+        uint debt;
+        uint256 assetsOrBorrowsSold;
+        uint256 assetsOrBorrowsReceived;
+        bool assetSold;
+        {
+            debt = debtToken.balanceOf(address(this));
+            uint256 bBal = borrowAsset.balanceOf(address(this));
+            uint256 maticToBuy = debt > bBal ? debt - bBal : 0;
+            uint256 maticToSell = bBal > debt ? bBal - debt : 0;
 
-        if (maticToBuy > 0) {
-            _swapExactOutputSingle(asset, borrowAsset, maticToBuy, type(uint256).max);
+            if (maticToBuy > 0) {
+                (assetsOrBorrowsSold, assetsOrBorrowsReceived) =
+                    _swapExactOutputSingle(asset, borrowAsset, maticToBuy, type(uint256).max);
+            }
+            if (maticToSell > 0) {
+                (assetsOrBorrowsSold, assetsOrBorrowsReceived) = _swapExactSingle(borrowAsset, asset, maticToSell, 0);
+            }
+            assetSold = maticToBuy > 0;
         }
-        if (maticToSell > 0) {
-            _swapExactSingle(borrowAsset, asset, maticToSell, 0);
-        }
-
         // Repay debt
         lendingPool.repay({asset: address(borrowAsset), amount: debt, rateMode: 2, onBehalfOf: address(this)});
 
         // Withdraw from aave
-        lendingPool.withdraw({asset: address(asset), amount: aToken.balanceOf(address(this)), to: address(this)});
+        uint256 assetCollateral = aToken.balanceOf(address(this));
+        lendingPool.withdraw({asset: address(asset), amount: assetCollateral, to: address(this)});
+
+        emit PositionEnd({
+            position: currentPosition,
+            assetsFromUni: assetsFromUni,
+            borrowsFromUni: borrowsFromUni,
+            assetFees: assetFees,
+            borrowFees: borrowFees,
+            borrowPrice: _getPrice(),
+            assetSold: assetSold,
+            assetsOrBorrowsSold: assetsOrBorrowsSold,
+            assetsOrBorrowsReceived: assetsOrBorrowsReceived,
+            assetCollateral: assetCollateral,
+            borrowDebtPaid: debt,
+            timestamp: block.timestamp
+        });
     }
 
     function _convertTo01(uint256 assets, uint256 borrowAssets) internal view returns (uint256, uint256) {
@@ -315,7 +356,13 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         lpLiquidity = liquidity;
     }
 
-    function _removeLiquidity(uint256 amountAMin, uint256 amountBMin) internal {
+    function _removeLiquidity(uint256 amountAMin, uint256 amountBMin)
+        internal
+        returns (uint256 amount0FromLiq, uint256 amount1FromLiq, uint256 amount0Fees, uint256 amount1Fees)
+    {
+        // Get the amounts that the position has collected in fees
+        (amount0Fees, amount1Fees) = _collectFees();
+
         (uint256 amount0Min, uint256 amount1Min) = _convertTo01(amountAMin, amountBMin);
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
             .DecreaseLiquidityParams({
@@ -327,11 +374,12 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         });
         lpManager.decreaseLiquidity(params);
         // TODO: burn NFT
-        _collectFees();
+        // After decreasing the liquidity, the amounts received are the tokens owed to us from the burnt liquidity
+        (amount0FromLiq, amount1FromLiq) = _collectFees();
         lpLiquidity = 0;
     }
 
-    function _collectFees() internal {
+    function _collectFees() internal returns (uint256 amount0, uint256 amount1) {
         // This will actually transfer the tokens owed after decreasing the liquidity
         INonfungiblePositionManager.CollectParams memory params = INonfungiblePositionManager.CollectParams({
             tokenId: lpId,
@@ -340,10 +388,13 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
             amount1Max: type(uint128).max
         });
 
-        lpManager.collect(params);
+        (amount0, amount1) = lpManager.collect(params);
     }
 
-    function _swapExactSingle(ERC20 from, ERC20 to, uint256 amountIn, uint256 amountOutMinimum) internal {
+    function _swapExactSingle(ERC20 from, ERC20 to, uint256 amountIn, uint256 amountOutMinimum)
+        internal
+        returns (uint256 sold, uint256 received)
+    {
         // Do a single swap
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
             tokenIn: address(from),
@@ -356,10 +407,14 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
             sqrtPriceLimitX96: 0
         });
 
-        router.exactInputSingle(params);
+        received = router.exactInputSingle(params);
+        sold = amountIn;
     }
 
-    function _swapExactOutputSingle(ERC20 from, ERC20 to, uint256 amountOut, uint256 amountInMaximum) internal {
+    function _swapExactOutputSingle(ERC20 from, ERC20 to, uint256 amountOut, uint256 amountInMaximum)
+        internal
+        returns (uint256 sold, uint256 received)
+    {
         ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams({
             tokenIn: address(from),
             tokenOut: address(to),
@@ -371,6 +426,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
             sqrtPriceLimitX96: 0
         });
 
-        router.exactOutputSingle(params);
+        sold = router.exactOutputSingle(params);
+        received = amountOut;
     }
 }
