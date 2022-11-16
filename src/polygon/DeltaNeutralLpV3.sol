@@ -311,11 +311,14 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         });
     }
 
+    /// @dev Given two numbers in AB (assets, borrows) format, convert to Uniswap's token0, token1 format
     function _convertTo01(uint256 assets, uint256 borrowAssets) internal view returns (uint256, uint256) {
         if (address(asset) == token0) return (assets, borrowAssets);
         else return (borrowAssets, assets);
     }
 
+    /// @dev Given two numbers in 01 (token0, token1) format, convert to our AB format (assets, borrows). This will just flip
+    /// the numbers if asset != token0.
     function _convertToAB(uint256 amount0, uint256 amount1) internal view returns (uint256, uint256) {
         return _convertTo01(amount0, amount1);
     }
