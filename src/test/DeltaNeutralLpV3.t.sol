@@ -23,6 +23,8 @@ contract DeltaNeutralV3Test is TestPlus {
     ERC20 usdc = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     ERC20 asset;
     ERC20 borrowAsset;
+    int24 tickLow;
+    int24 tickHigh;
 
     function setUp() public {
         vm.createSelectFork("polygon", 31_824_532);
@@ -30,6 +32,11 @@ contract DeltaNeutralV3Test is TestPlus {
         uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
         vm.store(address(vault), bytes32(slot), tokenAddr);
+
+        IUniswapV3Pool pool = IUniswapV3Pool(0xA374094527e1673A86dE625aa59517c5dE346d32);
+        (, int24 tick,,,,,) = pool.slot0();
+        tickLow = tick - pool.tickSpacing() * 20;
+        tickHigh = tick + pool.tickSpacing() * 20;
 
         strategy = new DeltaNeutralLpV3(
         vault,
@@ -40,7 +47,7 @@ contract DeltaNeutralV3Test is TestPlus {
         AggregatorV3Interface(0xAB594600376Ec9fD91F8e885dADF0CE036862dE0), // matic/usd price feed
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
-        IUniswapV3Pool(0xA374094527e1673A86dE625aa59517c5dE346d32) // WMATIC/USDC
+        pool // WMATIC/USDC
         );
 
         vm.prank(governance);
@@ -55,7 +62,7 @@ contract DeltaNeutralV3Test is TestPlus {
         deal(address(usdc), address(strategy), startAssets);
         uint256 assetsToMatic = (startAssets) / 1000;
 
-        strategy.startPosition();
+        strategy.startPosition(tickLow, tickHigh);
         assertFalse(strategy.canStartNewPos());
 
         // I got the right amount of matic
@@ -75,7 +82,7 @@ contract DeltaNeutralV3Test is TestPlus {
     function testEndPosition() public {
         emit log_named_address("strategy addr: ", address(strategy));
         deal(address(asset), address(strategy), 1000e6);
-        strategy.startPosition();
+        strategy.startPosition(tickLow, tickHigh);
 
         vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(alice);
@@ -93,7 +100,7 @@ contract DeltaNeutralV3Test is TestPlus {
     function testTVL() public {
         assertEq(strategy.totalLockedValue(), 0);
         deal(address(asset), address(strategy), 1000e6);
-        strategy.startPosition();
+        strategy.startPosition(tickLow, tickHigh);
 
         assertApproxEqRel(strategy.totalLockedValue(), 1000e6, 0.02e18);
     }
@@ -106,7 +113,7 @@ contract DeltaNeutralV3Test is TestPlus {
         assertEq(asset.balanceOf(address(vault)), 1);
 
         deal(address(asset), address(strategy), 1000e6);
-        strategy.startPosition();
+        strategy.startPosition(tickLow, tickHigh);
 
         // We unwind position if there is a one
         vm.prank(address(vault));
