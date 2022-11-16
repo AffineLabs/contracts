@@ -103,7 +103,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
     }
 
     function valueOfLpPosition() public view returns (uint256 assetsLp) {
-        if (lpId == 0) return assetsLp;
+        if (lpLiquidity == 0) return assetsLp;
         (uint160 sqrtPriceX96,,,,,,) = pool.slot0();
 
         (uint256 token0InLp, uint256 token1InLp) = positionValue.total(lpManager, lpId, sqrtPriceX96);
@@ -368,10 +368,10 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
             deadline: block.timestamp
         });
         lpManager.decreaseLiquidity(params);
-        // TODO: burn NFT
-        // After decreasing the liquidity, the amounts received are the tokens owed to us from the burnt liquidity
-        (amount0FromLiq, amount1FromLiq) = _collectFees();
         lpLiquidity = 0;
+        
+        // After decreasing the liquidity, the amounts received are the tokens owed to us from the burnt liquidity
+        (amount0FromLiq, amount1FromLiq) = _collectFees();  
     }
 
     function _collectFees() internal returns (uint256 amount0, uint256 amount1) {
