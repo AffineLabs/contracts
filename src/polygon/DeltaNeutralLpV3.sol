@@ -84,18 +84,14 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
     }
 
     /// @notice Convert `borrowAsset` (e.g. MATIC) to `asset` (e.g. USDC)
-    function _borrowToAsset(uint256 amountB) internal view returns (uint256 assets) {
-        if (amountB == 0) {
-            assets = 0;
-            return assets;
-        }
-
-        uint256 price = _getPrice();
-
+    function _borrowToAsset(uint256 amountB, uint clPrice) internal view returns (uint256 assets) {
         // The first divisition gets rid of the decimals of wmatic. The second converts dollars to usdc
         // TODO: make this work for any set of decimals
-        assets = (amountB * price) / (1e18 * 1e2);
+        assets = amountB.mulWadDown(clPrice) / 1e2;
     }
+    function _assetToBorrow(uint assets, uint clPrice) internal view returns (uint borrows) {
+         borrows = (assets * 1e2).divWadDown(clPrice);
+    }   
 
     function _getPrice() internal view returns (uint256 priceOfBorrowAsset) {
         (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = borrowAssetFeed.latestRoundData();
@@ -112,19 +108,20 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
 
         (uint256 token0InLp, uint256 token1InLp) = positionValue.total(lpManager, lpId, sqrtPriceX96);
         (uint256 assetsInLp, uint256 borrowAssetsInLp) = _convertToAB(token0InLp, token1InLp);
-        assetsLp = assetsInLp + _borrowToAsset(borrowAssetsInLp);
+        assetsLp = assetsInLp + _borrowToAsset(borrowAssetsInLp, _getPrice());
     }
 
     function totalLockedValue() public view override returns (uint256) {
         // The below are all in units of `asset`
         // balanceOfAsset + balanceOfMatic + aToken value + Uni Lp value - debt
         // lp tokens * (total assets) / total lp tokens
-        uint256 assetsMatic = _borrowToAsset(borrowAsset.balanceOf(address(this)));
+        uint borrowPrice = _getPrice();
+        uint256 assetsMatic = _borrowToAsset(borrowAsset.balanceOf(address(this)), borrowPrice);
 
         // Get value of uniswap lp position
         uint256 assetsLp = valueOfLpPosition();
 
-        uint256 assetsDebt = _borrowToAsset(debtToken.balanceOf(address(this)));
+        uint256 assetsDebt = _borrowToAsset(debtToken.balanceOf(address(this)), borrowPrice);
         return balanceOfAsset() + assetsMatic + aToken.balanceOf(address(this)) + assetsLp - assetsDebt;
     }
 
@@ -189,12 +186,8 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         uint256 assetsToDeposit = (assets - assetsToMatic).mulDivDown(4, 7);
         lendingPool.deposit({asset: address(asset), amount: assetsToDeposit, onBehalfOf: address(this), referralCode: 0});
 
-        // Convert assetsToDeposit into `borrowAsset` (e.g. WMATIC) units
-        // assetsToDeposit has price units `asset`, price has units `asset / borrowAsset` ratio. so we divide by price
-        // Scaling `asset` to 8 decimals since chainlink provides 8: https://docs.chain.link/docs/data-feeds/price-feeds/
-        // TODO: handle both cases (assetDecimals > priceDecimals as well)
-        uint256 borrowPrice = _getPrice();
-        uint256 borrowAssetsDeposited = (assetsToDeposit * 1e2 * 1e18) / borrowPrice;
+        uint borrowPrice = _getPrice();
+        uint256 borrowAssetsDeposited = _assetToBorrow(assetsToDeposit, borrowPrice);
 
         // https://docs.aave.com/developers/v/2.0/the-core-protocol/lendingpool#borrow
         lendingPool.borrow({
@@ -209,7 +202,6 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         // TODO: make slippage parameterizable by caller, using min/max ticks for now
         uint256 aBal = assets - assetsToMatic - assetsToDeposit;
         uint256 bBal = borrowAsset.balanceOf(address(this));
-        (, int24 tick,,,,,) = pool.slot0();
         _addLiquidity(aBal, bBal, 0, 0, tickLow, tickHigh);
         uint256 borrowsToUni = bBal - borrowAsset.balanceOf(address(this));
 
