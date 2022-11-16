@@ -178,8 +178,8 @@ contract Deploy is Script, Base {
         _deployBasket(config, forwarder);
 
         // Deploy strategies
-        if (!testnet) _deployStrategies(config, vault);
         _deployTestStrategies(config, vault);
+        if (!testnet) _deployStrategies(config, vault);
 
         vm.stopBroadcast();
     }

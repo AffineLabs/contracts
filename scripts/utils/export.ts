@@ -149,6 +149,7 @@ async function _polygonDefender(forking: boolean, testnet: boolean) {
   // TwoAssetBasket impl, TwoAssetBasket proxy,
   const deployData = await readJSON(lastestL2DeployPath);
   const txs: Array<Transaction> = deployData.transactions;
+  console.log("Deploy transactions:", txs);
   const offset = testnet ? 1 : 0; // We have to deploy the create3 factory on mumbai testnet
   const forwarderAddr = txs[0 + offset].contractAddress;
   const l2VaultAddr = txs[2 + offset].contractAddress;
@@ -159,8 +160,10 @@ async function _polygonDefender(forking: boolean, testnet: boolean) {
   const ewqAddr = txs[5 + offset].additionalContracts.filter(c => c.transactionType === "CREATE")[0].address;
   const router4626Addr = txs[6 + offset].contractAddress;
   const basketAddr = txs[8 + offset].contractAddress;
+  // TODO: Temporarily support SSLP V3 deployment
+  const sslpUniV3StratAddr = txs[9 + offset].contractAddress;
 
-  console.log({ l2VaultAddr, escrowAddr, routerAddr, ewqAddr, router4626Addr });
+  console.log({ l2VaultAddr, escrowAddr, routerAddr, ewqAddr, router4626Addr, sslpUniV3StratAddr });
   await addToAddressBookAndDefender(network, "Forwarder", "Forwarder", forwarderAddr, [], false);
   await addToAddressBookAndDefender(network, "PolygonAlpSave", "L2Vault", l2VaultAddr);
   await addToAddressBookAndDefender(network, "PolygonWormholeRouter", "L2WormholeRouter", routerAddr, [], false);
