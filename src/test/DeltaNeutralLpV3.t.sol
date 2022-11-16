@@ -25,6 +25,7 @@ contract DeltaNeutralV3Test is TestPlus {
     ERC20 borrowAsset;
     int24 tickLow;
     int24 tickHigh;
+    uint constant slippageBps = 200;
 
     function setUp() public {
         vm.createSelectFork("polygon", 31_824_532);
@@ -62,7 +63,7 @@ contract DeltaNeutralV3Test is TestPlus {
         deal(address(usdc), address(strategy), startAssets);
         uint256 assetsToMatic = (startAssets) / 1000;
 
-        strategy.startPosition(tickLow, tickHigh);
+        strategy.startPosition(tickLow, tickHigh, slippageBps);
         assertFalse(strategy.canStartNewPos());
 
         // I got the right amount of matic
@@ -82,7 +83,7 @@ contract DeltaNeutralV3Test is TestPlus {
     function testEndPosition() public {
         emit log_named_address("strategy addr: ", address(strategy));
         deal(address(asset), address(strategy), 1000e6);
-        strategy.startPosition(tickLow, tickHigh);
+        strategy.startPosition(tickLow, tickHigh, slippageBps);
 
         vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(alice);
@@ -100,7 +101,7 @@ contract DeltaNeutralV3Test is TestPlus {
     function testTVL() public {
         assertEq(strategy.totalLockedValue(), 0);
         deal(address(asset), address(strategy), 1000e6);
-        strategy.startPosition(tickLow, tickHigh);
+        strategy.startPosition(tickLow, tickHigh, slippageBps);
 
         assertApproxEqRel(strategy.totalLockedValue(), 1000e6, 0.02e18);
     }
@@ -113,7 +114,7 @@ contract DeltaNeutralV3Test is TestPlus {
         assertEq(asset.balanceOf(address(vault)), 1);
 
         deal(address(asset), address(strategy), 1000e6);
-        strategy.startPosition(tickLow, tickHigh);
+        strategy.startPosition(tickLow, tickHigh, slippageBps);
 
         // We unwind position if there is a one
         vm.prank(address(vault));

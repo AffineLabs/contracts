@@ -22,10 +22,12 @@ import {IUniPositionValue} from "../interfaces/IUniPositionValue.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
+import {SlippageUtils} from "../libs/SlippageUtils.sol";
 
 contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
+    using SlippageUtils for uint256;
 
     constructor(
         BaseVault _vault,
@@ -84,12 +86,12 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
     }
 
     /// @notice Convert `borrowAsset` (e.g. MATIC) to `asset` (e.g. USDC)
-    function _borrowToAsset(uint256 amountB, uint clPrice) internal view returns (uint256 assets) {
+    function _borrowToAsset(uint256 amountB, uint clPrice) internal pure returns (uint256 assets) {
         // The first divisition gets rid of the decimals of wmatic. The second converts dollars to usdc
         // TODO: make this work for any set of decimals
         assets = amountB.mulWadDown(clPrice) / 1e2;
     }
-    function _assetToBorrow(uint assets, uint clPrice) internal view returns (uint borrows) {
+    function _assetToBorrow(uint assets, uint clPrice) internal pure returns (uint borrows) {
          borrows = (assets * 1e2).divWadDown(clPrice);
     }   
 
@@ -169,7 +171,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
     /// @notice Gives ratio of vault asset to borrow asset, e.g. WMATIC/USD (assuming usdc = usd)
     AggregatorV3Interface immutable borrowAssetFeed;
 
-    function startPosition(int24 tickLow, int24 tickHigh) external onlyOwner {
+    function startPosition(int24 tickLow, int24 tickHigh, uint slippageToleranceBps) external onlyOwner {
         // Set position metadata
         require(canStartNewPos, "DNLP: position is active");
         currentPosition += 1;
@@ -202,11 +204,11 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         // TODO: make slippage parameterizable by caller, using min/max ticks for now
         uint256 aBal = assets - assetsToMatic - assetsToDeposit;
         uint256 bBal = borrowAsset.balanceOf(address(this));
-        _addLiquidity(aBal, bBal, 0, 0, tickLow, tickHigh);
+        _addLiquidity(aBal, bBal, tickLow, tickHigh, slippageToleranceBps);
         uint256 borrowsToUni = bBal - borrowAsset.balanceOf(address(this));
 
         // Buy WMATIC. After this trade, the strat now holds an lp NFT and a little bit of WMATIC
-        _swapExactSingle(asset, borrowAsset, assetsToMatic, 0);
+        _swapExactSingle(asset, borrowAsset, assetsToMatic, slippageToleranceBps);
 
         emit PositionStart({
             position: currentPosition,
@@ -284,7 +286,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
                     _swapExactOutputSingle(asset, borrowAsset, maticToBuy, type(uint256).max);
             }
             if (maticToSell > 0) {
-                (assetsOrBorrowsSold, assetsOrBorrowsReceived) = _swapExactSingle(borrowAsset, asset, maticToSell, 0);
+                (assetsOrBorrowsSold, assetsOrBorrowsReceived) = _swapExactSingle(borrowAsset, asset, maticToSell, 100);
             }
             assetSold = maticToBuy > 0;
         }
@@ -326,13 +328,11 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
     function _addLiquidity(
         uint256 amountA,
         uint256 amountB,
-        uint256 amountAMin,
-        uint256 amountBMin,
         int24 tickLow,
-        int24 tickHigh
+        int24 tickHigh,
+        uint slippageToleranceBps
     ) internal {
         (uint256 amount0, uint256 amount1) = _convertTo01(amountA, amountB);
-        (uint256 amount0Min, uint256 amount1Min) = _convertTo01(amountAMin, amountBMin);
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
             token0: token0,
             token1: token1,
@@ -341,8 +341,8 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
             tickUpper: tickHigh,
             amount0Desired: amount0,
             amount1Desired: amount1,
-            amount0Min: amount0Min,
-            amount1Min: amount1Min,
+            amount0Min: amount0.slippageDown(slippageToleranceBps),
+            amount1Min: amount1.slippageDown(slippageToleranceBps),
             recipient: address(this),
             deadline: block.timestamp
         });
@@ -386,10 +386,18 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         (amount0, amount1) = lpManager.collect(params);
     }
 
-    function _swapExactSingle(ERC20 from, ERC20 to, uint256 amountIn, uint256 amountOutMinimum)
+    function _swapExactSingle(ERC20 from, ERC20 to, uint256 amountIn, uint256 slippageBps)
         internal
         returns (uint256 sold, uint256 received)
     {
+
+        uint borrowPrice = _getPrice();
+        uint amountOut;
+        if (address(from) == address(asset))  {
+            amountOut = _assetToBorrow(amountIn,borrowPrice);
+        } else {
+            amountOut = _borrowToAsset(amountIn, borrowPrice);
+        }
         // Do a single swap
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
             tokenIn: address(from),
@@ -398,7 +406,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
             recipient: address(this),
             deadline: block.timestamp,
             amountIn: amountIn,
-            amountOutMinimum: amountOutMinimum,
+            amountOutMinimum: amountOut.slippageDown(slippageBps),
             sqrtPriceLimitX96: 0
         });
 
