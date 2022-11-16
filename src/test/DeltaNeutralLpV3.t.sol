@@ -25,7 +25,7 @@ contract DeltaNeutralV3Test is TestPlus {
     ERC20 borrowAsset;
     int24 tickLow;
     int24 tickHigh;
-    uint constant slippageBps = 200;
+    uint256 constant slippageBps = 200;
 
     function setUp() public {
         vm.createSelectFork("polygon", 31_824_532);
@@ -87,9 +87,9 @@ contract DeltaNeutralV3Test is TestPlus {
 
         vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(alice);
-        strategy.endPosition();
+        strategy.endPosition(slippageBps);
 
-        strategy.endPosition();
+        strategy.endPosition(slippageBps);
 
         assertTrue(strategy.canStartNewPos());
 
