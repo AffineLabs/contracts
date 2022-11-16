@@ -19,6 +19,11 @@ import {TwoAssetBasket} from "../src/polygon/TwoAssetBasket.sol";
 import {AggregatorV3Interface} from "../src/interfaces/AggregatorV3Interface.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {L2AAVEStrategy} from "../src/polygon/L2AAVEStrategy.sol";
+import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol";
+import {DeltaNeutralLpV3} from "../src/polygon/DeltaNeutralLpV3.sol";
+import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import {Base} from "./Base.sol";
 
@@ -101,6 +106,22 @@ contract Deploy is Script, Base {
         require(address(aave.asset()) == vault.asset());
     }
 
+    // TODO: Don't always deploy. This is to support testing of SSLP Uniswap V3 strategies.
+    function _deployTestStrategies(Base.L2Config memory config, L2Vault vault) internal {
+        DeltaNeutralLpV3 sslpUniV3 = new DeltaNeutralLpV3(
+            vault,
+            0.05e18,
+            0.001e18,
+            ILendingPoolAddressesProviderRegistry(config.aaveRegistry),
+            ERC20(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270), // wrapped matic
+            AggregatorV3Interface(0xAB594600376Ec9fD91F8e885dADF0CE036862dE0), // matic/usd price feed
+            ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
+            INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
+            IUniswapV3Pool(0xA374094527e1673A86dE625aa59517c5dE346d32) // WMATIC/USDC
+        );
+        require(address(sslpUniV3.asset()) == vault.asset());
+    }
+
     function run() external {
         bool testnet = vm.envBool("TEST");
         Base.L2Config memory config = abi.decode(_getConfigJson({mainnet: !testnet, layer1: false}), (Base.L2Config));
@@ -158,6 +179,7 @@ contract Deploy is Script, Base {
 
         // Deploy strategies
         if (!testnet) _deployStrategies(config, vault);
+        _deployTestStrategies(config, vault);
 
         vm.stopBroadcast();
     }

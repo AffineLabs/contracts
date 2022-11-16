@@ -22,7 +22,7 @@
         "wbtc": "0x007A22900a3B98143368Bd5906f8E17e9867581b",
         "weth": "0x0715A7794a1dc8e42615F059dD6e406A6594651A"
       },
-      "aaveRegistry": "0x0000000000000000000000000000000000000000"
+      "aaveRegistry": "0xE6ef11C967898F9525D550014FDEdCFAB63536B5"
     }
   },
   "mainnet": {
