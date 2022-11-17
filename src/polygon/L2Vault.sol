@@ -51,8 +51,8 @@ contract L2Vault is
         address forwarder,
         uint8 _l1Ratio,
         uint8 _l2Ratio,
-        uint256[3] memory fees,
-        uint256 _ewqMinEnqueueAmount
+        uint256[2] memory fees,
+        uint256[2] memory ewqParams
     ) public initializer {
         __ERC20_init("USD Earn", "usdEarn");
         __UUPSUpgradeable_init();
@@ -72,8 +72,9 @@ contract L2Vault is
 
         withdrawalFee = fees[0];
         managementFee = fees[1];
-        ewqEnqueueFee = fees[2];
-        ewqMinEnqueueAmount = _ewqMinEnqueueAmount;
+
+        ewqMinAssets = ewqParams[0];
+        ewqMinFee = ewqParams[1];
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
@@ -140,10 +141,10 @@ contract L2Vault is
     uint256 public managementFee;
     /// @notice  Fee charged on redemption of shares, number is in bps
     uint256 public withdrawalFee;
-    // minimal fee charged if withdrawal or redeem request is added to ewq, number is in assets amount.
-    uint256 public ewqEnqueueFee;
-    // minimal amount needed to enqueue a request to ewq, number is in assets amount.
-    uint256 public ewqMinEnqueueAmount;
+    /// @notice Minimal fee charged if withdrawal or redeem request is added to ewq, number is in assets amount.
+    uint256 public ewqMinFee;
+    /// @notice Minimal amount needed to enqueue a request to ewq, number is in assets amount.
+    uint256 public ewqMinAssets;
 
     event ManagementFeeSet(uint256 oldFee, uint256 newFee);
     event WithdrawalFeeSet(uint256 oldFee, uint256 newFee);
@@ -158,12 +159,9 @@ contract L2Vault is
         withdrawalFee = feeBps;
     }
 
-    function setEwqEnqueueFee(uint256 assetsFee) external onlyGovernance {
-        ewqEnqueueFee = assetsFee;
-    }
-
-    function setEwqMinEnqueueAmount(uint256 amount) external onlyGovernance {
-        ewqMinEnqueueAmount = amount;
+    function setEwqParams(uint256 _ewqMinFee, uint256 _ewqMinAssets) external onlyGovernance {
+        ewqMinFee = _ewqMinFee;
+        ewqMinAssets = _ewqMinAssets;
     }
 
     function _assessFees() internal override {
@@ -271,7 +269,7 @@ contract L2Vault is
         if (_asset.balanceOf(address(this)) < assetDemand) {
             if (caller != address(ewq)) {
                 // We need to enqueue, make sure that the requested amount is large enough.
-                if (assets < ewqMinEnqueueAmount) {
+                if (assets < ewqMinAssets) {
                     revert("L2Vault: bad enqueue, min assets");
                 }
                 ewq.enqueue(owner, receiver, shares);
@@ -368,7 +366,7 @@ contract L2Vault is
     function _getWithdrawalFee(uint256 tokenAmount) internal view returns (uint256) {
         uint256 feeAmount = tokenAmount.mulDivUp(withdrawalFee, MAX_BPS);
         if (_msgSender() == address(emergencyWithdrawalQueue)) {
-            feeAmount = Math.max(feeAmount, ewqEnqueueFee);
+            feeAmount = Math.max(feeAmount, ewqMinFee);
         }
         return feeAmount;
     }

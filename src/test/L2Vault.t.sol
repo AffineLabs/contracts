@@ -23,15 +23,15 @@ contract L2VaultTest is TestPlus {
     MockERC20 asset;
     uint256 tenUSDC = 10_000_000;
     uint256 fiveUSDC = tenUSDC / 2;
-    uint256 ewqEnqueueFee;
-    uint256 ewqEnqueueMinAmount;
+    uint256 ewqMinFee;
+    uint256 ewqMinAssets;
 
     function setUp() public {
         vault = Deploy.deployL2Vault();
         asset = MockERC20(vault.asset());
         vault.setMockRebalanceDelta(0);
-        ewqEnqueueFee = vault.ewqEnqueueFee();
-        ewqEnqueueMinAmount = vault.ewqMinEnqueueAmount();
+        ewqMinFee = vault.ewqMinFee();
+        ewqMinAssets = vault.ewqMinAssets();
     }
 
     // Adding this since this test contract is used as a strategy
@@ -448,7 +448,7 @@ contract L2VaultTest is TestPlus {
     event Push(uint256 indexed pos, address indexed owner, address indexed receiver, uint256 amount);
 
     function testEmergencyWithdrawal(uint64 amountAsset) public {
-        vm.assume(amountAsset > ewqEnqueueMinAmount);
+        vm.assume(amountAsset > ewqMinAssets);
         address user = address(this);
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
@@ -477,11 +477,11 @@ contract L2VaultTest is TestPlus {
             bytes32(uint256(0))
         );
         vault.emergencyWithdrawalQueue().dequeue();
-        assertEq(asset.balanceOf(user), amountAsset - ewqEnqueueFee);
+        assertEq(asset.balanceOf(user), amountAsset - ewqMinFee);
     }
 
     function testEmergencyWithdrawalWithRedeem(uint64 amountAsset) public {
-        vm.assume(amountAsset > ewqEnqueueMinAmount);
+        vm.assume(amountAsset > ewqMinAssets);
         address user = address(this);
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
@@ -513,7 +513,7 @@ contract L2VaultTest is TestPlus {
 
         vault.emergencyWithdrawalQueue().dequeue();
 
-        assertEq(asset.balanceOf(user), amountAsset - ewqEnqueueFee);
+        assertEq(asset.balanceOf(user), amountAsset - ewqMinFee);
     }
 
     function testEwqDebt() public {
@@ -558,10 +558,10 @@ contract L2VaultTest is TestPlus {
         );
 
         vault.emergencyWithdrawalQueue().dequeue();
-        assertEq(asset.balanceOf(alice), fiveUSDC - ewqEnqueueFee);
+        assertEq(asset.balanceOf(alice), fiveUSDC - ewqMinFee);
 
         vault.emergencyWithdrawalQueue().dequeue();
-        assertEq(asset.balanceOf(bob), fiveUSDC - ewqEnqueueFee);
+        assertEq(asset.balanceOf(bob), fiveUSDC - ewqMinFee);
     }
 
     function testEwqWithdraw() public {
@@ -590,7 +590,7 @@ contract L2VaultTest is TestPlus {
         );
 
         vault.emergencyWithdrawalQueue().dequeue();
-        assertEq(asset.balanceOf(alice), fiveUSDC - ewqEnqueueFee);
+        assertEq(asset.balanceOf(alice), fiveUSDC - ewqMinFee);
     }
 
     function testEwqRedeem() public {
@@ -620,11 +620,11 @@ contract L2VaultTest is TestPlus {
         );
 
         vault.emergencyWithdrawalQueue().dequeue();
-        assertEq(asset.balanceOf(alice), tenUSDC - vault.ewqEnqueueFee());
+        assertEq(asset.balanceOf(alice), tenUSDC - vault.ewqMinFee());
     }
 
     function testEwqMinRedeem() public {
-        uint256 amount = vault.ewqEnqueueFee() - 1;
+        uint256 amount = vault.ewqMinFee() - 1;
         asset.mint(alice, amount);
         vm.startPrank(alice);
         asset.approve(address(vault), type(uint256).max);
@@ -646,7 +646,7 @@ contract L2VaultTest is TestPlus {
     }
 
     function testEwqMinWithdraw() public {
-        uint256 amount = vault.ewqEnqueueFee() - 1;
+        uint256 amount = vault.ewqMinFee() - 1;
         asset.mint(alice, amount);
         vm.startPrank(alice);
         asset.approve(address(vault), type(uint256).max);

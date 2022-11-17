@@ -40,9 +40,11 @@ contract Deploy is Script, Base {
     ) internal returns (L2Vault vault) {
         // Deploy Vault
         L2Vault impl = new L2Vault();
+
         // Need to declare array in memory to avoud stack too deep error
-        uint256[3] memory fees = [config.withdrawFee, config.managementFee, config.ewqEnqueueFee]; // withdrawal and AUM fees;
-        uint256 ewqEnqueueMinAmount = config.ewqEnqueueMinAmount;
+        uint256[2] memory fees = [config.withdrawFee, config.managementFee];
+        uint256[2] memory ewqParams = [config.ewqMinAssets, config.ewqMinFee];
+
         bytes memory initData = abi.encodeCall(
             L2Vault.initialize,
             (
@@ -55,7 +57,7 @@ contract Deploy is Script, Base {
                 9,
                 1,
                 fees,
-                ewqEnqueueMinAmount
+                ewqParams
             )
         );
 
@@ -66,6 +68,7 @@ contract Deploy is Script, Base {
         require(vault.l2Ratio() == 1);
         require(vault.withdrawalFee() == config.withdrawFee);
         require(vault.managementFee() == config.managementFee);
+        require(vault.ewqMinFee() == config.ewqMinFee && vault.ewqMinAssets() == config.ewqMinAssets);
     }
 
     function _deployBasket(Base.L2Config memory config, Forwarder forwarder) internal {
