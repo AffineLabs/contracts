@@ -24,8 +24,8 @@ abstract contract Base is Script {
 
     struct L2Config {
         address aaveRegistry;
-        uint256 ewqEnqueueFee;
-        uint256 ewqEnqueueMinAmount;
+        uint256 ewqMinAssets;
+        uint256 ewqMinFee;
         Feeds feeds;
         address governance;
         uint256 managementFee;
