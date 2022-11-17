@@ -5,7 +5,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -23,7 +23,7 @@ import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
 import {SlippageUtils} from "../libs/SlippageUtils.sol";
 
-contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
+contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
     using SlippageUtils for uint256;
@@ -39,6 +39,9 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         INonfungiblePositionManager _lpManager,
         IUniswapV3Pool _pool
     ) BaseStrategy(_vault) {
+        _grantRole(DEFAULT_ADMIN_ROLE, vault.governance());
+        _grantRole(STRATEGIST_ROLE, vault.governance());
+
         canStartNewPos = true;
         slippageTolerance = _slippageTolerance;
         longPercentage = _longPct;
@@ -174,7 +177,12 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
     /// @notice Gives ratio of vault asset to borrow asset, e.g. WMATIC/USD (assuming usdc = usd)
     AggregatorV3Interface immutable borrowAssetFeed;
 
-    function startPosition(int24 tickLow, int24 tickHigh, uint256 slippageToleranceBps) external onlyOwner {
+    bytes32 public constant STRATEGIST_ROLE = keccak256("STRATEGIST_ROLE");
+
+    function startPosition(int24 tickLow, int24 tickHigh, uint256 slippageToleranceBps)
+        external
+        onlyRole(STRATEGIST_ROLE)
+    {
         // Set position metadata
         require(canStartNewPos, "DNLP: position is active");
         currentPosition += 1;
@@ -205,9 +213,12 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
 
         // Provide liquidity on uniswap
         uint256 aBal = assets - assetsToMatic - assetsToDeposit;
-        uint256 bBal = borrowAsset.balanceOf(address(this));
-        _addLiquidity(aBal, bBal, tickLow, tickHigh, slippageToleranceBps);
-        uint256 borrowsToUni = bBal - borrowAsset.balanceOf(address(this));
+        uint256 borrowsToUni;
+        {
+            uint256 bBal = borrowAsset.balanceOf(address(this));
+            _addLiquidity(aBal, bBal, tickLow, tickHigh, slippageToleranceBps);
+            borrowsToUni = bBal - borrowAsset.balanceOf(address(this));
+        }
 
         // Buy WMATIC. After this trade, the strat now holds an lp NFT and a little bit of WMATIC
         _swapExactSingle(asset, borrowAsset, assetsToMatic, slippageToleranceBps);
@@ -256,7 +267,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, Ownable {
         uint256 timestamp
     );
 
-    function endPosition(uint256 slippageBps) external onlyOwner {
+    function endPosition(uint256 slippageBps) external onlyRole(STRATEGIST_ROLE) {
         _endPosition(slippageBps);
     }
 

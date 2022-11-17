@@ -67,9 +67,9 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         borrowAsset.safeApprove(address(_router), type(uint256).max);
         // To remove liquidity
         abPair.safeApprove(address(_router), type(uint256).max);
-        // For staging SLP token
+        // For staking SLP token
         abPair.safeApprove(address(_masterChef), type(uint256).max);
-        // For trading shushi/usdc
+        // For trading sushi/usdc
         sushiToken.safeApprove(address(_router), type(uint256).max);
     }
 
