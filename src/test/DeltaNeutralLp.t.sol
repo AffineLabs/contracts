@@ -299,8 +299,7 @@ contract L2DeltaNeutralTest is TestPlus {
         assertEq(strategy.aToken().balanceOf(address(strategy)), (startAssets - assetsToMatic) * 4 / 7);
 
         // I have the right amount of uniswap lp tokens
-        uint256 miniChefStakedAmount =
-            strategy.miniChef().userInfo(strategy.miniChefPid(), address(strategy)).amount;
+        uint256 miniChefStakedAmount = strategy.miniChef().userInfo(strategy.miniChefPid(), address(strategy)).amount;
         uint256 assetsLP = miniChefStakedAmount * (asset.balanceOf(address(abPair)) * 2) / abPair.totalSupply();
         uint256 assetsInAAve = strategy.aToken().balanceOf(address(strategy)) * 3 / 4;
         emit log_named_uint("miniChefStakedAmount", miniChefStakedAmount);

@@ -55,7 +55,7 @@ contract L2DeltaNeutralLp is BaseStrategy, AccessControl {
         miniChef = _miniChef;
         uint256 miniChefPoolLength = _miniChef.poolLength();
         miniChefPid = miniChefPoolLength + 1;
-        for(uint256 pid = 0; pid < miniChefPoolLength; pid++) {
+        for (uint256 pid = 0; pid < miniChefPoolLength; pid++) {
             if (miniChef.lpToken(pid) == address(abPair)) {
                 miniChefPid = pid;
                 break;
