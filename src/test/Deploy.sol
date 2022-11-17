@@ -46,8 +46,7 @@ contract Deploy is Test {
             escrow,
             emergencyWithdrawalQueue,
             address(0), // forwarder
-            1, // l1 ratio
-            1, // l2 ratio
+            [1, 1], // layer ratios
             [uint256(0), uint256(200)], // withdrawal and AUM fees
             [uint256(1_000_000), uint256(100_000)]
         );

@@ -54,8 +54,7 @@ contract Deploy is Script, Base {
                 escrow,
                 queue,
                 address(forwarder),
-                9,
-                1,
+                [9, 1],
                 fees,
                 ewqParams
             )

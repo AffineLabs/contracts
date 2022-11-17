@@ -44,24 +44,23 @@ contract L2Vault is
 
     function initialize(
         address _governance,
-        ERC20 _token,
+        ERC20 _vaultAsset,
         address _wormholeRouter,
         L2BridgeEscrow _bridgeEscrow,
         EmergencyWithdrawalQueue _emergencyWithdrawalQueue,
         address forwarder,
-        uint8 _l1Ratio,
-        uint8 _l2Ratio,
+        uint8[2] memory layerRatios,
         uint256[2] memory fees,
         uint256[2] memory ewqParams
     ) public initializer {
         __ERC20_init("USD Earn", "usdEarn");
         __UUPSUpgradeable_init();
         __Pausable_init();
-        baseInitialize(_governance, _token, _wormholeRouter, _bridgeEscrow);
+        baseInitialize(_governance, _vaultAsset, _wormholeRouter, _bridgeEscrow);
 
         emergencyWithdrawalQueue = _emergencyWithdrawalQueue;
-        l1Ratio = _l1Ratio;
-        l2Ratio = _l2Ratio;
+        l1Ratio = layerRatios[0];
+        l2Ratio = layerRatios[1];
         rebalanceDelta = 10_000 * _asset.decimals();
         canTransferToL1 = true;
         canRequestFromL1 = true;
