@@ -2,7 +2,7 @@
   "testnet": {
     "l1": {
       "chainManager": "0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74",
-      "erc20Predicate": "0x37c3bfC05d5ebF9EBb3FF80ce0bd0133Bf221BC8",
+      "erc20Predicate": "0xdD6596F2029e6233DEFfaCa316e6A95217d4Dc34",
       "governance": "0xdbA49884464689800BF95C7BbD50eBA0DA0F67b9",
       "usdc": "0xb465fBFE1678fF41CD3D749D54d2ee2CfABE06F3",
       "wormhole": "0x706abc4E45D419950511e474C7B9Ed348A4a716c"
@@ -31,12 +31,12 @@
       "usdc": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
       "wormhole": "0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B",
       "chainManager": "0xA0c68C638235ee32657e8f720a23ceC1bFc77C77",
-      "ERC20Predicate": "0x9923263fA127b3d1484cFD649df8f1831c2A74e4"
+      "erc20Predicate": "0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf"
     },
     "l2": {
       "governance": "0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0",
       "usdc": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
-      "wormhole": "0x0CBE91CF822c73C2315FB05100C2F714765d5c20",
+      "wormhole": "0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7",
       "withdrawFee": 0,
       "managementFee": 0,
       "ewqMinAssets": 1000000,
