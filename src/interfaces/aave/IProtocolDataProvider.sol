@@ -3,6 +3,7 @@ pragma solidity =0.8.16;
 
 import {ILendingPoolAddressesProvider} from "./ILendingPoolAddressesProvider.sol";
 
+/*solhint-disable func-name-mixedcase */
 interface IProtocolDataProvider {
     struct TokenData {
         string symbol;

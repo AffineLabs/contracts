@@ -89,7 +89,7 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     function afterReceive() external {
         require(msg.sender == address(bridgeEscrow), "L1: only escrow");
         received = true;
-        // Whenever we receive funds from L1, immediately deposit them all into strategies
+        // Whenever we receive funds from L2, immediately deposit them all into strategies
         _depositIntoStrategies(_asset.balanceOf(address(this)));
     }
 }

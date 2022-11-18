@@ -113,7 +113,7 @@ contract Deploy is Script, Base {
                 address(router),
                 escrow,
                 IRootChainManager(config.chainManager),
-                config.ERC20Predicate
+                config.erc20Predicate
             )
         );
 
@@ -122,7 +122,7 @@ contract Deploy is Script, Base {
         require(vault.asset() == config.usdc);
         require(vault.governance() == config.governance);
         require(address(vault.chainManager()) == config.chainManager);
-        require(vault.predicate() == config.ERC20Predicate);
+        require(vault.predicate() == config.erc20Predicate);
 
         // Deploy helper contracts (escrow and router)
         create3.deploy(

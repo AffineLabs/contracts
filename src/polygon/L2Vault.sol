@@ -452,11 +452,11 @@ contract L2Vault is
     function lockedTVL() public view returns (uint256) {
         uint256 _maxLockedTVL = maxLockedTVL;
         uint256 _lastTVLUpdate = lastTVLUpdate;
-        if (block.timestamp >= _lastTVLUpdate + lockInterval) {
+        if (block.timestamp >= _lastTVLUpdate + LOCK_INTERVAL) {
             return 0;
         }
 
-        uint256 unlockedTVL = (_maxLockedTVL * (block.timestamp - _lastTVLUpdate)) / lockInterval;
+        uint256 unlockedTVL = (_maxLockedTVL * (block.timestamp - _lastTVLUpdate)) / LOCK_INTERVAL;
         return _maxLockedTVL - unlockedTVL;
     }
 
