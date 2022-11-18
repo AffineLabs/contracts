@@ -96,12 +96,12 @@ $ slither .
 
 ### Running a Hardhat Script
 
-To run a script run `yarn script <script>`. Pass in the ethereum and polygon networks you want to use with the `-eth` and `-p` flags. The two network names will be in the `ETH_NETWORK` and `POLYGON_NETWORK` environment variables. In the script, use `hre.changeNetwork` to change the current network. If run without the `--no-fork` flag `yarn script` will bring up two anvil nodes, one which forks the selected ethereum network, and one which forks the selected polygon network.
+To run a script run `yarn script <script>`. Pass in the ethereum and polygon networks you want to use with the `-eth` and `-p` flags. The two network names will be in the `ETH_NETWORK` and `POLYGON_NETWORK` environment variables. In the script, use `hre.changeNetwork` to change the current network. If run without the `--no-fork` flag `yarn script` will bring up two anvil nodes, one which forks the selected ethereum network, and one which forks the selected polygon network. If run with `--relay` then OZ Relayer will be used to send any transactions.
 
 To run the rebalance script against testnets:
 
 ```sh
-$ yarn script scripts/rebalance.ts -eth goerli -p mumbai
+$ yarn script scripts/rebalance.ts -eth goerli -p mumbai --no-fork
 ```
 
 ### Deploying the Contracts
@@ -113,4 +113,4 @@ Add -b to actually deploy the contracts
 
 ## Documentation
 
-You can find documentation (auto-generated from Natspec comments) in the `docs/` folder. You'll need to run `yarn` first to build the docs.
+You can find documentation (auto-generated from Natspec comments) in the `docs/` folder. You'll need to run `yarn hardhat dodoc` first to build the docs.

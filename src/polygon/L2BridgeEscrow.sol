@@ -25,8 +25,7 @@ contract L2BridgeEscrow is BridgeEscrow {
         IChildERC20(address(asset)).withdraw(amount);
     }
 
-    function _clear(uint256 amount, bytes calldata exitProof) internal override {
-        exitProof;
+    function _clear(uint256 amount, bytes calldata /* exitProof */ ) internal override {
         uint256 balance = asset.balanceOf(address(this));
         require(balance >= amount, "BE: Funds not received");
         asset.safeTransfer(address(vault), balance);
