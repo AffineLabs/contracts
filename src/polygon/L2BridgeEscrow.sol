@@ -26,6 +26,7 @@ contract L2BridgeEscrow is BridgeEscrow {
     }
 
     function _clear(uint256 amount, bytes calldata exitProof) internal override {
+        exitProof;
         uint256 balance = asset.balanceOf(address(this));
         require(balance >= amount, "BE: Funds not received");
         asset.safeTransfer(address(vault), balance);
