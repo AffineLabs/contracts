@@ -51,8 +51,10 @@ contract DeltaNeutralV3Test is TestPlus {
         pool // WMATIC/USDC
         );
 
-        vm.prank(governance);
+        vm.startPrank(governance);
         vault.addStrategy(strategy, 5000);
+        strategy.grantRole(strategy.STRATEGIST_ROLE(), address(this));
+        vm.stopPrank();
 
         asset = usdc;
         borrowAsset = strategy.borrowAsset();
@@ -85,7 +87,7 @@ contract DeltaNeutralV3Test is TestPlus {
         deal(address(asset), address(strategy), 1000e6);
         strategy.startPosition(tickLow, tickHigh, slippageBps);
 
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert();
         vm.prank(alice);
         strategy.endPosition(slippageBps);
 
