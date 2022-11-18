@@ -111,6 +111,7 @@ contract Deploy is Script, Base {
     function _deployStrategies(Base.L2Config memory config, L2Vault vault) internal {
         L2AAVEStrategy aave = new L2AAVEStrategy(vault, config.aaveRegistry);
         require(address(aave.asset()) == vault.asset());
+
         DeltaNeutralLp sslp = new DeltaNeutralLp(
             vault,
             0.001e18, // long pct
