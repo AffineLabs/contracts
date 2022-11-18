@@ -4,7 +4,7 @@ pragma solidity =0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
-import {SlippageUtils} from "../libs/SlippageUtils.sol";
+import {SlippageUtils} from "./libs/SlippageUtils.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
@@ -15,11 +15,11 @@ import {
     ILendingPoolAddressesProvider,
     ILendingPool,
     IProtocolDataProvider
-} from "../interfaces/aave.sol";
-import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
-import {BaseVault} from "../BaseVault.sol";
-import {BaseStrategy} from "../BaseStrategy.sol";
-import {IMasterChef} from "../interfaces/sushiswap/IMasterChef.sol";
+} from "./interfaces/aave.sol";
+import {AggregatorV3Interface} from "./interfaces/AggregatorV3Interface.sol";
+import {BaseVault} from "./BaseVault.sol";
+import {BaseStrategy} from "./BaseStrategy.sol";
+import {IMasterChef} from "./interfaces/sushiswap/IMasterChef.sol";
 
 contract DeltaNeutralLp is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
@@ -34,7 +34,9 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         AggregatorV3Interface _borrowAssetFeed,
         IUniswapV2Router02 _router,
         IMasterChef _masterChef,
-        uint256 _masterChefPid
+        uint256 _masterChefPid,
+        bool _useMasterChefV2,
+        ERC20 _sushiToken
     ) BaseStrategy(_vault) {
         _grantRole(DEFAULT_ADMIN_ROLE, vault.governance());
         _grantRole(STRATEGIST_ROLE, vault.governance());
@@ -55,7 +57,8 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
 
         masterChef = _masterChef;
         masterChefPid = _masterChefPid;
-        sushiToken = ERC20(_masterChef.sushi());
+        sushiToken = _sushiToken;
+        useMasterChefV2 = _useMasterChefV2;
 
         // Depositing/withdrawing/repaying debt from lendingPool
         asset.safeApprove(address(lendingPool), type(uint256).max);
@@ -153,6 +156,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     IMasterChef public masterChef;
     uint256 public masterChefPid;
     ERC20 public sushiToken;
+    bool public useMasterChefV2;
 
     event PositionStart(
         uint32 indexed position,
@@ -289,8 +293,11 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         _exportMetricInfo(5);
 
         // Deposit to MasterChef for additional SUSHI rewards.
-        masterChef.deposit(masterChefPid, abPair.balanceOf(address(this)));
-
+        if (useMasterChefV2) {
+            masterChef.deposit(masterChefPid, abPair.balanceOf(address(this)), address(this));
+        } else {
+            masterChef.deposit(masterChefPid, abPair.balanceOf(address(this)));
+        }
         _exportMetricInfo(6);
     }
 
@@ -327,8 +334,11 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         uint256 borrowPrice = _chainlinkPriceOfBorrow();
 
         uint256 depositedSLPAmount = masterChef.userInfo(masterChefPid, address(this)).amount;
-        masterChef.withdraw(masterChefPid, depositedSLPAmount);
-
+        if (useMasterChefV2) {
+            masterChef.withdrawAndHarvest(masterChefPid, depositedSLPAmount, address(this));
+        } else {
+            masterChef.withdraw(masterChefPid, depositedSLPAmount);
+        }
         _exportMetricInfo(8);
 
         // Remove liquidity

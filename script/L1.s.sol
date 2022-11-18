@@ -27,7 +27,7 @@ import {ConvexStrategy} from "../src/ethereum/ConvexStrategy.sol";
 import {ICurvePool} from "../src/interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "../src/interfaces/convex.sol";
 
-import {DeltaNeutralLp} from "../src/ethereum/DeltaNeutralLp.sol";
+import {DeltaNeutralLp} from "../src/DeltaNeutralLp.sol";
 import {AggregatorV3Interface} from "../src/interfaces/AggregatorV3Interface.sol";
 import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol";
 import {IMasterChef} from "../src/interfaces/sushiswap/IMasterChef.sol";
@@ -80,7 +80,9 @@ contract Deploy is Script, Base {
             AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419),
             IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F),
             IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd),
-            masterChefPID);
+            masterChefPID,
+            false,
+            ERC20(0x6B3595068778DD592e39A122f4f5a5cF09C90fE2));
         require(address(dnlp.asset()) == vault.asset());
     }
 
