@@ -127,6 +127,8 @@ contract CurveStrategy is BaseStrategy, AccessControl {
 
         // Withdraw from gauge if needed to get correct amount of lp tokens
         if (maxLpTokensToBurn > currLpBal) {
+            // Foundry doesn't like `gauge.withdraw` for some reason.
+            /* solhint-disable avoid-low-level-calls */
             (bool success1,) =
                 address(gauge).call(abi.encodeCall(ILiquidityGauge.withdraw, (maxLpTokensToBurn - currLpBal)));
             require(success1, "Crv: gauge withdraw");

@@ -2,7 +2,7 @@
   "testnet": {
     "l1": {
       "chainManager": "0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74",
-      "ERC20Predicate": "0x37c3bfC05d5ebF9EBb3FF80ce0bd0133Bf221BC8",
+      "erc20Predicate": "0x37c3bfC05d5ebF9EBb3FF80ce0bd0133Bf221BC8",
       "governance": "0xdbA49884464689800BF95C7BbD50eBA0DA0F67b9",
       "usdc": "0xb465fBFE1678fF41CD3D749D54d2ee2CfABE06F3",
       "wormhole": "0x706abc4E45D419950511e474C7B9Ed348A4a716c"
