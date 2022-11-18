@@ -59,12 +59,13 @@ contract L1CompoundStrategy is BaseStrategy, AccessControl {
      */
     function _divest(uint256 assets) internal override returns (uint256) {
         uint256 currAssets = balanceOfAsset();
-        uint256 withdrawAmount = currAssets >= assets ? 0 : assets - currAssets;
-        if (withdrawAmount == 0) return 0;
+        uint256 assetsReq = currAssets >= assets ? 0 : assets - currAssets;
 
         // Withdraw the needed amount
-        uint256 amountToRedeem = Math.min(withdrawAmount, cToken.balanceOfUnderlying(address(this)));
-        cToken.redeemUnderlying(amountToRedeem);
+        if (assetsReq != 0) {
+            uint256 assetsToWithdraw = Math.min(assetsReq, cToken.balanceOfUnderlying(address(this)));
+            cToken.redeemUnderlying(assetsToWithdraw);
+        }
 
         uint256 amountToSend = Math.min(assets, balanceOfAsset());
         asset.safeTransfer(address(vault), amountToSend);
