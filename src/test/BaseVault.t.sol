@@ -61,9 +61,9 @@ contract BaseVaultTest is TestPlus {
         assertTrue(newStrategy1.balanceOfAsset() != 0);
         BaseStrategy[] memory strategies = new BaseStrategy[](1);
         strategies[0] = newStrategy1;
-        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
         vault.harvest(strategies);
-        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
         assert(vault.vaultTVL() == 1000);
         assert(vault.lockedProfit() == 0);
     }
@@ -104,7 +104,7 @@ contract BaseVaultTest is TestPlus {
         // Harvest
         BaseStrategy[] memory strategies = new BaseStrategy[](1);
         strategies[0] = strategy;
-        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
         vault.harvest(strategies);
 
         // Divest (make sure divest is called on the strategy)
@@ -145,7 +145,7 @@ contract BaseVaultTest is TestPlus {
         vault.addStrategy(newStrategy1, 10);
         BaseStrategy[] memory strategies = new BaseStrategy[](1);
         strategies[0] = newStrategy1;
-        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
         vault.harvest(strategies);
         vault.liquidate(10);
         assertTrue(token.balanceOf(address(vault)) == 10);
@@ -168,7 +168,7 @@ contract BaseVaultTest is TestPlus {
         BaseStrategy[] memory strategies = new BaseStrategy[](2);
         strategies[0] = strat1;
         strategies[1] = strat2;
-        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
         vault.harvest(strategies);
 
         vault.rebalance();
@@ -196,7 +196,7 @@ contract BaseVaultTest is TestPlus {
         BaseStrategy[] memory strategies = new BaseStrategy[](2);
         strategies[0] = strat1;
         strategies[1] = strat2;
-        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
         vault.harvest(strategies);
 
         vault.rebalance();

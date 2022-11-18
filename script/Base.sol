@@ -9,7 +9,7 @@ abstract contract Base is Script {
 
     struct L1Config {
         address chainManager;
-        address ERC20Predicate;
+        address erc20Predicate;
         address governance;
         address usdc;
         address wormhole;

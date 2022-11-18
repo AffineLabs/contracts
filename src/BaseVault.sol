@@ -133,7 +133,7 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
      * @param newQueue The new withdrawal queue.
      */
     function setWithdrawalQueue(Strategy[MAX_STRATEGIES] calldata newQueue) external onlyGovernance {
-        // Ensure the new queue is not larger than the maximum queue size.
+        // Maintain queue size
         require(newQueue.length == MAX_STRATEGIES, "BV: bad qu size");
 
         // Replace the withdrawal queue.
@@ -309,6 +309,9 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
     }
 
     function _depositIntoStrategy(Strategy strategy, uint256 assets) internal {
+        // Don't allow empty investments
+        if (assets == 0) return;
+
         // Increase totalStrategyHoldings to account for the deposit.
         totalStrategyHoldings += assets;
 
@@ -374,7 +377,7 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
     /// @notice The amount of profit *originally* locked after harvesting from a strategy
     uint128 public maxLockedProfit;
     /// @notice Amount of time in seconds that profit takes to fully unlock. See lockedProfit().
-    uint256 public constant lockInterval = 24 hours;
+    uint256 public constant LOCK_INTERVAL = 24 hours;
 
     /**
      * @notice Emitted after a successful harvest.
@@ -390,7 +393,7 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
      */
     function harvest(Strategy[] calldata strategyList) external onlyRole(HARVESTER) {
         // Profit must not be unlocking
-        require(block.timestamp >= lastHarvest + lockInterval, "BV: profit unlocking");
+        require(block.timestamp >= lastHarvest + LOCK_INTERVAL, "BV: profit unlocking");
 
         // Get the Vault's current total strategy holdings.
         uint256 oldTotalStrategyHoldings = totalStrategyHoldings;
@@ -446,14 +449,14 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
 
     /**
      * @notice Current locked profit amount.
-     * @dev Profit unlocks uniformly over `lockInterval` seconds after the last harvest
+     * @dev Profit unlocks uniformly over `LOCK_INTERVAL` seconds after the last harvest
      */
     function lockedProfit() public view virtual returns (uint256) {
-        if (block.timestamp >= lastHarvest + lockInterval) {
+        if (block.timestamp >= lastHarvest + LOCK_INTERVAL) {
             return 0;
         }
 
-        uint256 unlockedProfit = (maxLockedProfit * (block.timestamp - lastHarvest)) / lockInterval;
+        uint256 unlockedProfit = (maxLockedProfit * (block.timestamp - lastHarvest)) / LOCK_INTERVAL;
         return maxLockedProfit - unlockedProfit;
     }
 
