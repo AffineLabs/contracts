@@ -17,7 +17,7 @@ contract L2AAVEStrategy is BaseStrategy {
 
     /// @notice The lending pool. We'll call deposit, withdraw, etc. on this.
     ILendingPool public immutable lendingPool;
-    // Corresponding AAVE asset (USDC -> aUSDC)
+    /// @notice Corresponding AAVE asset (USDC -> aUSDC)
     ERC20 public immutable aToken;
 
     constructor(BaseVault _vault, address _registry) BaseStrategy(_vault) {
@@ -35,6 +35,7 @@ contract L2AAVEStrategy is BaseStrategy {
      *
      */
     function _afterInvest(uint256 amount) internal override {
+        if (amount == 0) return;
         lendingPool.deposit(address(asset), amount, address(this), 0);
     }
 
@@ -43,9 +44,15 @@ contract L2AAVEStrategy is BaseStrategy {
      *
      */
     function _divest(uint256 assets) internal override returns (uint256) {
+        // Withdraw only the needed amounts from the lending pool
         uint256 currAssets = balanceOfAsset();
-        uint256 withdrawAmount = currAssets >= assets ? 0 : assets - currAssets;
-        lendingPool.withdraw(address(asset), withdrawAmount, address(this));
+        uint256 assetsReq = currAssets >= assets ? 0 : assets - currAssets;
+
+        // Don't try to withdraw more aTokens than we actually have
+        if (assetsReq != 0) {
+            uint256 assetsToWithdraw = Math.min(assetsReq, aToken.balanceOf(address(this)));
+            lendingPool.withdraw(address(asset), assetsToWithdraw, address(this));
+        }
 
         uint256 amountToSend = Math.min(assets, balanceOfAsset());
         asset.safeTransfer(address(vault), amountToSend);

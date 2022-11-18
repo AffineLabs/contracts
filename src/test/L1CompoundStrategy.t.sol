@@ -40,7 +40,7 @@ contract CompoundStratTest is TestPlus {
         );
 
         // To be able to call functions restricted to strategist role.
-        vm.startPrank(vault.governance());
+        vm.startPrank(governance);
         strategy.grantRole(strategy.STRATEGIST(), address(this));
         vm.stopPrank();
     }
@@ -48,6 +48,16 @@ contract CompoundStratTest is TestPlus {
     function depositOneUSDCToVault() internal {
         // Give the Vault 1 usdc
         deal(address(usdc), address(vault), oneUSDC, true);
+    }
+
+    function _depositIntoStrat(uint256 assets) internal {
+        // This testnet usdc has a totalSupply of  the max uint256, so we set `adjust` to false
+        deal(address(usdc), address(this), assets, true);
+        usdc.approve(address(strategy), type(uint256).max);
+
+        // NOTE: deal does not work with aTokens, so we need to deposit into the lending pool to get aTokens
+        // See https://github.com/foundry-rs/forge-std/issues/140
+        strategy.invest(assets);
     }
 
     function investHalfOfVaultAssetInCompund() internal {
@@ -135,6 +145,35 @@ contract CompoundStratTest is TestPlus {
         assertEq(usdc.balanceOf(address(vault)), 2e6);
         assertEq(usdc.balanceOf(address(strategy)), 0);
         assertEq(strategy.cToken().balanceOfUnderlying(address(strategy)), 1e6);
+    }
+
+    // We can attempt to divest more than our balance of aTokens
+    function testDivestMoreThanTVL() public {
+        _depositIntoStrat(1e6);
+
+        vm.prank(address(vault));
+        strategy.divest(2e6);
+
+        assertApproxEqAbs(vault.vaultTVL(), 1e6, 2);
+        // assertEq(vault.vaultTVL(), 1e6);
+        assertEq(strategy.totalLockedValue(), 0);
+    }
+
+    function testDivestLessThanFloat() public {
+        // If we try to divest $1 when we already have $2, we don't bother with the cToken and just
+        // transfer from the usdc we have
+        // Give the strategy 3 usdc
+        deal(address(usdc), address(strategy), 3e6, false);
+
+        vm.prank(address(vault));
+        strategy.divest(2e6);
+
+        assertEq(vault.vaultTVL(), 2e6);
+        assertEq(strategy.totalLockedValue(), 1e6);
+    }
+
+    function testCanInvestZero() public {
+        _depositIntoStrat(0);
     }
 
     function testCanSellRewards() public {
