@@ -22,6 +22,7 @@ abstract contract DeltaNeutralTestBase is TestPlus {
     ERC20 abPair;
     ERC20 asset;
     ERC20 borrowAsset;
+    uint256 masterChefPid;
 
     uint256 public constant IDEAL_SLIPPAGE_BPS = 200;
 
@@ -140,6 +141,41 @@ abstract contract DeltaNeutralTestBase is TestPlus {
         assertApproxEqRel(asset.balanceOf(address(vault)), 1000e6, 0.01e18);
     }
 
+    function testClaimRewards() public {
+        // If there's no position active, we just send our current balance
+        deal(address(asset), address(strategy), 1);
+        vm.prank(address(vault));
+        strategy.divest(1);
+        assertEq(asset.balanceOf(address(vault)), 1);
+
+        deal(address(asset), address(strategy), 1000e6);
+
+        vm.prank(vault.governance());
+        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
+
+        vm.roll(block.number + 1000);
+        vm.warp(block.timestamp + 1 days);
+        if (strategy.useMasterChefV2()) {
+            // Update pool to be able to harvest sushi rewards.
+            strategy.masterChef().updatePool(strategy.masterChefPid());
+        }
+
+        // We unwind position if there is a one
+        changePrank(address(vault));
+        strategy.divest(type(uint256).max);
+
+        uint256 sushiBalance = strategy.sushiToken().balanceOf(address(strategy));
+        emit log_named_uint("[Pre] Suhsi balance", sushiBalance);
+        assertGt(sushiBalance, 0);
+
+        changePrank(vault.governance());
+        strategy.claimRewards(IDEAL_SLIPPAGE_BPS);
+
+        sushiBalance = strategy.sushiToken().balanceOf(address(strategy));
+        emit log_named_uint("[Post] Suhsi balance", sushiBalance);
+        assertEq(sushiBalance, 0);
+    }
+
     function testTVLFuzz(uint64 assets) public {
         // Max borrowable WETH available in AAVE in this block is around 1334.66 WETH or 2178919.22 USDC.
         // So technically we should be able to take position with around 2178919.22 / ((4 / 7) * (3 / 4)) = 5084144.84 USDC
@@ -191,37 +227,6 @@ contract L1DeltaNeutralTest is DeltaNeutralTestBase {
         abPair = strategy.abPair();
         asset = usdc;
         borrowAsset = strategy.borrowAsset();
-    }
-
-    // TODO: Fix this test for L2.
-    function testClaimRewards() public {
-        // If there's no position active, we just send our current balance
-        deal(address(asset), address(strategy), 1);
-        vm.prank(address(vault));
-        strategy.divest(1);
-        assertEq(asset.balanceOf(address(vault)), 1);
-
-        deal(address(asset), address(strategy), 1000e6);
-
-        vm.prank(vault.governance());
-        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
-
-        vm.roll(block.number + 1000);
-
-        // We unwind position if there is a one
-        changePrank(address(vault));
-        strategy.divest(type(uint256).max);
-
-        uint256 sushiBalance = strategy.sushiToken().balanceOf(address(strategy));
-        emit log_named_uint("[Pre] Suhsi balance", sushiBalance);
-        assertGt(sushiBalance, 0);
-
-        changePrank(vault.governance());
-        strategy.claimRewards(IDEAL_SLIPPAGE_BPS);
-
-        sushiBalance = strategy.sushiToken().balanceOf(address(strategy));
-        emit log_named_uint("[Post] Suhsi balance", sushiBalance);
-        assertEq(sushiBalance, 0);
     }
 }
 
