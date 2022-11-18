@@ -188,11 +188,11 @@ contract L2VaultTest is TestPlus {
 
         // call to balanceOfAsset in harvest() will return 1e18
         vm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfAsset.selector), abi.encode(1e18));
-        // block.timestamp must be >= lastHarvest + lockInterval when harvesting
-        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        // block.timestamp must be >= lastHarvest + LOCK_INTERVAL when harvesting
+        vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
 
         // Call harvest to update lastHarvest, note that no shares are minted here because
-        // (block.timestamp - lastHarvest) = lockInterval + 1 =  3 hours + 1 second
+        // (block.timestamp - lastHarvest) = LOCK_INTERVAL + 1 =  3 hours + 1 second
         // and feeBps gets truncated to zero
         BaseStrategy[] memory strategyList = new BaseStrategy[](1);
         strategyList[0] = BaseStrategy(address(this));
@@ -216,8 +216,8 @@ contract L2VaultTest is TestPlus {
 
         // call to balanceOfAsset in harvest() will return 1e18
         vm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfAsset.selector), abi.encode(1e18));
-        // block.timestamp must be >= lastHarvest + lockInterval when harvesting
-        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        // block.timestamp must be >= lastHarvest + LOCK_INTERVAL when harvesting
+        vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
 
         asset.mint(address(myStrat), 1e18);
         asset.approve(address(vault), type(uint256).max);
@@ -229,8 +229,8 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.lockedProfit(), 1e18);
         assertEq(vault.totalAssets(), 0);
 
-        // Using up 50% of lockInterval unlocks 50% of profit
-        vm.warp(block.timestamp + vault.lockInterval() / 2);
+        // Using up 50% of LOCK_INTERVAL unlocks 50% of profit
+        vm.warp(block.timestamp + vault.LOCK_INTERVAL() / 2);
         assertEq(vault.lockedProfit(), 1e18 / 2);
         assertEq(vault.totalAssets(), 1e18 / 2);
     }
@@ -295,13 +295,13 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.lockedTVL(), 100);
         assertEq(vault.totalAssets(), 0);
 
-        // Using up 50% of lockInterval unlocks 50% of tvl
-        vm.warp(block.timestamp + vault.lockInterval() / 2);
+        // Using up 50% of LOCK_INTERVAL unlocks 50% of tvl
+        vm.warp(block.timestamp + vault.LOCK_INTERVAL() / 2);
         assertEq(vault.lockedTVL(), 50);
         assertEq(vault.totalAssets(), 50);
 
         // Using up all of lock interval unlocks all of tvl
-        vm.warp(block.timestamp + vault.lockInterval());
+        vm.warp(block.timestamp + vault.LOCK_INTERVAL());
         assertEq(vault.lockedTVL(), 0);
         assertEq(vault.totalAssets(), 100);
     }

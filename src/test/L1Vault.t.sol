@@ -83,7 +83,7 @@ contract L1VaultTest is TestPlus {
 
         BaseStrategy[] memory strategies = new BaseStrategy[](1);
         strategies[0] = newStrategy1;
-        vm.warp(vault.lastHarvest() + vault.lockInterval() + 1);
+        vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
 
         vault.harvest(strategies);
         assertEq(vault.lockedProfit(), 0);
