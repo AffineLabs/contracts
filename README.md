@@ -3,7 +3,7 @@
 This repository contains the core smart contracts for the Affine Protocol.
 
 ## Licensing
-The primary license for Affine Protocol is the Business Source License 1.1, see [LICENSE].
+The primary license for Affine Protocol is the Business Source License 1.1, see [LICENSE](LICENSE).
 
 ## Governance 
 The Protocol currently controls access to these two multi-sig addresses: 
