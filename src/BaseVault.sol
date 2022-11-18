@@ -309,6 +309,9 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
     }
 
     function _depositIntoStrategy(Strategy strategy, uint256 assets) internal {
+        // Don't allow empty investments
+        if (assets == 0) return;
+
         // Increase totalStrategyHoldings to account for the deposit.
         totalStrategyHoldings += assets;
 
