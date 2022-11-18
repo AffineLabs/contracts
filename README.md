@@ -3,28 +3,19 @@
 This repository contains the core smart contracts for the Affine Protocol.
 
 ## Licensing
+
 The primary license for Affine Protocol is the Business Source License 1.1, see [LICENSE](LICENSE).
 
-## Governance 
-The Protocol currently controls access to these two multi-sig addresses: 
+## Governance
 
-* Polygon: 0x47C43be6e8B0a171eab00e42226aE2d1cEFC00fB
-* Ethereum: 0x67Ec3Bb25a5DB6eB7Ba74f6C0b2bA193A3983FB8
+The Protocol currently controls access to these two multi-sig addresses:
+
+- Polygon: 0x47C43be6e8B0a171eab00e42226aE2d1cEFC00fB
+- Ethereum: 0x67Ec3Bb25a5DB6eB7Ba74f6C0b2bA193A3983FB8
 
 ## Branches and Deployment
-The `master` branch is what is currently deployed.  The last audit was conducted against the contents of the branch `audit-v4`.
 
-
-Uses
-
-- [Hardhat](https://github.com/nomiclabs/hardhat): compile and run the smart contracts on a local development network
-- [TypeChain](https://github.com/ethereum-ts/TypeChain): generate TypeScript types for smart contracts
-- [Ethers](https://github.com/ethers-io/ethers.js/): renowned Ethereum library and wallet implementation
-- [Waffle](https://github.com/EthWorks/Waffle): tooling for writing comprehensive smart contract tests
-- [Solhint](https://github.com/protofire/solhint): linter
-- [Prettier Plugin Solidity](https://github.com/prettier-solidity/prettier-plugin-solidity): code formatter
-
-This hardhat project is based on [this template](https://github.com/amanusk/hardhat-template).
+The `master` branch is what is currently deployed. The last audit was conducted against the contents of the branch `audit-v4`.
 
 ## Pre Requisites
 
@@ -59,8 +50,8 @@ yarn install
 Install slither with these [instructions](https://github.com/crytic/slither#using-pip). Install [solc-select](https://github.com/crytic/solc-select#quickstart). Update your solc version with:
 
 ```sh
-solc-select install 0.8.10
-solc-select use 0.8.10
+solc-select install 0.8.16
+solc-select use 0.8.16
 ```
 
 ## Usage
@@ -76,12 +67,6 @@ $ yarn build
 ```
 
 ### Test
-
-Run the Mocha tests:
-
-```sh
-$ yarn test-hh path/to/test
-```
 
 Run the solidity tests
 
@@ -111,12 +96,12 @@ $ slither .
 
 ### Running a Hardhat Script
 
-To run a script run `yarn script <script>`. Pass in the ethereum and polygon networks you want to use with the `-eth` and `-p` flags. The two network names will be in the `ETH_NETWORK` and `POLYGON_NETWORK` environment variables. In the script, use `hre.changeNetwork` to change the current network. If run without the `--no-fork` flag `yarn script` will bring up two hardhat nodes, one which forks the selected ethereum network, and one which forks the selected polygon network.
+To run a script run `yarn script <script>`. Pass in the ethereum and polygon networks you want to use with the `-eth` and `-p` flags. The two network names will be in the `ETH_NETWORK` and `POLYGON_NETWORK` environment variables. In the script, use `hre.changeNetwork` to change the current network. If run without the `--no-fork` flag `yarn script` will bring up two anvil nodes, one which forks the selected ethereum network, and one which forks the selected polygon network.
 
-To deploy the contracts to forked versions of ropsten and mumbai run
+To run the rebalance script against testnets:
 
 ```sh
-$ yarn script scripts/deploy-all.ts -eth ropsten -p mumbai
+$ yarn script scripts/rebalance.ts -eth goerli -p mumbai
 ```
 
 ### Deploying the Contracts
@@ -125,12 +110,6 @@ Testnet: `yarn ts-node scripts/deploy.ts -l <1 or 2> -t`
 Mainnet: `yarn ts-node scripts/deploy.ts -l <1 or 2>`
 
 Add -b to actually deploy the contracts
-
-### Validate a contract with etherscan
-
-```
-yarn hardhat verify --network <network> <DEPLOYED_CONTRACT_ADDRESS> "Constructor argument 1"
-```
 
 ## Documentation
 
