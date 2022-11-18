@@ -1,4 +1,18 @@
-# Multiplyr Contracts
+# Affine Protocol
+
+This repository contains the core smart contracts for the Affine Protocol.
+
+## Licensing
+The primary license for Affine Protocol is the Business Source License 1.1, see [LICENSE].
+
+## Governance 
+The Protocol currently controls access to these two multi-sig addresses: 
+Polygon: 0x47C43be6e8B0a171eab00e42226aE2d1cEFC00fB
+Ethereum: 0x67Ec3Bb25a5DB6eB7Ba74f6C0b2bA193A3983FB8
+
+## Branches and Deployment
+The `master` branch is what is currently deployed.  The last audit was conducted against the contents of the branch `audit-v4`.
+
 
 Uses
 
