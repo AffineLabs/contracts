@@ -23,6 +23,8 @@ import {L2AAVEStrategy} from "../src/polygon/L2AAVEStrategy.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol";
 
+import {IMasterChef} from "../src/interfaces/sushiswap/IMasterChef.sol";
+import {DeltaNeutralLp} from "../src/DeltaNeutralLp.sol";
 import {DeltaNeutralLpV3} from "../src/polygon/DeltaNeutralLpV3.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
@@ -110,7 +112,21 @@ contract Deploy is Script, Base {
         L2AAVEStrategy aave = new L2AAVEStrategy(vault, config.aaveRegistry);
         require(address(aave.asset()) == vault.asset());
 
-        DeltaNeutralLpV3 sslp = new DeltaNeutralLpV3(
+        DeltaNeutralLp sslp = new DeltaNeutralLp(
+            vault,
+            0.001e18, // long pct
+            ILendingPoolAddressesProviderRegistry(0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19),
+            ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619), // wrapped eth
+            AggregatorV3Interface(0xF9680D99D6C9589e2a93a78A04A279e509205945),
+            IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506), // sushiswap router
+            IMasterChef(0x0769fd68dFb93167989C6f7254cd0D766Fb2841F), // MasterChef
+            1, // Masterchef PID
+            true, // use MasterChefV2 interface
+            ERC20(0x0b3F868E0BE5597D5DB7fEB59E1CADBb0fdDa50a)
+        );
+        require(address(sslp.asset()) == vault.asset());
+
+        DeltaNeutralLpV3 sslpV3 = new DeltaNeutralLpV3(
             vault,
             0.05e18,
             0.001e18,
@@ -121,7 +137,7 @@ contract Deploy is Script, Base {
             INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
             IUniswapV3Pool(0xA374094527e1673A86dE625aa59517c5dE346d32) // WMATIC/USDC
         );
-        require(address(sslp.asset()) == vault.asset());
+        require(address(sslpV3.asset()) == vault.asset());
     }
 
     function run() external {

@@ -171,7 +171,10 @@ async function _polygonDefender(forking: boolean, testnet: boolean) {
     const aaveStratAddr = txs[9].contractAddress;
     await addToAddressBookAndDefender(network, "PolygonAAVEStrategy", "L2AAVEStrategy", aaveStratAddr, [], false);
 
-    const sslpV3Addr = txs[10].contractAddress;
+    const sslpAddr = txs[10].contractAddress;
+    await addToAddressBookAndDefender(network, "PolygonSSLPSushiSwap", "DeltaNeutralLp", sslpAddr, [], true);
+
+    const sslpV3Addr = txs[11].contractAddress;
     await addToAddressBookAndDefender(network, "PolygonSSLPUniV3", "DeltaNeutralLpV3", sslpV3Addr, [], true);
   }
 }

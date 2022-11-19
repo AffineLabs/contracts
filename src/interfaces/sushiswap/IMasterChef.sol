@@ -18,11 +18,21 @@ interface IMasterChef {
         uint256 accSushiPerShare; // Accumulated SUSHI per share, times 1e12. See below.
     }
 
-    function sushi() external view returns (address);
     function poolLength() external view returns (uint256);
     function poolInfo(uint256 pid) external view returns (IMasterChef.PoolInfo memory);
     function userInfo(uint256 pid, address user) external view returns (IMasterChef.UserInfo memory);
     function totalAllocPoint() external view returns (uint256);
     function deposit(uint256 _pid, uint256 _amount) external;
     function withdraw(uint256 _pid, uint256 _amount) external;
+    // V2
+
+    struct PoolInfoV2 {
+        uint256 allocPoint; // How many allocation points assigned to this pool. SUSHI to distribute per block.
+        uint256 lastRewardTime; // Timestamp when SUSHI distribution occured.
+        uint256 accSushiPerShare; // Accumulated SUSHI per share, times 1e12. See below.
+    }
+
+    function deposit(uint256 _pid, uint256 _amount, address _to) external;
+    function withdrawAndHarvest(uint256 _pid, uint256 _amount, address _to) external;
+    function updatePool(uint256 _pid) external returns (IMasterChef.PoolInfoV2 memory);
 }

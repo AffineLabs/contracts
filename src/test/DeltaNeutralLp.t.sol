@@ -11,47 +11,20 @@ import {IUniswapV2Router01} from "@uniswap/v2-periphery/contracts/interfaces/IUn
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 
-import {L1Vault} from "../ethereum/L1Vault.sol";
-import {DeltaNeutralLp, ILendingPoolAddressesProviderRegistry} from "../ethereum/DeltaNeutralLp.sol";
+import {BaseVault} from "../BaseVault.sol";
+import {DeltaNeutralLp, ILendingPoolAddressesProviderRegistry} from "../DeltaNeutralLp.sol";
 import {IMasterChef} from "../interfaces/sushiswap/IMasterChef.sol";
 
-contract DeltaNeutralTest is TestPlus {
-    using stdStorage for StdStorage;
-
-    L1Vault vault;
+abstract contract DeltaNeutralTestBase is TestPlus {
+    BaseVault vault;
     DeltaNeutralLp strategy;
-    ERC20 usdc = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+    ERC20 usdc;
     ERC20 abPair;
     ERC20 asset;
     ERC20 borrowAsset;
+    uint256 masterChefPid;
 
     uint256 public constant IDEAL_SLIPPAGE_BPS = 200;
-
-    function setUp() public {
-        vm.createSelectFork("ethereum", 15_624_364);
-        vault = deployL1Vault();
-        uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
-        bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
-        vm.store(address(vault), bytes32(slot), tokenAddr);
-
-        strategy = new DeltaNeutralLp(
-        vault,
-        0.001e18,
-        ILendingPoolAddressesProviderRegistry(0x52D306e36E3B6B02c153d0266ff0f85d18BCD413),
-        ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2),
-        AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419),
-        IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F), // sushiswap router
-        IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd), // MasterChef
-        1 // Masterchef PID
-        );
-
-        vm.prank(governance);
-        vault.addStrategy(strategy, 5000);
-
-        abPair = strategy.abPair();
-        asset = usdc;
-        borrowAsset = strategy.borrowAsset();
-    }
 
     function testOnlyAddressWithStrategistRoleCanStartPosition() public {
         uint256 startAssets = 1000e6;
@@ -181,6 +154,11 @@ contract DeltaNeutralTest is TestPlus {
         strategy.startPosition(IDEAL_SLIPPAGE_BPS);
 
         vm.roll(block.number + 1000);
+        vm.warp(block.timestamp + 1 days);
+        if (strategy.useMasterChefV2()) {
+            // Update pool to be able to harvest sushi rewards.
+            strategy.masterChef().updatePool(strategy.masterChefPid());
+        }
 
         // We unwind position if there is a one
         changePrank(address(vault));
@@ -216,5 +194,71 @@ contract DeltaNeutralTest is TestPlus {
             strategy.endPosition(IDEAL_SLIPPAGE_BPS);
             assertApproxEqRel(strategy.totalLockedValue(), assets, 0.01e18);
         }
+    }
+}
+
+contract L1DeltaNeutralTest is DeltaNeutralTestBase {
+    using stdStorage for StdStorage;
+
+    function setUp() public {
+        vm.createSelectFork("ethereum", 15_624_364);
+        vault = deployL1Vault();
+        usdc = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+        uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
+        bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
+        vm.store(address(vault), bytes32(slot), tokenAddr);
+
+        strategy = new DeltaNeutralLp(
+        vault,
+        0.001e18,
+        ILendingPoolAddressesProviderRegistry(0x52D306e36E3B6B02c153d0266ff0f85d18BCD413),
+        ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2),
+        AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419),
+        IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F), // sushiswap router
+        IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd), // MasterChef
+        1, // Masterchef PID
+        false, // use MasterChefV1 interface
+        ERC20(0x6B3595068778DD592e39A122f4f5a5cF09C90fE2)
+        );
+
+        vm.prank(governance);
+        vault.addStrategy(strategy, 5000);
+
+        abPair = strategy.abPair();
+        asset = usdc;
+        borrowAsset = strategy.borrowAsset();
+    }
+}
+
+contract L2DeltaNeutralTest is DeltaNeutralTestBase {
+    using stdStorage for StdStorage;
+
+    function setUp() public {
+        vm.createSelectFork("polygon", 31_824_532);
+        vault = deployL2Vault();
+        usdc = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
+        uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
+        bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
+        vm.store(address(vault), bytes32(slot), tokenAddr);
+
+        strategy = new DeltaNeutralLp(
+        vault,
+        0.001e18,
+        ILendingPoolAddressesProviderRegistry(0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19),
+        ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619),
+        AggregatorV3Interface(0xF9680D99D6C9589e2a93a78A04A279e509205945),
+        IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506), // sushiswap router
+        IMasterChef(0x0769fd68dFb93167989C6f7254cd0D766Fb2841F), // MasterChef
+        1, // Masterchef PID
+        true, // use MasterChefV2 interface
+        ERC20(0x0b3F868E0BE5597D5DB7fEB59E1CADBb0fdDa50a)
+        );
+
+        vm.prank(governance);
+        vault.addStrategy(strategy, 5000);
+
+        abPair = strategy.abPair();
+        asset = usdc;
+        borrowAsset = strategy.borrowAsset();
     }
 }
