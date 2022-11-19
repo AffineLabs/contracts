@@ -127,8 +127,8 @@ async function _ethDefender(forking: boolean, testnet: boolean) {
     const cvxAddr = txs[6].contractAddress;
 
     await addToAddressBookAndDefender(ethNetwork, "L1CompoundStrategy", "L1CompoundStrategy", compAddr, [], false);
-    await addToAddressBookAndDefender(ethNetwork, "CurveStrategy", "CurveStrategy", curveAddr, [], false);
-    await addToAddressBookAndDefender(ethNetwork, "ConvexStrategy", "ConvexStrategy", cvxAddr, [], false);
+    await addToAddressBookAndDefender(ethNetwork, "CurveStrategy", "CurveStrategy", curveAddr, [], true);
+    await addToAddressBookAndDefender(ethNetwork, "ConvexStrategy", "ConvexStrategy", cvxAddr, [], true);
   }
 }
 

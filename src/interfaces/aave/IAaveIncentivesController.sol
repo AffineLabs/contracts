@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-/* solhint-disable func-name-mixedcase */
+/* zsolhint-disable func-name-mixedcase */
 interface IAaveIncentivesController {
     /**
      * @dev Returns the total of rewards of an user, already accrued + not yet accrued
