@@ -135,7 +135,7 @@ contract Deploy is Script, Base {
             AggregatorV3Interface(0xAB594600376Ec9fD91F8e885dADF0CE036862dE0), // matic/usd price feed
             ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
             INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
-            IUniswapV3Pool(0xA374094527e1673A86dE625aa59517c5dE346d32) // WMATIC/USDC
+            IUniswapV3Pool(0x45dDa9cb7c25131DF268515131f647d726f50608) // WETH/USDC
         );
         require(address(sslpV3.asset()) == vault.asset());
     }

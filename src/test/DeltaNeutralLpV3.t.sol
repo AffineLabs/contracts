@@ -25,7 +25,7 @@ contract DeltaNeutralV3Test is TestPlus {
     ERC20 borrowAsset;
     int24 tickLow;
     int24 tickHigh;
-    uint256 constant slippageBps = 200;
+    uint256 slippageBps = 300;
 
     function setUp() public {
         vm.createSelectFork("polygon", 31_824_532);
@@ -34,21 +34,24 @@ contract DeltaNeutralV3Test is TestPlus {
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
         vm.store(address(vault), bytes32(slot), tokenAddr);
 
-        IUniswapV3Pool pool = IUniswapV3Pool(0xA374094527e1673A86dE625aa59517c5dE346d32);
+        // weth/usdc pool
+        IUniswapV3Pool pool = IUniswapV3Pool(0x45dDa9cb7c25131DF268515131f647d726f50608);
         (, int24 tick,,,,,) = pool.slot0();
-        tickLow = tick - pool.tickSpacing() * 20;
-        tickHigh = tick + pool.tickSpacing() * 20;
+        int24 tSpace = pool.tickSpacing();
+        int24 usableTick = (tick / tSpace) * tSpace;
+        tickLow = usableTick  - 20 * tSpace;
+        tickHigh = usableTick + 20 * tSpace;
 
         strategy = new DeltaNeutralLpV3(
         vault,
         0.05e18,
         0.001e18,
         ILendingPoolAddressesProviderRegistry(0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19),
-        ERC20(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270), // wrapped matic
-        AggregatorV3Interface(0xAB594600376Ec9fD91F8e885dADF0CE036862dE0), // matic/usd price feed
+        ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619), // weth
+        AggregatorV3Interface(0xF9680D99D6C9589e2a93a78A04A279e509205945), // eth/usd price feed
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
-        pool // WMATIC/USDC
+        pool
         );
 
         vm.startPrank(governance);
@@ -68,9 +71,6 @@ contract DeltaNeutralV3Test is TestPlus {
         strategy.startPosition(tickLow, tickHigh, slippageBps);
         assertFalse(strategy.canStartNewPos());
 
-        // I got the right amount of matic
-        // assertApproxEqAbs(900e18, strategy.borrowAsset().balanceOf(address(strategy)), 0.05e18);
-
         // I have the right amount of aUSDC
         assertEq(strategy.aToken().balanceOf(address(strategy)), (startAssets - assetsToMatic) * 4 / 7);
 
@@ -79,7 +79,7 @@ contract DeltaNeutralV3Test is TestPlus {
         uint256 assetsInAAve = strategy.aToken().balanceOf(address(strategy)) * 3 / 4;
         emit log_named_uint("assetsLP: ", assetsLP);
         emit log_named_uint("assetsInAAve: ", assetsInAAve);
-        assertApproxEqRel(assetsLP, assetsInAAve * 2, 0.01e18);
+        assertApproxEqRel(assetsLP, assetsInAAve * 2, 0.015e18);
     }
 
     function testEndPosition() public {
