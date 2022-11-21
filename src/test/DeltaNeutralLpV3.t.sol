@@ -1,20 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.16;
+pragma solidity 0.8.16;
 
 import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import "forge-std/Components.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-
-import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
-import {ILendingPoolAddressesProviderRegistry} from "../interfaces/aave.sol";
 
 import {L2Vault} from "../polygon/L2Vault.sol";
 import {DeltaNeutralLpV3} from "../polygon/DeltaNeutralLpV3.sol";
+import {SslpV3} from "../../script/DeltaNeutralLpV3.s.sol";
 
 contract DeltaNeutralV3Test is TestPlus {
     using stdStorage for StdStorage;
@@ -43,16 +39,7 @@ contract DeltaNeutralV3Test is TestPlus {
         tickLow = usableTick - 20 * tSpace;
         tickHigh = usableTick + 20 * tSpace;
 
-        strategy = new DeltaNeutralLpV3(
-        vault,
-        0.05e18,
-        ILendingPoolAddressesProviderRegistry(0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19),
-        ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619), // weth
-        AggregatorV3Interface(0xF9680D99D6C9589e2a93a78A04A279e509205945), // eth/usd price feed
-        ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
-        INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
-        pool
-        );
+        strategy = SslpV3.deploy(vault);
 
         vm.startPrank(governance);
         vault.addStrategy(strategy, 5000);
