@@ -3,6 +3,7 @@ pragma solidity ^0.8.16;
 
 import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
+import "forge-std/Components.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
@@ -25,7 +26,7 @@ contract DeltaNeutralV3Test is TestPlus {
     ERC20 borrowAsset;
     int24 tickLow;
     int24 tickHigh;
-    uint256 slippageBps = 300;
+    uint256 slippageBps = 500;
 
     function setUp() public {
         vm.createSelectFork("polygon", 31_824_532);
@@ -39,13 +40,12 @@ contract DeltaNeutralV3Test is TestPlus {
         (, int24 tick,,,,,) = pool.slot0();
         int24 tSpace = pool.tickSpacing();
         int24 usableTick = (tick / tSpace) * tSpace;
-        tickLow = usableTick  - 20 * tSpace;
+        tickLow = usableTick - 20 * tSpace;
         tickHigh = usableTick + 20 * tSpace;
 
         strategy = new DeltaNeutralLpV3(
         vault,
         0.05e18,
-        0.001e18,
         ILendingPoolAddressesProviderRegistry(0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19),
         ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619), // weth
         AggregatorV3Interface(0xF9680D99D6C9589e2a93a78A04A279e509205945), // eth/usd price feed
@@ -66,13 +66,12 @@ contract DeltaNeutralV3Test is TestPlus {
     function testCreatePosition() public {
         uint256 startAssets = 1000e6;
         deal(address(usdc), address(strategy), startAssets);
-        uint256 assetsToMatic = (startAssets) / 1000;
 
         strategy.startPosition(tickLow, tickHigh, slippageBps);
         assertFalse(strategy.canStartNewPos());
 
         // I have the right amount of aUSDC
-        assertEq(strategy.aToken().balanceOf(address(strategy)), (startAssets - assetsToMatic) * 4 / 7);
+        assertEq(strategy.aToken().balanceOf(address(strategy)), startAssets * 4 / 7);
 
         // I put the correct amount of money into uniswap pool
         uint256 assetsLP = strategy.valueOfLpPosition();
@@ -83,7 +82,6 @@ contract DeltaNeutralV3Test is TestPlus {
     }
 
     function testEndPosition() public {
-        emit log_named_address("strategy addr: ", address(strategy));
         deal(address(asset), address(strategy), 1000e6);
         strategy.startPosition(tickLow, tickHigh, slippageBps);
 
