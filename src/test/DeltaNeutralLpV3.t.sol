@@ -7,6 +7,7 @@ import "forge-std/Components.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 
 import {L2Vault} from "../polygon/L2Vault.sol";
 import {DeltaNeutralLpV3} from "../polygon/DeltaNeutralLpV3.sol";
@@ -55,7 +56,12 @@ contract DeltaNeutralV3Test is TestPlus {
         deal(address(usdc), address(strategy), startAssets);
 
         strategy.startPosition(tickLow, tickHigh, slippageBps);
+        // Can't start a new positon
         assertFalse(strategy.canStartNewPos());
+        // Ntft exists and we own it
+        uint256 lpId = strategy.lpId();
+        assertGt(lpId, 0);
+        assertEq(strategy.lpManager().ownerOf(lpId), address(strategy));
 
         // I have the right amount of aUSDC
         assertEq(strategy.aToken().balanceOf(address(strategy)), startAssets * 4 / 7);
@@ -71,14 +77,20 @@ contract DeltaNeutralV3Test is TestPlus {
     function testEndPosition() public {
         deal(address(asset), address(strategy), 1000e6);
         strategy.startPosition(tickLow, tickHigh, slippageBps);
+        uint256 origLpId = strategy.lpId();
 
         vm.expectRevert();
         vm.prank(alice);
         strategy.endPosition(slippageBps);
 
         strategy.endPosition(slippageBps);
-
         assertTrue(strategy.canStartNewPos());
+        assertEq(strategy.lpId(), 0);
+
+        INonfungiblePositionManager manager = strategy.lpManager();
+        // the solidity 0.7 version of the manager reverts with this error
+        vm.expectRevert("ERC721: owner query for nonexistent token");
+        manager.ownerOf(origLpId);
 
         assertApproxEqRel(asset.balanceOf(address(strategy)), 1000e6, 0.02e18);
         assertEq(borrowAsset.balanceOf(address(strategy)), 0);

@@ -293,9 +293,13 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
         // Repay debt
         lendingPool.repay({asset: address(borrowAsset), amount: debt, rateMode: 2, onBehalfOf: address(this)});
 
-        // Withdrawal from aave
+        // Withdraw from aave
         uint256 assetCollateral = aToken.balanceOf(address(this));
         lendingPool.withdraw({asset: address(asset), amount: assetCollateral, to: address(this)});
+
+        // Burn nft of postion we are closing
+        lpManager.burn(lpId);
+        lpId = 0;
 
         // This function is just being used to avoid the stack too deep error
         _emitEnd(
