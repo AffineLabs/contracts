@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.16;
+pragma solidity 0.8.16;
 
 import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
+import "forge-std/Components.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-
-import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
-import {ILendingPoolAddressesProviderRegistry} from "../interfaces/aave.sol";
+import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 
 import {L2Vault} from "../polygon/L2Vault.sol";
 import {DeltaNeutralLpV3} from "../polygon/DeltaNeutralLpV3.sol";
+import {SslpV3} from "../../script/DeltaNeutralLpV3.s.sol";
 
 contract DeltaNeutralV3Test is TestPlus {
     using stdStorage for StdStorage;
@@ -25,7 +23,7 @@ contract DeltaNeutralV3Test is TestPlus {
     ERC20 borrowAsset;
     int24 tickLow;
     int24 tickHigh;
-    uint256 constant slippageBps = 200;
+    uint256 slippageBps = 500;
 
     function setUp() public {
         vm.createSelectFork("polygon", 31_824_532);
@@ -34,22 +32,15 @@ contract DeltaNeutralV3Test is TestPlus {
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
         vm.store(address(vault), bytes32(slot), tokenAddr);
 
-        IUniswapV3Pool pool = IUniswapV3Pool(0xA374094527e1673A86dE625aa59517c5dE346d32);
+        // weth/usdc pool
+        IUniswapV3Pool pool = IUniswapV3Pool(0x45dDa9cb7c25131DF268515131f647d726f50608);
         (, int24 tick,,,,,) = pool.slot0();
-        tickLow = tick - pool.tickSpacing() * 20;
-        tickHigh = tick + pool.tickSpacing() * 20;
+        int24 tSpace = pool.tickSpacing();
+        int24 usableTick = (tick / tSpace) * tSpace;
+        tickLow = usableTick - 20 * tSpace;
+        tickHigh = usableTick + 20 * tSpace;
 
-        strategy = new DeltaNeutralLpV3(
-        vault,
-        0.05e18,
-        0.001e18,
-        ILendingPoolAddressesProviderRegistry(0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19),
-        ERC20(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270), // wrapped matic
-        AggregatorV3Interface(0xAB594600376Ec9fD91F8e885dADF0CE036862dE0), // matic/usd price feed
-        ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
-        INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
-        pool // WMATIC/USDC
-        );
+        strategy = SslpV3.deploy(vault);
 
         vm.startPrank(governance);
         vault.addStrategy(strategy, 5000);
@@ -63,37 +54,43 @@ contract DeltaNeutralV3Test is TestPlus {
     function testCreatePosition() public {
         uint256 startAssets = 1000e6;
         deal(address(usdc), address(strategy), startAssets);
-        uint256 assetsToMatic = (startAssets) / 1000;
 
         strategy.startPosition(tickLow, tickHigh, slippageBps);
+        // Can't start a new positon
         assertFalse(strategy.canStartNewPos());
-
-        // I got the right amount of matic
-        // assertApproxEqAbs(900e18, strategy.borrowAsset().balanceOf(address(strategy)), 0.05e18);
+        // Ntft exists and we own it
+        uint256 lpId = strategy.lpId();
+        assertGt(lpId, 0);
+        assertEq(strategy.lpManager().ownerOf(lpId), address(strategy));
 
         // I have the right amount of aUSDC
-        assertEq(strategy.aToken().balanceOf(address(strategy)), (startAssets - assetsToMatic) * 4 / 7);
+        assertEq(strategy.aToken().balanceOf(address(strategy)), startAssets * 4 / 7);
 
         // I put the correct amount of money into uniswap pool
         uint256 assetsLP = strategy.valueOfLpPosition();
         uint256 assetsInAAve = strategy.aToken().balanceOf(address(strategy)) * 3 / 4;
         emit log_named_uint("assetsLP: ", assetsLP);
         emit log_named_uint("assetsInAAve: ", assetsInAAve);
-        assertApproxEqRel(assetsLP, assetsInAAve * 2, 0.01e18);
+        assertApproxEqRel(assetsLP, assetsInAAve * 2, 0.015e18);
     }
 
     function testEndPosition() public {
-        emit log_named_address("strategy addr: ", address(strategy));
         deal(address(asset), address(strategy), 1000e6);
         strategy.startPosition(tickLow, tickHigh, slippageBps);
+        uint256 origLpId = strategy.lpId();
 
         vm.expectRevert();
         vm.prank(alice);
         strategy.endPosition(slippageBps);
 
         strategy.endPosition(slippageBps);
-
         assertTrue(strategy.canStartNewPos());
+        assertEq(strategy.lpId(), 0);
+
+        INonfungiblePositionManager manager = strategy.lpManager();
+        // the solidity 0.7 version of the manager reverts with this error
+        vm.expectRevert("ERC721: owner query for nonexistent token");
+        manager.ownerOf(origLpId);
 
         assertApproxEqRel(asset.balanceOf(address(strategy)), 1000e6, 0.02e18);
         assertEq(borrowAsset.balanceOf(address(strategy)), 0);
