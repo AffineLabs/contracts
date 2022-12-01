@@ -4,10 +4,6 @@ service: rebalancer
 frameworkVersion: "3"
 plugins:
   - serverless-plugin-typescript
-  - serverless-local-environment
-  - serverless-dotenv-plugin
-
-useDotenv: true
 
 provider:
   name: aws
@@ -17,14 +13,13 @@ functions:
   rebalance:
     handler: handler.run
     environment:
-      # Check in prams, if unavailable, check env var, if not use '' values
-      - ALCHEMY_ETH_URL=${param:ALCHEMY_ETH_URL, "${env:ALCHEMY_ETH_URL, ''}"}
-      - ALCHEMY_POLYGON_URL=${param:ALCHEMY_POLYGON_URL, "${env:ALCHEMY_POLYGON_URL, ''}"}
-      - CONTRACT_VERSION=${param:CONTRACT_VERSION, "${env:CONTRACT_VERSION, ''}"}
-      - ETH_DEFENDER_RELAYER_API_KEY=${param:ETH_DEFENDER_RELAYER_API_KEY, "${env:ETH_DEFENDER_RELAYER_API_KEY, ''}"}
-      - ETH_DEFENDER_RELAYER_API_SECRET=${param:ETH_DEFENDER_RELAYER_API_SECRET, "${env:ETH_DEFENDER_RELAYER_API_SECRET, ''}"}
-      - POLYGON_DEFENDER_RELAYER_API_KEY=${param:POLYGON_DEFENDER_RELAYER_API_KEY, "${env:POLYGON_DEFENDER_RELAYER_API_KEY, ''}"}
-      - POLYGON_DEFENDER_RELAYER_API_SECRET=${param:POLYGON_DEFENDER_RELAYER_API_SECRET, "${env:POLYGON_DEFENDER_RELAYER_API_SECRET, ''}"}
+      ALCHEMY_ETH_URL: ${param:ALCHEMY_ETH_URL}
+      ALCHEMY_POLYGON_URL: ${param:ALCHEMY_POLYGON_URL}
+      CONTRACT_VERSION: ${param:CONTRACT_VERSION}
+      ETH_DEFENDER_RELAYER_API_KEY: ${param:ETH_DEFENDER_RELAYER_API_KEY}
+      ETH_DEFENDER_RELAYER_API_SECRET: ${param:ETH_DEFENDER_RELAYER_API_SECRET}
+      POLYGON_DEFENDER_RELAYER_API_KEY: ${param:POLYGON_DEFENDER_RELAYER_API_KEY}
+      POLYGON_DEFENDER_RELAYER_API_SECRET: ${param:POLYGON_DEFENDER_RELAYER_API_SECRET}
     events:
       # Invoke Lambda function every 12 hour
       - schedule: rate(12 hours)
