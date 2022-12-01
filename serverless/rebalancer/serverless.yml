@@ -12,13 +12,8 @@ plugins:
   - serverless-plugin-typescript
 
 functions:
-  rateHandler:
+  rebalance:
     handler: handler.run
     events:
-      # Invoke Lambda function every minute
-      - schedule: rate(1 minute)
-  # cronHandler:
-  #   handler: handler.run
-  #   events:
-  #     # Invoke Lambda function every 2nd minute from Mon-Fri
-  #     - schedule: cron(0/2 * ? * MON-FRI *)
+      # Invoke Lambda function every 12 hour
+      - schedule: rate(12 hours)
