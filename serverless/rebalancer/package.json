@@ -10,6 +10,8 @@
   },
   "main": "handler.js",
   "dependencies": {
+    "@certusone/wormhole-sdk": "^0.1.4",
+    "@improbable-eng/grpc-web-node-http-transport": "^0.15.0",
     "@types/aws-lambda": "^8.10.109",
     "axios": "^1.2.0",
     "dotenv": "^16.0.3",
