@@ -10,6 +10,6 @@
     "skipLibCheck": true
   },
   "include": ["./scripts", "./test", "./typechain"],
-  "exclude": ["serverless"],
+  "exclude": ["./serverless"],
   "files": ["./hardhat.config.ts"]
 }
