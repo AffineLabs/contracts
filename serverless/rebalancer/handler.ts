@@ -2,7 +2,6 @@ import { Context, ScheduledEvent } from "aws-lambda";
 import { ethers } from "ethers";
 import { DefenderRelaySigner } from "defender-relay-client/lib/ethers";
 import { Rebalancer } from "./rebalancer";
-require("dotenv").config();
 
 const ethProvider = new ethers.providers.JsonRpcProvider(process.env.ALCHEMY_ETH_URL || "");
 const polygonProvider = new ethers.providers.JsonRpcProvider(process.env.ALCHEMY_POLYGON_URL || "");
