@@ -28,6 +28,10 @@ contract Vault is BaseVault, ERC4626Upgradeable {
         return vaultTVL() - lockedProfit();
     }
 
+    function maxDeposit(address) public view virtual override returns (uint256) {
+        return type(uint256).max;
+    }
+
     /**
      * @dev See {IERC4262-deposit}.
      */
