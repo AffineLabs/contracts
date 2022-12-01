@@ -1,19 +1,4 @@
-<!--
-title: 'AWS Node Scheduled Cron example in NodeJS'
-description: 'This is an example of creating a function that runs as a cron job using the serverless ''schedule'' event.'
-layout: Doc
-framework: v3
-platform: AWS
-language: nodeJS
-priority: 1
-authorLink: 'https://github.com/0dj0bz'
-authorName: 'Rob Abbott'
-authorAvatar: 'https://avatars3.githubusercontent.com/u/5679763?v=4&s=140'
--->
-
-# Serverless Framework Node Scheduled Cron on AWS
-
-This template demonstrates how to develop and deploy a simple cron-like service running on AWS Lambda using the traditional Serverless Framework.
+# Affine Scheduled Cron on AWS with TypeScript for Rebalancing
 
 ## Schedule event type
 
@@ -43,7 +28,6 @@ functions:
 
 Detailed information about rate expressions is available in official [AWS docs](https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#RateExpressions).
 
-
 ### Cron expressions syntax
 
 ```pseudo
@@ -52,14 +36,14 @@ cron(Minutes Hours Day-of-month Month Day-of-week Year)
 
 All fields are required and time zone is UTC only.
 
-| Field         | Values         | Wildcards     |
-| ------------- |:--------------:|:-------------:|
-| Minutes       | 0-59           | , - * /       |
-| Hours         | 0-23           | , - * /       |
-| Day-of-month  | 1-31           | , - * ? / L W |
-| Month         | 1-12 or JAN-DEC| , - * /       |
-| Day-of-week   | 1-7 or SUN-SAT | , - * ? / L # |
-| Year          | 192199      | , - * /       |
+| Field        |     Values      |   Wildcards    |
+| ------------ | :-------------: | :------------: |
+| Minutes      |      0-59       |    , - \* /    |
+| Hours        |      0-23       |    , - \* /    |
+| Day-of-month |      1-31       | , - \* ? / L W |
+| Month        | 1-12 or JAN-DEC |    , - \* /    |
+| Day-of-week  | 1-7 or SUN-SAT  | , - \* ? / L # |
+| Year         |     192199      |    , - \* /    |
 
 In below example, we use `cron` syntax to define `schedule` event that will trigger our `cronHandler` function every second minute every Monday through Friday
 
@@ -72,7 +56,6 @@ functions:
 ```
 
 Detailed information about cron expressions in available in official [AWS docs](https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions).
-
 
 ## Usage
 

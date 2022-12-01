@@ -1,6 +1,6 @@
 import axios from "axios";
 import * as utils from "./utils/wormhole";
-import { ethers } from "hardhat";
+import { ethers } from "ethers";
 import { CHAIN_ID_ETH, CHAIN_ID_POLYGON } from "@certusone/wormhole-sdk";
 import {
   ERC20,
@@ -19,8 +19,8 @@ import {
   L2BridgeEscrow__factory,
   L1BridgeEscrow,
   L2BridgeEscrow,
-} from "../typechain";
-import { readAddressBook } from "./utils/export";
+} from "./typechain-cache";
+import { readAddressBook } from "./utils/addressbook";
 import { Signer } from "ethers";
 
 interface Contracts {
@@ -52,7 +52,6 @@ const getAllContracts = async (config: RebalanceConfig, l1Vault: L1Vault, l2Vaul
   const l2WormholeRouter = L2WormholeRouter__factory.connect(await l2Vault.wormholeRouter(), config.polygonSigner);
   const l1Wormhole = IWormhole__factory.connect(await l1WormholeRouter.wormhole(), config.ethSigner);
   const l2Wormhole = IWormhole__factory.connect(await l2WormholeRouter.wormhole(), config.polygonSigner);
-
   const l1BridgeEscrow = L1BridgeEscrow__factory.connect(await l1Vault.bridgeEscrow(), config.ethSigner);
   const l2BridgeEscrow = L2BridgeEscrow__factory.connect(await l2Vault.bridgeEscrow(), config.polygonSigner);
   const l2USDC = ERC20__factory.connect(await l2Vault.asset(), config.polygonSigner);
@@ -247,7 +246,7 @@ export class Rebalancer {
     const l2FundTransferReportMessageVAA = await this.getL2FundTransferReportMessageVAA();
     const l2FundTransferMessageProof = await this.getL2FundTransferMessageProof();
     if (l2FundTransferReportMessageVAA === undefined || l2FundTransferMessageProof === undefined) {
-      let messages = [];
+      let messages: string[] = [];
       if (l2FundTransferReportMessageVAA === undefined) {
         messages.push("L2 fund transfer report VAA not yet available");
       }
