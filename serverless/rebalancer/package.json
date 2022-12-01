@@ -1,0 +1,13 @@
+{
+  "name": "rebalancer",
+  "version": "1.0.0",
+  "description": "Serverless function for rebalncing Affine protocol",
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.109",
+    "serverless-plugin-typescript": "^2.1.4",
+    "typescript": "^4.9.3"
+  },
+  "main": "handler.js"
+}
