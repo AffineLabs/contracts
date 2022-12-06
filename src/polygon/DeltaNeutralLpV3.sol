@@ -246,6 +246,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
         uint256 assetFees,
         uint256 borrowFees,
         uint256 borrowPrice,
+        uint256 borrowPriceSpot,
         bool assetSold,
         uint256 assetsOrBorrowsSold,
         uint256 assetsOrBorrowsReceived,
@@ -328,6 +329,16 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
     ) internal {
         (uint256 assetsFromUni, uint256 borrowsFromUni) = _convertToAB(amount0FromUni, amount1FromUni);
         (uint256 assetFees, uint256 borrowFees) = _convertToAB(amount0Fees, amount1Fees);
+   
+        (uint160 sqrtPriceX96,,,,,,) = pool.slot0();
+        uint price;
+        // We want asset / borrowAsset ratio. If asset is token1 then use given ratio (token1 / token0). Otherwise flip result
+        if (address(asset) == token0) {
+            price = 2 ** 192 / (sqrtPriceX96 ** 2);
+        }  else {
+            price = (sqrtPriceX96 ** 2)  << 192;
+        }
+
         emit PositionEnd({
             position: currentPosition,
             assetsFromUni: assetsFromUni,
@@ -335,6 +346,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
             assetFees: assetFees,
             borrowFees: borrowFees,
             borrowPrice: _getPrice(),
+            borrowPriceSpot: price,
             assetSold: assetSold,
             assetsOrBorrowsSold: assetsOrBorrowsSold,
             assetsOrBorrowsReceived: assetsOrBorrowsReceived,
