@@ -1,13 +1,12 @@
 {{#if natspec.notice}}
-  ###
-  {{name}}
-  >
-  {{natspec.notice}}
+### {{name}}
+> {{natspec.notice}}
 
-  {{#functions}}
-    {{#if natspec.notice}}
-      - `{{name}}`
-      {{natspec.notice}}
-    {{/if}}
-  {{/functions}}
+| test function | description | 
+| --- | --- |
+{{#each functions}}
+{{#if natspec.notice}}
+|`{{name}}`|{{natspec.notice}}|
+{{/if}}
+{{/each}}
 {{/if}}
