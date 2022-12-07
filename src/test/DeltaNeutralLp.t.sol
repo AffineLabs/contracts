@@ -26,6 +26,7 @@ abstract contract DeltaNeutralTestBase is TestPlus {
 
     uint256 public constant IDEAL_SLIPPAGE_BPS = 200;
 
+    /// @notice Test only address with strategist role can open a position.
     function testOnlyAddressWithStrategistRoleCanStartPosition() public {
         uint256 startAssets = 1000e6;
         deal(address(usdc), address(strategy), startAssets);
@@ -41,6 +42,7 @@ abstract contract DeltaNeutralTestBase is TestPlus {
         strategy.startPosition(IDEAL_SLIPPAGE_BPS);
     }
 
+    /// @notice Test creation of position.
     function testCreatePosition() public {
         uint256 startAssets = 1000e6;
         deal(address(usdc), address(strategy), startAssets);
@@ -76,6 +78,7 @@ abstract contract DeltaNeutralTestBase is TestPlus {
         assertApproxEqRel(assetsLP, assetsInAAve * 2, 0.01e18);
     }
 
+    /// @notice Test only address with strategist role can end a position.
     function testOnlyAddressWithStrategistRoleCanEndPosition() public {
         deal(address(asset), address(strategy), 1000e6);
 
@@ -94,6 +97,7 @@ abstract contract DeltaNeutralTestBase is TestPlus {
         strategy.endPosition(IDEAL_SLIPPAGE_BPS);
     }
 
+    /// @notice Test ending a position.
     function testEndPosition() public {
         deal(address(asset), address(strategy), 1000e6);
 
@@ -108,6 +112,7 @@ abstract contract DeltaNeutralTestBase is TestPlus {
         assertEq(strategy.debtToken().balanceOf(address(strategy)), 0);
     }
 
+    /// @notice Test TVL calculation.
     function testTVL() public {
         assertEq(strategy.totalLockedValue(), 0);
         deal(address(asset), address(strategy), 1000e6);
@@ -120,6 +125,7 @@ abstract contract DeltaNeutralTestBase is TestPlus {
         assertApproxEqRel(strategy.totalLockedValue(), 1000e6, 0.01e18);
     }
 
+    /// @notice Test vault can divest from this strategy.
     function testDivest() public {
         // If there's no position active, we just send our current balance
         deal(address(asset), address(strategy), 1);
@@ -141,6 +147,7 @@ abstract contract DeltaNeutralTestBase is TestPlus {
         assertApproxEqRel(asset.balanceOf(address(vault)), 1000e6, 0.01e18);
     }
 
+    /// @notice Test strategist can calim rewards.
     function testClaimRewards() public {
         // If there's no position active, we just send our current balance
         deal(address(asset), address(strategy), 1);
@@ -176,6 +183,7 @@ abstract contract DeltaNeutralTestBase is TestPlus {
         assertEq(sushiBalance, 0);
     }
 
+    /// @notice Fuzz test to calculate TVL in random scenarios.
     function testTVLFuzz(uint64 assets) public {
         // Max borrowable WETH available in AAVE in this block is around 1334.66 WETH or 2178919.22 USDC.
         // So technically we should be able to take position with around 2178919.22 / ((4 / 7) * (3 / 4)) = 5084144.84 USDC
@@ -197,6 +205,7 @@ abstract contract DeltaNeutralTestBase is TestPlus {
     }
 }
 
+/// @notice Test SSLP Strategy with Sushiswap in L1.
 contract L1DeltaNeutralTest is DeltaNeutralTestBase {
     using stdStorage for StdStorage;
 
@@ -230,6 +239,7 @@ contract L1DeltaNeutralTest is DeltaNeutralTestBase {
     }
 }
 
+/// @notice Test SSLP Strategy with Sushiswap in L2.
 contract L2DeltaNeutralTest is DeltaNeutralTestBase {
     using stdStorage for StdStorage;
 

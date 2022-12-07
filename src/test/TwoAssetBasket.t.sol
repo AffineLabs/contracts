@@ -16,6 +16,7 @@ import {Router} from "../polygon/Router.sol";
 import {IERC4626} from "../interfaces/IERC4626.sol";
 import {ERC4626RouterBase} from "../polygon/ERC4626RouterBase.sol";
 
+/// @notice Test two asset basket functionalities.
 contract BtcEthBasketTest is TestPlus {
     TwoAssetBasket basket;
     Router router;
@@ -40,6 +41,7 @@ contract BtcEthBasketTest is TestPlus {
         );
     }
 
+    /// @notice Test depositing and withdrawing form the basket works.
     function testDepositWithdraw() public {
         // mint some usdc, can remove hardcoded selector later
         uint256 mintAmount = 200 * 1e6;
@@ -60,6 +62,7 @@ contract BtcEthBasketTest is TestPlus {
         emit log_named_uint("DOLLARS WITHDRAWN: ", inputReceived);
     }
 
+    /// @notice Test redeeming form the basket works.
     function testRedeem() public {
         mockUSDCPrice();
 
@@ -78,6 +81,7 @@ contract BtcEthBasketTest is TestPlus {
         assertApproxEqRel(Dollar.unwrap(basket.valueOfVault()), oldTVL / 2, 1e18 / 1);
     }
 
+    /// @notice Test withdrawing max amount works.
     function testMaxWithdraw() public {
         uint256 mintAmount = 100 * 1e6;
         deal(address(usdc), alice, mintAmount, true);
@@ -101,6 +105,7 @@ contract BtcEthBasketTest is TestPlus {
         emit log_named_uint("TotalSupplyOfVault: ", basket.totalSupply());
     }
 
+    /// @notice Test that slippage parameter while depositing works.
     function testDepositSlippage() public {
         // The initial deposit gives as many shares as dollars deposited in the vault
         // If we expect 10 shares but only deposit 1 dollar, this will revert
@@ -114,6 +119,7 @@ contract BtcEthBasketTest is TestPlus {
         basket.deposit(1e6, address(this), 0);
     }
 
+    /// @notice Test that slippage parameter while withdrawing works.
     function testWithdrawSlippage() public {
         deal(address(usdc), address(this), 10e6);
         usdc.approve(address(basket), type(uint256).max);
@@ -127,6 +133,7 @@ contract BtcEthBasketTest is TestPlus {
         basket.withdraw(1e6, address(this), address(this), type(uint256).max);
     }
 
+    /// @notice Test that slippage parameter while redeeming works.
     function testRedeemSlippage() public {
         deal(address(usdc), address(this), 1e6);
         usdc.approve(address(basket), type(uint256).max);
@@ -139,6 +146,7 @@ contract BtcEthBasketTest is TestPlus {
         basket.redeem(shares, address(this), address(this), 0);
     }
 
+    /// @notice Fuzz test for selling when there is random imbalance in BTC and ETH balanace.
     function testBuySplitsFuzz(uint256 balBtc, uint256 balEth) public {
         //	Let balances vary
         // 10k BTC is about 200M at todays prices, same for 133,000 ETH
@@ -178,6 +186,7 @@ contract BtcEthBasketTest is TestPlus {
         }
     }
 
+    /// @notice Test buying when there is imbalance in BTC and ETH balanace
     function testBuySplits() public {
         // We have too much eth, so we only buy btc
         // Mocking balanceOf. Not using encodeCall because ERC20.balanceOf can't be found by solc
@@ -221,6 +230,7 @@ contract BtcEthBasketTest is TestPlus {
         assertTrue(assetsToEth > largeInput / 3);
     }
 
+    /// @notice Test selling when there is imbalance in BTC and ETH balanace.
     function testSellSplits() public {
         // We have too much btc, so we only sell it
         // Mocking balanceOf. Not using encodeCall because ERC20.balanceOf can't be found by solc
@@ -274,6 +284,7 @@ contract BtcEthBasketTest is TestPlus {
         assertTrue(dollarsFromEth > (largeInput * 1e2) / 3);
     }
 
+    /// @notice Test that pausing the basket works.
     function testVaultPause() public {
         vm.prank(governance);
         basket.pause();
@@ -289,6 +300,7 @@ contract BtcEthBasketTest is TestPlus {
         testDepositWithdraw();
     }
 
+    /// @notice Test view functions for detailed prices.
     function testDetailedPrice() public {
         // This function should work even if there is nothing in the vault
         TwoAssetBasket.Number memory price = basket.detailedPrice();

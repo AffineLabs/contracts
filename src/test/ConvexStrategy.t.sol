@@ -13,6 +13,7 @@ import {ICurvePool} from "../interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "../interfaces/convex.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
+/// @notice Test convex FRAX-USDC strategy
 contract ConvexStratTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -47,6 +48,7 @@ contract ConvexStratTest is TestPlus {
         cvx = strategy.CVX();
     }
 
+    /// @notice Test depositing into strategy works.
     function testCanDeposit() public {
         // get some usdc
         // invest in the vault
@@ -66,6 +68,7 @@ contract ConvexStratTest is TestPlus {
         assertApproxEqRel(tvl, 1e6, 1e18);
     }
 
+    /// @notice Test slippage doesn't incure error while claiming/selling rewards.
     function testCanSlip() public {
         deal(address(usdc), address(strategy), 1e12);
         deal(address(crv), address(strategy), 10e18);
@@ -82,6 +85,7 @@ contract ConvexStratTest is TestPlus {
         strategy.claimAndSellRewards(0, 0);
     }
 
+    /// @notice Test divesting from convex strategy works.
     function testCanDivest() public {
         deal(address(usdc), address(this), 2e6);
         usdc.approve(address(strategy), type(uint256).max);
@@ -94,6 +98,8 @@ contract ConvexStratTest is TestPlus {
         assertTrue(usdc.balanceOf(address(vault)) == 1e6);
     }
 
+    /// @notice Fuzz test to make sure we are able to withdraw from convex strategy
+    /// in random scenarios.
     function testWithdrawFuzz(uint64 lpTokens, uint64 cvxLpTokens, uint32 assetsToDivest) public {
         deal(address(strategy.curveLpToken()), address(strategy), lpTokens);
         deal(address(strategy.cvxRewarder()), address(strategy), cvxLpTokens);
@@ -101,6 +107,7 @@ contract ConvexStratTest is TestPlus {
         strategy.withdrawAssets(assetsToDivest);
     }
 
+    /// @notice Test claiming rewards work.
     function testRewards() public {
         deal(address(usdc), address(strategy), 1e12);
         strategy.deposit(1e12, 0);
@@ -112,6 +119,7 @@ contract ConvexStratTest is TestPlus {
         assertGt(strategy.CRV().balanceOf(address(strategy)), 0);
     }
 
+    /// @notice Test that selling reward token works.
     function testCanSellRewards() public {
         deal(address(strategy.CRV()), address(strategy), strategy.MIN_TOKEN_AMT() * 10);
         deal(address(strategy.CVX()), address(strategy), strategy.MIN_TOKEN_AMT() * 10);
@@ -125,6 +133,7 @@ contract ConvexStratTest is TestPlus {
         assertEq(strategy.CVX().balanceOf(address(strategy)), 0);
     }
 
+    /// @notice Fuzz test of make sure that tvl calculation works in random scenarios.
     function testTVLFuzz(uint64 lpTokens, uint64 cvxLpTokens) public {
         deal(address(strategy.curveLpToken()), address(strategy), lpTokens);
         deal(address(strategy.cvxRewarder()), address(strategy), cvxLpTokens);

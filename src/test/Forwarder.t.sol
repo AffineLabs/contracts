@@ -21,6 +21,7 @@ abstract contract MockBasket {
     function deposit(uint256 assets, address receiver) external returns (uint256 shares) {}
 }
 
+/// @notice Test the forwarder contract
 contract ForwardTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -77,6 +78,7 @@ contract ForwardTest is TestPlus {
         );
     }
 
+    /// @notice Test forwarding transactions in batch works.
     function testDoubleDeposit() public {
         // send two deposits of 1 usdc to the l2vault
         address user = vm.addr(1);
@@ -107,6 +109,7 @@ contract ForwardTest is TestPlus {
         forwarder.executeBatch(requests, abi.encodePacked(r, s, v, r2, s2, v2));
     }
 
+    /// @notice Test forwarding works for both vaults and baskets.
     function testTransactVaultAndBasket() public {
         // send one deposits of 1 usdc to L2Vault
         // try to start a rebalance in TwoAssetBasket

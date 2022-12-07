@@ -13,6 +13,7 @@ import {L2Vault} from "../polygon/L2Vault.sol";
 import {DeltaNeutralLpV3} from "../polygon/DeltaNeutralLpV3.sol";
 import {SslpV3} from "../../script/DeltaNeutralLpV3.s.sol";
 
+/// @notice Test SSLP Strategy with Uniswap V3 in polygon.
 contract DeltaNeutralV3Test is TestPlus {
     using stdStorage for StdStorage;
 
@@ -51,6 +52,7 @@ contract DeltaNeutralV3Test is TestPlus {
         borrowAsset = strategy.borrowAsset();
     }
 
+    /// @notice Test that a position can be opened.
     function testCreatePosition() public {
         uint256 startAssets = 1000e6;
         deal(address(usdc), address(strategy), startAssets);
@@ -74,6 +76,7 @@ contract DeltaNeutralV3Test is TestPlus {
         assertApproxEqRel(assetsLP, assetsInAAve * 2, 0.015e18);
     }
 
+    /// @notice Test that a position can be ended.
     function testEndPosition() public {
         deal(address(asset), address(strategy), 1000e6);
         strategy.startPosition(tickLow, tickHigh, slippageBps);
@@ -97,6 +100,7 @@ contract DeltaNeutralV3Test is TestPlus {
         assertEq(strategy.lpLiquidity(), 0);
     }
 
+    /// @notice Test TVL calculation.
     function testTVL() public {
         assertEq(strategy.totalLockedValue(), 0);
         deal(address(asset), address(strategy), 1000e6);
@@ -105,6 +109,7 @@ contract DeltaNeutralV3Test is TestPlus {
         assertApproxEqRel(strategy.totalLockedValue(), 1000e6, 0.02e18);
     }
 
+    /// @notice Test that value can divest from this strategy.
     function testDivest() public {
         // If there's no position active, we just send our current balance
         deal(address(asset), address(strategy), 1);

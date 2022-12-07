@@ -16,6 +16,7 @@ import {ERC4626Router} from "../polygon/ERC4626Router.sol";
 import {IERC4626} from "../interfaces/IERC4626.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 
+/// @notice Test functionalities of the router contract.
 contract RouterTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -34,6 +35,7 @@ contract RouterTest is TestPlus {
         basket = Deploy.deployTwoAssetBasket(token);
     }
 
+    /// @notice Test that the router contract can handle multiple deposits.
     function testMultipleDeposits() public {
         address user = 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045;
         deal(address(token), user, 10e6);

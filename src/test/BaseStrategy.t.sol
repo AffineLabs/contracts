@@ -12,6 +12,7 @@ import {TestStrategy} from "./mocks/TestStrategy.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 
+/// @notice Test general functionalities of strategies.
 contract BaseStrategyTest is TestPlus {
     TestStrategy strategy;
     MockERC20 rewardToken;
@@ -22,6 +23,7 @@ contract BaseStrategyTest is TestPlus {
         strategy = new TestStrategy(vault);
     }
 
+    /// @notice Test only governance can sweep tokens from vaults.
     function testSweep() public {
         // Will revert if non governance tries to call it
         vm.expectRevert("BS: only governance");
