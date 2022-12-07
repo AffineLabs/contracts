@@ -27,7 +27,7 @@ const main = async () => {
   }
   await docgen([{ input: { sources: {} }, output: solcOutput }], {
     sourcesDir: "src/test",
-    outputDir: "docs/test",
+    outputDir: "generated-docs/test",
     templates: "scripts/doc-gen",
   });
 };
