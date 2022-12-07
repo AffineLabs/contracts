@@ -1,5 +1,4 @@
-# Solidity API
-
+# Affine Tests
 ### BaseStrategyTest
 > Test general functionalities of strategies.
 
