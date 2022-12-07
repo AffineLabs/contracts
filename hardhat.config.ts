@@ -16,6 +16,7 @@ import "@openzeppelin/hardhat-defender";
 
 import "./tasks/accounts";
 import "./tasks/unblock";
+
 import { ethChainIds, polygonChainIds, ethNetwork, polygonNetwork } from "./scripts/utils/constants/types";
 
 import { subtask } from "hardhat/config";
@@ -122,10 +123,8 @@ const config: HardhatUserConfig = {
     // We use both Openzeppelin and solmate ERC20, so exporting abi will throw "duplicate output destination" error
     except: [":ERC20$", ":ILendingPoolAddressesProviderRegistry$"],
   },
-
   dodoc: {
     include: ["src"],
-    exclude: ["test"],
     runOnCompile: false,
   },
   defender: {

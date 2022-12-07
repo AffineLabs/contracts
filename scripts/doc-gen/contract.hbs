@@ -1,0 +1,13 @@
+{{#if natspec.notice}}
+  ###
+  {{name}}
+  >
+  {{natspec.notice}}
+
+  {{#functions}}
+    {{#if natspec.notice}}
+      - `{{name}}`
+      {{natspec.notice}}
+    {{/if}}
+  {{/functions}}
+{{/if}}
