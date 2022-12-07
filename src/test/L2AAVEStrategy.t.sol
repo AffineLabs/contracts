@@ -77,8 +77,7 @@ contract AAVEStratTest is TestPlus {
         assertEq(strategy.aToken().balanceOf(address(strategy)), 1e6);
     }
 
-    /// @notice Test attempting to divest an amount more than the TVL results in
-    /// divestment of the TVL amount.
+    /// @notice Test attempting to divest an amount more than the TVL results in divestment of the TVL amount.
     // We can attempt to divest more than our balance of aTokens
     function testDivestMoreThanTVL() public {
         _depositIntoStrat(1e6);

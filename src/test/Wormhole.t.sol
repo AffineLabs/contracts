@@ -42,8 +42,7 @@ contract L2WormholeRouterTest is TestPlus {
         wormhole = router.wormhole();
     }
 
-    /// @notice Test that the governance can update wormhole router
-    /// configurations.
+    /// @notice Test that the governance can update wormhole router configurations.
     function testWormholeConfigUpdates() public {
         // update consistencyLevel
         changePrank(router.governance());
@@ -55,8 +54,7 @@ contract L2WormholeRouterTest is TestPlus {
         router.setConsistencyLevel(0);
     }
 
-    /// @notice Test that the L2 wormhole router sends message to L1 after funds are transferred
-    /// to L2.
+    /// @notice Test that the L2 wormhole router sends message to L1 after funds are transferred to L2.
     function testTransferReport() public {
         // Only invariant is that the vault is the only caller
         vm.prank(alice);
@@ -111,8 +109,7 @@ contract L2WormholeRouterTest is TestPlus {
         mockRouter.validateWormholeMessageEmitter(goodVaa);
     }
 
-    /// @notice Test that, the L2 wormhole router requests funds from L1 in correct
-    /// message format.
+    /// @notice Test that, the L2 wormhole router requests funds from L1 in correct message format.
     function testRequestFunds() public {
         // Only invariant is that the vault is the only caller
         vm.prank(alice);

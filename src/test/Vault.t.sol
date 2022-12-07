@@ -8,6 +8,7 @@ import {Vault} from "../ethereum/Vault.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
 
+/// @notice Test common vault functionalities.
 contract EthVaultTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -21,6 +22,7 @@ contract EthVaultTest is TestPlus {
         vault.initialize(governance, address(asset));
     }
 
+    /// @notice Test vault initialization.
     function testInit() public {
         vm.expectRevert();
         vault.initialize(governance, address(asset));

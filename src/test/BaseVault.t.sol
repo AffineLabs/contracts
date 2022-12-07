@@ -97,8 +97,7 @@ contract BaseVaultTest is TestPlus {
         assertEq(address(vault.withdrawalQueue(0)), address(0));
     }
 
-    /// @notice Test divesting of funds work after a strategy is removed
-    /// from withdrawal queue.
+    /// @notice Test divesting of funds work after a strategy is removed from withdrawal queue.
     function testRemoveStrategyAndDivest() public {
         // Add strategy
         TestStrategy strategy = new TestStrategy(vault);
@@ -147,8 +146,7 @@ contract BaseVaultTest is TestPlus {
         }
     }
 
-    /// @notice Test liquidating certain amount of assets from the
-    // vault.
+    /// @notice Test liquidating certain amount of assets from the vault.
     function testLiquidate() public {
         BaseStrategy newStrategy1 = new TestStrategy(vault);
         token.mint(address(newStrategy1), 10);
@@ -188,8 +186,7 @@ contract BaseVaultTest is TestPlus {
         assertTrue(token.balanceOf(address(strat2)) == 4000);
     }
 
-    /// @notice Test internal rebalanceing of vault when strategies incur slippage
-    /// while divesting from them.
+    /// @notice Test internal rebalanceing of vault when strategies incur slippage while divesting from them.
     function testRebalanceWithSlippage() public {
         // If we lose money when divesting from strategies, then we might have to
         // to send a truncated amount to one of the strategies in need of assets

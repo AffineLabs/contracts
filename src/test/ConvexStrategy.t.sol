@@ -98,8 +98,7 @@ contract ConvexStratTest is TestPlus {
         assertTrue(usdc.balanceOf(address(vault)) == 1e6);
     }
 
-    /// @notice Fuzz test to make sure we are able to withdraw from convex strategy
-    /// in random scenarios.
+    /// @notice Fuzz test to make sure we are able to withdraw from convex strategy in random scenarios.
     function testWithdrawFuzz(uint64 lpTokens, uint64 cvxLpTokens, uint32 assetsToDivest) public {
         deal(address(strategy.curveLpToken()), address(strategy), lpTokens);
         deal(address(strategy.cvxRewarder()), address(strategy), cvxLpTokens);

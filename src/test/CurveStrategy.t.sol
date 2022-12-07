@@ -104,8 +104,7 @@ contract CurveStratTest is TestPlus {
         assertTrue(usdc.balanceOf(address(vault)) == 1e6);
     }
 
-    /// @notice Test that divesting with amount more than the TVL will result
-    /// in divesting only TVL amount and not incur error.
+    /// @notice Test that divesting with amount more than the TVL will result in divesting only TVL amount and not incur error.
     function testCanDivestFully() public {
         // If we try to withdraw more money than actually exists in the vault
         // We end up approximately no lp tokens and a bunch of usdc

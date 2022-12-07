@@ -137,8 +137,7 @@ contract L2VaultTest is TestPlus {
         vault.deposit(100, user);
     }
 
-    /// @notice Test that depositing doesn't result in funds being invested into
-    // strategies.
+    /// @notice Test that depositing doesn't result in funds being invested into strategies.
     function testDepositNoStrategyInvest() public {
         address user = address(this);
         uint256 amount = 100;
@@ -161,8 +160,7 @@ contract L2VaultTest is TestPlus {
         vm.stopPrank();
     }
 
-    /// @notice Test that minting doesn't result in funds being invested into
-    // strategies.
+    /// @notice Test that minting doesn't result in funds being invested into strategies.
     function testMintNoStrategyInvest() public {
         address user = address(this);
         uint256 amount = 100;
@@ -295,8 +293,7 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.l1TotalLockedValue(), 120);
     }
 
-    /// @notice Test that locked profit implies tvl being locked over `LOCK_INTERVAL`
-    /// duration.
+    /// @notice Test that locked profit implies tvl being locked over `LOCK_INTERVAL` duration.
     function testLockedTVL() public {
         // No rebalancing should actually occur
         vault.setMockRebalanceDelta(1e6);
@@ -321,8 +318,7 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.totalAssets(), 100);
     }
 
-    /// @notice Test that correct rebalance decition is taken once L1 TVL is received by the L2 vault,
-    /// and there is a need to rebalance in L1 -> L2 direction.
+    /// @notice Test that correct rebalance decition is taken once L1 TVL is received by the L2 vault, and there is a need to rebalance in L1 -> L2 direction.
     function testL1ToL2Rebalance() public {
         // Any call to the wormholerouter will do nothing
         vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.requestFunds, (25)), "");
@@ -336,8 +332,7 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.canRequestFromL1(), false);
     }
 
-    /// @notice Test that correct amount is requested from L1 while rebalancing, when there is
-    /// outstanding emergenct withdrawal queue debt.
+    /// @notice Test that correct amount is requested from L1 while rebalancing, when there is outstanding emergenct withdrawal queue debt.
     function testL1ToL2RebalanceWithEmergencyWithdrawalQueueDebt() public {
         // Any call to the wormholerouter will do nothing
         vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.requestFunds, (200)), "");
@@ -360,8 +355,7 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.canRequestFromL1(), false);
     }
 
-    /// @notice Test that correct rebalance decition is taken once L1 TVL is received by the L2 vault,
-    /// and there is a need to rebalance in L2 -> L1 direction.
+    /// @notice Test that correct rebalance decition is taken once L1 TVL is received by the L2 vault, and there is a need to rebalance in L2 -> L1 direction.
     function testL2ToL1Rebalance() public {
         // Any call to the wormholerouter will do nothing, and we won't actually attempt to bridge funds
         vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportFundTransfer, (25)), "");
@@ -376,8 +370,7 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.canTransferToL1(), false);
     }
 
-    /// @notice Test that correct amount is transfeeed from L2 while rebalancing, when there is
-    /// outstanding emergenct withdrawal queue debt.
+    /// @notice Test that correct amount is transfeeed from L2 while rebalancing, when there is outstanding emergenct withdrawal queue debt.
     function testL2ToL1RebalanceWithEmergencyWithdrawalQueueDebt() public {
         // Relevant calls to the wormholerouter and bridge escrow will do nothing, and we won't
         // actually attempt to bridge funds
@@ -473,8 +466,7 @@ contract L2VaultTest is TestPlus {
 
     event Push(uint256 indexed pos, address indexed owner, address indexed receiver, uint256 amount);
 
-    /// @notice Test emergency withdrawal queue enqueue happens when there is not enough assets in the L2 vault
-    /// to process the withdrawal request.
+    /// @notice Test emergency withdrawal queue enqueue happens when there is not enough assets in the L2 vault to process the withdrawal request.
     function testEmergencyWithdrawal(uint64 amountAsset) public {
         vm.assume(amountAsset > ewqMinAssets);
         address user = address(this);
@@ -508,8 +500,7 @@ contract L2VaultTest is TestPlus {
         assertEq(asset.balanceOf(user), amountAsset - ewqMinFee);
     }
 
-    /// @notice Test emergency withdrawal queue enqueue happens when there is not enough assets in the L2 vault
-    /// to process the redeem request.
+    /// @notice Test emergency withdrawal queue enqueue happens when there is not enough assets in the L2 vault to process the redeem request.
     function testEmergencyWithdrawalWithRedeem(uint64 amountAsset) public {
         vm.assume(amountAsset > ewqMinAssets);
         address user = address(this);
@@ -595,8 +586,7 @@ contract L2VaultTest is TestPlus {
         assertEq(asset.balanceOf(bob), fiveUSDC - ewqMinFee);
     }
 
-    /// @notice Test dequeueing from emergency withdrawal queue works when funds are available
-    /// in the vault, if enqueue happened via withdraw request.
+    /// @notice Test dequeueing from emergency withdrawal queue works when funds are available in the vault, if enqueue happened via withdraw request.
     function testEwqWithdraw() public {
         asset.mint(alice, tenUSDC);
 
@@ -626,8 +616,7 @@ contract L2VaultTest is TestPlus {
         assertEq(asset.balanceOf(alice), fiveUSDC - ewqMinFee);
     }
 
-    /// @notice Test dequeueing from emergency withdrawal queue works when funds are available
-    /// in the vault, if enqueue happened via redeem request.
+    /// @notice Test dequeueing from emergency withdrawal queue works when funds are available in the vault, if enqueue happened via redeem request.
     function testEwqRedeem() public {
         asset.mint(alice, tenUSDC);
         vm.startPrank(alice);
@@ -680,8 +669,7 @@ contract L2VaultTest is TestPlus {
         vault.redeem(aliceShares, alice, alice);
     }
 
-    /// @notice Test that emergency withdrawal queue enqueue is rejected if user
-    /// is depositing an amount less the `vault.ewqMinAssets` usdc.
+    /// @notice Test that emergency withdrawal queue enqueue is rejected if user is depositing an amount less the `vault.ewqMinAssets` usdc.
     function testEwqMinWithdraw() public {
         uint256 amount = vault.ewqMinFee() - 1;
         asset.mint(alice, amount);

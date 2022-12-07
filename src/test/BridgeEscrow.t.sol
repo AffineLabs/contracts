@@ -50,8 +50,7 @@ contract L2BridgeEscrowTest is TestPlus {
         vault.setBridgeEscrow(escrow);
     }
 
-    /// @notice Test that only l2 vault can withdraw a certain amount from
-    /// l2 bridge escrow.
+    /// @notice Test that only l2 vault can withdraw a certain amount from l2 bridge escrow.
     function testwithdraw() public {
         // Only the vault can send a certain amount to L1 (withdraw)
         vm.expectRevert("BE: Only vault");
@@ -83,8 +82,7 @@ contract L2BridgeEscrowTest is TestPlus {
         assertEq(vault.canRequestFromL1(), true);
     }
 
-    /// @notice Test that only wormhole router can clear funds from l2 bridge escrow once
-    /// funds are received.
+    /// @notice Test that only wormhole router can clear funds from l2 bridge escrow once funds are received.
     function testclearFundsInvariants() public {
         vm.expectRevert("BE: Only wormhole router");
         vm.prank(alice);
@@ -140,8 +138,7 @@ contract L1BridgeEscrowTest is TestPlus {
         assertTrue(vault.received());
     }
 
-    /// @notice Test that only wormhole router can clear funds from l1 bridge escrow once
-    /// funds are received.
+    /// @notice Test that only wormhole router can clear funds from l1 bridge escrow once funds are received.
     function testclearFundsInvariants() public {
         vm.expectRevert("BE: Only wormhole router");
         vm.prank(alice);

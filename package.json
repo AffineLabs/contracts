@@ -17,7 +17,8 @@
     "format": "prettier --check \"**/*.{ts,js}\" && forge fmt --check",
     "format:fix": "prettier --write \"**/*.{ts,js}\" && forge fmt",
     "postinstall": "yarn build-hh && forge install",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "test-doc": "yarn ts-node scripts/doc-gen/gen-test-doc.ts"
   },
   "author": "Alpine",
   "license": "MIT",
