@@ -15,14 +15,12 @@
 |`testHarvest`|Test harvesting strategies and makes sure locked profit works.|
 |`testStrategyAddition`|Test addition to new strategy works.|
 |`testStrategyRemoval`|Test removal of strategies work.|
-|`testRemoveStrategyAndDivest`|Test divesting of funds work after a strategy is removed
-from withdrawal queue.|
+|`testRemoveStrategyAndDivest`|Test divesting of funds work after a strategy is removed from withdrawal queue.|
 |`testGetWithdrawalQueue`|Test getter for withdrwal queue.|
 |`testSetWithdrawalQueue`|Test setter for withdrawal queue.|
-|`testLiquidate`|Test liquidating certain amount of assets from the|
+|`testLiquidate`|Test liquidating certain amount of assets from the vault.|
 |`testRebalance`|Test internal rebalanceing of vault.|
-|`testRebalanceWithSlippage`|Test internal rebalanceing of vault when strategies incur slippage
-while divesting from them.|
+|`testRebalanceWithSlippage`|Test internal rebalanceing of vault when strategies incur slippage while divesting from them.|
 |`testUpdateStrategyAllocations`|Test updating strategy allocation bps.|
 |`testSetWormRouter`|Test updating wormhole router. Only governance should be able to do it.|
 |`testBridgeEscrow`|Test updating bridge escrow contract. Only governance should be able to do it.|
@@ -32,11 +30,9 @@ while divesting from them.|
 
 | test function | description | 
 | --- | --- |
-|`testwithdraw`|Test that only l2 vault can withdraw a certain amount from
-l2 bridge escrow.|
+|`testwithdraw`|Test that only l2 vault can withdraw a certain amount from l2 bridge escrow.|
 |`testclearFunds`|Test that l2 wormhole router can clear funds l2 bridge escrow.|
-|`testclearFundsInvariants`|Test that only wormhole router can clear funds from l2 bridge escrow once
-funds are received.|
+|`testclearFundsInvariants`|Test that only wormhole router can clear funds from l2 bridge escrow once funds are received.|
 
 ### L1BridgeEscrowTest
 > Test functionalities of l1 brige escrow contract.
@@ -44,8 +40,7 @@ funds are received.|
 | test function | description | 
 | --- | --- |
 |`testclearFunds`|Test that l1 wormhole router can clear funds l1 bridge escrow.|
-|`testclearFundsInvariants`|Test that only wormhole router can clear funds from l1 bridge escrow once
-funds are received.|
+|`testclearFundsInvariants`|Test that only wormhole router can clear funds from l1 bridge escrow once funds are received.|
 |`testclearFundsWithBadProof`|Test that attempting to clear funds with bad proof won&#x27;t work.|
 
 ### ConvexStratTest
@@ -56,8 +51,7 @@ funds are received.|
 |`testCanDeposit`|Test depositing into strategy works.|
 |`testCanSlip`|Test slippage doesn&#x27;t incure error while claiming/selling rewards.|
 |`testCanDivest`|Test divesting from convex strategy works.|
-|`testWithdrawFuzz`|Fuzz test to make sure we are able to withdraw from convex strategy
-in random scenarios.|
+|`testWithdrawFuzz`|Fuzz test to make sure we are able to withdraw from convex strategy in random scenarios.|
 |`testRewards`|Test claiming rewards work.|
 |`testCanSellRewards`|Test that selling reward token works.|
 |`testTVLFuzz`|Fuzz test of make sure that tvl calculation works in random scenarios.|
@@ -70,8 +64,7 @@ in random scenarios.|
 |`testCanMintLpTokens`|Test lp tokens are minted upon depositing assets to curve strategy.|
 |`testCanSlip`|Test slippage doesn&#x27;t incure error while claiming/selling rewards.|
 |`testCanDivest`|Test that divesting from curve strategy works.|
-|`testCanDivestFully`|Test that divesting with amount more than the TVL will result
-in divesting only TVL amount and not incur error.|
+|`testCanDivestFully`|Test that divesting with amount more than the TVL will result in divesting only TVL amount and not incur error.|
 |`testWithdrawFuzz`|Fuzz test to test withdrawal in random scenarios.|
 |`testTVLFuzz`|Fuzz test to test TVL in random scenarios.|
 |`testCanClaimRewards`|Test that claiming reward tokens work.|
@@ -128,8 +121,7 @@ in divesting only TVL amount and not incur error.|
 |`testStrategyLosesMoneyWithCToken`|Test strategy looses money with lp tokens, when price goes down.|
 |`testDivestFromStrategy`|Test divesting TVL amount from strategy works.|
 |`testStrategyDivestsOnlyAmountNeeded`|Test divesting certain amount less than TVL from strategy works.|
-|`testDivestMoreThanTVL`|Test attempting to divest an amount more than the TVL results in
-divestment of the TVL amount.|
+|`testDivestMoreThanTVL`|Test attempting to divest an amount more than the TVL results in divestment of the TVL amount.|
 |`testDivestLessThanFloat`|Test not selling lp token when there is enough assets to cover divestment.|
 |`testCanInvestZero`|Test investing a zero amount doesn&#x27;t cause error.|
 |`testCanSellRewards`|Test selling reward token works.|
@@ -151,8 +143,7 @@ divestment of the TVL amount.|
 | --- | --- |
 |`testStrategyMakesMoney`|Test strategy makes money over time.|
 |`testStrategyDivestsOnlyAmountNeeded`|Test divesting a certain amount works.|
-|`testDivestMoreThanTVL`|Test attempting to divest an amount more than the TVL results in
-divestment of the TVL amount.|
+|`testDivestMoreThanTVL`|Test attempting to divest an amount more than the TVL results in divestment of the TVL amount.|
 |`testDivestLessThanFloat`|Test not selling lp token when there is enough assets to cover divestment.|
 |`testCanInvestZero`|Test investing a zero amount doesn&#x27;t cause error.|
 |`testTVL`|Test TVL calculation.|
@@ -167,35 +158,25 @@ divestment of the TVL amount.|
 |`testDepositWithdraw`|Test withdawing after deposit.|
 |`testMint`|Test minting vault token.|
 |`testMinDeposit`|Test minting zero share results in error.|
-|`testDepositNoStrategyInvest`|Test that depositing doesn&#x27;t result in funds being invested into|
-|`testMintNoStrategyInvest`|Test that minting doesn&#x27;t result in funds being invested into|
+|`testDepositNoStrategyInvest`|Test that depositing doesn&#x27;t result in funds being invested into strategies.|
+|`testMintNoStrategyInvest`|Test that minting doesn&#x27;t result in funds being invested into strategies.|
 |`testManagementFee`|Test management fee is deducted and transferred to governance address.|
 |`testLockedProfit`|Test profit is locked over the &#x60;LOCK_INTERVAL&#x60; period.|
 |`testReceiveTVL`|Test that L2 vault can receive TVL from L1 vault.|
-|`testLockedTVL`|Test that locked profit implies tvl being locked over &#x60;LOCK_INTERVAL&#x60;
-duration.|
-|`testL1ToL2Rebalance`|Test that correct rebalance decition is taken once L1 TVL is received by the L2 vault,
-and there is a need to rebalance in L1 -&gt; L2 direction.|
-|`testL1ToL2RebalanceWithEmergencyWithdrawalQueueDebt`|Test that correct amount is requested from L1 while rebalancing, when there is
-outstanding emergenct withdrawal queue debt.|
-|`testL2ToL1Rebalance`|Test that correct rebalance decition is taken once L1 TVL is received by the L2 vault,
-and there is a need to rebalance in L2 -&gt; L1 direction.|
-|`testL2ToL1RebalanceWithEmergencyWithdrawalQueueDebt`|Test that correct amount is transfeeed from L2 while rebalancing, when there is
-outstanding emergenct withdrawal queue debt.|
+|`testLockedTVL`|Test that locked profit implies tvl being locked over &#x60;LOCK_INTERVAL&#x60; duration.|
+|`testL1ToL2Rebalance`|Test that correct rebalance decition is taken once L1 TVL is received by the L2 vault, and there is a need to rebalance in L1 -&gt; L2 direction.|
+|`testL1ToL2RebalanceWithEmergencyWithdrawalQueueDebt`|Test that correct amount is requested from L1 while rebalancing, when there is outstanding emergenct withdrawal queue debt.|
+|`testL2ToL1Rebalance`|Test that correct rebalance decition is taken once L1 TVL is received by the L2 vault, and there is a need to rebalance in L2 -&gt; L1 direction.|
+|`testL2ToL1RebalanceWithEmergencyWithdrawalQueueDebt`|Test that correct amount is transfeeed from L2 while rebalancing, when there is outstanding emergenct withdrawal queue debt.|
 |`testWithdrawalFee`|Test that withdrawal fee is deducted while withdwaring.|
 |`testSettingFees`|Test that goveranance can modify management fees.|
 |`testVaultPause`|Test that goveranance can pause the vault.|
-|`testEmergencyWithdrawal`|Test emergency withdrawal queue enqueue happens when there is not enough assets in the L2 vault
-to process the withdrawal request.|
-|`testEmergencyWithdrawalWithRedeem`|Test emergency withdrawal queue enqueue happens when there is not enough assets in the L2 vault
-to process the redeem request.|
+|`testEmergencyWithdrawal`|Test emergency withdrawal queue enqueue happens when there is not enough assets in the L2 vault to process the withdrawal request.|
+|`testEmergencyWithdrawalWithRedeem`|Test emergency withdrawal queue enqueue happens when there is not enough assets in the L2 vault to process the redeem request.|
 |`testEwqDebt`|Test that debt to emergency withdrawal queue is calculated correctly.|
-|`testEwqWithdraw`|Test dequeueing from emergency withdrawal queue works when funds are available
-in the vault, if enqueue happened via withdraw request.|
-|`testEwqRedeem`|Test dequeueing from emergency withdrawal queue works when funds are available
-in the vault, if enqueue happened via redeem request.|
-|`testEwqMinWithdraw`|Test that emergency withdrawal queue enqueue is rejected if user
-is depositing an amount less the &#x60;vault.ewqMinAssets&#x60; usdc.|
+|`testEwqWithdraw`|Test dequeueing from emergency withdrawal queue works when funds are available in the vault, if enqueue happened via withdraw request.|
+|`testEwqRedeem`|Test dequeueing from emergency withdrawal queue works when funds are available in the vault, if enqueue happened via redeem request.|
+|`testEwqMinWithdraw`|Test that emergency withdrawal queue enqueue is rejected if user is depositing an amount less the &#x60;vault.ewqMinAssets&#x60; usdc.|
 |`testDetailedPrice`|Test that view functions for detailed price of vault token works.|
 |`testSettingForwarder`|Test that governance can modify forwarder address.|
 |`testSetEwq`|Test that governance can modify emergency withdrawal queue address.|
@@ -225,18 +206,22 @@ is depositing an amount less the &#x60;vault.ewqMinAssets&#x60; usdc.|
 |`testVaultPause`|Test that pausing the basket works.|
 |`testDetailedPrice`|Test view functions for detailed prices.|
 
+### EthVaultTest
+> Test common vault functionalities.
+
+| test function | description | 
+| --- | --- |
+|`testInit`|Test vault initialization.|
+
 ### L2WormholeRouterTest
 > Test L2 wormhole router functinoalities.
 
 | test function | description | 
 | --- | --- |
-|`testWormholeConfigUpdates`|Test that the governance can update wormhole router
-configurations.|
-|`testTransferReport`|Test that the L2 wormhole router sends message to L1 after funds are transferred
-to L2.|
+|`testWormholeConfigUpdates`|Test that the governance can update wormhole router configurations.|
+|`testTransferReport`|Test that the L2 wormhole router sends message to L1 after funds are transferred to L2.|
 |`testMessageValidation`|Test that the message vailidation works.|
-|`testRequestFunds`|Test that, the L2 wormhole router requests funds from L1 in correct
-message format.|
+|`testRequestFunds`|Test that, the L2 wormhole router requests funds from L1 in correct message format.|
 |`testReceiveFunds`|Test that, the L2 wormhole router can receive funds sent by L1 vault.|
 |`testReceiveFundsInvariants`|Test that old messages are not received by the wormhole router.|
 |`testReceiveTVL`|Test that, the L2 wormhole router can receive TVL sent by L1 vault.|
@@ -247,8 +232,7 @@ message format.|
 | test function | description | 
 | --- | --- |
 |`testReportTVL`|Test router reports TVL to L2 in correct format.|
-|`testreportFundTransfer`|Test that the wormhole router sends message after funds are transferred
-to L2.|
+|`testreportFundTransfer`|Test that the wormhole router sends message after funds are transferred to L2.|
 |`testReceiveFunds`|Test receiving funds from L2 works.|
 |`testReceiveFundRequest`|Test receiving fund request from L2.|
 

@@ -301,8 +301,7 @@ contract L1WormholeRouterTest is TestPlus {
         router.reportTVL{value: fee}(tvl, received);
     }
 
-    /// @notice Test that the wormhole router sends message after funds are transferred
-    /// to L2.
+    /// @notice Test that the wormhole router sends message after funds are transferred to L2.
     function testreportFundTransfer() public {
         // Only invariant is that the vault is the only caller
         vm.prank(alice);
