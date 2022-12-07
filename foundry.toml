@@ -1,4 +1,5 @@
 [profile.default]
+out = "out"
 libs = ['lib', 'node_modules']
 block_timestamp = 1
 verbosity = 3

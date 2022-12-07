@@ -75,12 +75,28 @@
 
 | test function | description | 
 | --- | --- |
+|`testOnlyAddressWithStrategistRoleCanStartPosition`|Test only address with strategist role can open a position.|
+|`testCreatePosition`|Test creation of position.|
+|`testOnlyAddressWithStrategistRoleCanEndPosition`|Test only address with strategist role can end a position.|
+|`testEndPosition`|Test ending a position.|
+|`testTVL`|Test TVL calculation.|
+|`testDivest`|Test vault can divest from this strategy.|
+|`testClaimRewards`|Test strategist can calim rewards.|
+|`testTVLFuzz`|Fuzz test to calculate TVL in random scenarios.|
 
 ### L2DeltaNeutralTest
 > Test SSLP Strategy with Sushiswap in L2.
 
 | test function | description | 
 | --- | --- |
+|`testOnlyAddressWithStrategistRoleCanStartPosition`|Test only address with strategist role can open a position.|
+|`testCreatePosition`|Test creation of position.|
+|`testOnlyAddressWithStrategistRoleCanEndPosition`|Test only address with strategist role can end a position.|
+|`testEndPosition`|Test ending a position.|
+|`testTVL`|Test TVL calculation.|
+|`testDivest`|Test vault can divest from this strategy.|
+|`testClaimRewards`|Test strategist can calim rewards.|
+|`testTVLFuzz`|Fuzz test to calculate TVL in random scenarios.|
 
 ### DeltaNeutralV3Test
 > Test SSLP Strategy with Uniswap V3 in polygon.
