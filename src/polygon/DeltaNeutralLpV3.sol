@@ -31,7 +31,6 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
     constructor(
         BaseVault _vault,
         uint256 _slippageTolerance,
-        uint256 _longPct,
         ILendingPoolAddressesProviderRegistry _registry,
         ERC20 _borrowAsset,
         AggregatorV3Interface _borrowAssetFeed,
@@ -44,7 +43,6 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
 
         canStartNewPos = true;
         slippageTolerance = _slippageTolerance;
-        longPercentage = _longPct;
 
         borrowAsset = _borrowAsset;
         borrowAssetFeed = _borrowAssetFeed;
@@ -150,8 +148,6 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
     );
 
     uint256 public slippageTolerance;
-    /// @notice Fixed point number describing the percentage of the position with which to go long. 1e18 = 1 = 100%
-    uint256 public longPercentage;
 
     /// @notice The router used for swaps
     ISwapRouter public immutable router;
@@ -189,15 +185,12 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
         currentPosition += 1;
         canStartNewPos = false;
 
-        // Some amount of the assets will be used to buy matic at the end of this function
-        uint256 assets = asset.balanceOf(address(this));
-        uint256 assetsToMatic = assets.mulWadDown(longPercentage);
-
         // Borrow Matic at 75% (88% liquidation threshold and 85.5% max LTV)
         // If x is amount we want to deposit into aave
         // .75x = Total - x => 1.75x = Total => x = Total / 1.75 => Total * 4/7
         // Deposit asset in aave
-        uint256 assetsToDeposit = (assets - assetsToMatic).mulDivDown(4, 7);
+        uint256 assets = asset.balanceOf(address(this));
+        uint256 assetsToDeposit = assets.mulDivDown(4, 7);
         lendingPool.deposit({asset: address(asset), amount: assetsToDeposit, onBehalfOf: address(this), referralCode: 0});
 
         uint256 borrowPrice = _getPrice();
@@ -213,16 +206,9 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
         });
 
         // Provide liquidity on uniswap
-        uint256 aBal = assets - assetsToMatic - assetsToDeposit;
-        uint256 borrowsToUni;
-        {
-            uint256 bBal = borrowAsset.balanceOf(address(this));
-            _addLiquidity(aBal, bBal, tickLow, tickHigh, slippageToleranceBps);
-            borrowsToUni = bBal - borrowAsset.balanceOf(address(this));
-        }
-
-        // Buy WMATIC. After this trade, the strat now holds an lp NFT and a little bit of WMATIC
-        _swapExactSingle(asset, borrowAsset, assetsToMatic, slippageToleranceBps);
+        (uint256 assetsToUni, uint256 borrowsToUni) = _addLiquidity(
+            assets - assetsToDeposit, borrowAsset.balanceOf(address(this)), tickLow, tickHigh, slippageToleranceBps
+        );
 
         emit PositionStart({
             position: currentPosition,
@@ -231,7 +217,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
             borrowPrice: borrowPrice,
             tickLow: tickLow,
             tickHigh: tickHigh,
-            assetsToUni: aBal - asset.balanceOf(address(this)),
+            assetsToUni: assetsToUni,
             borrowsToUni: borrowsToUni,
             timestamp: block.timestamp
         });
@@ -307,9 +293,13 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
         // Repay debt
         lendingPool.repay({asset: address(borrowAsset), amount: debt, rateMode: 2, onBehalfOf: address(this)});
 
-        // Withdrawal from aave
+        // Withdraw from aave
         uint256 assetCollateral = aToken.balanceOf(address(this));
         lendingPool.withdraw({asset: address(asset), amount: assetCollateral, to: address(this)});
+
+        // Burn nft of postion we are closing
+        lpManager.burn(lpId);
+        lpId = 0;
 
         // This function is just being used to avoid the stack too deep error
         _emitEnd(
@@ -372,7 +362,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
         int24 tickLow,
         int24 tickHigh,
         uint256 slippageToleranceBps
-    ) internal {
+    ) internal returns (uint256 assetsToUni, uint256 borrowsToUni) {
         (uint256 amount0, uint256 amount1) = _convertTo01(amountA, amountB);
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
             token0: token0,
@@ -387,7 +377,8 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
             recipient: address(this),
             deadline: block.timestamp
         });
-        (uint256 tokenId, uint128 liquidity,,) = lpManager.mint(params);
+        (uint256 tokenId, uint128 liquidity, uint256 amount0Uni, uint256 amount1Uni) = lpManager.mint(params);
+        (assetsToUni, borrowsToUni) = _convertToAB(amount0Uni, amount1Uni);
         lpId = tokenId;
         lpLiquidity = liquidity;
     }
@@ -470,7 +461,8 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
             recipient: address(this),
             deadline: block.timestamp,
             amountOut: amountOut,
-            amountInMaximum: _convertAmounts(to, amountOut).slippageUp(slippageBps),
+            // When amountOut is very small the conversion may truncate to zero. Set a floor of one whole token
+            amountInMaximum: Math.max(_convertAmounts(to, amountOut).slippageUp(slippageBps), 10 ** ERC20(from).decimals()),
             sqrtPriceLimitX96: 0
         });
 
