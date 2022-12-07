@@ -24,5 +24,8 @@ contract EthVaultTest is TestPlus {
     function testInit() public {
         vm.expectRevert();
         vault.initialize(governance, address(asset));
+
+        assertEq(vault.name(), "USD Earn");
+        assertEq(vault.symbol(), "usdEarn");
     }
 }
