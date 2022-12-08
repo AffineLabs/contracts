@@ -121,10 +121,14 @@ async function _ethDefender(forking: boolean, testnet: boolean) {
   await addToAddressBookAndDefender(ethNetwork, "EthAlpSave", "L1Vault", l1VaultAddr);
   await addToAddressBookAndDefender(ethNetwork, "EthWormholeRouter", "L1WormholeRouter", routerAddr, [], false);
 
+  // Skip one tx (the deployment implementation)
+  const ethEarnAddr = txs[5].contractAddress;
+  await addToAddressBookAndDefender(ethNetwork, "EthUsdcEarn", "Vault", ethEarnAddr, [], true);
+
   if (!testnet) {
-    const compAddr = txs[4].contractAddress;
-    const curveAddr = txs[5].contractAddress;
-    const cvxAddr = txs[6].contractAddress;
+    const compAddr = txs[6].contractAddress;
+    const curveAddr = txs[7].contractAddress;
+    const cvxAddr = txs[8].contractAddress;
 
     await addToAddressBookAndDefender(ethNetwork, "L1CompoundStrategy", "L1CompoundStrategy", compAddr, [], false);
     await addToAddressBookAndDefender(ethNetwork, "CurveStrategy", "CurveStrategy", curveAddr, [], true);
