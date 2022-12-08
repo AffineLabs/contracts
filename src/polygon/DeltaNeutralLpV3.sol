@@ -139,7 +139,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
         uint32 indexed position,
         uint256 assetCollateral,
         uint256 borrows,
-        uint256 borrowPrice,
+        uint256[2] borrowPrices,
         int24 tickLow,
         int24 tickHigh,
         uint256 assetsToUni,
@@ -214,7 +214,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
             position: currentPosition,
             assetCollateral: aToken.balanceOf(address(this)),
             borrows: debtToken.balanceOf(address(this)),
-            borrowPrice: borrowPrice,
+            borrowPrices: [borrowPrice, _getBorrowSpotPrice()],
             tickLow: tickLow,
             tickHigh: tickHigh,
             assetsToUni: assetsToUni,
@@ -320,10 +320,10 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
         (uint160 sqrtPriceX96,,,,,,) = pool.slot0();
         uint256 price;
         // We want asset / borrowAsset ratio. If asset is token1 then use given ratio (token1 / token0). Otherwise flip result
-        // TODO: This can overflow, and assumes that token0 is usdc. FIX.
+        // TODO: This assumes that token1 is WETH (18 decimals). FIX.
         if (address(asset) == token0) {
-            // the final ratio is token0 / token1, but since usdc only has six decimals. we multiply by 1e12
-            price = (2 ** 192 * 1e12) / (uint256(sqrtPriceX96) ** 2);
+            // eth_amount / (eth_usdc ratio)  = eth_amount * usdc_eth ratio = usdc amount
+            price = (1e18 << 192) / (uint256(sqrtPriceX96) ** 2);
         } else {
             price = (uint256(sqrtPriceX96) ** 2) >> 192;
         }
