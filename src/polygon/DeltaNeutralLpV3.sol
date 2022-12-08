@@ -139,7 +139,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
         uint32 indexed position,
         uint256 assetCollateral,
         uint256 borrows,
-        uint256 borrowPrice,
+        uint256[2] borrowPrices,
         int24 tickLow,
         int24 tickHigh,
         uint256 assetsToUni,
@@ -214,7 +214,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
             position: currentPosition,
             assetCollateral: aToken.balanceOf(address(this)),
             borrows: debtToken.balanceOf(address(this)),
-            borrowPrice: borrowPrice,
+            borrowPrices: [borrowPrice, _getBorrowSpotPrice()],
             tickLow: tickLow,
             tickHigh: tickHigh,
             assetsToUni: assetsToUni,
@@ -245,7 +245,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
         uint256 borrowsFromUni,
         uint256 assetFees,
         uint256 borrowFees,
-        uint256 borrowPrice,
+        uint256[2] borrowPrices,
         bool assetSold,
         uint256 assetsOrBorrowsSold,
         uint256 assetsOrBorrowsReceived,
@@ -314,6 +314,21 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
             debt
         );
     }
+    // Another function to avoid stack too deep error. Via-ir compilation takes too long.
+
+    function _getBorrowSpotPrice() internal view returns (uint256) {
+        (uint160 sqrtPriceX96,,,,,,) = pool.slot0();
+        uint256 price;
+        // We want asset / borrowAsset ratio. If asset is token1 then use given ratio (token1 / token0). Otherwise flip result
+        // TODO: This assumes that token1 is WETH (18 decimals). FIX.
+        if (address(asset) == token0) {
+            // eth_amount / (eth_usdc ratio)  = eth_amount * usdc_eth ratio = usdc amount
+            price = (1e18 << 192) / (uint256(sqrtPriceX96) ** 2);
+        } else {
+            price = (uint256(sqrtPriceX96) ** 2) >> 192;
+        }
+        return price;
+    }
 
     function _emitEnd(
         uint256 amount0FromUni,
@@ -328,20 +343,23 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
     ) internal {
         (uint256 assetsFromUni, uint256 borrowsFromUni) = _convertToAB(amount0FromUni, amount1FromUni);
         (uint256 assetFees, uint256 borrowFees) = _convertToAB(amount0Fees, amount1Fees);
-        emit PositionEnd({
-            position: currentPosition,
-            assetsFromUni: assetsFromUni,
-            borrowsFromUni: borrowsFromUni,
-            assetFees: assetFees,
-            borrowFees: borrowFees,
-            borrowPrice: _getPrice(),
-            assetSold: assetSold,
-            assetsOrBorrowsSold: assetsOrBorrowsSold,
-            assetsOrBorrowsReceived: assetsOrBorrowsReceived,
-            assetCollateral: assetCollateral,
-            borrowDebtPaid: debt,
-            timestamp: block.timestamp
-        });
+
+        {
+            emit PositionEnd({
+                position: currentPosition,
+                assetsFromUni: assetsFromUni,
+                borrowsFromUni: borrowsFromUni,
+                assetFees: assetFees,
+                borrowFees: borrowFees,
+                borrowPrices: [_getPrice(), _getBorrowSpotPrice()],
+                assetSold: assetSold,
+                assetsOrBorrowsSold: assetsOrBorrowsSold,
+                assetsOrBorrowsReceived: assetsOrBorrowsReceived,
+                assetCollateral: assetCollateral,
+                borrowDebtPaid: debt,
+                timestamp: block.timestamp
+            });
+        }
     }
 
     /// @dev Given two numbers in AB (assets, borrows) format, convert to Uniswap's token0, token1 format
