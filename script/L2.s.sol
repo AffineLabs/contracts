@@ -25,7 +25,7 @@ import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol"
 
 import {IMasterChef} from "../src/interfaces/sushiswap/IMasterChef.sol";
 import {DeltaNeutralLp} from "../src/DeltaNeutralLp.sol";
-import {DeltaNeutralLpV3} from "../src/polygon/DeltaNeutralLpV3.sol";
+import {DeltaNeutralLpV3} from "../src/both/DeltaNeutralLpV3.sol";
 
 import {Base} from "./Base.sol";
 import {SslpV3} from "./DeltaNeutralLpV3.s.sol";
@@ -124,7 +124,7 @@ contract Deploy is Script, Base {
         );
         require(address(sslp.asset()) == vault.asset());
 
-        DeltaNeutralLpV3 sslpV3 = SslpV3.deploy(vault);
+        DeltaNeutralLpV3 sslpV3 = SslpV3.deployPoly(vault);
         require(address(sslpV3.asset()) == vault.asset());
     }
 
