@@ -12,6 +12,7 @@ import {CurveStrategy} from "../ethereum/CurveStrategy.sol";
 import {I3CrvMetaPoolZap, ILiquidityGauge, ICurvePool, IMinter} from "../interfaces/curve.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
+/// @notice Test MIM-3CRV strategy.
 contract CurveStratTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -59,6 +60,7 @@ contract CurveStratTest is TestPlus {
         strategy.deposit(amount, 0);
     }
 
+    /// @notice Test lp tokens are minted upon depositing assets to curve strategy.
     function testCanMintLpTokens() public {
         _invest(1e6);
 
@@ -74,6 +76,7 @@ contract CurveStratTest is TestPlus {
         assertTrue(crvRewards > 0);
     }
 
+    /// @notice Test slippage doesn't incure error while claiming/selling rewards.
     function testCanSlip() public {
         deal(address(usdc), address(strategy), 100e6);
 
@@ -89,6 +92,7 @@ contract CurveStratTest is TestPlus {
         strategy.claimRewards(0);
     }
 
+    /// @notice Test that divesting from curve strategy works.
     function testCanDivest() public {
         // One lp token is worth more than a dollar
         deal(address(metaPool), address(strategy), 1e18);
@@ -100,6 +104,7 @@ contract CurveStratTest is TestPlus {
         assertTrue(usdc.balanceOf(address(vault)) == 1e6);
     }
 
+    /// @notice Test that divesting with amount more than the TVL will result in divesting only TVL amount and not incur error.
     function testCanDivestFully() public {
         // If we try to withdraw more money than actually exists in the vault
         // We end up approximately no lp tokens and a bunch of usdc
@@ -113,6 +118,7 @@ contract CurveStratTest is TestPlus {
         assertApproxEqAbs(gauge.balanceOf(address(strategy)), 0, 0.01e18);
     }
 
+    /// @notice Fuzz test to test withdrawal in random scenarios.
     function testWithdrawFuzz(uint64 lpTokens, uint64 gaugeTokens, uint32 assetsToDivest) public {
         deal(address(metaPool), address(strategy), lpTokens);
         deal(address(gauge), address(strategy), gaugeTokens);
@@ -120,6 +126,7 @@ contract CurveStratTest is TestPlus {
         strategy.withdrawAssets(assetsToDivest);
     }
 
+    /// @notice Fuzz test to test TVL in random scenarios.
     function testTVLFuzz(uint64 lpTokens, uint64 gaugeTokens) public {
         // Each token is roughly $1, and tvl function should reflect that
         deal(address(metaPool), address(strategy), lpTokens);
@@ -132,6 +139,7 @@ contract CurveStratTest is TestPlus {
         }
     }
 
+    /// @notice Test that claiming reward tokens work.
     function testCanClaimRewards() public {
         _invest(1e6 * 1e6);
         vm.warp(block.timestamp + 365 days);
@@ -141,6 +149,7 @@ contract CurveStratTest is TestPlus {
         assertGt(strategy.totalLockedValue(), oldTvl);
     }
 
+    /// @notice Test that selling reward tokens work.
     function testCanSellRewards() public {
         deal(address(strategy.CRV()), address(strategy), 1e18 * 100);
 

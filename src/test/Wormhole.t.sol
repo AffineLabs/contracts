@@ -24,6 +24,7 @@ contract MockRouter is L2WormholeRouter {
     }
 }
 
+/// @notice Test L2 wormhole router functinoalities.
 contract L2WormholeRouterTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -41,6 +42,7 @@ contract L2WormholeRouterTest is TestPlus {
         wormhole = router.wormhole();
     }
 
+    /// @notice Test that the governance can update wormhole router configurations.
     function testWormholeConfigUpdates() public {
         // update consistencyLevel
         changePrank(router.governance());
@@ -52,6 +54,7 @@ contract L2WormholeRouterTest is TestPlus {
         router.setConsistencyLevel(0);
     }
 
+    /// @notice Test that the L2 wormhole router sends message to L1 after funds are transferred to L2.
     function testTransferReport() public {
         // Only invariant is that the vault is the only caller
         vm.prank(alice);
@@ -82,6 +85,7 @@ contract L2WormholeRouterTest is TestPlus {
         router.reportFundTransfer{value: fee}(transferAmount);
     }
 
+    /// @notice Test that the message vailidation works.
     function testMessageValidation() public {
         MockRouter mockRouter = new MockRouter(vault, wormhole);
         uint16 emitter = uint16(2);
@@ -105,6 +109,7 @@ contract L2WormholeRouterTest is TestPlus {
         mockRouter.validateWormholeMessageEmitter(goodVaa);
     }
 
+    /// @notice Test that, the L2 wormhole router requests funds from L1 in correct message format.
     function testRequestFunds() public {
         // Only invariant is that the vault is the only caller
         vm.prank(alice);
@@ -135,6 +140,7 @@ contract L2WormholeRouterTest is TestPlus {
         router.requestFunds{value: fee}(requestAmount);
     }
 
+    /// @notice Test that, the L2 wormhole router can receive funds sent by L1 vault.
     function testReceiveFunds() public {
         uint256 l1TransferAmount = 500;
 
@@ -178,6 +184,7 @@ contract L2WormholeRouterTest is TestPlus {
         assertEq(ERC20(vault.asset()).balanceOf(address(vault)), l1TransferAmount);
     }
 
+    /// @notice Test that old messages are not received by the wormhole router.
     function testReceiveFundsInvariants() public {
         // If wormhole says the vaa is bad, we revert
         // Mock call to wormhole.parseAndVerifyVM()
@@ -221,6 +228,7 @@ contract L2WormholeRouterTest is TestPlus {
         router.receiveFunds("VAA_FROM_L1_TRANSFER");
     }
 
+    /// @notice Test that, the L2 wormhole router can receive TVL sent by L1 vault.
     function testReceiveTVL() public {
         // Mock call to to parseAndVerifyVM()
         uint256 tvl = 1000;
@@ -245,6 +253,7 @@ contract L2WormholeRouterTest is TestPlus {
     }
 }
 
+/// @notice Test L1 wormhole router functinoalities.
 contract L1WormholeRouterTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -261,6 +270,7 @@ contract L1WormholeRouterTest is TestPlus {
         wormhole = router.wormhole();
     }
 
+    /// @notice Test router reports TVL to L2 in correct format.
     function testReportTVL() public {
         // Only invariant is that the vault is the only caller
         vm.prank(alice);
@@ -291,6 +301,7 @@ contract L1WormholeRouterTest is TestPlus {
         router.reportTVL{value: fee}(tvl, received);
     }
 
+    /// @notice Test that the wormhole router sends message after funds are transferred to L2.
     function testreportFundTransfer() public {
         // Only invariant is that the vault is the only caller
         vm.prank(alice);
@@ -320,6 +331,7 @@ contract L1WormholeRouterTest is TestPlus {
         router.reportFundTransfer{value: fee}(requestAmount);
     }
 
+    /// @notice Test receiving funds from L2 works.
     function testReceiveFunds() public {
         uint256 l2TransferAmount = 500;
 
@@ -346,6 +358,7 @@ contract L1WormholeRouterTest is TestPlus {
         assertEq(router.nextValidNonce(), vaa.nonce + 1);
     }
 
+    /// @notice Test receiving fund request from L2.
     function testReceiveFundRequest() public {
         // Mock call to wormhole.parseAndVerifyVM()
         uint256 requestAmount = 200;

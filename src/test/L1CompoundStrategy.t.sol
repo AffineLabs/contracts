@@ -13,6 +13,7 @@ import {IComptroller} from "../interfaces/compound/IComptroller.sol";
 import {L1CompoundStrategy} from "../ethereum/L1CompoundStrategy.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
+/// @notice Test compound strategy
 contract CompoundStratTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -72,6 +73,7 @@ contract CompoundStratTest is TestPlus {
         vm.stopPrank();
     }
 
+    /// @notice Investing into strategy works.
     function testStrategyInvest() public {
         depositOneUSDCToVault();
         investHalfOfVaultAssetInCompund();
@@ -80,6 +82,7 @@ contract CompoundStratTest is TestPlus {
         assertInRange(strategy.totalLockedValue(), halfUSDC - 1, halfUSDC);
     }
 
+    /// @notice Test strategy makes money with reward tokens.
     function testStrategyMakesMoneyWithCOMPToken() public {
         depositOneUSDCToVault();
         investHalfOfVaultAssetInCompund();
@@ -89,6 +92,7 @@ contract CompoundStratTest is TestPlus {
         assertGt(strategy.totalLockedValue(), halfUSDC);
     }
 
+    /// @notice Test strategy makes money with lp tokens.
     function testStrategyMakesMoneyWithCToken() public {
         depositOneUSDCToVault();
         investHalfOfVaultAssetInCompund();
@@ -103,6 +107,7 @@ contract CompoundStratTest is TestPlus {
         assertGt(strategy.totalLockedValue(), halfUSDC);
     }
 
+    /// @notice Test strategy looses money with lp tokens, when price goes down.
     function testStrategyLosesMoneyWithCToken() public {
         depositOneUSDCToVault();
         investHalfOfVaultAssetInCompund();
@@ -117,6 +122,7 @@ contract CompoundStratTest is TestPlus {
         assertLt(strategy.totalLockedValue(), halfUSDC);
     }
 
+    /// @notice Test divesting TVL amount from strategy works.
     function testDivestFromStrategy() public {
         depositOneUSDCToVault();
         investHalfOfVaultAssetInCompund();
@@ -128,6 +134,7 @@ contract CompoundStratTest is TestPlus {
         assertInRange(usdc.balanceOf(address(vault)), oneUSDC - 1, oneUSDC);
     }
 
+    /// @notice Test divesting certain amount less than TVL from strategy works.
     function testStrategyDivestsOnlyAmountNeeded() public {
         // If the strategy already already has money, we only withdraw amountRequested - current money
 
@@ -147,6 +154,7 @@ contract CompoundStratTest is TestPlus {
         assertEq(strategy.cToken().balanceOfUnderlying(address(strategy)), 1e6);
     }
 
+    /// @notice Test attempting to divest an amount more than the TVL results in divestment of the TVL amount.
     // We can attempt to divest more than our balance of aTokens
     function testDivestMoreThanTVL() public {
         _depositIntoStrat(1e6);
@@ -159,6 +167,7 @@ contract CompoundStratTest is TestPlus {
         assertEq(strategy.totalLockedValue(), 0);
     }
 
+    /// @notice Test not selling lp token when there is enough assets to cover divestment.
     function testDivestLessThanFloat() public {
         // If we try to divest $1 when we already have $2, we don't bother with the cToken and just
         // transfer from the usdc we have
@@ -172,10 +181,12 @@ contract CompoundStratTest is TestPlus {
         assertEq(strategy.totalLockedValue(), 1e6);
     }
 
+    /// @notice Test investing a zero amount doesn't cause error.
     function testCanInvestZero() public {
         _depositIntoStrat(0);
     }
 
+    /// @notice Test selling reward token works.
     function testCanSellRewards() public {
         deal(address(strategy.COMP()), address(strategy), 1e18);
 

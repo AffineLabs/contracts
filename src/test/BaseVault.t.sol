@@ -35,6 +35,7 @@ contract BaseVaultLiquidate is BaseVault {
     }
 }
 
+/// @notice Test general functionalities of vaults.
 contract BaseVaultTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -54,6 +55,7 @@ contract BaseVaultTest is TestPlus {
         );
     }
 
+    /// @notice Test harvesting strategies and makes sure locked profit works.
     function testHarvest() public {
         BaseStrategy newStrategy1 = new TestStrategy(vault);
         vault.addStrategy(newStrategy1, 1000);
@@ -68,6 +70,7 @@ contract BaseVaultTest is TestPlus {
         assert(vault.lockedProfit() == 0);
     }
 
+    /// @notice Test addition to new strategy works.
     function testStrategyAddition() public {
         TestStrategy strategy = new TestStrategy(vault);
         vault.addStrategy(strategy, 1000);
@@ -76,6 +79,7 @@ contract BaseVaultTest is TestPlus {
         assertEq(tvlBps, 1000);
     }
 
+    /// @notice Test removal of strategies work.
     function testStrategyRemoval() public {
         // Adding a strategy increases our totalBps
         TestStrategy strategy = new TestStrategy(vault);
@@ -93,6 +97,7 @@ contract BaseVaultTest is TestPlus {
         assertEq(address(vault.withdrawalQueue(0)), address(0));
     }
 
+    /// @notice Test divesting of funds work after a strategy is removed from withdrawal queue.
     function testRemoveStrategyAndDivest() public {
         // Add strategy
         TestStrategy strategy = new TestStrategy(vault);
@@ -115,6 +120,7 @@ contract BaseVaultTest is TestPlus {
         assertTrue(token.balanceOf(address(strategy)) == 0);
     }
 
+    /// @notice Test getter for withdrwal queue.
     function testGetWithdrawalQueue() public {
         for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
             vault.addStrategy(new TestStrategy(vault), 10);
@@ -128,6 +134,7 @@ contract BaseVaultTest is TestPlus {
         uint256 index1, uint256 index2, BaseStrategy indexed newStrategy1, BaseStrategy indexed newStrategy2
     );
 
+    /// @notice Test setter for withdrawal queue.
     function testSetWithdrawalQueue() public {
         BaseStrategy[MAX_STRATEGIES] memory newQueue;
         for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
@@ -139,6 +146,7 @@ contract BaseVaultTest is TestPlus {
         }
     }
 
+    /// @notice Test liquidating certain amount of assets from the vault.
     function testLiquidate() public {
         BaseStrategy newStrategy1 = new TestStrategy(vault);
         token.mint(address(newStrategy1), 10);
@@ -152,6 +160,7 @@ contract BaseVaultTest is TestPlus {
         assertTrue(newStrategy1.balanceOfAsset() == 0);
     }
 
+    /// @notice Test internal rebalanceing of vault.
     function testRebalance() public {
         BaseStrategy strat1 = new TestStrategy(vault);
         BaseStrategy strat2 = new TestStrategy(vault);
@@ -177,6 +186,7 @@ contract BaseVaultTest is TestPlus {
         assertTrue(token.balanceOf(address(strat2)) == 4000);
     }
 
+    /// @notice Test internal rebalanceing of vault when strategies incur slippage while divesting from them.
     function testRebalanceWithSlippage() public {
         // If we lose money when divesting from strategies, then we might have to
         // to send a truncated amount to one of the strategies in need of assets
@@ -205,6 +215,7 @@ contract BaseVaultTest is TestPlus {
         assertTrue(token.balanceOf(address(strat2)) == 5000);
     }
 
+    /// @notice Test updating strategy allocation bps.
     function testUpdateStrategyAllocations() public {
         BaseStrategy strat1 = new TestStrategy(vault);
         BaseStrategy strat2 = new TestStrategy(vault);
@@ -228,6 +239,7 @@ contract BaseVaultTest is TestPlus {
         assertEq(strat2TvlBps, 200);
     }
 
+    /// @notice Test updating wormhole router. Only governance should be able to do it.
     function testSetWormRouter() public {
         address wormRouter = makeAddr("worm_router");
         vault.setWormholeRouter(wormRouter);
@@ -238,6 +250,7 @@ contract BaseVaultTest is TestPlus {
         vault.setWormholeRouter(address(0));
     }
 
+    /// @notice Test updating bridge escrow contract. Only governance should be able to do it.
     function testBridgeEscrow() public {
         BridgeEscrow escrow = BridgeEscrow(makeAddr("worm_router"));
         vault.setBridgeEscrow(escrow);

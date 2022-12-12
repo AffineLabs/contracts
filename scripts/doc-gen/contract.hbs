@@ -1,0 +1,12 @@
+{{#if natspec.notice}}
+### {{name}}
+> {{natspec.notice}}
+
+| test function | description | 
+| --- | --- |
+{{#each functions}}
+{{#if natspec.notice}}
+|`{{name}}`|{{natspec.notice}}|
+{{/if}}
+{{/each}}
+{{/if}}

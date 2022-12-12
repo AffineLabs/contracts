@@ -16,6 +16,7 @@ import {EmergencyWithdrawalQueue} from "../polygon/EmergencyWithdrawalQueue.sol"
 import {TestStrategy} from "./BaseVault.t.sol";
 import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
 
+/// @notice Test L1 vault specific functionalities.
 contract L1VaultTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -36,6 +37,7 @@ contract L1VaultTest is TestPlus {
         asset = MockERC20(vault.asset());
     }
 
+    /// @notice Test sending TVL to L2 works.
     function testSendTVL() public {
         // user can call sendTVL
         changePrank(alice);
@@ -43,6 +45,7 @@ contract L1VaultTest is TestPlus {
         assertTrue(vault.received() == false);
     }
 
+    /// @notice Test processing fund request from L2 works.
     function testprocessFundRequest() public {
         // We need to either map the root token to the child token or
         // we need to use the correct already mapped addresses
@@ -58,6 +61,7 @@ contract L1VaultTest is TestPlus {
         assertTrue(wormhole.nextSequence(address(vault.wormholeRouter())) == oldMsgCount + 1);
     }
 
+    /// @notice Test callback after receiving funds in bridge escrow works.
     function testafterReceive() public {
         BaseStrategy newStrategy1 = new TestStrategy(vault);
 
@@ -73,6 +77,7 @@ contract L1VaultTest is TestPlus {
         assertTrue(newStrategy1.balanceOfAsset() == 1);
     }
 
+    /// @notice Test that profit is locked over a `LOCK_INTERVAL`.
     function testLockedProfit() public {
         changePrank(governance);
 

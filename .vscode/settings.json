@@ -1,7 +1,18 @@
 {
+  "editor.rulers": [120],
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "solidity.packageDefaultDependenciesContractsDirectory": "",
   "solidity.packageDefaultDependenciesDirectory": "node_modules",
-  "solidity.compileUsingRemoteVersion": "v0.8.16"
+  "solidity.compileUsingRemoteVersion": "v0.8.16",
+  "[handlebars]": {
+    "editor.formatOnSave": false,
+    "editor.formatOnPaste": false
+  },
+  "[markdown]": {
+    "editor.formatOnSave": false,
+    "editor.formatOnPaste": false,
+    "editor.wordWrap": "wordWrapColumn",
+    "editor.wordWrapColumn": 512
+  }
 }

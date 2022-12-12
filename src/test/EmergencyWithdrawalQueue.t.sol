@@ -12,6 +12,7 @@ import {ConvertLib} from "./ConvertLib.sol";
 import {L2Vault} from "../polygon/L2Vault.sol";
 import {EmergencyWithdrawalQueue} from "../polygon/EmergencyWithdrawalQueue.sol";
 
+/// @notice Test functionalities of emergency withdrawal queue.
 contract EmergencyWithdrawalQueueTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -30,6 +31,7 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         emergencyWithdrawalQueue = vault.emergencyWithdrawalQueue();
     }
 
+    /// @notice Test enqueueing into emergency withdrawal queue works.
     function testEnqueueSuccess() external {
         vm.expectEmit(true, true, false, true);
         emit Push(1, bob, alice, 1000);
@@ -42,12 +44,14 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         assertEq(emergencyWithdrawalQueue.size(), 1);
     }
 
-    function testEnqueueCanEnqueue() external {
+    /// @notice Test that only vault can enqueue into emergency withdrawal queue works.
+    function testOnlyVaultCanEnqueue() external {
         vm.expectRevert("EWQ: only vault");
         // Only vault should be able to enqueue.
         emergencyWithdrawalQueue.enqueue(bob, alice, 1000);
     }
 
+    /// @notice Test that a user can have multiple requests in emergency withdrawal queue.
     function testCorreclyEnqueueReturningUser() external {
         // Impersonate vault
         vm.startPrank(address(vault));
@@ -69,6 +73,7 @@ contract EmergencyWithdrawalQueueTest is TestPlus {
         assertEq(emergencyWithdrawalQueue.size(), 3);
     }
 
+    /// @notice Test that dequeueing from emergency withdrawal queue works.
     function testDequeueSuccess() external {
         // Impersonate vault
         vm.startPrank(address(vault));

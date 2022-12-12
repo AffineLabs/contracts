@@ -16,6 +16,7 @@ import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockL2Vault} from "./mocks/index.sol";
 import {TestStrategy} from "./mocks/TestStrategy.sol";
 
+/// @notice Test functionalities of L2 vault.
 contract L2VaultTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -47,6 +48,7 @@ contract L2VaultTest is TestPlus {
         uint256 indexed pos, address indexed owner, address indexed receiver, uint256 shares
     );
 
+    /// @notice Test post deployment, initial state of the vault.
     function testDeploy() public {
         assertEq(vault.decimals(), asset.decimals() + 10);
         // this makes sure that the first time we assess management fees we get a reasonable number
@@ -58,6 +60,7 @@ contract L2VaultTest is TestPlus {
         assertTrue(vault.canRequestFromL1());
     }
 
+    /// @notice Test redeeming after deposit.
     function testDepositRedeem(uint64 amountAsset) public {
         vm.assume(amountAsset > 99);
         // Running into overflow issues on the call to vault.redeem
@@ -77,6 +80,7 @@ contract L2VaultTest is TestPlus {
         assertEq(assetsReceived, amountAsset);
     }
 
+    /// @notice Test withdawing after deposit.
     function testDepositWithdraw(uint64 amountAsset) public {
         vm.assume(amountAsset > 99);
         // shares = assets * totalShares / totalAssets but totalShares will actually be bigger than a uint128
@@ -103,6 +107,7 @@ contract L2VaultTest is TestPlus {
         assertEq(asset.balanceOf(user), amountAsset);
     }
 
+    /// @notice Test minting vault token.
     function testMint(uint64 amountAsset) public {
         vm.assume(amountAsset > 99);
         address user = address(this);
@@ -119,6 +124,7 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.balanceOf(user), expectedShares);
     }
 
+    /// @notice Test minting zero share results in error.
     function testMinDeposit() public {
         address user = address(this);
         asset.mint(user, 100);
@@ -131,6 +137,7 @@ contract L2VaultTest is TestPlus {
         vault.deposit(100, user);
     }
 
+    /// @notice Test that depositing doesn't result in funds being invested into strategies.
     function testDepositNoStrategyInvest() public {
         address user = address(this);
         uint256 amount = 100;
@@ -153,6 +160,7 @@ contract L2VaultTest is TestPlus {
         vm.stopPrank();
     }
 
+    /// @notice Test that minting doesn't result in funds being invested into strategies.
     function testMintNoStrategyInvest() public {
         address user = address(this);
         uint256 amount = 100;
@@ -175,6 +183,7 @@ contract L2VaultTest is TestPlus {
         vm.stopPrank();
     }
 
+    /// @notice Test management fee is deducted and transferred to governance address.
     function testManagementFee() public {
         // Increase vault's total supply
         deal(address(vault), address(0), 1e18, true);
@@ -208,6 +217,7 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.balanceOf(governance), (100 * 1e18) / 10_000);
     }
 
+    /// @notice Test profit is locked over the `LOCK_INTERVAL` period.
     function testLockedProfit() public {
         // Add this contract as a strategy
         changePrank(governance);
@@ -239,6 +249,7 @@ contract L2VaultTest is TestPlus {
      * CROSS CHAIN REBALANCING
      */
 
+    /// @notice Test that L2 vault can receive TVL from L1 vault.
     function testReceiveTVL() public {
         // No rebalancing should actually occur
         vault.setMockRebalanceDelta(1e6);
@@ -282,6 +293,7 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.l1TotalLockedValue(), 120);
     }
 
+    /// @notice Test that locked profit implies tvl being locked over `LOCK_INTERVAL` duration.
     function testLockedTVL() public {
         // No rebalancing should actually occur
         vault.setMockRebalanceDelta(1e6);
@@ -306,6 +318,7 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.totalAssets(), 100);
     }
 
+    /// @notice Test that correct rebalance decition is taken once L1 TVL is received by the L2 vault, and there is a need to rebalance in L1 -> L2 direction.
     function testL1ToL2Rebalance() public {
         // Any call to the wormholerouter will do nothing
         vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.requestFunds, (25)), "");
@@ -319,6 +332,7 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.canRequestFromL1(), false);
     }
 
+    /// @notice Test that correct amount is requested from L1 while rebalancing, when there is outstanding emergenct withdrawal queue debt.
     function testL1ToL2RebalanceWithEmergencyWithdrawalQueueDebt() public {
         // Any call to the wormholerouter will do nothing
         vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.requestFunds, (200)), "");
@@ -341,6 +355,7 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.canRequestFromL1(), false);
     }
 
+    /// @notice Test that correct rebalance decition is taken once L1 TVL is received by the L2 vault, and there is a need to rebalance in L2 -> L1 direction.
     function testL2ToL1Rebalance() public {
         // Any call to the wormholerouter will do nothing, and we won't actually attempt to bridge funds
         vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportFundTransfer, (25)), "");
@@ -355,6 +370,7 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.canTransferToL1(), false);
     }
 
+    /// @notice Test that correct amount is transfeeed from L2 while rebalancing, when there is outstanding emergenct withdrawal queue debt.
     function testL2ToL1RebalanceWithEmergencyWithdrawalQueueDebt() public {
         // Relevant calls to the wormholerouter and bridge escrow will do nothing, and we won't
         // actually attempt to bridge funds
@@ -376,6 +392,7 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.canTransferToL1(), false);
     }
 
+    /// @notice Test that withdrawal fee is deducted while withdwaring.
     function testWithdrawalFee() public {
         vm.prank(governance);
         vault.setWithdrawalFee(50);
@@ -396,6 +413,7 @@ contract L2VaultTest is TestPlus {
         assertEq(asset.balanceOf(vault.governance()), (amountAsset * 50) / 10_000);
     }
 
+    /// @notice Test that goveranance can modify management fees.
     function testSettingFees() public {
         changePrank(governance);
         vault.setManagementFee(300);
@@ -410,6 +428,7 @@ contract L2VaultTest is TestPlus {
         vault.setWithdrawalFee(10);
     }
 
+    /// @notice Test that goveranance can pause the vault.
     function testVaultPause() public {
         changePrank(governance);
         vault.pause();
@@ -447,6 +466,7 @@ contract L2VaultTest is TestPlus {
 
     event Push(uint256 indexed pos, address indexed owner, address indexed receiver, uint256 amount);
 
+    /// @notice Test emergency withdrawal queue enqueue happens when there is not enough assets in the L2 vault to process the withdrawal request.
     function testEmergencyWithdrawal(uint64 amountAsset) public {
         vm.assume(amountAsset > ewqMinAssets);
         address user = address(this);
@@ -480,6 +500,7 @@ contract L2VaultTest is TestPlus {
         assertEq(asset.balanceOf(user), amountAsset - ewqMinFee);
     }
 
+    /// @notice Test emergency withdrawal queue enqueue happens when there is not enough assets in the L2 vault to process the redeem request.
     function testEmergencyWithdrawalWithRedeem(uint64 amountAsset) public {
         vm.assume(amountAsset > ewqMinAssets);
         address user = address(this);
@@ -516,6 +537,7 @@ contract L2VaultTest is TestPlus {
         assertEq(asset.balanceOf(user), amountAsset - ewqMinFee);
     }
 
+    /// @notice Test that debt to emergency withdrawal queue is calculated correctly.
     function testEwqDebt() public {
         // We take the ewq debt into account when processing withdrawals
         asset.mint(alice, fiveUSDC);
@@ -564,6 +586,7 @@ contract L2VaultTest is TestPlus {
         assertEq(asset.balanceOf(bob), fiveUSDC - ewqMinFee);
     }
 
+    /// @notice Test dequeueing from emergency withdrawal queue works when funds are available in the vault, if enqueue happened via withdraw request.
     function testEwqWithdraw() public {
         asset.mint(alice, tenUSDC);
 
@@ -593,6 +616,7 @@ contract L2VaultTest is TestPlus {
         assertEq(asset.balanceOf(alice), fiveUSDC - ewqMinFee);
     }
 
+    /// @notice Test dequeueing from emergency withdrawal queue works when funds are available in the vault, if enqueue happened via redeem request.
     function testEwqRedeem() public {
         asset.mint(alice, tenUSDC);
         vm.startPrank(alice);
@@ -645,6 +669,7 @@ contract L2VaultTest is TestPlus {
         vault.redeem(aliceShares, alice, alice);
     }
 
+    /// @notice Test that emergency withdrawal queue enqueue is rejected if user is depositing an amount less the `vault.ewqMinAssets` usdc.
     function testEwqMinWithdraw() public {
         uint256 amount = vault.ewqMinFee() - 1;
         asset.mint(alice, amount);
@@ -665,6 +690,7 @@ contract L2VaultTest is TestPlus {
         vault.withdraw(amount, alice, alice);
     }
 
+    /// @notice Test that view functions for detailed price of vault token works.
     function testDetailedPrice() public {
         // This function should work even if there is nothing in the vault
         L2Vault.Number memory price = vault.detailedPrice();
@@ -677,6 +703,7 @@ contract L2VaultTest is TestPlus {
         assertTrue(price2.num > price.num);
     }
 
+    /// @notice Test that governance can modify forwarder address.
     function testSettingForwarder() public {
         vm.prank(governance);
         address newForwarder = makeAddr("new_forwarder");
@@ -689,6 +716,7 @@ contract L2VaultTest is TestPlus {
         vault.setTrustedForwarder(address(0));
     }
 
+    /// @notice Test that governance can modify emergency withdrawal queue address.
     function testSetEwq() public {
         EmergencyWithdrawalQueue newQ = EmergencyWithdrawalQueue(makeAddr("new_queue"));
         vm.prank(governance);
@@ -701,6 +729,7 @@ contract L2VaultTest is TestPlus {
         vault.setEwq(EmergencyWithdrawalQueue(address(0)));
     }
 
+    /// @notice Test that governance can modify rebalance delta variable.
     function testSettingRebalanceDelta() public {
         vm.prank(governance);
         vault.setRebalanceDelta(100);

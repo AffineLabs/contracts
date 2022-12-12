@@ -5511,6 +5511,18 @@ graceful-fs@^4.1.11, graceful-fs@^4.1.2, graceful-fs@^4.1.6, graceful-fs@^4.1.9,
   resolved "https://registry.yarnpkg.com/graceful-fs/-/graceful-fs-4.2.10.tgz#147d3a006da4ca3ce14728c7aefc287c367d7a6c"
   integrity sha512-9ByhssR2fPVsNZj478qUUbKfmL0+t5BDVyjShtyZZLiK7ZDAArFFfopyOTj0M05wE2tJPisA4iTnnXl2YoPvOA==
 
+handlebars@^4.7.7:
+  version "4.7.7"
+  resolved "https://registry.yarnpkg.com/handlebars/-/handlebars-4.7.7.tgz#9ce33416aad02dbd6c8fafa8240d5d98004945a1"
+  integrity sha512-aAcXm5OAfE/8IXkcZvCepKU3VzW1/39Fb5ZuqMtgI/hT8X2YgoMvBY5dLhq/cpOvw7Lk1nK/UF71aLG/ZnVYRA==
+  dependencies:
+    minimist "^1.2.5"
+    neo-async "^2.6.0"
+    source-map "^0.6.1"
+    wordwrap "^1.0.0"
+  optionalDependencies:
+    uglify-js "^3.1.4"
+
 har-schema@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/har-schema/-/har-schema-2.0.0.tgz#a94c2224ebcac04782a0d9035521f24735b7ec92"
@@ -7064,6 +7076,11 @@ minimist@^1.2.0, minimist@^1.2.6, minimist@~1.2.6:
   resolved "https://registry.yarnpkg.com/minimist/-/minimist-1.2.6.tgz#8637a5b759ea0d6e98702cfb3a9283323c93af44"
   integrity sha512-Jsjnk4bw3YJqYzbdyBiNsPWHPfO++UGG749Cxs6peCu5Xg4nrena6OVxOYxrQTqww0Jmwt+Ref8rggumkTLz9Q==
 
+minimist@^1.2.5:
+  version "1.2.7"
+  resolved "https://registry.yarnpkg.com/minimist/-/minimist-1.2.7.tgz#daa1c4d91f507390437c6a8bc01078e7000c4d18"
+  integrity sha512-bzfL1YUZsP41gmu/qjrEk0Q6i2ix/cVeAhbCbqH9u3zYutS1cLg00qhrD0M2MVdCcx4Sc0UpP2eBWo9rotpq6g==
+
 minipass@^2.6.0, minipass@^2.9.0:
   version "2.9.0"
   resolved "https://registry.yarnpkg.com/minipass/-/minipass-2.9.0.tgz#e713762e7d3e32fed803115cf93e04bca9fcc9a6"
@@ -7262,6 +7279,11 @@ negotiator@0.6.3:
   version "0.6.3"
   resolved "https://registry.yarnpkg.com/negotiator/-/negotiator-0.6.3.tgz#58e323a72fedc0d6f9cd4d31fe49f51479590ccd"
   integrity sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==
+
+neo-async@^2.6.0:
+  version "2.6.2"
+  resolved "https://registry.yarnpkg.com/neo-async/-/neo-async-2.6.2.tgz#b4aafb93e3aeb2d8174ca53cf163ab7d7308305f"
+  integrity sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==
 
 next-tick@^1.1.0:
   version "1.1.0"
@@ -8775,6 +8797,19 @@ solidity-ast@^0.4.15:
   resolved "https://registry.yarnpkg.com/solidity-ast/-/solidity-ast-0.4.35.tgz#82e064b14dc989338123264bde2235cad751f128"
   integrity sha512-F5bTDLh3rmDxRmLSrs3qt3nvxJprWSEkS7h2KmuXDx7XTfJ6ZKVTV1rtPIYCqJAuPsU/qa8YUeFn7jdOAZcTPA==
 
+solidity-ast@^0.4.38:
+  version "0.4.38"
+  resolved "https://registry.yarnpkg.com/solidity-ast/-/solidity-ast-0.4.38.tgz#103e8340e871882e10cfb5c06fab9bf8dff4100a"
+  integrity sha512-e7gT6g8l8M2rAzH648QA3/IihCNy/anFoWyChVD+T+zfX4FjXbT8AO2DB3wG1iEmIBib9/+vD+GvTElWWpdw+w==
+
+solidity-docgen@^0.6.0-beta.32:
+  version "0.6.0-beta.32"
+  resolved "https://registry.yarnpkg.com/solidity-docgen/-/solidity-docgen-0.6.0-beta.32.tgz#bd6424de061cee3c1e3df2e90e2069cb87db982e"
+  integrity sha512-LGcosbgqxrqTo9winVq3+Xz1shS9k4p+RKwqPVPI0HtjfsKF9Mc5GzBzOUhce9uwzy0yJfhf832whfY1UKt4Aw==
+  dependencies:
+    handlebars "^4.7.7"
+    solidity-ast "^0.4.38"
+
 "solmate@npm:@rari-capital/solmate@6.4.0":
   version "6.4.0"
   resolved "https://registry.yarnpkg.com/@rari-capital/solmate/-/solmate-6.4.0.tgz#c6ee4110c8075f14b415e420b13bd8bdbbc93d9e"
@@ -8824,7 +8859,7 @@ source-map@^0.5.6, source-map@^0.5.7:
   resolved "https://registry.yarnpkg.com/source-map/-/source-map-0.5.7.tgz#8a039d2d1021d22d1ea14c80d8ea468ba2ef3fcc"
   integrity sha512-LbrmJOMUSdEVxIKvdcJzQC+nQhe8FUZQTXQy6+I75skNgn3OoQ0DZA8YnFa7gp8tqtL3KPf1kmo0R5DoApeSGQ==
 
-source-map@^0.6.0:
+source-map@^0.6.0, source-map@^0.6.1:
   version "0.6.1"
   resolved "https://registry.yarnpkg.com/source-map/-/source-map-0.6.1.tgz#74722af32e9614e9c287a8d0bbde48b5e2f1a263"
   integrity sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==
@@ -9579,6 +9614,11 @@ typical@^5.2.0:
   resolved "https://registry.yarnpkg.com/typical/-/typical-5.2.0.tgz#4daaac4f2b5315460804f0acf6cb69c52bb93066"
   integrity sha512-dvdQgNDNJo+8B2uBQoqdb11eUCE1JQXhvjC/CZtgvZseVd5TYMXnq0+vuUemXbd/Se29cTaUuPX3YIc2xgbvIg==
 
+uglify-js@^3.1.4:
+  version "3.17.4"
+  resolved "https://registry.yarnpkg.com/uglify-js/-/uglify-js-3.17.4.tgz#61678cf5fa3f5b7eb789bb345df29afb8257c22c"
+  integrity sha512-T9q82TJI9e/C1TAxYvfb16xO120tMVFZrGA3f9/P4424DNu6ypK103y0GPFVa17yotwSyZW5iYXgjYHkGrJW/g==
+
 ultron@~1.1.0:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/ultron/-/ultron-1.1.1.tgz#9fe1536a10a664a65266a1e3ccf85fd36302bc9c"
@@ -10125,6 +10165,11 @@ word-wrap@~1.2.3:
   version "1.2.3"
   resolved "https://registry.yarnpkg.com/word-wrap/-/word-wrap-1.2.3.tgz#610636f6b1f703891bd34771ccb17fb93b47079c"
   integrity sha512-Hz/mrNwitNRh/HUAtM/VT/5VH+ygD6DV7mYKZAtHOrbs8U7lvPS6xf7EJKMF0uW1KJCl0H701g3ZGus+muE5vQ==
+
+wordwrap@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/wordwrap/-/wordwrap-1.0.0.tgz#27584810891456a4171c8d0226441ade90cbcaeb"
+  integrity sha512-gvVzJFlPycKc5dZN4yPkP8w7Dc37BtP1yczEneOb4uq34pXZcvrtRTmWV8W+Ume+XCxKgbjM+nevkyFPMybd4Q==
 
 wordwrapjs@^4.0.0:
   version "4.0.1"

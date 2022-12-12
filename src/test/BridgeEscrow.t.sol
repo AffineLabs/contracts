@@ -14,6 +14,7 @@ import {L2BridgeEscrow} from "../polygon/L2BridgeEscrow.sol";
 import {L1BridgeEscrow} from "../ethereum/L1BridgeEscrow.sol";
 import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
 
+/// @notice Test functionalities of l2 brige escrow contract.
 contract L2BridgeEscrowTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -49,6 +50,7 @@ contract L2BridgeEscrowTest is TestPlus {
         vault.setBridgeEscrow(escrow);
     }
 
+    /// @notice Test that only l2 vault can withdraw a certain amount from l2 bridge escrow.
     function testwithdraw() public {
         // Only the vault can send a certain amount to L1 (withdraw)
         vm.expectRevert("BE: Only vault");
@@ -65,6 +67,7 @@ contract L2BridgeEscrowTest is TestPlus {
         assertEq(asset.balanceOf(address(escrow)), 0);
     }
 
+    /// @notice Test that l2 wormhole router can clear funds l2 bridge escrow.
     function testclearFunds() public {
         // Give escrow some money
         deal(address(asset), address(escrow), 100);
@@ -79,6 +82,7 @@ contract L2BridgeEscrowTest is TestPlus {
         assertEq(vault.canRequestFromL1(), true);
     }
 
+    /// @notice Test that only wormhole router can clear funds from l2 bridge escrow once funds are received.
     function testclearFundsInvariants() public {
         vm.expectRevert("BE: Only wormhole router");
         vm.prank(alice);
@@ -94,6 +98,7 @@ contract L2BridgeEscrowTest is TestPlus {
     }
 }
 
+/// @notice Test functionalities of l1 brige escrow contract.
 contract L1BridgeEscrowTest is TestPlus {
     L1BridgeEscrow escrow;
     MockL1Vault vault;
@@ -115,6 +120,7 @@ contract L1BridgeEscrowTest is TestPlus {
         vault.setBridgeEscrow(escrow);
     }
 
+    /// @notice Test that l1 wormhole router can clear funds l1 bridge escrow.
     function testclearFunds() public {
         // Give escrow some money
         deal(address(asset), address(escrow), 100);
@@ -132,6 +138,7 @@ contract L1BridgeEscrowTest is TestPlus {
         assertTrue(vault.received());
     }
 
+    /// @notice Test that only wormhole router can clear funds from l1 bridge escrow once funds are received.
     function testclearFundsInvariants() public {
         vm.expectRevert("BE: Only wormhole router");
         vm.prank(alice);
@@ -148,6 +155,7 @@ contract L1BridgeEscrowTest is TestPlus {
         escrow.clearFunds(200, "");
     }
 
+    /// @notice Test that attempting to clear funds with bad proof won't work.
     function testclearFundsWithBadProof() public {
         // Give escrow some money
         deal(address(asset), address(escrow), 100);

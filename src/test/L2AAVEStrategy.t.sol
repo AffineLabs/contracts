@@ -11,6 +11,7 @@ import {L2Vault} from "../polygon/L2Vault.sol";
 import {L2AAVEStrategy} from "../polygon/L2AAVEStrategy.sol";
 import {BridgeEscrow} from "../BridgeEscrow.sol";
 
+/// @notice Test AAVE strategy
 contract AAVEStratTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -44,6 +45,7 @@ contract AAVEStratTest is TestPlus {
         strategy.invest(assets);
     }
 
+    /// @notice Test strategy makes money over time.
     function testStrategyMakesMoney() public {
         // Vault deposits half of its tvl into the strategy
         // Give us (this contract) 1 USDC. Deposit into vault.
@@ -57,6 +59,7 @@ contract AAVEStratTest is TestPlus {
         assertGe(profit, 100);
     }
 
+    /// @notice Test divesting a certain amount works.
     function testStrategyDivestsOnlyAmountNeeded() public {
         // If the strategy already already has money, we only withdraw amountRequested - current money
 
@@ -74,6 +77,7 @@ contract AAVEStratTest is TestPlus {
         assertEq(strategy.aToken().balanceOf(address(strategy)), 1e6);
     }
 
+    /// @notice Test attempting to divest an amount more than the TVL results in divestment of the TVL amount.
     // We can attempt to divest more than our balance of aTokens
     function testDivestMoreThanTVL() public {
         _depositIntoStrat(1e6);
@@ -85,6 +89,7 @@ contract AAVEStratTest is TestPlus {
         assertEq(strategy.totalLockedValue(), 0);
     }
 
+    /// @notice Test not selling lp token when there is enough assets to cover divestment.
     function testDivestLessThanFloat() public {
         // If we try to divest $1 when we already have $2, we don't make any a bad call to the lendingPool
         // A bad call would be something like lendinPool.withdraw(0)
@@ -98,10 +103,12 @@ contract AAVEStratTest is TestPlus {
         assertEq(strategy.totalLockedValue(), 1e6);
     }
 
+    /// @notice Test investing a zero amount doesn't cause error.
     function testCanInvestZero() public {
         _depositIntoStrat(0);
     }
 
+    /// @notice Test TVL calculation.
     function testTVL() public {
         deal(address(usdc), address(strategy), 3e6, false);
 
