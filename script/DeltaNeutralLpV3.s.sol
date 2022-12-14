@@ -37,7 +37,7 @@ library SslpV3 {
         AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419), // eth/usd price feed
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
-        IUniswapV3Pool(0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8) // weth/usdc pool 
+        IUniswapV3Pool(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640) // weth/usdc pool (5 bps)
         );
     }
 }
