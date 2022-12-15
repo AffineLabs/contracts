@@ -10,7 +10,7 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 
 import {L2Vault} from "../polygon/L2Vault.sol";
-import {DeltaNeutralLpV3} from "../polygon/DeltaNeutralLpV3.sol";
+import {DeltaNeutralLpV3} from "../both/DeltaNeutralLpV3.sol";
 import {SslpV3} from "../../script/DeltaNeutralLpV3.s.sol";
 
 /// @notice Test SSLP Strategy with Uniswap V3 in polygon.
@@ -19,43 +19,56 @@ contract DeltaNeutralV3Test is TestPlus {
 
     L2Vault vault;
     DeltaNeutralLpV3 strategy;
-    ERC20 usdc = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     ERC20 asset;
     ERC20 borrowAsset;
     int24 tickLow;
     int24 tickHigh;
     uint256 slippageBps = 500;
 
-    function setUp() public {
+    function _selectFork() internal virtual {
         vm.createSelectFork("polygon", 31_824_532);
-        vault = deployL2Vault();
-        uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
-        bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
-        vm.store(address(vault), bytes32(slot), tokenAddr);
+    }
 
-        // weth/usdc pool
-        IUniswapV3Pool pool = IUniswapV3Pool(0x45dDa9cb7c25131DF268515131f647d726f50608);
+    function _usdc() internal virtual returns (address) {
+        return 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+    }
+
+    function _deployStrategy() internal virtual {
+        strategy = SslpV3.deployPoly(vault);
+    }
+
+    function setUp() public {
+        _selectFork();
+
+        vault = deployL2Vault();
+        vm.store(
+            address(vault),
+            bytes32(stdstore.target(address(vault)).sig("asset()").find()),
+            bytes32(uint256(uint160(_usdc())))
+        );
+        _deployStrategy();
+
+        // Get ticks where liquidity will be added
+        IUniswapV3Pool pool = strategy.pool();
         (, int24 tick,,,,,) = pool.slot0();
         int24 tSpace = pool.tickSpacing();
         int24 usableTick = (tick / tSpace) * tSpace;
         tickLow = usableTick - 20 * tSpace;
         tickHigh = usableTick + 20 * tSpace;
 
-        strategy = SslpV3.deploy(vault);
-
         vm.startPrank(governance);
         vault.addStrategy(strategy, 5000);
         strategy.grantRole(strategy.STRATEGIST_ROLE(), address(this));
         vm.stopPrank();
 
-        asset = usdc;
+        asset = strategy.asset();
         borrowAsset = strategy.borrowAsset();
     }
 
     /// @notice Test that a position can be opened.
     function testCreatePosition() public {
         uint256 startAssets = 1000e6;
-        deal(address(usdc), address(strategy), startAssets);
+        deal(address(asset), address(strategy), startAssets);
 
         strategy.startPosition(tickLow, tickHigh, slippageBps);
         // Can't start a new positon
@@ -73,7 +86,10 @@ contract DeltaNeutralV3Test is TestPlus {
         uint256 assetsInAAve = strategy.aToken().balanceOf(address(strategy)) * 3 / 4;
         emit log_named_uint("assetsLP: ", assetsLP);
         emit log_named_uint("assetsInAAve: ", assetsInAAve);
-        assertApproxEqRel(assetsLP, assetsInAAve * 2, 0.015e18);
+        // Not all of the ether gets added as liquiditty, and not all of the usdc gets added either
+        // See https://uniswapv3book.com/docs/milestone_1/calculating-liquidity/
+        // We do use 5% slippage though
+        assertApproxEqRel(assetsLP, assetsInAAve * 2, 0.05e18);
     }
 
     /// @notice Test that a position can be ended.
@@ -127,5 +143,19 @@ contract DeltaNeutralV3Test is TestPlus {
         assertTrue(strategy.canStartNewPos());
         assertEq(strategy.totalLockedValue(), 0);
         assertApproxEqRel(asset.balanceOf(address(vault)), 1000e6, 0.02e18);
+    }
+}
+
+contract DeltaNeutralV3EthTest is DeltaNeutralV3Test {
+    function _selectFork() internal override {
+        vm.createSelectFork("ethereum", 16_149_218);
+    }
+
+    function _usdc() internal override returns (address) {
+        return 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    }
+
+    function _deployStrategy() internal override {
+        strategy = SslpV3.deployEth(vault);
     }
 }
