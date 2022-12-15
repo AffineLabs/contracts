@@ -28,6 +28,20 @@ library SslpV3 {
         );
     }
 
+    /// @notice Deploy the strategy on polygon using the WMATIC/USDC pool
+    function deployPolyMatic(BaseVault vault) internal returns (DeltaNeutralLpV3 strategy) {
+        strategy = new DeltaNeutralLpV3(
+        vault,
+        0.05e18,
+        ILendingPoolAddressesProviderRegistry(0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19),
+        ERC20(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270), // WMATIC
+        AggregatorV3Interface(0xAB594600376Ec9fD91F8e885dADF0CE036862dE0), // MATIC/USD price feed
+        ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
+        INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
+        IUniswapV3Pool(0xA374094527e1673A86dE625aa59517c5dE346d32) // wmatic 
+        );
+    }
+
     function deployEth(BaseVault vault) internal returns (DeltaNeutralLpV3 strategy) {
         strategy = new DeltaNeutralLpV3(
         vault,
@@ -43,15 +57,23 @@ library SslpV3 {
 }
 
 contract Deploy is Script {
-    function runPoly() external {
+    function _start() internal {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
+    }
+
+    function runPoly() external {
+        _start();
         SslpV3.deployPoly(BaseVault(0x829363736a5A9080e05549Db6d1271f070a7e224));
     }
 
+    function runPolyMatic() external {
+        _start();
+        SslpV3.deployPolyMatic(BaseVault(0x829363736a5A9080e05549Db6d1271f070a7e224));
+    }
+
     function runEth() external {
-        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
-        vm.startBroadcast(deployer);
+        _start();
         SslpV3.deployEth(BaseVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9));
     }
 }
