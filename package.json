@@ -18,7 +18,9 @@
     "format:fix": "prettier --write \"**/*.{ts,js}\" && forge fmt",
     "postinstall": "yarn build-hh && forge install",
     "prepare": "husky install",
-    "test-doc": "yarn ts-node scripts/doc-gen/gen-test-doc.ts"
+    "test-doc": "yarn ts-node scripts/doc-gen/gen-test-doc.ts",
+    "cov-doc": "forge coverage --report lcov && genhtml -o docs/coverage lcov.info",
+    "gen-docs": "yarn test-doc && yarn cov-doc"
   },
   "author": "Alpine",
   "license": "MIT",
