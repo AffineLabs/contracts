@@ -1,0 +1,641 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - lcov.info - src/BaseVault.sol</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">src</a> - BaseVault.sol<span style="font-size: 80%;"> (source / <a href="BaseVault.sol.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">lcov.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">117</td>
+            <td class="headerCovTableEntry">127</td>
+            <td class="headerCovTableEntryHi">92.1 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2022-12-15 12:38:36</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">20</td>
+            <td class="headerCovTableEntry">21</td>
+            <td class="headerCovTableEntryHi">95.2 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : // SPDX-License-Identifier: BUSL-1.1</a>
+<a name="2"><span class="lineNum">       2 </span>            : pragma solidity =0.8.16;</a>
+<a name="3"><span class="lineNum">       3 </span>            : </a>
+<a name="4"><span class="lineNum">       4 </span>            : import {AccessControlUpgradeable} from &quot;@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol&quot;;</a>
+<a name="5"><span class="lineNum">       5 </span>            : import {Math} from &quot;@openzeppelin/contracts/utils/math/Math.sol&quot;;</a>
+<a name="6"><span class="lineNum">       6 </span>            : </a>
+<a name="7"><span class="lineNum">       7 </span>            : import {ERC20} from &quot;solmate/src/tokens/ERC20.sol&quot;;</a>
+<a name="8"><span class="lineNum">       8 </span>            : import {SafeTransferLib} from &quot;solmate/src/utils/SafeTransferLib.sol&quot;;</a>
+<a name="9"><span class="lineNum">       9 </span>            : </a>
+<a name="10"><span class="lineNum">      10 </span>            : import {Multicallable} from &quot;solady/src/utils/Multicallable.sol&quot;;</a>
+<a name="11"><span class="lineNum">      11 </span>            : </a>
+<a name="12"><span class="lineNum">      12 </span>            : import {BaseStrategy as Strategy} from &quot;./BaseStrategy.sol&quot;;</a>
+<a name="13"><span class="lineNum">      13 </span>            : import {AffineGovernable} from &quot;./AffineGovernable.sol&quot;;</a>
+<a name="14"><span class="lineNum">      14 </span>            : import {BridgeEscrow} from &quot;./BridgeEscrow.sol&quot;;</a>
+<a name="15"><span class="lineNum">      15 </span>            : import {WormholeRouter} from &quot;./WormholeRouter.sol&quot;;</a>
+<a name="16"><span class="lineNum">      16 </span>            : import {uncheckedInc} from &quot;./libs/Unchecked.sol&quot;;</a>
+<a name="17"><span class="lineNum">      17 </span>            : </a>
+<a name="18"><span class="lineNum">      18 </span>            : /**</a>
+<a name="19"><span class="lineNum">      19 </span>            :  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding</a>
+<a name="20"><span class="lineNum">      20 </span>            :  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and</a>
+<a name="21"><span class="lineNum">      21 </span>            :  * strategy liquidation.</a>
+<a name="22"><span class="lineNum">      22 </span>            :  */</a>
+<a name="23"><span class="lineNum">      23 </span>            : abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multicallable {</a>
+<a name="24"><span class="lineNum">      24 </span>            :     using SafeTransferLib for ERC20;</a>
+<a name="25"><span class="lineNum">      25 </span>            : </a>
+<a name="26"><span class="lineNum">      26 </span>            :     /**</a>
+<a name="27"><span class="lineNum">      27 </span>            :      * UNDERLYING ASSET AND INITIALIZATION</a>
+<a name="28"><span class="lineNum">      28 </span>            :      *</a>
+<a name="29"><span class="lineNum">      29 </span>            :      */</a>
+<a name="30"><span class="lineNum">      30 </span>            : </a>
+<a name="31"><span class="lineNum">      31 </span>            :     /// @notice The token that the vault takes in and gives to strategies, e.g. USDC</a>
+<a name="32"><span class="lineNum">      32 </span>            :     ERC20 _asset;</a>
+<a name="33"><span class="lineNum">      33 </span>            : </a>
+<a name="34"><span class="lineNum">      34 </span>            :     function asset() public view virtual returns (address) {</a>
+<a name="35"><span class="lineNum">      35 </span><span class="lineCov">         53 :         return address(_asset);</span></a>
+<a name="36"><span class="lineNum">      36 </span>            :     }</a>
+<a name="37"><span class="lineNum">      37 </span>            : </a>
+<a name="38"><span class="lineNum">      38 </span>            :     function baseInitialize(address _governance, ERC20 vaultAsset, address _wormholeRouter, BridgeEscrow _bridgeEscrow)</a>
+<a name="39"><span class="lineNum">      39 </span>            :         internal</a>
+<a name="40"><span class="lineNum">      40 </span>            :         virtual</a>
+<a name="41"><span class="lineNum">      41 </span>            :     {</a>
+<a name="42"><span class="lineNum">      42 </span><span class="lineNoCov">          0 :         governance = _governance;</span></a>
+<a name="43"><span class="lineNum">      43 </span><span class="lineNoCov">          0 :         _asset = vaultAsset;</span></a>
+<a name="44"><span class="lineNum">      44 </span><span class="lineNoCov">          0 :         wormholeRouter = _wormholeRouter;</span></a>
+<a name="45"><span class="lineNum">      45 </span><span class="lineNoCov">          0 :         bridgeEscrow = _bridgeEscrow;</span></a>
+<a name="46"><span class="lineNum">      46 </span>            : </a>
+<a name="47"><span class="lineNum">      47 </span>            :         // All roles use the default admin role</a>
+<a name="48"><span class="lineNum">      48 </span>            :         // governance has the admin role and can grant/remove a role to any account</a>
+<a name="49"><span class="lineNum">      49 </span><span class="lineNoCov">          0 :         _grantRole(DEFAULT_ADMIN_ROLE, governance);</span></a>
+<a name="50"><span class="lineNum">      50 </span><span class="lineNoCov">          0 :         _grantRole(HARVESTER, governance);</span></a>
+<a name="51"><span class="lineNum">      51 </span>            : </a>
+<a name="52"><span class="lineNum">      52 </span><span class="lineNoCov">          0 :         lastHarvest = uint128(block.timestamp);</span></a>
+<a name="53"><span class="lineNum">      53 </span>            :     }</a>
+<a name="54"><span class="lineNum">      54 </span>            : </a>
+<a name="55"><span class="lineNum">      55 </span>            :     /**</a>
+<a name="56"><span class="lineNum">      56 </span>            :      * CROSS CHAIN REBALANCING</a>
+<a name="57"><span class="lineNum">      57 </span>            :      *</a>
+<a name="58"><span class="lineNum">      58 </span>            :      */</a>
+<a name="59"><span class="lineNum">      59 </span>            : </a>
+<a name="60"><span class="lineNum">      60 </span>            :     /**</a>
+<a name="61"><span class="lineNum">      61 </span>            :      * @notice A contract used for sending and receiving messages via wormhole.</a>
+<a name="62"><span class="lineNum">      62 </span>            :      * @dev We use an address since we need to cast this to the L1 and L2 router types.</a>
+<a name="63"><span class="lineNum">      63 </span>            :      */</a>
+<a name="64"><span class="lineNum">      64 </span>            :     address public wormholeRouter;</a>
+<a name="65"><span class="lineNum">      65 </span>            :     /// @notice A &quot;BridgeEscrow&quot; contract for sending and receiving `token` across a bridge.</a>
+<a name="66"><span class="lineNum">      66 </span>            :     BridgeEscrow public bridgeEscrow;</a>
+<a name="67"><span class="lineNum">      67 </span>            : </a>
+<a name="68"><span class="lineNum">      68 </span>            :     /**</a>
+<a name="69"><span class="lineNum">      69 </span>            :      * @notice Update the address of the wormhole router.</a>
+<a name="70"><span class="lineNum">      70 </span>            :      * @param _router The new router.</a>
+<a name="71"><span class="lineNum">      71 </span>            :      */</a>
+<a name="72"><span class="lineNum">      72 </span>            :     function setWormholeRouter(address _router) external onlyGovernance {</a>
+<a name="73"><span class="lineNum">      73 </span><span class="lineCov">          1 :         emit WormholeRouterSet({oldRouter: wormholeRouter, newRouter: _router});</span></a>
+<a name="74"><span class="lineNum">      74 </span><span class="lineCov">          1 :         wormholeRouter = _router;</span></a>
+<a name="75"><span class="lineNum">      75 </span>            :     }</a>
+<a name="76"><span class="lineNum">      76 </span>            :     /**</a>
+<a name="77"><span class="lineNum">      77 </span>            :      * @notice Update the address of the bridge escrow.</a>
+<a name="78"><span class="lineNum">      78 </span>            :      * @param _escrow The new escrow.</a>
+<a name="79"><span class="lineNum">      79 </span>            :      */</a>
+<a name="80"><span class="lineNum">      80 </span>            : </a>
+<a name="81"><span class="lineNum">      81 </span>            :     function setBridgeEscrow(BridgeEscrow _escrow) external onlyGovernance {</a>
+<a name="82"><span class="lineNum">      82 </span><span class="lineCov">          1 :         emit BridgeEscrowSet({oldEscrow: address(bridgeEscrow), newEscrow: address(_escrow)});</span></a>
+<a name="83"><span class="lineNum">      83 </span><span class="lineCov">          1 :         bridgeEscrow = _escrow;</span></a>
+<a name="84"><span class="lineNum">      84 </span>            :     }</a>
+<a name="85"><span class="lineNum">      85 </span>            : </a>
+<a name="86"><span class="lineNum">      86 </span>            :     /**</a>
+<a name="87"><span class="lineNum">      87 </span>            :      * @notice Emitted when the wormhole router is updated.</a>
+<a name="88"><span class="lineNum">      88 </span>            :      * @param oldRouter The old router.</a>
+<a name="89"><span class="lineNum">      89 </span>            :      * @param newRouter The new router.</a>
+<a name="90"><span class="lineNum">      90 </span>            :      */</a>
+<a name="91"><span class="lineNum">      91 </span>            :     event WormholeRouterSet(address indexed oldRouter, address indexed newRouter);</a>
+<a name="92"><span class="lineNum">      92 </span>            :     /**</a>
+<a name="93"><span class="lineNum">      93 </span>            :      * @notice Emitted when the escorw is updated.</a>
+<a name="94"><span class="lineNum">      94 </span>            :      * @param oldEscrow The old router.</a>
+<a name="95"><span class="lineNum">      95 </span>            :      * @param newEscrow The new router.</a>
+<a name="96"><span class="lineNum">      96 </span>            :      */</a>
+<a name="97"><span class="lineNum">      97 </span>            :     event BridgeEscrowSet(address indexed oldEscrow, address indexed newEscrow);</a>
+<a name="98"><span class="lineNum">      98 </span>            : </a>
+<a name="99"><span class="lineNum">      99 </span>            :     /**</a>
+<a name="100"><span class="lineNum">     100 </span>            :      * AUTHENTICATION</a>
+<a name="101"><span class="lineNum">     101 </span>            :      *</a>
+<a name="102"><span class="lineNum">     102 </span>            :      */</a>
+<a name="103"><span class="lineNum">     103 </span>            : </a>
+<a name="104"><span class="lineNum">     104 </span>            :     /// @notice Role with authority to call &quot;harvest&quot;, i.e. update this vault's tvl</a>
+<a name="105"><span class="lineNum">     105 </span>            :     bytes32 public constant HARVESTER = keccak256(&quot;HARVESTER&quot;);</a>
+<a name="106"><span class="lineNum">     106 </span>            : </a>
+<a name="107"><span class="lineNum">     107 </span>            :     /**</a>
+<a name="108"><span class="lineNum">     108 </span>            :      * WITHDRAWAL QUEUE</a>
+<a name="109"><span class="lineNum">     109 </span>            :      *</a>
+<a name="110"><span class="lineNum">     110 </span>            :      */</a>
+<a name="111"><span class="lineNum">     111 </span>            : </a>
+<a name="112"><span class="lineNum">     112 </span>            :     uint8 constant MAX_STRATEGIES = 20;</a>
+<a name="113"><span class="lineNum">     113 </span>            : </a>
+<a name="114"><span class="lineNum">     114 </span>            :     /**</a>
+<a name="115"><span class="lineNum">     115 </span>            :      * @notice An ordered array of strategies representing the withdrawal queue. The withdrawal queue is used</a>
+<a name="116"><span class="lineNum">     116 </span>            :      * whenever the vault wants to pull money out of strategies (cross-chain rebalancing and user withdrawals)xw</a>
+<a name="117"><span class="lineNum">     117 </span>            :      * @dev The first strategy in the array is withdrawn from first.</a>
+<a name="118"><span class="lineNum">     118 </span>            :      * This is a list of the currently active strategies  (all non-zero addresses are active).</a>
+<a name="119"><span class="lineNum">     119 </span>            :      */</a>
+<a name="120"><span class="lineNum">     120 </span>            :     Strategy[MAX_STRATEGIES] public withdrawalQueue;</a>
+<a name="121"><span class="lineNum">     121 </span>            : </a>
+<a name="122"><span class="lineNum">     122 </span>            :     /**</a>
+<a name="123"><span class="lineNum">     123 </span>            :      * @notice Gets the full withdrawal queue.</a>
+<a name="124"><span class="lineNum">     124 </span>            :      * @return The withdrawal queue.</a>
+<a name="125"><span class="lineNum">     125 </span>            :      * @dev This gives easy access to the whole array (by default we can only get one index at a time)</a>
+<a name="126"><span class="lineNum">     126 </span>            :      */</a>
+<a name="127"><span class="lineNum">     127 </span>            :     function getWithdrawalQueue() external view returns (Strategy[MAX_STRATEGIES] memory) {</a>
+<a name="128"><span class="lineNum">     128 </span><span class="lineCov">         20 :         return withdrawalQueue;</span></a>
+<a name="129"><span class="lineNum">     129 </span>            :     }</a>
+<a name="130"><span class="lineNum">     130 </span>            : </a>
+<a name="131"><span class="lineNum">     131 </span>            :     /**</a>
+<a name="132"><span class="lineNum">     132 </span>            :      * @notice Sets a new withdrawal queue.</a>
+<a name="133"><span class="lineNum">     133 </span>            :      * @param newQueue The new withdrawal queue.</a>
+<a name="134"><span class="lineNum">     134 </span>            :      */</a>
+<a name="135"><span class="lineNum">     135 </span>            :     function setWithdrawalQueue(Strategy[MAX_STRATEGIES] calldata newQueue) external onlyGovernance {</a>
+<a name="136"><span class="lineNum">     136 </span>            :         // Maintain queue size</a>
+<a name="137"><span class="lineNum">     137 </span><span class="lineCov">          1 :         require(newQueue.length == MAX_STRATEGIES, &quot;BV: bad qu size&quot;);</span></a>
+<a name="138"><span class="lineNum">     138 </span>            : </a>
+<a name="139"><span class="lineNum">     139 </span>            :         // Replace the withdrawal queue.</a>
+<a name="140"><span class="lineNum">     140 </span><span class="lineCov">          1 :         withdrawalQueue = newQueue;</span></a>
+<a name="141"><span class="lineNum">     141 </span>            : </a>
+<a name="142"><span class="lineNum">     142 </span><span class="lineCov">          1 :         emit WithdrawalQueueSet(newQueue);</span></a>
+<a name="143"><span class="lineNum">     143 </span>            :     }</a>
+<a name="144"><span class="lineNum">     144 </span>            : </a>
+<a name="145"><span class="lineNum">     145 </span>            :     /**</a>
+<a name="146"><span class="lineNum">     146 </span>            :      * @notice Emitted when the withdrawal queue is updated.</a>
+<a name="147"><span class="lineNum">     147 </span>            :      * @param newQueue The new withdrawal queue.</a>
+<a name="148"><span class="lineNum">     148 </span>            :      */</a>
+<a name="149"><span class="lineNum">     149 </span>            :     event WithdrawalQueueSet(Strategy[MAX_STRATEGIES] newQueue);</a>
+<a name="150"><span class="lineNum">     150 </span>            : </a>
+<a name="151"><span class="lineNum">     151 </span>            :     /**</a>
+<a name="152"><span class="lineNum">     152 </span>            :      * STRATEGIES</a>
+<a name="153"><span class="lineNum">     153 </span>            :      *</a>
+<a name="154"><span class="lineNum">     154 </span>            :      */</a>
+<a name="155"><span class="lineNum">     155 </span>            : </a>
+<a name="156"><span class="lineNum">     156 </span>            :     /// @notice The total amount of underlying tokens held in strategies at the time of the last harvest.</a>
+<a name="157"><span class="lineNum">     157 </span>            :     uint256 public totalStrategyHoldings;</a>
+<a name="158"><span class="lineNum">     158 </span>            : </a>
+<a name="159"><span class="lineNum">     159 </span>            :     struct StrategyInfo {</a>
+<a name="160"><span class="lineNum">     160 </span>            :         bool isActive;</a>
+<a name="161"><span class="lineNum">     161 </span>            :         uint16 tvlBps;</a>
+<a name="162"><span class="lineNum">     162 </span>            :         uint232 balance;</a>
+<a name="163"><span class="lineNum">     163 </span>            :     }</a>
+<a name="164"><span class="lineNum">     164 </span>            :     /// @notice A map of strategy addresses to details</a>
+<a name="165"><span class="lineNum">     165 </span>            : </a>
+<a name="166"><span class="lineNum">     166 </span>            :     mapping(Strategy =&gt; StrategyInfo) public strategies;</a>
+<a name="167"><span class="lineNum">     167 </span>            : </a>
+<a name="168"><span class="lineNum">     168 </span>            :     uint256 constant MAX_BPS = 10_000;</a>
+<a name="169"><span class="lineNum">     169 </span>            :     /// @notice The number of bps of the vault's tvl which may be given to strategies (at most MAX_BPS)</a>
+<a name="170"><span class="lineNum">     170 </span>            :     uint256 public totalBps;</a>
+<a name="171"><span class="lineNum">     171 </span>            : </a>
+<a name="172"><span class="lineNum">     172 </span>            :     /// @notice Emitted when a strategy is added by governance</a>
+<a name="173"><span class="lineNum">     173 </span>            :     event StrategyAdded(Strategy indexed strategy);</a>
+<a name="174"><span class="lineNum">     174 </span>            :     /// @notice Emitted when a strategy is removed by governance</a>
+<a name="175"><span class="lineNum">     175 </span>            :     event StrategyRemoved(Strategy indexed strategy);</a>
+<a name="176"><span class="lineNum">     176 </span>            : </a>
+<a name="177"><span class="lineNum">     177 </span>            :     /**</a>
+<a name="178"><span class="lineNum">     178 </span>            :      * @notice Add a strategy</a>
+<a name="179"><span class="lineNum">     179 </span>            :      * @param strategy The strategy to add</a>
+<a name="180"><span class="lineNum">     180 </span>            :      * @param tvlBps The number of bps of our tvl the strategy will get when funds are distributed to strategies</a>
+<a name="181"><span class="lineNum">     181 </span>            :      */</a>
+<a name="182"><span class="lineNum">     182 </span>            :     function addStrategy(Strategy strategy, uint16 tvlBps) external onlyGovernance {</a>
+<a name="183"><span class="lineNum">     183 </span><span class="lineCov">         42 :         _increaseTVLBps(tvlBps);</span></a>
+<a name="184"><span class="lineNum">     184 </span><span class="lineCov">         42 :         strategies[strategy] = StrategyInfo({isActive: true, tvlBps: tvlBps, balance: 0});</span></a>
+<a name="185"><span class="lineNum">     185 </span>            :         //  Add strategy to withdrawal queue</a>
+<a name="186"><span class="lineNum">     186 </span><span class="lineCov">         42 :         withdrawalQueue[MAX_STRATEGIES - 1] = strategy;</span></a>
+<a name="187"><span class="lineNum">     187 </span><span class="lineCov">         42 :         emit StrategyAdded(strategy);</span></a>
+<a name="188"><span class="lineNum">     188 </span><span class="lineCov">         42 :         _organizeWithdrawalQueue();</span></a>
+<a name="189"><span class="lineNum">     189 </span>            :     }</a>
+<a name="190"><span class="lineNum">     190 </span>            : </a>
+<a name="191"><span class="lineNum">     191 </span>            :     /// @notice A helper function for increasing `totalBps`. Used when adding strategies or updating strategy allocs</a>
+<a name="192"><span class="lineNum">     192 </span>            :     function _increaseTVLBps(uint256 tvlBps) internal {</a>
+<a name="193"><span class="lineNum">     193 </span><span class="lineCov">         44 :         uint256 newTotalBps = totalBps + tvlBps;</span></a>
+<a name="194"><span class="lineNum">     194 </span><span class="lineCov">         44 :         require(newTotalBps &lt;= MAX_BPS, &quot;BV: too many bps&quot;);</span></a>
+<a name="195"><span class="lineNum">     195 </span><span class="lineCov">         44 :         totalBps = newTotalBps;</span></a>
+<a name="196"><span class="lineNum">     196 </span>            :     }</a>
+<a name="197"><span class="lineNum">     197 </span>            : </a>
+<a name="198"><span class="lineNum">     198 </span>            :     /**</a>
+<a name="199"><span class="lineNum">     199 </span>            :      * @notice Push all zero addresses to the end of the array. This function is used whenever a strategy is</a>
+<a name="200"><span class="lineNum">     200 </span>            :      * added or removed from the withdrawal queue</a>
+<a name="201"><span class="lineNum">     201 </span>            :      * @dev Relative ordering of non-zero values is maintained.</a>
+<a name="202"><span class="lineNum">     202 </span>            :      */</a>
+<a name="203"><span class="lineNum">     203 </span>            :     function _organizeWithdrawalQueue() internal {</a>
+<a name="204"><span class="lineNum">     204 </span>            :         // number or empty values we've seen iterating from left to right</a>
+<a name="205"><span class="lineNum">     205 </span><span class="lineCov">         44 :         uint256 offset;</span></a>
+<a name="206"><span class="lineNum">     206 </span>            : </a>
+<a name="207"><span class="lineNum">     207 </span><span class="lineCov">         44 :         for (uint256 i = 0; i &lt; MAX_STRATEGIES; i = uncheckedInc(i)) {</span></a>
+<a name="208"><span class="lineNum">     208 </span><span class="lineCov">        880 :             Strategy strategy = withdrawalQueue[i];</span></a>
+<a name="209"><span class="lineNum">     209 </span><span class="lineCov">        880 :             if (address(strategy) == address(0)) {</span></a>
+<a name="210"><span class="lineNum">     210 </span><span class="lineCov">        645 :                 offset += 1;</span></a>
+<a name="211"><span class="lineNum">     211 </span><span class="lineCov">        235 :             } else if (offset &gt; 0) {</span></a>
+<a name="212"><span class="lineNum">     212 </span>            :                 // index of first empty value seen takes on value of `strategy`</a>
+<a name="213"><span class="lineNum">     213 </span><span class="lineCov">         41 :                 withdrawalQueue[i - offset] = strategy;</span></a>
+<a name="214"><span class="lineNum">     214 </span><span class="lineCov">         41 :                 withdrawalQueue[i] = Strategy(address(0));</span></a>
+<a name="215"><span class="lineNum">     215 </span>            :             }</a>
+<a name="216"><span class="lineNum">     216 </span>            :         }</a>
+<a name="217"><span class="lineNum">     217 </span>            :     }</a>
+<a name="218"><span class="lineNum">     218 </span>            : </a>
+<a name="219"><span class="lineNum">     219 </span>            :     /**</a>
+<a name="220"><span class="lineNum">     220 </span>            :      * @notice Remove a strategy from the withdrawal queue. Fully divest from the strategy.</a>
+<a name="221"><span class="lineNum">     221 </span>            :      * @param strategy The strategy to remove</a>
+<a name="222"><span class="lineNum">     222 </span>            :      * @dev  removeStrategy MUST be called with harvest via multicall. This helps get the most accurate tvl numbers</a>
+<a name="223"><span class="lineNum">     223 </span>            :      * and allows us to add any realized profits to our lockedProfit</a>
+<a name="224"><span class="lineNum">     224 </span>            :      */</a>
+<a name="225"><span class="lineNum">     225 </span>            :     function removeStrategy(Strategy strategy) external onlyGovernance {</a>
+<a name="226"><span class="lineNum">     226 </span><span class="lineCov">          2 :         for (uint256 i = 0; i &lt; MAX_STRATEGIES; i = uncheckedInc(i)) {</span></a>
+<a name="227"><span class="lineNum">     227 </span><span class="lineCov">          2 :             if (strategy != withdrawalQueue[i]) {</span></a>
+<a name="228"><span class="lineNum">     228 </span><span class="lineCov">          2 :                 continue;</span></a>
+<a name="229"><span class="lineNum">     229 </span>            :             }</a>
+<a name="230"><span class="lineNum">     230 </span>            : </a>
+<a name="231"><span class="lineNum">     231 </span><span class="lineCov">          2 :             strategies[strategy].isActive = false;</span></a>
+<a name="232"><span class="lineNum">     232 </span>            : </a>
+<a name="233"><span class="lineNum">     233 </span>            :             // The vault can re-allocate bps to a new strategy</a>
+<a name="234"><span class="lineNum">     234 </span><span class="lineCov">          2 :             totalBps -= strategies[strategy].tvlBps;</span></a>
+<a name="235"><span class="lineNum">     235 </span><span class="lineCov">          2 :             strategies[strategy].tvlBps = 0;</span></a>
+<a name="236"><span class="lineNum">     236 </span>            : </a>
+<a name="237"><span class="lineNum">     237 </span>            :             // Remove strategy from withdrawal queue</a>
+<a name="238"><span class="lineNum">     238 </span><span class="lineCov">          2 :             withdrawalQueue[i] = Strategy(address(0));</span></a>
+<a name="239"><span class="lineNum">     239 </span><span class="lineCov">          2 :             emit StrategyRemoved(strategy);</span></a>
+<a name="240"><span class="lineNum">     240 </span><span class="lineCov">          2 :             _organizeWithdrawalQueue();</span></a>
+<a name="241"><span class="lineNum">     241 </span>            : </a>
+<a name="242"><span class="lineNum">     242 </span>            :             // Take all money out of strategy.</a>
+<a name="243"><span class="lineNum">     243 </span><span class="lineCov">          2 :             _withdrawFromStrategy(strategy, strategy.totalLockedValue());</span></a>
+<a name="244"><span class="lineNum">     244 </span><span class="lineCov">          2 :             break;</span></a>
+<a name="245"><span class="lineNum">     245 </span>            :         }</a>
+<a name="246"><span class="lineNum">     246 </span>            :     }</a>
+<a name="247"><span class="lineNum">     247 </span>            : </a>
+<a name="248"><span class="lineNum">     248 </span>            :     /**</a>
+<a name="249"><span class="lineNum">     249 </span>            :      * @notice Update tvl bps assigned to the given list of strategies</a>
+<a name="250"><span class="lineNum">     250 </span>            :      * @param strategyList The list of strategies</a>
+<a name="251"><span class="lineNum">     251 </span>            :      * @param strategyBps The new bps</a>
+<a name="252"><span class="lineNum">     252 </span>            :      */</a>
+<a name="253"><span class="lineNum">     253 </span>            :     function updateStrategyAllocations(Strategy[] calldata strategyList, uint16[] calldata strategyBps)</a>
+<a name="254"><span class="lineNum">     254 </span>            :         external</a>
+<a name="255"><span class="lineNum">     255 </span>            :         onlyRole(HARVESTER)</a>
+<a name="256"><span class="lineNum">     256 </span>            :     {</a>
+<a name="257"><span class="lineNum">     257 </span><span class="lineCov">          1 :         for (uint256 i = 0; i &lt; strategyList.length; i = uncheckedInc(i)) {</span></a>
+<a name="258"><span class="lineNum">     258 </span>            :             // Get the strategy at the current index.</a>
+<a name="259"><span class="lineNum">     259 </span><span class="lineCov">          2 :             Strategy strategy = strategyList[i];</span></a>
+<a name="260"><span class="lineNum">     260 </span>            : </a>
+<a name="261"><span class="lineNum">     261 </span>            :             // Ignore inactive (removed) strategies</a>
+<a name="262"><span class="lineNum">     262 </span><span class="lineCov">          2 :             if (!strategies[strategy].isActive) continue;</span></a>
+<a name="263"><span class="lineNum">     263 </span>            : </a>
+<a name="264"><span class="lineNum">     264 </span>            :             // update tvl bps</a>
+<a name="265"><span class="lineNum">     265 </span><span class="lineCov">          2 :             totalBps -= strategies[strategy].tvlBps;</span></a>
+<a name="266"><span class="lineNum">     266 </span><span class="lineCov">          2 :             _increaseTVLBps(strategyBps[i]);</span></a>
+<a name="267"><span class="lineNum">     267 </span><span class="lineCov">          2 :             strategies[strategy].tvlBps = strategyBps[i];</span></a>
+<a name="268"><span class="lineNum">     268 </span>            :         }</a>
+<a name="269"><span class="lineNum">     269 </span><span class="lineCov">          1 :         emit StrategyAllocsUpdated(strategyList, strategyBps);</span></a>
+<a name="270"><span class="lineNum">     270 </span>            :     }</a>
+<a name="271"><span class="lineNum">     271 </span>            : </a>
+<a name="272"><span class="lineNum">     272 </span>            :     /**</a>
+<a name="273"><span class="lineNum">     273 </span>            :      * @notice Emitted when we update tvl bps for a list of strategies.</a>
+<a name="274"><span class="lineNum">     274 </span>            :      * @param strategyList The list of strategies.</a>
+<a name="275"><span class="lineNum">     275 </span>            :      * @param strategyBps The new tvl bps for the strategies</a>
+<a name="276"><span class="lineNum">     276 </span>            :      */</a>
+<a name="277"><span class="lineNum">     277 </span>            :     event StrategyAllocsUpdated(Strategy[] strategyList, uint16[] strategyBps);</a>
+<a name="278"><span class="lineNum">     278 </span>            : </a>
+<a name="279"><span class="lineNum">     279 </span>            :     /**</a>
+<a name="280"><span class="lineNum">     280 </span>            :      * STRATEGY DEPOSIT/WITHDRAWAL</a>
+<a name="281"><span class="lineNum">     281 </span>            :      *</a>
+<a name="282"><span class="lineNum">     282 </span>            :      */</a>
+<a name="283"><span class="lineNum">     283 </span>            : </a>
+<a name="284"><span class="lineNum">     284 </span>            :     /**</a>
+<a name="285"><span class="lineNum">     285 </span>            :      * @notice Emitted after the Vault deposits into a strategy contract.</a>
+<a name="286"><span class="lineNum">     286 </span>            :      * @param strategy The strategy that was deposited into.</a>
+<a name="287"><span class="lineNum">     287 </span>            :      * @param assets The amount of assets deposited.</a>
+<a name="288"><span class="lineNum">     288 </span>            :      */</a>
+<a name="289"><span class="lineNum">     289 </span>            :     event StrategyDeposit(Strategy indexed strategy, uint256 assets);</a>
+<a name="290"><span class="lineNum">     290 </span>            : </a>
+<a name="291"><span class="lineNum">     291 </span>            :     /**</a>
+<a name="292"><span class="lineNum">     292 </span>            :      * @notice Emitted after the Vault withdraws funds from a strategy contract.</a>
+<a name="293"><span class="lineNum">     293 </span>            :      * @param strategy The strategy that was withdrawn from.</a>
+<a name="294"><span class="lineNum">     294 </span>            :      * @param assetsRequested The amount of assets we tried to divest from the strategy.</a>
+<a name="295"><span class="lineNum">     295 </span>            :      * @param assetsReceived The amount of assets actually withdrawn.</a>
+<a name="296"><span class="lineNum">     296 </span>            :      */</a>
+<a name="297"><span class="lineNum">     297 </span>            :     event StrategyWithdrawal(Strategy indexed strategy, uint256 assetsRequested, uint256 assetsReceived);</a>
+<a name="298"><span class="lineNum">     298 </span>            : </a>
+<a name="299"><span class="lineNum">     299 </span>            :     /// @notice Deposit `assetAmount` amount of `asset` into strategies according to each strategy's `tvlBps`.</a>
+<a name="300"><span class="lineNum">     300 </span>            :     function _depositIntoStrategies(uint256 assetAmount) internal {</a>
+<a name="301"><span class="lineNum">     301 </span>            :         // All non-zero strategies are active</a>
+<a name="302"><span class="lineNum">     302 </span><span class="lineCov">         10 :         for (uint256 i = 0; i &lt; MAX_STRATEGIES; i = uncheckedInc(i)) {</span></a>
+<a name="303"><span class="lineNum">     303 </span><span class="lineCov">         18 :             Strategy strategy = withdrawalQueue[i];</span></a>
+<a name="304"><span class="lineNum">     304 </span><span class="lineCov">         18 :             if (address(strategy) == address(0)) {</span></a>
+<a name="305"><span class="lineNum">     305 </span><span class="lineCov">         10 :                 break;</span></a>
+<a name="306"><span class="lineNum">     306 </span>            :             }</a>
+<a name="307"><span class="lineNum">     307 </span><span class="lineCov">          8 :             _depositIntoStrategy(strategy, (assetAmount * strategies[strategy].tvlBps) / MAX_BPS);</span></a>
+<a name="308"><span class="lineNum">     308 </span>            :         }</a>
+<a name="309"><span class="lineNum">     309 </span>            :     }</a>
+<a name="310"><span class="lineNum">     310 </span>            : </a>
+<a name="311"><span class="lineNum">     311 </span>            :     function _depositIntoStrategy(Strategy strategy, uint256 assets) internal {</a>
+<a name="312"><span class="lineNum">     312 </span>            :         // Don't allow empty investments</a>
+<a name="313"><span class="lineNum">     313 </span><span class="lineCov">         10 :         if (assets == 0) return;</span></a>
+<a name="314"><span class="lineNum">     314 </span>            : </a>
+<a name="315"><span class="lineNum">     315 </span>            :         // Increase totalStrategyHoldings to account for the deposit.</a>
+<a name="316"><span class="lineNum">     316 </span><span class="lineCov">         10 :         totalStrategyHoldings += assets;</span></a>
+<a name="317"><span class="lineNum">     317 </span>            : </a>
+<a name="318"><span class="lineNum">     318 </span>            :         unchecked {</a>
+<a name="319"><span class="lineNum">     319 </span>            :             // Without this the next harvest would count the deposit as profit.</a>
+<a name="320"><span class="lineNum">     320 </span>            :             // Cannot overflow as the balance of one strategy can't exceed the sum of all.</a>
+<a name="321"><span class="lineNum">     321 </span><span class="lineCov">         10 :             strategies[strategy].balance += uint232(assets);</span></a>
+<a name="322"><span class="lineNum">     322 </span>            :         }</a>
+<a name="323"><span class="lineNum">     323 </span>            : </a>
+<a name="324"><span class="lineNum">     324 </span>            :         // Approve assets to the strategy so we can deposit.</a>
+<a name="325"><span class="lineNum">     325 </span><span class="lineCov">         10 :         _asset.safeApprove(address(strategy), assets);</span></a>
+<a name="326"><span class="lineNum">     326 </span>            : </a>
+<a name="327"><span class="lineNum">     327 </span>            :         // Deposit into the strategy, will revert upon failure</a>
+<a name="328"><span class="lineNum">     328 </span><span class="lineCov">         10 :         strategy.invest(assets);</span></a>
+<a name="329"><span class="lineNum">     329 </span><span class="lineCov">         10 :         emit StrategyDeposit(strategy, assets);</span></a>
+<a name="330"><span class="lineNum">     330 </span>            :     }</a>
+<a name="331"><span class="lineNum">     331 </span>            : </a>
+<a name="332"><span class="lineNum">     332 </span>            :     /**</a>
+<a name="333"><span class="lineNum">     333 </span>            :      * @notice Withdraw a specific amount of underlying tokens from a strategy.</a>
+<a name="334"><span class="lineNum">     334 </span>            :      * @dev This is a &quot;best effort&quot; withdrawal. It could potentially withdraw nothing.</a>
+<a name="335"><span class="lineNum">     335 </span>            :      * @param strategy The strategy to withdraw from.</a>
+<a name="336"><span class="lineNum">     336 </span>            :      * @param assets  The amount of underlying tokens to withdraw.</a>
+<a name="337"><span class="lineNum">     337 </span>            :      * @return The amount of assets actually received.</a>
+<a name="338"><span class="lineNum">     338 </span>            :      */</a>
+<a name="339"><span class="lineNum">     339 </span>            :     function _withdrawFromStrategy(Strategy strategy, uint256 assets) internal returns (uint256) {</a>
+<a name="340"><span class="lineNum">     340 </span>            :         // Withdraw from the strategy</a>
+<a name="341"><span class="lineNum">     341 </span><span class="lineCov">          5 :         uint256 amountWithdrawn = _divest(strategy, assets);</span></a>
+<a name="342"><span class="lineNum">     342 </span>            : </a>
+<a name="343"><span class="lineNum">     343 </span>            :         // Without this the next harvest would count the withdrawal as a loss.</a>
+<a name="344"><span class="lineNum">     344 </span>            :         // We update the balance to the current tvl because a withdrawal can reduce the tvl by more than the amount</a>
+<a name="345"><span class="lineNum">     345 </span>            :         // withdrawn (e.g. fees during a swap)</a>
+<a name="346"><span class="lineNum">     346 </span><span class="lineCov">          5 :         uint256 oldStratTVL = strategies[strategy].balance;</span></a>
+<a name="347"><span class="lineNum">     347 </span><span class="lineCov">          5 :         uint256 newStratTvl = strategy.totalLockedValue();</span></a>
+<a name="348"><span class="lineNum">     348 </span><span class="lineCov">          5 :         strategies[strategy].balance = uint232(newStratTvl);</span></a>
+<a name="349"><span class="lineNum">     349 </span>            : </a>
+<a name="350"><span class="lineNum">     350 </span>            :         // Decrease totalStrategyHoldings to account for the withdrawal.</a>
+<a name="351"><span class="lineNum">     351 </span>            :         // If we haven't harvested in a long time, newStratTvl could be bigger than oldStratTvl</a>
+<a name="352"><span class="lineNum">     352 </span><span class="lineCov">          5 :         totalStrategyHoldings -= oldStratTVL &gt; newStratTvl ? oldStratTVL - newStratTvl : 0;</span></a>
+<a name="353"><span class="lineNum">     353 </span><span class="lineCov">          5 :         emit StrategyWithdrawal({strategy: strategy, assetsRequested: assets, assetsReceived: amountWithdrawn});</span></a>
+<a name="354"><span class="lineNum">     354 </span><span class="lineCov">          5 :         return amountWithdrawn;</span></a>
+<a name="355"><span class="lineNum">     355 </span>            :     }</a>
+<a name="356"><span class="lineNum">     356 </span>            : </a>
+<a name="357"><span class="lineNum">     357 </span>            :     /// @dev A small wrapper around divest(). We try-catch to make sure that a bad strategy does not pause withdrawals.</a>
+<a name="358"><span class="lineNum">     358 </span>            :     function _divest(Strategy strategy, uint256 assets) internal returns (uint256) {</a>
+<a name="359"><span class="lineNum">     359 </span><span class="lineCov">          5 :         try strategy.divest(assets) returns (uint256 amountDivested) {</span></a>
+<a name="360"><span class="lineNum">     360 </span>            :             return amountDivested;</a>
+<a name="361"><span class="lineNum">     361 </span>            :         } catch {</a>
+<a name="362"><span class="lineNum">     362 </span>            :             return 0;</a>
+<a name="363"><span class="lineNum">     363 </span>            :         }</a>
+<a name="364"><span class="lineNum">     364 </span>            :     }</a>
+<a name="365"><span class="lineNum">     365 </span>            : </a>
+<a name="366"><span class="lineNum">     366 </span>            :     /**</a>
+<a name="367"><span class="lineNum">     367 </span>            :      * HARVESTING</a>
+<a name="368"><span class="lineNum">     368 </span>            :      *</a>
+<a name="369"><span class="lineNum">     369 </span>            :      */</a>
+<a name="370"><span class="lineNum">     370 </span>            : </a>
+<a name="371"><span class="lineNum">     371 </span>            :     /**</a>
+<a name="372"><span class="lineNum">     372 </span>            :      * @notice A timestamp representing when the most recent harvest occurred.</a>
+<a name="373"><span class="lineNum">     373 </span>            :      * @dev Since the time since the last harvest is used to calculate management fees, this is set</a>
+<a name="374"><span class="lineNum">     374 </span>            :      * to `block.timestamp` (instead of 0) during initialization.</a>
+<a name="375"><span class="lineNum">     375 </span>            :      */</a>
+<a name="376"><span class="lineNum">     376 </span>            :     uint128 public lastHarvest;</a>
+<a name="377"><span class="lineNum">     377 </span>            :     /// @notice The amount of profit *originally* locked after harvesting from a strategy</a>
+<a name="378"><span class="lineNum">     378 </span>            :     uint128 public maxLockedProfit;</a>
+<a name="379"><span class="lineNum">     379 </span>            :     /// @notice Amount of time in seconds that profit takes to fully unlock. See lockedProfit().</a>
+<a name="380"><span class="lineNum">     380 </span>            :     uint256 public constant LOCK_INTERVAL = 24 hours;</a>
+<a name="381"><span class="lineNum">     381 </span>            : </a>
+<a name="382"><span class="lineNum">     382 </span>            :     /**</a>
+<a name="383"><span class="lineNum">     383 </span>            :      * @notice Emitted after a successful harvest.</a>
+<a name="384"><span class="lineNum">     384 </span>            :      * @param user The authorized user who triggered the harvest.</a>
+<a name="385"><span class="lineNum">     385 </span>            :      * @param strategies The trusted strategies that were harvested.</a>
+<a name="386"><span class="lineNum">     386 </span>            :      */</a>
+<a name="387"><span class="lineNum">     387 </span>            :     event Harvest(address indexed user, Strategy[] strategies);</a>
+<a name="388"><span class="lineNum">     388 </span>            : </a>
+<a name="389"><span class="lineNum">     389 </span>            :     /**</a>
+<a name="390"><span class="lineNum">     390 </span>            :      * @notice Harvest a set of trusted strategies.</a>
+<a name="391"><span class="lineNum">     391 </span>            :      * @param strategyList The trusted strategies to harvest.</a>
+<a name="392"><span class="lineNum">     392 </span>            :      * @dev Will always revert if profit from last harvest has not finished unlocking.</a>
+<a name="393"><span class="lineNum">     393 </span>            :      */</a>
+<a name="394"><span class="lineNum">     394 </span>            :     function harvest(Strategy[] calldata strategyList) external onlyRole(HARVESTER) {</a>
+<a name="395"><span class="lineNum">     395 </span>            :         // Profit must not be unlocking</a>
+<a name="396"><span class="lineNum">     396 </span><span class="lineCov">          9 :         require(block.timestamp &gt;= lastHarvest + LOCK_INTERVAL, &quot;BV: profit unlocking&quot;);</span></a>
+<a name="397"><span class="lineNum">     397 </span>            : </a>
+<a name="398"><span class="lineNum">     398 </span>            :         // Get the Vault's current total strategy holdings.</a>
+<a name="399"><span class="lineNum">     399 </span><span class="lineCov">          9 :         uint256 oldTotalStrategyHoldings = totalStrategyHoldings;</span></a>
+<a name="400"><span class="lineNum">     400 </span>            : </a>
+<a name="401"><span class="lineNum">     401 </span>            :         // Used to store the new total strategy holdings after harvesting.</a>
+<a name="402"><span class="lineNum">     402 </span><span class="lineCov">          9 :         uint256 newTotalStrategyHoldings = oldTotalStrategyHoldings;</span></a>
+<a name="403"><span class="lineNum">     403 </span>            : </a>
+<a name="404"><span class="lineNum">     404 </span>            :         // Used to store the total profit accrued by the strategies.</a>
+<a name="405"><span class="lineNum">     405 </span><span class="lineCov">          9 :         uint256 totalProfitAccrued;</span></a>
+<a name="406"><span class="lineNum">     406 </span>            : </a>
+<a name="407"><span class="lineNum">     407 </span>            :         // Will revert if any of the specified strategies are untrusted.</a>
+<a name="408"><span class="lineNum">     408 </span><span class="lineCov">          9 :         for (uint256 i = 0; i &lt; strategyList.length; i = uncheckedInc(i)) {</span></a>
+<a name="409"><span class="lineNum">     409 </span>            :             // Get the strategy at the current index.</a>
+<a name="410"><span class="lineNum">     410 </span><span class="lineCov">         11 :             Strategy strategy = strategyList[i];</span></a>
+<a name="411"><span class="lineNum">     411 </span>            : </a>
+<a name="412"><span class="lineNum">     412 </span>            :             // Ignore inactive (removed) strategies</a>
+<a name="413"><span class="lineNum">     413 </span><span class="lineCov">         11 :             if (!strategies[strategy].isActive) {</span></a>
+<a name="414"><span class="lineNum">     414 </span><span class="lineNoCov">          0 :                 continue;</span></a>
+<a name="415"><span class="lineNum">     415 </span>            :             }</a>
+<a name="416"><span class="lineNum">     416 </span>            : </a>
+<a name="417"><span class="lineNum">     417 </span>            :             // Get the strategy's previous and current balance.</a>
+<a name="418"><span class="lineNum">     418 </span><span class="lineCov">         11 :             uint232 balanceLastHarvest = strategies[strategy].balance;</span></a>
+<a name="419"><span class="lineNum">     419 </span><span class="lineCov">         11 :             uint256 balanceThisHarvest = strategy.totalLockedValue();</span></a>
+<a name="420"><span class="lineNum">     420 </span>            : </a>
+<a name="421"><span class="lineNum">     421 </span>            :             // Update the strategy's stored balance.</a>
+<a name="422"><span class="lineNum">     422 </span><span class="lineCov">         11 :             strategies[strategy].balance = uint232(balanceThisHarvest);</span></a>
+<a name="423"><span class="lineNum">     423 </span>            : </a>
+<a name="424"><span class="lineNum">     424 </span>            :             // Increase/decrease newTotalStrategyHoldings based on the profit/loss registered.</a>
+<a name="425"><span class="lineNum">     425 </span>            :             // We cannot wrap the subtraction in parenthesis as it would underflow if the strategy had a loss.</a>
+<a name="426"><span class="lineNum">     426 </span><span class="lineCov">         11 :             newTotalStrategyHoldings = newTotalStrategyHoldings + balanceThisHarvest - balanceLastHarvest;</span></a>
+<a name="427"><span class="lineNum">     427 </span>            : </a>
+<a name="428"><span class="lineNum">     428 </span>            :             unchecked {</a>
+<a name="429"><span class="lineNum">     429 </span>            :                 // Update the total profit accrued while counting losses as zero profit.</a>
+<a name="430"><span class="lineNum">     430 </span>            :                 // Cannot overflow as we already increased total holdings without reverting.</a>
+<a name="431"><span class="lineNum">     431 </span><span class="lineCov">         11 :                 totalProfitAccrued += balanceThisHarvest &gt; balanceLastHarvest</span></a>
+<a name="432"><span class="lineNum">     432 </span>            :                     ? balanceThisHarvest - balanceLastHarvest // Profits since last harvest.</a>
+<a name="433"><span class="lineNum">     433 </span>            :                     : 0; // If the strategy registered a net loss we don't have any new profit.</a>
+<a name="434"><span class="lineNum">     434 </span>            :             }</a>
+<a name="435"><span class="lineNum">     435 </span>            :         }</a>
+<a name="436"><span class="lineNum">     436 </span>            : </a>
+<a name="437"><span class="lineNum">     437 </span>            :         // Update max unlocked profit based on any remaining locked profit plus new profit.</a>
+<a name="438"><span class="lineNum">     438 </span><span class="lineCov">          9 :         maxLockedProfit = uint128(lockedProfit() + totalProfitAccrued);</span></a>
+<a name="439"><span class="lineNum">     439 </span>            : </a>
+<a name="440"><span class="lineNum">     440 </span>            :         // Set strategy holdings to our new total.</a>
+<a name="441"><span class="lineNum">     441 </span><span class="lineCov">          9 :         totalStrategyHoldings = newTotalStrategyHoldings;</span></a>
+<a name="442"><span class="lineNum">     442 </span>            : </a>
+<a name="443"><span class="lineNum">     443 </span>            :         // Assess fees (using old lastHarvest) and update the last harvest timestamp.</a>
+<a name="444"><span class="lineNum">     444 </span><span class="lineCov">          9 :         _assessFees();</span></a>
+<a name="445"><span class="lineNum">     445 </span><span class="lineCov">          9 :         lastHarvest = uint128(block.timestamp);</span></a>
+<a name="446"><span class="lineNum">     446 </span>            : </a>
+<a name="447"><span class="lineNum">     447 </span><span class="lineCov">          9 :         emit Harvest(msg.sender, strategyList);</span></a>
+<a name="448"><span class="lineNum">     448 </span>            :     }</a>
+<a name="449"><span class="lineNum">     449 </span>            : </a>
+<a name="450"><span class="lineNum">     450 </span>            :     /**</a>
+<a name="451"><span class="lineNum">     451 </span>            :      * @notice Current locked profit amount.</a>
+<a name="452"><span class="lineNum">     452 </span>            :      * @dev Profit unlocks uniformly over `LOCK_INTERVAL` seconds after the last harvest</a>
+<a name="453"><span class="lineNum">     453 </span>            :      */</a>
+<a name="454"><span class="lineNum">     454 </span>            :     function lockedProfit() public view virtual returns (uint256) {</a>
+<a name="455"><span class="lineNum">     455 </span><span class="lineCov">       4928 :         if (block.timestamp &gt;= lastHarvest + LOCK_INTERVAL) {</span></a>
+<a name="456"><span class="lineNum">     456 </span><span class="lineCov">         10 :             return 0;</span></a>
+<a name="457"><span class="lineNum">     457 </span>            :         }</a>
+<a name="458"><span class="lineNum">     458 </span>            : </a>
+<a name="459"><span class="lineNum">     459 </span><span class="lineCov">       4918 :         uint256 unlockedProfit = (maxLockedProfit * (block.timestamp - lastHarvest)) / LOCK_INTERVAL;</span></a>
+<a name="460"><span class="lineNum">     460 </span><span class="lineCov">       4918 :         return maxLockedProfit - unlockedProfit;</span></a>
+<a name="461"><span class="lineNum">     461 </span>            :     }</a>
+<a name="462"><span class="lineNum">     462 </span>            : </a>
+<a name="463"><span class="lineNum">     463 </span>            :     /// @notice The total amount of the underlying asset the vault has.</a>
+<a name="464"><span class="lineNum">     464 </span>            :     function vaultTVL() public view returns (uint256) {</a>
+<a name="465"><span class="lineNum">     465 </span><span class="lineCov">       4936 :         return _asset.balanceOf(address(this)) + totalStrategyHoldings;</span></a>
+<a name="466"><span class="lineNum">     466 </span>            :     }</a>
+<a name="467"><span class="lineNum">     467 </span>            : </a>
+<a name="468"><span class="lineNum">     468 </span>            :     /**</a>
+<a name="469"><span class="lineNum">     469 </span>            :      * @notice Emitted when the vault must make a certain amount of assets available</a>
+<a name="470"><span class="lineNum">     470 </span>            :      * @dev We liquidate during cross chain rebalancing or withdrawals.</a>
+<a name="471"><span class="lineNum">     471 </span>            :      * @param assetsRequested The amount we wanted to make available for withdrawal.</a>
+<a name="472"><span class="lineNum">     472 </span>            :      * @param assetsLiquidated The amount we actually liquidated.</a>
+<a name="473"><span class="lineNum">     473 </span>            :      */</a>
+<a name="474"><span class="lineNum">     474 </span>            :     event Liquidation(uint256 assetsRequested, uint256 assetsLiquidated);</a>
+<a name="475"><span class="lineNum">     475 </span>            : </a>
+<a name="476"><span class="lineNum">     476 </span>            :     /**</a>
+<a name="477"><span class="lineNum">     477 </span>            :      * @notice Withdraw `amount` of underlying asset from strategies.</a>
+<a name="478"><span class="lineNum">     478 </span>            :      * @dev Always check the return value when using this function, we might not liquidate anything!</a>
+<a name="479"><span class="lineNum">     479 </span>            :      * @param amount The amount we want to liquidate</a>
+<a name="480"><span class="lineNum">     480 </span>            :      * @return The amount we actually liquidated</a>
+<a name="481"><span class="lineNum">     481 </span>            :      */</a>
+<a name="482"><span class="lineNum">     482 </span>            :     function _liquidate(uint256 amount) internal returns (uint256) {</a>
+<a name="483"><span class="lineNum">     483 </span><span class="lineCov">       1552 :         uint256 amountLiquidated;</span></a>
+<a name="484"><span class="lineNum">     484 </span><span class="lineCov">       1552 :         for (uint256 i = 0; i &lt; MAX_STRATEGIES; i = uncheckedInc(i)) {</span></a>
+<a name="485"><span class="lineNum">     485 </span><span class="lineCov">       1553 :             Strategy strategy = withdrawalQueue[i];</span></a>
+<a name="486"><span class="lineNum">     486 </span><span class="lineCov">       1553 :             if (address(strategy) == address(0)) {</span></a>
+<a name="487"><span class="lineNum">     487 </span><span class="lineCov">       1552 :                 break;</span></a>
+<a name="488"><span class="lineNum">     488 </span>            :             }</a>
+<a name="489"><span class="lineNum">     489 </span>            : </a>
+<a name="490"><span class="lineNum">     490 </span><span class="lineCov">          1 :             uint256 balance = _asset.balanceOf(address(this));</span></a>
+<a name="491"><span class="lineNum">     491 </span><span class="lineCov">          1 :             if (balance &gt;= amount) {</span></a>
+<a name="492"><span class="lineNum">     492 </span><span class="lineNoCov">          0 :                 break;</span></a>
+<a name="493"><span class="lineNum">     493 </span>            :             }</a>
+<a name="494"><span class="lineNum">     494 </span>            : </a>
+<a name="495"><span class="lineNum">     495 </span><span class="lineCov">          1 :             uint256 amountNeeded = amount - balance;</span></a>
+<a name="496"><span class="lineNum">     496 </span><span class="lineCov">          1 :             amountNeeded = Math.min(amountNeeded, strategies[strategy].balance);</span></a>
+<a name="497"><span class="lineNum">     497 </span>            : </a>
+<a name="498"><span class="lineNum">     498 </span>            :             // Force withdraw of token from strategy</a>
+<a name="499"><span class="lineNum">     499 </span><span class="lineCov">          1 :             uint256 withdrawn = _withdrawFromStrategy(strategy, amountNeeded);</span></a>
+<a name="500"><span class="lineNum">     500 </span><span class="lineCov">          1 :             amountLiquidated += withdrawn;</span></a>
+<a name="501"><span class="lineNum">     501 </span>            :         }</a>
+<a name="502"><span class="lineNum">     502 </span><span class="lineCov">       1552 :         emit Liquidation({assetsRequested: amount, assetsLiquidated: amountLiquidated});</span></a>
+<a name="503"><span class="lineNum">     503 </span><span class="lineCov">       1552 :         return amountLiquidated;</span></a>
+<a name="504"><span class="lineNum">     504 </span>            :     }</a>
+<a name="505"><span class="lineNum">     505 </span>            : </a>
+<a name="506"><span class="lineNum">     506 </span>            :     /**</a>
+<a name="507"><span class="lineNum">     507 </span>            :      * @notice Assess fees.</a>
+<a name="508"><span class="lineNum">     508 </span>            :      * @dev This is called during harvest() to assess management fees.</a>
+<a name="509"><span class="lineNum">     509 </span>            :      */</a>
+<a name="510"><span class="lineNum">     510 </span>            :     function _assessFees() internal virtual {}</a>
+<a name="511"><span class="lineNum">     511 </span>            : </a>
+<a name="512"><span class="lineNum">     512 </span>            :     /**</a>
+<a name="513"><span class="lineNum">     513 </span>            :      * @notice Emitted when we do a strategy rebalance, i.e. when we make the strategy tvls match their tvl bps</a>
+<a name="514"><span class="lineNum">     514 </span>            :      * @param caller The caller</a>
+<a name="515"><span class="lineNum">     515 </span>            :      */</a>
+<a name="516"><span class="lineNum">     516 </span>            :     event Rebalance(address indexed caller);</a>
+<a name="517"><span class="lineNum">     517 </span>            : </a>
+<a name="518"><span class="lineNum">     518 </span>            :     /// @notice  Rebalance strategies according to given tvl bps</a>
+<a name="519"><span class="lineNum">     519 </span>            :     function rebalance() external onlyRole(HARVESTER) {</a>
+<a name="520"><span class="lineNum">     520 </span><span class="lineCov">          2 :         uint256 tvl = vaultTVL();</span></a>
+<a name="521"><span class="lineNum">     521 </span>            : </a>
+<a name="522"><span class="lineNum">     522 </span>            :         // Loop through all strategies. Divesting from those whose tvl is too high,</a>
+<a name="523"><span class="lineNum">     523 </span>            :         // Invest in those whose tvl is too low</a>
+<a name="524"><span class="lineNum">     524 </span>            : </a>
+<a name="525"><span class="lineNum">     525 </span>            :         // MAX_STRATEGIES is always equal to withdrawalQueue.length</a>
+<a name="526"><span class="lineNum">     526 </span><span class="lineCov">          2 :         uint256[MAX_STRATEGIES] memory amountsToInvest;</span></a>
+<a name="527"><span class="lineNum">     527 </span>            : </a>
+<a name="528"><span class="lineNum">     528 </span><span class="lineCov">          2 :         for (uint256 i = 0; i &lt; MAX_STRATEGIES; i = uncheckedInc(i)) {</span></a>
+<a name="529"><span class="lineNum">     529 </span><span class="lineCov">          6 :             Strategy strategy = withdrawalQueue[i];</span></a>
+<a name="530"><span class="lineNum">     530 </span><span class="lineCov">          6 :             if (address(strategy) == address(0)) {</span></a>
+<a name="531"><span class="lineNum">     531 </span><span class="lineCov">          2 :                 break;</span></a>
+<a name="532"><span class="lineNum">     532 </span>            :             }</a>
+<a name="533"><span class="lineNum">     533 </span>            : </a>
+<a name="534"><span class="lineNum">     534 </span><span class="lineCov">          4 :             uint256 idealStrategyTVL = (tvl * strategies[strategy].tvlBps) / MAX_BPS;</span></a>
+<a name="535"><span class="lineNum">     535 </span><span class="lineCov">          4 :             uint256 currStrategyTVL = strategy.totalLockedValue();</span></a>
+<a name="536"><span class="lineNum">     536 </span><span class="lineCov">          4 :             if (idealStrategyTVL &lt; currStrategyTVL) {</span></a>
+<a name="537"><span class="lineNum">     537 </span><span class="lineCov">          2 :                 _withdrawFromStrategy(strategy, currStrategyTVL - idealStrategyTVL);</span></a>
+<a name="538"><span class="lineNum">     538 </span>            :             }</a>
+<a name="539"><span class="lineNum">     539 </span><span class="lineCov">          4 :             if (idealStrategyTVL &gt; currStrategyTVL) {</span></a>
+<a name="540"><span class="lineNum">     540 </span><span class="lineCov">          2 :                 amountsToInvest[i] = idealStrategyTVL - currStrategyTVL;</span></a>
+<a name="541"><span class="lineNum">     541 </span>            :             }</a>
+<a name="542"><span class="lineNum">     542 </span>            :         }</a>
+<a name="543"><span class="lineNum">     543 </span>            : </a>
+<a name="544"><span class="lineNum">     544 </span>            :         // Loop through the strategies to invest in, and invest in them</a>
+<a name="545"><span class="lineNum">     545 </span><span class="lineCov">          2 :         for (uint256 i = 0; i &lt; MAX_STRATEGIES; i = uncheckedInc(i)) {</span></a>
+<a name="546"><span class="lineNum">     546 </span><span class="lineCov">         40 :             uint256 amountToInvest = amountsToInvest[i];</span></a>
+<a name="547"><span class="lineNum">     547 </span><span class="lineCov">         40 :             if (amountToInvest == 0) {</span></a>
+<a name="548"><span class="lineNum">     548 </span><span class="lineCov">         38 :                 continue;</span></a>
+<a name="549"><span class="lineNum">     549 </span>            :             }</a>
+<a name="550"><span class="lineNum">     550 </span>            : </a>
+<a name="551"><span class="lineNum">     551 </span>            :             // We aren't guaranteed that the vault has `amountToInvest` since there can be slippage</a>
+<a name="552"><span class="lineNum">     552 </span>            :             // when divesting from strategies</a>
+<a name="553"><span class="lineNum">     553 </span>            :             // NOTE: Strategies closer to the start of the queue are more likely to get the exact</a>
+<a name="554"><span class="lineNum">     554 </span>            :             // amount of money needed</a>
+<a name="555"><span class="lineNum">     555 </span><span class="lineCov">          2 :             amountToInvest = Math.min(amountToInvest, _asset.balanceOf(address(this)));</span></a>
+<a name="556"><span class="lineNum">     556 </span><span class="lineCov">          2 :             if (amountToInvest == 0) {</span></a>
+<a name="557"><span class="lineNum">     557 </span><span class="lineNoCov">          0 :                 break;</span></a>
+<a name="558"><span class="lineNum">     558 </span>            :             }</a>
+<a name="559"><span class="lineNum">     559 </span>            :             // Deposit into strategy, making sure to not count this investment as a profit</a>
+<a name="560"><span class="lineNum">     560 </span><span class="lineCov">          2 :             _depositIntoStrategy(withdrawalQueue[i], amountToInvest);</span></a>
+<a name="561"><span class="lineNum">     561 </span>            :         }</a>
+<a name="562"><span class="lineNum">     562 </span>            : </a>
+<a name="563"><span class="lineNum">     563 </span><span class="lineCov">          2 :         emit Rebalance(msg.sender);</span></a>
+<a name="564"><span class="lineNum">     564 </span>            :     }</a>
+<a name="565"><span class="lineNum">     565 </span>            : }</a>
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="https://github.com/linux-test-project/lcov" target="_parent">LCOV version 1.16</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>
