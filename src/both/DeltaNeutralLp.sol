@@ -65,19 +65,17 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         aToken.safeApprove(address(lendingPool), type(uint256).max);
         borrowAsset.safeApprove(address(lendingPool), type(uint256).max);
 
-        // To trade usdc/eth
+        // To trade asset/borrowAsset/sushi
         asset.safeApprove(address(_router), type(uint256).max);
         borrowAsset.safeApprove(address(_router), type(uint256).max);
+        sushiToken.safeApprove(address(_router), type(uint256).max);
         // To remove liquidity
         abPair.safeApprove(address(_router), type(uint256).max);
-        // For staking SLP token
+        // To stake lp tokens
         abPair.safeApprove(address(_masterChef), type(uint256).max);
-        // For trading sushi/usdc
-        sushiToken.safeApprove(address(_router), type(uint256).max);
     }
 
     bytes32 public constant STRATEGIST_ROLE = keccak256("STRATEGIST");
-    uint256 public constant MAX_BPS = 10_000;
 
     /// @notice Get price of WETH in USDC (borrowPrice) from chainlink. Has 8 decimals.
     function _chainlinkPriceOfBorrow() internal view returns (uint256 borrowPrice) {
@@ -119,20 +117,20 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         borrows = lpTokenAmount.mulDivDown(borrowAsset.balanceOf(address(abPair)), abPair.totalSupply());
     }
 
-    function _totalLockedValue(bool useSpotPrice) public view returns (uint256) {
+    function totalLockedValue() public view override returns (uint256) {
         // The below are all in units of `asset`
         // balanceOfAsset + balanceOfEth + aToken value + Uni Lp value - debt
         // lp tokens * (total assets) / total lp tokens
 
         // Using spot price from sushiswap for calculating TVL.
-        uint256 borrowPrice = useSpotPrice ? _sushiPriceOfBorrow() : _chainlinkPriceOfBorrow();
+        uint256 borrowPrice = _chainlinkPriceOfBorrow();
 
         // Asset value of underlying eth
         uint256 assetsEth = _borrowToAsset(borrowPrice, borrowAsset.balanceOf(address(this)));
 
         // Underlying value of sushi LP tokens
-        uint256 masterChefStakedAmount = masterChef.userInfo(masterChefPid, address(this)).amount;
-        uint256 sushiTotalStakedAmount = abPair.balanceOf(address(this)) + masterChefStakedAmount;
+        uint256 sushiTotalStakedAmount =
+            abPair.balanceOf(address(this)) + masterChef.userInfo(masterChefPid, address(this)).amount;
         (uint256 sushiUnderlyingAssets, uint256 sushiUnderlyingBorrows) =
             _getSushiLpUnderlyingAmounts(sushiTotalStakedAmount);
         uint256 sushiLpValue = sushiUnderlyingAssets + _borrowToAsset(borrowPrice, sushiUnderlyingBorrows);
@@ -141,14 +139,6 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         uint256 assetsDebt = _borrowToAsset(borrowPrice, debtToken.balanceOf(address(this)));
 
         return balanceOfAsset() + assetsEth + aToken.balanceOf(address(this)) + sushiLpValue - assetsDebt;
-    }
-
-    function totalLockedValue() public view override returns (uint256) {
-        return _totalLockedValue(true);
-    }
-
-    function totalLockedValue(bool useSpotPrice) public view returns (uint256) {
-        return _totalLockedValue(useSpotPrice);
     }
 
     uint32 public currentPosition;
@@ -304,8 +294,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
 
         // Unstake lp tokens and sell all sushi
         _unstakeAndClaimSushi();
-        uint256 assetsFromRewards;
-        _sellSushi(slippageToleranceBps);
+        uint256 assetsFromRewards = _sellSushi(slippageToleranceBps);
 
         // Remove liquidity
         // a = usdc, b = weth
@@ -322,7 +311,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         });
         (uint256 assetsFromSushi, uint256 borrowsFromSushi) = _changeFormat(amount0, amount1);
 
-        // Buy enough eth to pay back debt
+        // Buy enough borrowAsset to pay back debt
         uint256 debt = debtToken.balanceOf(address(this));
 
         // Either we buy eth or sell eth. If we need to buy then borrowToBuy will be
