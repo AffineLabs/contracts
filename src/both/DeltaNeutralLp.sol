@@ -230,7 +230,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
             });
         }
 
-        // Provide liquidity on uniswap
+        // Provide liquidity on sushiswap
         uint256 desiredAssetsInUni = asset.balanceOf(address(this));
         uint256 desiredBorrowsInUni = borrowAsset.balanceOf(address(this)) - longBorrowAmount;
 
@@ -245,6 +245,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
             deadline: block.timestamp
         });
 
+        // Stake lp tokens masterchef
         _stake();
 
         emit PositionStart({
