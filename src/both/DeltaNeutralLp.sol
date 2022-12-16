@@ -154,13 +154,13 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     uint32 public currentPosition;
     bool public canStartNewPos;
 
-    IMasterChef public masterChef;
-    uint256 public masterChefPid;
-    ERC20 public sushiToken;
-    bool public useMasterChefV2;
+    IMasterChef public immutable masterChef;
+    uint256 public immutable masterChefPid;
+    ERC20 public immutable sushiToken;
+    bool public immutable useMasterChefV2;
 
     /// @notice Fixed point number describing the percentage of the position with which to go long. 1e18 = 1 = 100%
-    uint256 public longPercentage;
+    uint256 public immutable longPercentage;
 
     IUniswapV2Router02 public immutable router;
     /// @notice The address of the Uniswap Lp token (the asset-borrowAsset pair)
@@ -273,7 +273,6 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     function _divest(uint256 assets) internal override returns (uint256) {
         // Totally unwind the position with 5% slippage tolerance
         if (!canStartNewPos) _endPosition(500); //
-
         uint256 amountToSend = Math.min(assets, balanceOfAsset());
         asset.safeTransfer(address(vault), amountToSend);
         // Return the given amount
