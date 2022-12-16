@@ -12,7 +12,7 @@ import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUn
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 
 import {BaseVault} from "../BaseVault.sol";
-import {DeltaNeutralLp, ILendingPoolAddressesProviderRegistry} from "../DeltaNeutralLp.sol";
+import {DeltaNeutralLp, ILendingPoolAddressesProviderRegistry} from "../both/DeltaNeutralLp.sol";
 import {IMasterChef} from "../interfaces/sushiswap/IMasterChef.sol";
 
 /// @notice Test SSLP Strategy with Sushiswap in L1.
@@ -159,7 +159,7 @@ contract L1DeltaNeutralTest is TestPlus {
 
     /// @notice Test vault can divest from this strategy.
     function testDivest() public {
-        // If there's no position active, we just send our current balance
+        // If there's no position active, we fjust send our current balance
         deal(address(asset), address(strategy), 1);
         vm.prank(address(vault));
         strategy.divest(1);
@@ -179,19 +179,14 @@ contract L1DeltaNeutralTest is TestPlus {
         assertApproxEqRel(asset.balanceOf(address(vault)), 1000e6, 0.01e18);
     }
 
-    /// @notice Test strategist can calim rewards.
-    function testClaimRewards() public {
-        // If there's no position active, we just send our current balance
-        deal(address(asset), address(strategy), 1);
-        vm.prank(address(vault));
-        strategy.divest(1);
-        assertEq(asset.balanceOf(address(vault)), 1);
-
+    /// @notice Strategist can claim rewards.
+    function testClaimAndSellSushi() public {
         deal(address(asset), address(strategy), 1000e6);
 
         vm.prank(vault.governance());
         strategy.startPosition(IDEAL_SLIPPAGE_BPS);
 
+        // The staked lp tokens gain will accumulate some sushi
         vm.roll(block.number + 1000);
         vm.warp(block.timestamp + 1 days);
         if (strategy.useMasterChefV2()) {
@@ -199,27 +194,21 @@ contract L1DeltaNeutralTest is TestPlus {
             strategy.masterChef().updatePool(strategy.masterChefPid());
         }
 
-        // We unwind position if there is a one
-        changePrank(address(vault));
-        strategy.divest(type(uint256).max);
+        assertGt(strategy.masterChef().pendingSushi(1, address(strategy)), 0);
 
-        uint256 sushiBalance = strategy.sushiToken().balanceOf(address(strategy));
-        emit log_named_uint("[Pre] Suhsi balance", sushiBalance);
-        assertGt(sushiBalance, 0);
+        uint256 oldAssetBal = strategy.balanceOfAsset();
+        vm.prank(vault.governance());
+        strategy.claimAndSellSushi(IDEAL_SLIPPAGE_BPS);
 
-        changePrank(vault.governance());
-        strategy.claimRewards(IDEAL_SLIPPAGE_BPS);
-
-        sushiBalance = strategy.sushiToken().balanceOf(address(strategy));
-        emit log_named_uint("[Post] Suhsi balance", sushiBalance);
-        assertEq(sushiBalance, 0);
+        assertGt(strategy.balanceOfAsset(), oldAssetBal);
+        assertEq(strategy.sushiToken().balanceOf(address(strategy)), 0);
     }
 
     /// @notice Fuzz test to calculate TVL in random scenarios.
-    function testTVLFuzz(uint64 assets) public {
+    function testTVLFuzz(uint256 assets) public {
         // Max borrowable WETH available in AAVE in this block is around 1334.66 WETH or 2178919.22 USDC.
         // So technically we should be able to take position with around 2178919.22 / ((4 / 7) * (3 / 4)) = 5084144.84 USDC
-        vm.assume(assets < 4e12);
+        assets = bound(assets, 0, 4e12);
 
         if (assets > 1e5) {
             assertEq(strategy.totalLockedValue(), 0);
@@ -401,47 +390,11 @@ contract L2DeltaNeutralTest is TestPlus {
         assertApproxEqRel(asset.balanceOf(address(vault)), 1000e6, 0.01e18);
     }
 
-    /// @notice Test strategist can calim rewards.
-    function testClaimRewards() public {
-        // If there's no position active, we just send our current balance
-        deal(address(asset), address(strategy), 1);
-        vm.prank(address(vault));
-        strategy.divest(1);
-        assertEq(asset.balanceOf(address(vault)), 1);
-
-        deal(address(asset), address(strategy), 1000e6);
-
-        vm.prank(vault.governance());
-        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
-
-        vm.roll(block.number + 1000);
-        vm.warp(block.timestamp + 1 days);
-        if (strategy.useMasterChefV2()) {
-            // Update pool to be able to harvest sushi rewards.
-            strategy.masterChef().updatePool(strategy.masterChefPid());
-        }
-
-        // We unwind position if there is a one
-        changePrank(address(vault));
-        strategy.divest(type(uint256).max);
-
-        uint256 sushiBalance = strategy.sushiToken().balanceOf(address(strategy));
-        emit log_named_uint("[Pre] Suhsi balance", sushiBalance);
-        assertGt(sushiBalance, 0);
-
-        changePrank(vault.governance());
-        strategy.claimRewards(IDEAL_SLIPPAGE_BPS);
-
-        sushiBalance = strategy.sushiToken().balanceOf(address(strategy));
-        emit log_named_uint("[Post] Suhsi balance", sushiBalance);
-        assertEq(sushiBalance, 0);
-    }
-
     /// @notice Fuzz test to calculate TVL in random scenarios.
-    function testTVLFuzz(uint64 assets) public {
+    function testTVLFuzz(uint256 assets) public {
         // Max borrowable WETH available in AAVE in this block is around 1334.66 WETH or 2178919.22 USDC.
         // So technically we should be able to take position with around 2178919.22 / ((4 / 7) * (3 / 4)) = 5084144.84 USDC
-        vm.assume(assets < 4e12);
+        assets = bound(assets, 0, 4e12);
 
         if (assets > 1e5) {
             assertEq(strategy.totalLockedValue(), 0);

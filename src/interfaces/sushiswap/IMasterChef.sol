@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-pragma experimental ABIEncoderV2;
-
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IMasterChef {
@@ -35,4 +33,6 @@ interface IMasterChef {
     function deposit(uint256 _pid, uint256 _amount, address _to) external;
     function withdrawAndHarvest(uint256 _pid, uint256 _amount, address _to) external;
     function updatePool(uint256 _pid) external returns (IMasterChef.PoolInfoV2 memory);
+    function harvest(uint256 pid, address to) external;
+    function pendingSushi(uint256 _pid, address _user) external view returns (uint256 pending);
 }

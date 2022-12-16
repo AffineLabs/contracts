@@ -27,7 +27,7 @@ import {ConvexStrategy} from "../src/ethereum/ConvexStrategy.sol";
 import {ICurvePool} from "../src/interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "../src/interfaces/convex.sol";
 
-import {DeltaNeutralLp} from "../src/DeltaNeutralLp.sol";
+import {DeltaNeutralLp} from "../src/both/DeltaNeutralLp.sol";
 import {AggregatorV3Interface} from "../src/interfaces/AggregatorV3Interface.sol";
 import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol";
 import {IMasterChef} from "../src/interfaces/sushiswap/IMasterChef.sol";
