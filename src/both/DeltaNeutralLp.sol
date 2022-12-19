@@ -4,7 +4,7 @@ pragma solidity =0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
-import {SlippageUtils} from "./libs/SlippageUtils.sol";
+import {SlippageUtils} from "../libs/SlippageUtils.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
@@ -15,11 +15,11 @@ import {
     ILendingPoolAddressesProvider,
     ILendingPool,
     IProtocolDataProvider
-} from "./interfaces/aave.sol";
-import {AggregatorV3Interface} from "./interfaces/AggregatorV3Interface.sol";
-import {BaseVault} from "./BaseVault.sol";
-import {BaseStrategy} from "./BaseStrategy.sol";
-import {IMasterChef} from "./interfaces/sushiswap/IMasterChef.sol";
+} from "../interfaces/aave.sol";
+import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
+import {BaseVault} from "../BaseVault.sol";
+import {BaseStrategy} from "../BaseStrategy.sol";
+import {IMasterChef} from "../interfaces/sushiswap/IMasterChef.sol";
 
 contract DeltaNeutralLp is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
@@ -65,19 +65,17 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         aToken.safeApprove(address(lendingPool), type(uint256).max);
         borrowAsset.safeApprove(address(lendingPool), type(uint256).max);
 
-        // To trade usdc/eth
+        // To trade asset/borrowAsset/sushi
         asset.safeApprove(address(_router), type(uint256).max);
         borrowAsset.safeApprove(address(_router), type(uint256).max);
+        sushiToken.safeApprove(address(_router), type(uint256).max);
         // To remove liquidity
         abPair.safeApprove(address(_router), type(uint256).max);
-        // For staking SLP token
+        // To stake lp tokens
         abPair.safeApprove(address(_masterChef), type(uint256).max);
-        // For trading sushi/usdc
-        sushiToken.safeApprove(address(_router), type(uint256).max);
     }
 
     bytes32 public constant STRATEGIST_ROLE = keccak256("STRATEGIST");
-    uint256 public constant MAX_BPS = 10_000;
 
     /// @notice Get price of WETH in USDC (borrowPrice) from chainlink. Has 8 decimals.
     function _chainlinkPriceOfBorrow() internal view returns (uint256 borrowPrice) {
@@ -95,7 +93,8 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         path[1] = address(asset);
 
         uint256[] memory amounts = router.getAmountsOut({amountIn: 1e18, path: path});
-        return amounts[1] * 1e2;
+        // We multiply to remove the 0.3% fee assessed in getAmountsOut
+        return amounts[1] * 1000 / 997;
     }
 
     /// @notice Convert `borrowAsset` (e.g. WETH) to `asset` (e.g. USDC). Has 6 decimals.
@@ -118,20 +117,20 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         borrows = lpTokenAmount.mulDivDown(borrowAsset.balanceOf(address(abPair)), abPair.totalSupply());
     }
 
-    function _totalLockedValue(bool useSpotPrice) public view returns (uint256) {
+    function totalLockedValue() public view override returns (uint256) {
         // The below are all in units of `asset`
         // balanceOfAsset + balanceOfEth + aToken value + Uni Lp value - debt
         // lp tokens * (total assets) / total lp tokens
 
         // Using spot price from sushiswap for calculating TVL.
-        uint256 borrowPrice = useSpotPrice ? _sushiPriceOfBorrow() : _chainlinkPriceOfBorrow();
+        uint256 borrowPrice = _chainlinkPriceOfBorrow();
 
         // Asset value of underlying eth
         uint256 assetsEth = _borrowToAsset(borrowPrice, borrowAsset.balanceOf(address(this)));
 
         // Underlying value of sushi LP tokens
-        uint256 masterChefStakedAmount = masterChef.userInfo(masterChefPid, address(this)).amount;
-        uint256 sushiTotalStakedAmount = abPair.balanceOf(address(this)) + masterChefStakedAmount;
+        uint256 sushiTotalStakedAmount =
+            abPair.balanceOf(address(this)) + masterChef.userInfo(masterChefPid, address(this)).amount;
         (uint256 sushiUnderlyingAssets, uint256 sushiUnderlyingBorrows) =
             _getSushiLpUnderlyingAmounts(sushiTotalStakedAmount);
         uint256 sushiLpValue = sushiUnderlyingAssets + _borrowToAsset(borrowPrice, sushiUnderlyingBorrows);
@@ -142,32 +141,16 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         return balanceOfAsset() + assetsEth + aToken.balanceOf(address(this)) + sushiLpValue - assetsDebt;
     }
 
-    function totalLockedValue() public view override returns (uint256) {
-        return _totalLockedValue(true);
-    }
-
-    function totalLockedValue(bool useSpotPrice) public view returns (uint256) {
-        return _totalLockedValue(useSpotPrice);
-    }
-
     uint32 public currentPosition;
     bool public canStartNewPos;
 
-    IMasterChef public masterChef;
-    uint256 public masterChefPid;
-    ERC20 public sushiToken;
-    bool public useMasterChefV2;
-
-    event PositionStart(
-        uint32 indexed position,
-        uint256 assetBalance,
-        uint256 borrowPriceChainlink,
-        uint256 borrowPriceSushi,
-        uint256 timestamp
-    );
+    IMasterChef public immutable masterChef;
+    uint256 public immutable masterChefPid;
+    ERC20 public immutable sushiToken;
+    bool public immutable useMasterChefV2;
 
     /// @notice Fixed point number describing the percentage of the position with which to go long. 1e18 = 1 = 100%
-    uint256 public longPercentage;
+    uint256 public immutable longPercentage;
 
     IUniswapV2Router02 public immutable router;
     /// @notice The address of the Uniswap Lp token (the asset-borrowAsset pair)
@@ -182,33 +165,17 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
     ERC20 public immutable aToken;
 
     /// @notice Gives ratio of vault asset to borrow asset, e.g. WETH/USD (assuming usdc = usd)
-    AggregatorV3Interface immutable borrowAssetFeed;
+    AggregatorV3Interface public immutable borrowAssetFeed;
 
-    event MetricInfo(
-        uint256 indexed position,
-        uint256 step,
-        uint256 assetBalance,
-        uint256 borrowBalance,
-        uint256 abPairBalance,
-        uint256 aTokenBalance,
-        uint256 debtTokenBalance,
-        uint256 sushiBalance,
-        uint256 masterChefStakedAmount
+    event PositionStart( // chainlink price and spot price of borrowAsset
+        uint32 indexed position,
+        uint256 assetCollateral,
+        uint256 borrows,
+        uint256[2] borrowPrices,
+        uint256 assetsToSushi,
+        uint256 borrowsToSushi,
+        uint256 timestamp
     );
-
-    function _exportMetricInfo(uint256 step) internal {
-        emit MetricInfo(
-            currentPosition,
-            step,
-            asset.balanceOf(address(this)),
-            borrowAsset.balanceOf(address(this)),
-            abPair.balanceOf(address(this)),
-            aToken.balanceOf(address(this)),
-            debtToken.balanceOf(address(this)),
-            sushiToken.balanceOf(address(this)),
-            masterChef.userInfo(masterChefPid, address(this)).amount
-            );
-    }
 
     function startPosition(uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
         // Set position metadata
@@ -216,11 +183,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         currentPosition += 1;
         canStartNewPos = false;
 
-        uint256 initTVL = totalLockedValue();
         uint256 borrowPrice = _chainlinkPriceOfBorrow();
-        emit PositionStart(currentPosition, initTVL, borrowPrice, _sushiPriceOfBorrow(), block.timestamp);
-
-        _exportMetricInfo(1);
 
         // Scope to avoid stack too deep error. See https://ethereum.stackexchange.com/a/84378
         // Some amount of the assets will be used to buy eth at the end of this scope.
@@ -241,9 +204,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
                 });
             }
         }
-        uint256 swappedBorrowAmount = borrowAsset.balanceOf(address(this));
-
-        _exportMetricInfo(2);
+        uint256 longBorrowAmount = borrowAsset.balanceOf(address(this));
 
         // Deposit asset in aave. Then borrow Eth at 75% (88% liquidation threshold and 85.5% max LTV)
         // If x is amount we want to deposit into aave .75x = Total - x => 1.75x = Total => x = Total / 1.75 => Total * 4/7
@@ -257,8 +218,6 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
             });
         }
 
-        _exportMetricInfo(3);
-
         // https://docs.aave.com/developers/v/2.0/the-core-protocol/lendingpool#borrow
         uint256 borrowAmount = _assetToBorrow(borrowPrice, assetsToDeposit).mulDivDown(3, 4);
         if (borrowAmount > 0) {
@@ -271,56 +230,61 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
             });
         }
 
-        _exportMetricInfo(4);
-
-        // Provide liquidity on uniswap
-        uint256 assetsBalance = asset.balanceOf(address(this));
-        uint256 borrowBalance = borrowAsset.balanceOf(address(this)) - swappedBorrowAmount;
-        uint256 assetsInMin = assetsBalance.slippageDown(slippageToleranceBps);
-        uint256 borrowInMin = assetsBalance.slippageDown(slippageToleranceBps);
+        // Provide liquidity on sushiswap
+        uint256 desiredAssetsInUni = asset.balanceOf(address(this));
+        uint256 desiredBorrowsInUni = borrowAsset.balanceOf(address(this)) - longBorrowAmount;
 
         router.addLiquidity({
             tokenA: address(asset),
             tokenB: address(borrowAsset),
-            amountADesired: assetsBalance,
-            amountBDesired: borrowBalance,
-            amountAMin: assetsInMin,
-            amountBMin: borrowInMin,
+            amountADesired: desiredAssetsInUni,
+            amountBDesired: desiredBorrowsInUni,
+            amountAMin: desiredAssetsInUni.slippageDown(slippageToleranceBps),
+            amountBMin: desiredBorrowsInUni.slippageDown(slippageToleranceBps),
             to: address(this),
             deadline: block.timestamp
         });
 
-        _exportMetricInfo(5);
+        // Stake lp tokens masterchef
+        _stake();
 
-        // Deposit to MasterChef for additional SUSHI rewards.
-        if (useMasterChefV2) {
-            masterChef.deposit(masterChefPid, abPair.balanceOf(address(this)), address(this));
-        } else {
-            masterChef.deposit(masterChefPid, abPair.balanceOf(address(this)));
-        }
-        _exportMetricInfo(6);
+        emit PositionStart({
+            position: currentPosition,
+            assetCollateral: aToken.balanceOf(address(this)),
+            borrows: debtToken.balanceOf(address(this)),
+            borrowPrices: [borrowPrice, _sushiPriceOfBorrow()], // chainlink price and spot price of borrowAsset
+            assetsToSushi: desiredAssetsInUni - asset.balanceOf(address(this)),
+            borrowsToSushi: desiredBorrowsInUni + longBorrowAmount - borrowAsset.balanceOf(address(this)),
+            timestamp: block.timestamp
+        });
     }
 
     /// @dev This strategy should be put at the end of the WQ so that we rarely divest from it. Divestment
     /// ideally occurs when the strategy does not have an open position
     function _divest(uint256 assets) internal override returns (uint256) {
-        // Totally unwind the position
-        if (!canStartNewPos) _endPosition(MAX_BPS / 20); // 5% slippage tolerance.
-
+        // Totally unwind the position with 5% slippage tolerance
+        if (!canStartNewPos) _endPosition(500); //
         uint256 amountToSend = Math.min(assets, balanceOfAsset());
         asset.safeTransfer(address(vault), amountToSend);
         // Return the given amount
         return amountToSend;
     }
 
-    event PositionEnd(uint32 indexed position, uint256 assetBalance, uint256 timestamp);
+    event PositionEnd( // usdc value of sushi rewards
+        uint32 indexed position,
+        uint256 assetsFromSushi,
+        uint256 borrowsFromSushi,
+        uint256 assetsFromRewards,
+        uint256[2] borrowPrices,
+        bool assetSold,
+        uint256 assetsOrBorrowsSold,
+        uint256 assetsOrBorrowsReceived,
+        uint256 assetCollateral,
+        uint256 borrowDebtPaid,
+        uint256 timestamp
+    );
 
     function endPosition(uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
-        _endPosition(slippageToleranceBps);
-    }
-
-    function claimRewardsAndEndPosition(uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
-        _claimRewards(slippageToleranceBps);
         _endPosition(slippageToleranceBps);
     }
 
@@ -329,23 +293,15 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         require(!canStartNewPos, "DNLP: position is inactive");
         canStartNewPos = true;
 
-        _exportMetricInfo(7);
-
-        uint256 borrowPrice = _chainlinkPriceOfBorrow();
-
-        uint256 depositedSLPAmount = masterChef.userInfo(masterChefPid, address(this)).amount;
-        if (useMasterChefV2) {
-            masterChef.withdrawAndHarvest(masterChefPid, depositedSLPAmount, address(this));
-        } else {
-            masterChef.withdraw(masterChefPid, depositedSLPAmount);
-        }
-        _exportMetricInfo(8);
+        // Unstake lp tokens and sell all sushi
+        _unstakeAndClaimSushi();
+        uint256 assetsFromRewards = _sellSushi(slippageToleranceBps);
 
         // Remove liquidity
         // a = usdc, b = weth
         uint256 abPairBalance = abPair.balanceOf(address(this));
         (uint256 underlyingAssets, uint256 underlyingBorrows) = _getSushiLpUnderlyingAmounts(abPairBalance);
-        router.removeLiquidity({
+        (uint256 amount0, uint256 amount1) = router.removeLiquidity({
             tokenA: address(asset),
             tokenB: address(borrowAsset),
             liquidity: abPairBalance,
@@ -354,23 +310,58 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
             to: address(this),
             deadline: block.timestamp
         });
+        (uint256 assetsFromSushi, uint256 borrowsFromSushi) = _changeFormat(amount0, amount1);
 
-        _exportMetricInfo(9);
-
-        // Buy enough eth to pay back debt
+        // Buy enough borrowAsset to pay back debt
         uint256 debt = debtToken.balanceOf(address(this));
-        uint256 bBal = borrowAsset.balanceOf(address(this));
+
         // Either we buy eth or sell eth. If we need to buy then borrowToBuy will be
         // positive and borrowToSell will be zero and vice versa.
-        uint256 borrowToBuy = debt > bBal ? debt - bBal : 0;
-        uint256 borrowToSell = bBal > debt ? bBal - debt : 0;
+        uint256[] memory tradeAmounts;
+        bool assetSold;
+        {
+            uint256 bBal = borrowAsset.balanceOf(address(this));
+            uint256 borrowToBuy = debt > bBal ? debt - bBal : 0;
+            uint256 borrowToSell = bBal > debt ? bBal - debt : 0;
 
+            // Passing the `slippageToleranceBps` param directly triggers stack too deep error
+            uint256 bps = slippageToleranceBps;
+            tradeAmounts = _tradeBorrow(borrowToSell, borrowToBuy, _chainlinkPriceOfBorrow(), bps);
+            assetSold = debt > bBal;
+        }
+
+        // Repay debt
+        lendingPool.repay({asset: address(borrowAsset), amount: debt, rateMode: 2, onBehalfOf: address(this)});
+
+        // Withdraw from aave
+        uint256 assetCollateral = aToken.balanceOf(address(this));
+        lendingPool.withdraw({asset: address(asset), amount: aToken.balanceOf(address(this)), to: address(this)});
+
+        emit PositionEnd({
+            position: currentPosition,
+            assetsFromSushi: assetsFromSushi, // usdc value of sushi rewards
+            borrowsFromSushi: borrowsFromSushi,
+            assetsFromRewards: assetsFromRewards,
+            borrowPrices: [_chainlinkPriceOfBorrow(), _sushiPriceOfBorrow()],
+            assetSold: assetSold,
+            assetsOrBorrowsSold: tradeAmounts[0],
+            assetsOrBorrowsReceived: tradeAmounts[1],
+            assetCollateral: assetCollateral,
+            borrowDebtPaid: debt,
+            timestamp: block.timestamp
+        });
+    }
+
+    function _tradeBorrow(uint256 borrowToSell, uint256 borrowToBuy, uint256 borrowPrice, uint256 slippageToleranceBps)
+        internal
+        returns (uint256[] memory tradeAmounts)
+    {
         if (borrowToBuy > 0) {
             address[] memory path = new address[](2);
             path[0] = address(asset);
             path[1] = address(borrowAsset);
 
-            router.swapTokensForExactTokens({
+            tradeAmounts = router.swapTokensForExactTokens({
                 amountOut: borrowToBuy,
                 amountInMax: _borrowToAsset(borrowPrice, borrowToBuy).slippageUp(slippageToleranceBps),
                 path: path,
@@ -382,7 +373,7 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
             address[] memory path = new address[](2);
             path[0] = address(borrowAsset);
             path[1] = address(asset);
-            router.swapExactTokensForTokens({
+            tradeAmounts = router.swapExactTokensForTokens({
                 amountIn: borrowToSell,
                 amountOutMin: _borrowToAsset(borrowPrice, borrowToSell).slippageDown(slippageToleranceBps),
                 path: path,
@@ -390,44 +381,70 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
                 deadline: block.timestamp
             });
         }
-
-        _exportMetricInfo(10);
-
-        // Repay debt
-        lendingPool.repay({asset: address(borrowAsset), amount: debt, rateMode: 2, onBehalfOf: address(this)});
-
-        _exportMetricInfo(11);
-
-        // Withdraw from aave
-        lendingPool.withdraw({asset: address(asset), amount: aToken.balanceOf(address(this)), to: address(this)});
-
-        _exportMetricInfo(12);
-
-        emit PositionEnd(currentPosition, asset.balanceOf(address(this)), block.timestamp);
     }
 
-    function claimRewards(uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
-        _claimRewards(slippageToleranceBps);
+    function _changeFormat(uint256 assets, uint256 borrows) internal view returns (uint256, uint256) {
+        // If asset is not token 0 then flip
+        if (address(asset) > address(borrowAsset)) return (borrows, assets);
+        return (assets, borrows);
     }
 
-    function _claimRewards(uint256 slippageToleranceBps) internal {
-        // Sell SUSHI tokens to USDC
+    function _stake() internal {
+        // Deposit to MasterChef for additional SUSHI rewards.
+        if (useMasterChefV2) {
+            masterChef.deposit(masterChefPid, abPair.balanceOf(address(this)), address(this));
+        } else {
+            masterChef.deposit(masterChefPid, abPair.balanceOf(address(this)));
+        }
+    }
+
+    function _unstakeAndClaimSushi() internal {
+        uint256 depositedSLPAmount = masterChef.userInfo(masterChefPid, address(this)).amount;
+        if (useMasterChefV2) {
+            masterChef.withdrawAndHarvest(masterChefPid, depositedSLPAmount, address(this));
+        } else {
+            masterChef.withdraw(masterChefPid, depositedSLPAmount);
+        }
+    }
+
+    function _sellSushi(uint256 slippageToleranceBps) internal returns (uint256 assetsReceived) {
+        // Sell SUSHI tokens
         uint256 sushiBalance = sushiToken.balanceOf(address(this));
-        if (sushiBalance > 0) {
-            address[] memory path = new address[](3);
-            path[0] = address(sushiToken);
-            path[1] = address(borrowAsset);
-            path[2] = address(asset);
+        if (sushiBalance == 0) {
+            return 0;
+        }
 
-            uint256[] memory amounts = router.getAmountsOut({amountIn: sushiBalance, path: path});
-            uint256 minAmountOut = amounts[2].slippageDown(slippageToleranceBps);
-            router.swapExactTokensForTokens({
-                amountIn: sushiBalance,
-                amountOutMin: minAmountOut,
-                path: path,
-                to: address(this),
-                deadline: block.timestamp
-            });
+        address[] memory path = new address[](3);
+        path[0] = address(sushiToken);
+        path[1] = address(borrowAsset);
+        path[2] = address(asset);
+
+        uint256[] memory amounts = router.getAmountsOut({amountIn: sushiBalance, path: path});
+        uint256[] memory amountsReceived = router.swapExactTokensForTokens({
+            amountIn: sushiBalance,
+            amountOutMin: amounts[2].slippageDown(slippageToleranceBps),
+            path: path,
+            to: address(this),
+            deadline: block.timestamp
+        });
+
+        assetsReceived = amountsReceived[2];
+    }
+
+    function claimAndSellSushi(uint256 slippageBps) external onlyRole(STRATEGIST_ROLE) {
+        // Get Sushi into the contract
+        if (useMasterChefV2) {
+            masterChef.harvest(masterChefPid, address(this));
+        } else {
+            _unstakeAndClaimSushi();
+        }
+
+        // Sell the sushi
+        _sellSushi(slippageBps);
+
+        // Restake if using masterchefv1
+        if (!useMasterChefV2) {
+            _stake();
         }
     }
 }

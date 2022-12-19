@@ -24,7 +24,7 @@ import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUn
 import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol";
 
 import {IMasterChef} from "../src/interfaces/sushiswap/IMasterChef.sol";
-import {DeltaNeutralLp} from "../src/DeltaNeutralLp.sol";
+import {DeltaNeutralLp} from "../src/both/DeltaNeutralLp.sol";
 import {DeltaNeutralLpV3} from "../src/both/DeltaNeutralLpV3.sol";
 
 import {Base} from "./Base.sol";
