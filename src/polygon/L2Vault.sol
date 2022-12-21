@@ -37,10 +37,9 @@ contract L2Vault is
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    /**
-     * INITIALIZATION
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                             INITIALIZATION
+    //////////////////////////////////////////////////////////////*/
 
     function initialize(
         address _governance,
@@ -78,10 +77,10 @@ contract L2Vault is
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
-    /**
-     * META-TRANSACTION SUPPORT
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                        META-TRANSACTION SUPPORT
+    //////////////////////////////////////////////////////////////*/
+
     function _msgSender() internal view override (ContextUpgradeable, BaseRelayRecipient) returns (address) {
         return BaseRelayRecipient._msgSender();
     }
@@ -102,10 +101,9 @@ contract L2Vault is
         _setTrustedForwarder(forwarder);
     }
 
-    /**
-     * ERC4626 / ERC20 BASICS
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                             ERC4626 BASICS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice See {IERC4626-asset}
     function asset() public view override (BaseVault, IERC4626) returns (address assetTokenAddress) {
@@ -119,6 +117,10 @@ contract L2Vault is
         return _asset.decimals() + 10;
     }
 
+    /*//////////////////////////////////////////////////////////////
+                             AUTHENTICATION
+    //////////////////////////////////////////////////////////////*/
+
     bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN");
 
     /// @notice Pause the contract
@@ -131,10 +133,9 @@ contract L2Vault is
         _unpause();
     }
 
-    /**
-     * FEES
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                                  FEES
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Fee charged to vault over a year, number is in bps
     uint256 public managementFee;
@@ -178,10 +179,10 @@ contract L2Vault is
 
     uint256 constant SECS_PER_YEAR = 365 days;
 
-    /**
-     * DEPOSIT
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                                DEPOSITS
+    //////////////////////////////////////////////////////////////*/
+
     /// @notice See {IERC4626-deposit}
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
         shares = previewDeposit(assets);
@@ -213,10 +214,10 @@ contract L2Vault is
         _depositIntoStrategies(amount);
     }
 
-    /**
-     * WITHDRAW / REDEEM
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                              WITHDRAWALS
+    //////////////////////////////////////////////////////////////*/
+
     EmergencyWithdrawalQueue public emergencyWithdrawalQueue;
 
     event EwqSet(EmergencyWithdrawalQueue indexed oldQ, EmergencyWithdrawalQueue indexed newQ);
@@ -286,10 +287,10 @@ contract L2Vault is
         _asset.safeTransfer(governance, assetsFee);
     }
 
-    /**
-     * EXCHANGE RATES
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                             EXCHANGE RATES
+    //////////////////////////////////////////////////////////////*/
+
     enum Rounding {
         Down, // Toward negative infinity
         Up, // Toward infinity
@@ -370,9 +371,10 @@ contract L2Vault is
         return feeAmount;
     }
 
-    /**
-     * DEPOSIT/WITHDRAWAL LIMITS
-     */
+    /*//////////////////////////////////////////////////////////////
+                       DEPOSIT/WITHDRAWAL LIMITS
+    //////////////////////////////////////////////////////////////*/
+
     /// @notice See {IERC4626-maxDeposit}
     function maxDeposit(address receiver) public pure returns (uint256 maxAssets) {
         receiver;
@@ -395,10 +397,10 @@ contract L2Vault is
         maxAssets = _convertToAssets(balanceOf(owner), Rounding.Down);
     }
 
-    /**
-     * CROSS-CHAIN REBALANCING
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                        CROSS-CHAIN REBALANCING
+    //////////////////////////////////////////////////////////////*/
+
     /// @notice TVL of L1 denominated in `asset` (e.g. USDC). This value will be updated by wormhole messages.
     uint256 public l1TotalLockedValue;
 
@@ -554,10 +556,10 @@ contract L2Vault is
         canRequestFromL1 = true;
     }
 
-    /**
-     * DETAILED PRICE INFO
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                          DETAILED PRICE INFO
+    //////////////////////////////////////////////////////////////*/
+
     function detailedTVL() external view override returns (Number memory tvl) {
         tvl = Number({num: totalAssets(), decimals: _asset.decimals()});
     }
