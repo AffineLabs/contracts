@@ -6,7 +6,6 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
@@ -16,14 +15,11 @@ import {L1WormholeRouter} from "./L1WormholeRouter.sol";
 contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     using SafeTransferLib for ERC20;
 
-    /////// Cross chain rebalancing
-    bool public received;
-    IRootChainManager public chainManager;
-    // `predicate` will take tokens from vault when depositFor is called on the RootChainManager
-    // solhint-disable-next-line max-line-length
-    // https://github.com/maticnetwork/pos-portal/blob/88dbf0a88fd68fa11f7a3b9d36629930f6b93a05/contracts/root/RootChainManager/RootChainManager.sol#L267
-    address public predicate;
+    /*//////////////////////////////////////////////////////////////
+                        INITIALIZATION/UPGRADING
+    //////////////////////////////////////////////////////////////*/
 
+    /// @notice Initialize the vault.
     function initialize(
         address _governance,
         ERC20 _token,
@@ -39,12 +35,25 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         predicate = _predicate;
     }
 
+    /// @notice See `UUPSUpgradeable`. Only the gov address can do an upgrade.
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
-    /// @dev The L1Vault's profit does not need to unlock over time, because users to do not transact with it
-    function lockedProfit() public pure override returns (uint256) {
-        return 0;
-    }
+    /*//////////////////////////////////////////////////////////////
+                        CROSS-CHAIN REBALANCING
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice True if this vault has received latest transfer from L2, else false.
+    bool public received;
+
+    /// @notice The contract that manages transfers to L2. We'll call `depositFor` on this.
+    IRootChainManager public chainManager;
+
+    /**
+     * @notice The address that will actually take `asset` from the vault.
+     * @dev Make sure to call approve the predicate as a spender before calling `depositFor`.
+     * More can be found here: https://github.com/maticnetwork/pos-portal/blob/88dbf0a88fd68fa11f7a3b9d36629930f6b93a05/contracts/root/RootChainManager/RootChainManager.sol#L267
+     */
+    address public predicate;
 
     /**
      * @notice Emitted whenever we send our tvl to l2
@@ -52,21 +61,27 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
      */
     event SendTVL(uint256 tvl);
 
+    /// @notice Send this vault's tvl to the L2Vault
     function sendTVL() external {
         uint256 tvl = vaultTVL();
 
-        // Report TVL to L2.
+        // Report TVL to L2. Also possibly unlock L2-L1 bridge (if received is true)
         L1WormholeRouter(wormholeRouter).reportTVL(tvl, received);
 
-        // If received == true then the l2-l1 bridge gets unlocked upon message reception in l2
-        // Resetting this to false since we haven't received any new transfers from L2 yet
+        // If `received` is true, then an L2-L1 cross-chain transfer has completed.
+        // Sending this tvl might trigger another L2-L1 transfer.
+        // Reset `received` to false so that L2-L1 bridge will remain locked.
+        // See L2Vault.sol for more on how `received` is used.
         if (received) {
             received = false;
         }
         emit SendTVL(tvl);
     }
 
-    // Process a request for funds from L2 vault
+    /**
+     * @notice Process a request for funds from L2 vault
+     * @param amountRequested The amount requested.
+     */
     function processFundRequest(uint256 amountRequested) external {
         require(msg.sender == address(wormholeRouter), "L1: only router");
         _liquidate(amountRequested);
@@ -86,10 +101,16 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
      */
     event TransferToL2(uint256 assetsRequested, uint256 assetsSent);
 
+    /// @notice Called by the bridgeEscrow after it transfers `asset` into this vault.
     function afterReceive() external {
         require(msg.sender == address(bridgeEscrow), "L1: only escrow");
         received = true;
         // Whenever we receive funds from L2, immediately deposit them all into strategies
         _depositIntoStrategies(_asset.balanceOf(address(this)));
+    }
+
+    /// @dev The L1Vault's profit does not need to unlock over time, because users to do not transact with it
+    function lockedProfit() public pure override returns (uint256) {
+        return 0;
     }
 }
