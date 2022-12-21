@@ -23,18 +23,25 @@ import {uncheckedInc} from "./libs/Unchecked.sol";
 abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multicallable {
     using SafeTransferLib for ERC20;
 
-    /**
-     * UNDERLYING ASSET AND INITIALIZATION
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                             INITIALIZATION
+    //////////////////////////////////////////////////////////////*/
 
-    /// @notice The token that the vault takes in and gives to strategies, e.g. USDC
+    /// @notice The input asset.
     ERC20 _asset;
 
+    /// @notice The token that the vault takes in and tries to get more of, e.g. USDC
     function asset() public view virtual returns (address) {
         return address(_asset);
     }
 
+    /**
+     * @notice Initialize the vault
+     * @param _governance The governance address.
+     * @param vaultAsset The vault's input asset.
+     * @param _wormholeRouter The wormhole router.
+     * @param _bridgeEscrow Bridge escrow for receiving cross-chain transfers.
+     */
     function baseInitialize(address _governance, ERC20 vaultAsset, address _wormholeRouter, BridgeEscrow _bridgeEscrow)
         internal
         virtual
@@ -52,10 +59,9 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
         lastHarvest = uint128(block.timestamp);
     }
 
-    /**
-     * CROSS CHAIN REBALANCING
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                        CROSS-CHAIN REBALANCING
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice A contract used for sending and receiving messages via wormhole.
@@ -96,18 +102,16 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
      */
     event BridgeEscrowSet(address indexed oldEscrow, address indexed newEscrow);
 
-    /**
-     * AUTHENTICATION
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                             AUTHENTICATION
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Role with authority to call "harvest", i.e. update this vault's tvl
     bytes32 public constant HARVESTER = keccak256("HARVESTER");
 
-    /**
-     * WITHDRAWAL QUEUE
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                            WITHDRAWAL QUEUE
+    //////////////////////////////////////////////////////////////*/
 
     uint8 constant MAX_STRATEGIES = 20;
 
@@ -148,10 +152,9 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
      */
     event WithdrawalQueueSet(Strategy[MAX_STRATEGIES] newQueue);
 
-    /**
-     * STRATEGIES
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                               STRATEGIES
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice The total amount of underlying tokens held in strategies at the time of the last harvest.
     uint256 public totalStrategyHoldings;
@@ -276,10 +279,9 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
      */
     event StrategyAllocsUpdated(Strategy[] strategyList, uint16[] strategyBps);
 
-    /**
-     * STRATEGY DEPOSIT/WITHDRAWAL
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                      STRATEGY DEPOSIT/WITHDRAWAL
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Emitted after the Vault deposits into a strategy contract.
@@ -363,10 +365,9 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
         }
     }
 
-    /**
-     * HARVESTING
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                               HARVESTING
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice A timestamp representing when the most recent harvest occurred.
@@ -460,6 +461,10 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
         return maxLockedProfit - unlockedProfit;
     }
 
+    /*//////////////////////////////////////////////////////////////
+                        LIQUIDATION/REBALANCING
+    //////////////////////////////////////////////////////////////*/
+
     /// @notice The total amount of the underlying asset the vault has.
     function vaultTVL() public view returns (uint256) {
         return _asset.balanceOf(address(this)) + totalStrategyHoldings;
@@ -521,8 +526,6 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
 
         // Loop through all strategies. Divesting from those whose tvl is too high,
         // Invest in those whose tvl is too low
-
-        // MAX_STRATEGIES is always equal to withdrawalQueue.length
         uint256[MAX_STRATEGIES] memory amountsToInvest;
 
         for (uint256 i = 0; i < MAX_STRATEGIES; i = uncheckedInc(i)) {
