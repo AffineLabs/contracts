@@ -65,7 +65,7 @@ contract CurveStratTest is TestPlus {
         _invest(1e6);
 
         assertGt(strategy.gauge().balanceOf(address(strategy)), 0);
-        emit log_named_uint("strat tvl: ", strategy.totalLockedValue());
+        emit log_named_uint("strategy tvl: ", strategy.totalLockedValue());
 
         assertApproxEqRel(strategy.totalLockedValue(), 1e6, 0.02e18);
 
@@ -76,7 +76,7 @@ contract CurveStratTest is TestPlus {
         assertTrue(crvRewards > 0);
     }
 
-    /// @notice Test slippage doesn't incure error while claiming/selling rewards.
+    /// @notice We can set limits on the amount of `asset` received when selling rewards.
     function testCanSlip() public {
         deal(address(usdc), address(strategy), 100e6);
 

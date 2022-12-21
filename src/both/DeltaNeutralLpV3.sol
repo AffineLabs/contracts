@@ -297,7 +297,7 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
         uint256 assetCollateral = aToken.balanceOf(address(this));
         lendingPool.withdraw({asset: address(asset), amount: assetCollateral, to: address(this)});
 
-        // Burn nft of postion we are closing
+        // Burn nft of position we are closing
         lpManager.burn(lpId);
         lpId = 0;
 

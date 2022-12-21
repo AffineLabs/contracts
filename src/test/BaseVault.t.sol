@@ -198,7 +198,7 @@ contract BaseVaultTest is TestPlus {
         vault.addStrategy(strat2, 4000);
 
         // strat1 should have 6000 and strat2 should have 4000.
-        // Since strat2.divest(2000) will only divest 1000, we'll end up with 5000 in each strat
+        // Since strat2.divest(2000) will only divest 1000, we'll end up with 5000 in each strategy
         token.mint(address(strat1), 4000);
         token.mint(address(strat2), 6000);
 

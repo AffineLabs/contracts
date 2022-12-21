@@ -14,7 +14,7 @@ import {L2BridgeEscrow} from "../polygon/L2BridgeEscrow.sol";
 import {L1BridgeEscrow} from "../ethereum/L1BridgeEscrow.sol";
 import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
 
-/// @notice Test functionalities of l2 brige escrow contract.
+/// @notice Test functionalities of l2 bridge escrow contract.
 contract L2BridgeEscrowTest is TestPlus {
     using stdStorage for StdStorage;
 
@@ -98,7 +98,7 @@ contract L2BridgeEscrowTest is TestPlus {
     }
 }
 
-/// @notice Test functionalities of l1 brige escrow contract.
+/// @notice Test functionalities of l1 bridge escrow contract.
 contract L1BridgeEscrowTest is TestPlus {
     L1BridgeEscrow escrow;
     MockL1Vault vault;

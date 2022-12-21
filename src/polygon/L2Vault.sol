@@ -115,7 +115,7 @@ contract L2Vault is
     function decimals() public view override returns (uint8) {
         // E.g. for USDC, we want the initial price of a share to be $100.
         // For an initial price of 1 USDC / share we would have 1e6 * 1e8 / 1 = 1e14 shares given that we have 14 (6 + 8) decimals
-        // in our share token. But since we want 100 USDC / share for the intial price, we add an extra two decimal places
+        // in our share token. But since we want 100 USDC / share for the initial price, we add an extra two decimal places
         return _asset.decimals() + 10;
     }
 
