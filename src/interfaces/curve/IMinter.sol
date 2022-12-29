@@ -8,9 +8,9 @@ interface IMinter {
 
     // claimable_reward - claimed_reward = pending rewards
     // Total rewards, claimed and unclaimed
-    function claimable_reward(address addr, address token) external;
+    function claimable_reward(address addr, address token) external returns (uint256);
     // unclaimed
-    function claimed_reward(address addr, address token) external;
+    function claimed_reward(address addr, address token) external returns (uint256);
 }
 
 /*  solhint-disable func-name-mixedcase, var-name-mixedcase */
