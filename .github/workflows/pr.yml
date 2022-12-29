@@ -39,8 +39,8 @@ jobs:
         with:
           version: nightly
 
-      - name: Install yarn dependencies
-        run: yarn --frozen-lockfile
+      - name: Install yarn dependencies, and compile contracts
+        run: yarn --frozen-lockfile && yarn build
 
       - name: Check lint errors
         run: yarn lint
