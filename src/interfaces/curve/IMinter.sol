@@ -5,6 +5,12 @@ pragma solidity =0.8.16;
 /*  solhint-disable func-name-mixedcase, var-name-mixedcase */
 interface IMinter {
     function mint(address gauge) external;
+
+    // claimable_reward - claimed_reward = pending rewards
+    // Total rewards, claimed and unclaimed
+    function claimable_reward(address addr, address token) external;
+    // unclaimed
+    function claimed_reward(address addr, address token) external;
 }
 
 /*  solhint-disable func-name-mixedcase, var-name-mixedcase */
