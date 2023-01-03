@@ -11,9 +11,12 @@ import {AffineVault} from "../AffineVault.sol";
 import {Affine4626} from "../Affine4626.sol";
 
 contract Vault is AffineVault, Affine4626 {
-    function initialize(address _governance, address vaultAsset) external initializer {
+    function initialize(address _governance, address vaultAsset, string memory vaultName, string memory vaultTicker)
+        external
+        initializer
+    {
         AffineVault.baseInitialize(_governance, ERC20(vaultAsset));
-        __ERC20_init("USD Earn", "usdEarn");
+        __ERC20_init(vaultName, vaultTicker);
         ERC4626Upgradeable.__ERC4626_init(IERC20MetadataUpgradeable(vaultAsset));
     }
 

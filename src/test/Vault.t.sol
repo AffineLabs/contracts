@@ -19,15 +19,15 @@ contract EthVaultTest is TestPlus {
         asset = new MockERC20("Mock", "MT", 6);
 
         vault = new Vault();
-        vault.initialize(governance, address(asset));
+        vault.initialize(governance, address(asset), "Test Vault", "testVault");
     }
 
     /// @notice Test vault initialization.
     function testInit() public {
         vm.expectRevert();
-        vault.initialize(governance, address(asset));
+        vault.initialize(governance, address(asset), "", "");
 
-        assertEq(vault.name(), "USD Earn");
-        assertEq(vault.symbol(), "usdEarn");
+        assertEq(vault.name(), "Test Vault");
+        assertEq(vault.symbol(), "testVault");
     }
 }

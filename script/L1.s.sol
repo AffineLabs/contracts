@@ -143,7 +143,9 @@ contract Deploy is Script, Base {
         require(router.vault() == vault);
         require(router.wormhole() == wormhole);
 
-        deployEthVault(config.governance, config.usdc);
+        deployEthVault(config.governance, config.usdc, "USD Earn", "usdEarn");
+        deployEthVault(config.governance, config.weth, "WETH Earn", "wethEarn");
+        deployEthVault(config.governance, config.wbtc, "WBTC Earn", "ubtcEarn");
 
         if (!testnet) _deployStrategies(vault);
         vm.stopBroadcast();

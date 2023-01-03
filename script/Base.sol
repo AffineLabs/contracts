@@ -12,6 +12,8 @@ abstract contract Base is Script {
         address erc20Predicate;
         address governance;
         address usdc;
+        address wbtc;
+        address weth;
         address wormhole;
     }
 

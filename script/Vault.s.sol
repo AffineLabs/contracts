@@ -7,12 +7,12 @@ import {Vault} from "../src/ethereum/Vault.sol";
 
 /*  solhint-disable reason-string */
 
-function deployEthVault(address governance, address asset) {
+function deployEthVault(address governance, address asset, string memory vaultName, string memory vaultTicker) {
     // Deploy implementation
     Vault impl = new Vault();
 
     // Initialize proxy with correct data
-    bytes memory initData = abi.encodeCall(Vault.initialize, (governance, asset));
+    bytes memory initData = abi.encodeCall(Vault.initialize, (governance, asset, vaultName, vaultTicker));
     ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
 
     // Check that values were set correctly.
