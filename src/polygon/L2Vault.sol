@@ -15,7 +15,7 @@ import {BaseRelayRecipient} from "@opengsn/contracts/src/BaseRelayRecipient.sol"
 
 import {BaseVault} from "../BaseVault.sol";
 import {L2BridgeEscrow} from "./L2BridgeEscrow.sol";
-import {DetailedShare} from "./Detailed.sol";
+import {DetailedShare} from "../both/Detailed.sol";
 import {L2WormholeRouter} from "./L2WormholeRouter.sol";
 import {IERC4626} from "../interfaces/IERC4626.sol";
 import {EmergencyWithdrawalQueue} from "./EmergencyWithdrawalQueue.sol";
