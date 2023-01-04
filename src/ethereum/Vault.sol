@@ -80,6 +80,17 @@ contract Vault is AffineVault, Affine4626, DetailedShare {
     function _getWithdrawalFee(uint256 tokenAmount) internal view returns (uint256) {
         return tokenAmount.mulDivUp(withdrawalFee, MAX_BPS);
     }
+    /*//////////////////////////////////////////////////////////////
+                           CAPITAL MANAGEMENT
+    //////////////////////////////////////////////////////////////*/
+    /**
+     * @notice Deposit idle assets into strategies.
+     */
+
+    function depositIntoStrategies(uint256 amount) external whenNotPaused onlyRole(HARVESTER) {
+        // Deposit entire balance of `_asset` into strategies
+        _depositIntoStrategies(amount);
+    }
 
     /*//////////////////////////////////////////////////////////////
                           DETAILED PRICE INFO
