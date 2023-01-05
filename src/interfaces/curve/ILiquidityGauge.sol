@@ -9,7 +9,7 @@ interface ILiquidityGauge {
     function balanceOf(address owner) external returns (uint256);
 
     // Get claimable CRV
-    function claimable_tokens(address addr) external view returns (uint256);
+    function claimable_tokens(address addr) external returns (uint256);
     function claim_rewards() external;
 
     // NOTE: The below only applies to non-CRV rewards
