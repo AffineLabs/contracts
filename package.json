@@ -16,7 +16,6 @@
     "lint:fix": "solhint --fix src/**/*.sol",
     "format": "prettier --check \"**/*.{ts,js}\" && forge fmt --check",
     "format:fix": "prettier --write \"**/*.{ts,js}\" && forge fmt",
-    "prepare": "husky install",
     "test-doc": "yarn ts-node scripts/doc-gen/gen-test-doc.ts",
     "cov-doc": "forge coverage --report lcov && genhtml -o docs/coverage lcov.info",
     "gen-docs": "yarn test-doc && yarn cov-doc"
