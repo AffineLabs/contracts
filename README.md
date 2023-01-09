@@ -54,6 +54,10 @@ solc-select install 0.8.16
 solc-select use 0.8.16
 ```
 
+### Husky
+
+Install pre-commit hooks: `yarn husky install`
+
 ## Usage
 
 Create a `.env` file in the root of this repo. It should contain the same variables seen in `.env.example`.
