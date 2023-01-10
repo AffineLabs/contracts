@@ -26,12 +26,37 @@ library Sslp {
         ERC20(0x0b3F868E0BE5597D5DB7fEB59E1CADBb0fdDa50a)
         );
     }
+
+    /// @dev WETH/USDC on sushiswap
+    function deployEth(BaseVault vault) internal returns (DeltaNeutralLp strategy) {
+        strategy = new DeltaNeutralLp(
+        vault,
+        0.001e18,
+        ILendingPoolAddressesProviderRegistry(0x52D306e36E3B6B02c153d0266ff0f85d18BCD413),
+        ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), // weth
+        AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419), // eth-usdc feed
+        IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F),
+        IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd), // MasterChef
+        1, // Masterchef PID for WETH/USDC
+        false, // use MasterChefV2 interface
+        ERC20(0x6B3595068778DD592e39A122f4f5a5cF09C90fE2)
+        );
+    }
 }
 
 contract Deploy is Script {
-    function runPoly() external {
+    function _start() internal {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
+    }
+
+    function runPoly() external {
+        _start();
         Sslp.deployPoly(BaseVault(0x829363736a5A9080e05549Db6d1271f070a7e224));
+    }
+
+    function runEth() external {
+        _start();
+        Sslp.deployEth(BaseVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9));
     }
 }
