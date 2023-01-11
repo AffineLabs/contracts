@@ -310,18 +310,19 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
             debt
         );
     }
-    // Another function to avoid stack too deep error. Via-ir compilation takes too long.
 
-    function _getBorrowSpotPrice() internal view returns (uint256) {
+    /// @dev Another function to avoid stack too deep error. Via-ir compilation takes too long.
+    function _getBorrowSpotPrice() internal view returns (uint256 price) {
         (uint160 sqrtPriceX96,,,,,,) = pool.slot0();
-        uint256 price;
-        // We want asset / borrowAsset ratio. If asset is token1 then use given ratio (token1 / token0). Otherwise flip result
-        // TODO: This assumes that token1 is WETH (18 decimals). FIX.
+
+        // We are converting "one" of `borrowAsset` into some amount of `asset`.
+        uint256 oneBorrow = 10 ** borrowAsset.decimals();
         if (address(asset) == token0) {
-            // eth_amount / (eth_usdc ratio)  = eth_amount * usdc_eth ratio = usdc amount
-            price = (1e18 << 192) / (uint256(sqrtPriceX96) ** 2);
+            // eth_amount / (eth_usdc ratio)  = eth_amount * usdc/eth ratio = usdc amount
+            price = (oneBorrow << 192) / (uint256(sqrtPriceX96) ** 2);
         } else {
-            price = (uint256(sqrtPriceX96) ** 2) >> 192;
+            // eth_amount * usdc/eth ratio = usdc amount
+            price = (oneBorrow * uint256(sqrtPriceX96) ** 2) >> 192;
         }
         return price;
     }
