@@ -107,6 +107,11 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
         (amount0, amount1) = positionValue.total(lpManager, lpId, sqrtPriceX96);
     }
 
+    function positionFees() public view returns (uint256 assets, uint256 borrows) {
+        (uint256 token0Fees, uint256 token1Fees) = positionValue.fees(lpManager, lpId);
+        return _convertToAB(token0Fees, token1Fees);
+    }
+
     function totalLockedValue() public view override returns (uint256) {
         // The below are all in units of `asset`
         // balanceOfAsset + balanceOfMatic + aToken value + Uni Lp value - debt
