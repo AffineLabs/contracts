@@ -7,6 +7,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import {IUniPositionValue} from "../src/interfaces/IUniPositionValue.sol";
 
 import {AggregatorV3Interface} from "../src/interfaces/AggregatorV3Interface.sol";
 import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol";
@@ -23,7 +24,8 @@ library SslpV3 {
         AggregatorV3Interface(0xF9680D99D6C9589e2a93a78A04A279e509205945), // eth/usd price feed
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
-        IUniswapV3Pool(0x45dDa9cb7c25131DF268515131f647d726f50608)
+        IUniswapV3Pool(0x45dDa9cb7c25131DF268515131f647d726f50608),
+        IUniPositionValue(0xA39e57ab61C40C11B3adCBc606ECF1c924e5e90B)
         );
     }
 
@@ -36,7 +38,8 @@ library SslpV3 {
         AggregatorV3Interface(0xAB594600376Ec9fD91F8e885dADF0CE036862dE0), // MATIC/USD price feed
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
-        IUniswapV3Pool(0xA374094527e1673A86dE625aa59517c5dE346d32) // wmatic 
+        IUniswapV3Pool(0xA374094527e1673A86dE625aa59517c5dE346d32), // wmatic 
+        IUniPositionValue(0xA39e57ab61C40C11B3adCBc606ECF1c924e5e90B)
         );
     }
 
@@ -48,7 +51,8 @@ library SslpV3 {
         AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419), // eth/usd price feed
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
-        IUniswapV3Pool(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640) // weth/usdc pool (5 bps)
+        IUniswapV3Pool(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640), // weth/usdc pool (5 bps)
+        IUniPositionValue(0x6D47519a92Cd9F1f031888e5D04e563fB91Fa06D)
         );
     }
 }

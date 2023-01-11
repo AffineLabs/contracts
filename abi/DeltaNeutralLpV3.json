@@ -35,6 +35,11 @@
         "internalType": "contract IUniswapV3Pool",
         "name": "_pool",
         "type": "address"
+      },
+      {
+        "internalType": "contract IUniPositionValue",
+        "name": "_positionValue",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",

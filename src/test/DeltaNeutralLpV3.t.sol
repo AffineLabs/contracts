@@ -23,10 +23,10 @@ contract DeltaNeutralV3Test is TestPlus {
     ERC20 borrowAsset;
     int24 tickLow;
     int24 tickHigh;
-    uint256 slippageBps = 500;
+    uint256 slippageBps = 1000;
 
     function _selectFork() internal virtual {
-        vm.createSelectFork("polygon", 31_824_532);
+        vm.createSelectFork("polygon", 37_930_780);
     }
 
     function _usdc() internal virtual returns (address) {
@@ -148,7 +148,7 @@ contract DeltaNeutralV3Test is TestPlus {
 
 contract DeltaNeutralV3EthTest is DeltaNeutralV3Test {
     function _selectFork() internal override {
-        vm.createSelectFork("ethereum", 16_149_218);
+        vm.createSelectFork("ethereum", 16_381_465);
     }
 
     function _usdc() internal pure override returns (address) {
