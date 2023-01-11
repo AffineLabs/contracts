@@ -18,7 +18,7 @@ contract Vault is AffineVault, Affine4626, DetailedShare {
         ERC4626Upgradeable.__ERC4626_init(IERC20MetadataUpgradeable(vaultAsset));
     }
 
-    function asset() public view override (AffineVault, ERC4626Upgradeable) returns (address) {
+    function asset() public view override(AffineVault, ERC4626Upgradeable) returns (address) {
         return AffineVault.asset();
     }
 
