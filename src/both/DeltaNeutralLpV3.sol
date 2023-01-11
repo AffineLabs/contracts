@@ -30,7 +30,6 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
 
     constructor(
         BaseVault _vault,
-        uint256 _slippageTolerance,
         ILendingPoolAddressesProviderRegistry _registry,
         ERC20 _borrowAsset,
         AggregatorV3Interface _borrowAssetFeed,
@@ -42,7 +41,6 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
         _grantRole(STRATEGIST_ROLE, vault.governance());
 
         canStartNewPos = true;
-        slippageTolerance = _slippageTolerance;
 
         borrowAsset = _borrowAsset;
         borrowAssetFeed = _borrowAssetFeed;
@@ -146,8 +144,6 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
         uint256 borrowsToUni,
         uint256 timestamp
     );
-
-    uint256 public slippageTolerance;
 
     /// @notice The router used for swaps
     ISwapRouter public immutable router;

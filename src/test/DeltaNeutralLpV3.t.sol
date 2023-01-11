@@ -151,7 +151,7 @@ contract DeltaNeutralV3EthTest is DeltaNeutralV3Test {
         vm.createSelectFork("ethereum", 16_149_218);
     }
 
-    function _usdc() internal override returns (address) {
+    function _usdc() internal pure override returns (address) {
         return 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     }
 

@@ -34,7 +34,7 @@ import {SslpV3} from "./DeltaNeutralLpV3.s.sol";
 contract Deploy is Script, Base {
     ICREATE3Factory create3;
 
-    function _getSaltFile(string memory fileName) internal returns (bytes32 salt) {
+    function _getSaltFile(string memory fileName) internal view returns (bytes32 salt) {
         bytes memory saltData = vm.readFileBinary(fileName);
         salt = bytes32(saltData);
     }
