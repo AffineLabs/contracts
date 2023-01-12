@@ -33,7 +33,6 @@ import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol"
 import {IMasterChef} from "../src/interfaces/sushiswap/IMasterChef.sol";
 
 import {Base} from "./Base.sol";
-import {deployEthVault} from "./Vault.s.sol";
 
 /*  solhint-disable reason-string */
 contract Deploy is Script, Base {
@@ -142,8 +141,6 @@ contract Deploy is Script, Base {
 
         require(router.vault() == vault);
         require(router.wormhole() == wormhole);
-
-        deployEthVault(config.governance, config.usdc);
 
         if (!testnet) _deployStrategies(vault);
         vm.stopBroadcast();
