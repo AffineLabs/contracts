@@ -1,13 +1,27 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {MathUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import {IERC20MetadataUpgradeable} from
     "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
-abstract contract Affine4626 is ERC4626Upgradeable {
+abstract contract Affine4626 is ERC4626Upgradeable, PausableUpgradeable, AccessControlUpgradeable {
     using MathUpgradeable for uint256;
+
+    bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN");
+
+    /// @notice Pause the contract
+    function pause() external onlyRole(GUARDIAN_ROLE) {
+        _pause();
+    }
+
+    /// @notice Unpause the contract
+    function unpause() external onlyRole(GUARDIAN_ROLE) {
+        _unpause();
+    }
 
     function maxDeposit(address) public view virtual override returns (uint256) {
         return type(uint256).max;
@@ -16,7 +30,7 @@ abstract contract Affine4626 is ERC4626Upgradeable {
     /**
      * @dev See {IERC4262-deposit}.
      */
-    function deposit(uint256 assets, address receiver) public virtual override returns (uint256) {
+    function deposit(uint256 assets, address receiver) public virtual override whenNotPaused returns (uint256) {
         uint256 shares = previewDeposit(assets);
         _deposit(_msgSender(), receiver, assets, shares);
         return shares;
@@ -25,7 +39,7 @@ abstract contract Affine4626 is ERC4626Upgradeable {
     /**
      * @dev See {IERC4262-mint}.
      */
-    function mint(uint256 shares, address receiver) public virtual override returns (uint256) {
+    function mint(uint256 shares, address receiver) public virtual override whenNotPaused returns (uint256) {
         uint256 assets = previewMint(shares);
         _deposit(_msgSender(), receiver, assets, shares);
 
@@ -35,7 +49,13 @@ abstract contract Affine4626 is ERC4626Upgradeable {
     /**
      * @dev See {IERC4262-withdraw}.
      */
-    function withdraw(uint256 assets, address receiver, address owner) public virtual override returns (uint256) {
+    function withdraw(uint256 assets, address receiver, address owner)
+        public
+        virtual
+        override
+        whenNotPaused
+        returns (uint256)
+    {
         uint256 shares = previewWithdraw(assets);
         _withdraw(_msgSender(), receiver, owner, assets, shares);
 
@@ -45,7 +65,13 @@ abstract contract Affine4626 is ERC4626Upgradeable {
     /**
      * @dev See {IERC4262-redeem}.
      */
-    function redeem(uint256 shares, address receiver, address owner) public virtual override returns (uint256) {
+    function redeem(uint256 shares, address receiver, address owner)
+        public
+        virtual
+        override
+        whenNotPaused
+        returns (uint256)
+    {
         uint256 assets = previewRedeem(shares);
         _withdraw(_msgSender(), receiver, owner, assets, shares);
 
