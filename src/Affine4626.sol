@@ -56,7 +56,7 @@ abstract contract Affine4626 is ERC4626Upgradeable, PausableUpgradeable, AccessC
         whenNotPaused
         returns (uint256)
     {
-        uint256 shares = previewWithdraw(assets);
+        uint256 shares = _convertToShares(assets, MathUpgradeable.Rounding.Up);
         _withdraw(_msgSender(), receiver, owner, assets, shares);
 
         return shares;
@@ -72,10 +72,28 @@ abstract contract Affine4626 is ERC4626Upgradeable, PausableUpgradeable, AccessC
         whenNotPaused
         returns (uint256)
     {
-        uint256 assets = previewRedeem(shares);
+        uint256 assets = _convertToAssets(shares, MathUpgradeable.Rounding.Down);
         _withdraw(_msgSender(), receiver, owner, assets, shares);
 
         return assets;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             EXCHANGE RATES
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @dev See {IERC4262-previewWithdraw}.
+     */
+    function previewWithdraw(uint256 assets) public view virtual override returns (uint256) {
+        return _convertToShares(assets, MathUpgradeable.Rounding.Up);
+    }
+
+    /**
+     * @dev See {IERC4262-previewRedeem}.
+     */
+    function previewRedeem(uint256 shares) public view virtual override returns (uint256) {
+        uint256 assets = _convertToAssets(shares, MathUpgradeable.Rounding.Down);
     }
 
     function _convertToShares(uint256 assets, MathUpgradeable.Rounding rounding)
