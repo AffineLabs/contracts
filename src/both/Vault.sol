@@ -19,10 +19,13 @@ contract Vault is AffineVault, Affine4626, DetailedShare {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    function initialize(address _governance, address vaultAsset) external initializer {
+    function initialize(address _governance, address vaultAsset, string memory _name, string memory _symbol)
+        external
+        initializer
+    {
         AffineVault.baseInitialize(_governance, ERC20(vaultAsset));
-        __ERC20_init("USD Earn", "usdEarn");
-        ERC4626Upgradeable.__ERC4626_init(IERC20MetadataUpgradeable(vaultAsset));
+        __ERC20_init(_name, _symbol);
+        __ERC4626_init(IERC20MetadataUpgradeable(vaultAsset));
     }
 
     function asset() public view override(AffineVault, ERC4626Upgradeable) returns (address) {
