@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Vault} from "../src/ethereum/Vault.sol";
+import {Vault} from "../src/both/Vault.sol";
 
 /*  solhint-disable reason-string */
 
