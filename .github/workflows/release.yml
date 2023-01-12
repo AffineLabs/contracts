@@ -44,9 +44,9 @@ jobs:
       - name: Run deployment scripts
         run: yarn ts-node scripts/deploy.ts -l 1 -t -b && yarn ts-node scripts/deploy.ts -l 2 -t -b
 
-      - name: Uploading addressbook and typechain to S3 bucket in version specific subdirectory
+      - name: Uploading addressbook to S3 bucket in version specific subdirectory
         uses: jakejarvis/s3-sync-action@master
         with:
-          args: --follow-symlinks --delete --exclude '*' --include 'addressbook.json' --include 'typechain/*'
+          args: --follow-symlinks --delete --exclude '*' --include 'addressbook.json'
         env:
           DEST_DIR: "test"
