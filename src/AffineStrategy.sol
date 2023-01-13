@@ -7,7 +7,7 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 /// @notice Base strategy contract
-abstract contract Affinetrategy {
+abstract contract AffinetStrategy {
     using SafeTransferLib for ERC20;
 
     constructor(AffineVault _vault) {
