@@ -25,7 +25,7 @@ library SslpV3 {
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
         IUniswapV3Pool(0x45dDa9cb7c25131DF268515131f647d726f50608),
-        IUniPositionValue(0xA39e57ab61C40C11B3adCBc606ECF1c924e5e90B),
+        IUniPositionValue(0x53dc9584bf76922E56F8bf966f34C8Ae3E5AfAF2),
         _getStrategists()
         );
         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
@@ -41,7 +41,7 @@ library SslpV3 {
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
         IUniswapV3Pool(0xA374094527e1673A86dE625aa59517c5dE346d32), // wmatic 
-        IUniPositionValue(0xA39e57ab61C40C11B3adCBc606ECF1c924e5e90B),
+        IUniPositionValue(0x53dc9584bf76922E56F8bf966f34C8Ae3E5AfAF2),
         _getStrategists()
         );
         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
@@ -56,7 +56,7 @@ library SslpV3 {
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
         IUniswapV3Pool(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640), // weth/usdc pool (5 bps)
-        IUniPositionValue(0x6D47519a92Cd9F1f031888e5D04e563fB91Fa06D),
+        IUniPositionValue(0xfB2DaDdd7390f7e22Db849713Ff73405c9792F69),
         _getStrategists()
         );
         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));

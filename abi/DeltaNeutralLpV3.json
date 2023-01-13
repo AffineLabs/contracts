@@ -572,6 +572,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "positionValue",
+    "outputs": [
+      {
+        "internalType": "contract IUniPositionValue",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",

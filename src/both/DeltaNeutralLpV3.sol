@@ -150,7 +150,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
     uint256 public lpId;
     uint128 public lpLiquidity;
     /// @notice A wrapper around the positionValue lib (written in solidity 0.7)
-    IUniPositionValue immutable positionValue;
+    IUniPositionValue public immutable positionValue;
 
     /// @notice The asset we want to borrow, e.g. WMATIC
     ERC20 public immutable borrowAsset;
