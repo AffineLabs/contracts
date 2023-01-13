@@ -40,6 +40,11 @@
         "internalType": "contract IUniPositionValue",
         "name": "_positionValue",
         "type": "address"
+      },
+      {
+        "internalType": "address[]",
+        "name": "strategists",
+        "type": "address[]"
       }
     ],
     "stateMutability": "nonpayable",

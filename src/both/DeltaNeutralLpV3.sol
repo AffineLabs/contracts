@@ -5,7 +5,6 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -20,10 +19,10 @@ import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 import {IUniPositionValue} from "../interfaces/IUniPositionValue.sol";
 
 import {BaseVault} from "../BaseVault.sol";
-import {BaseStrategy} from "../BaseStrategy.sol";
+import {AccessStrategy} from "./AccessStrategy.sol";
 import {SlippageUtils} from "../libs/SlippageUtils.sol";
 
-contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
+contract DeltaNeutralLpV3 is AccessStrategy {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
     using SlippageUtils for uint256;
@@ -36,11 +35,9 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
         ISwapRouter _router,
         INonfungiblePositionManager _lpManager,
         IUniswapV3Pool _pool,
-        IUniPositionValue _positionValue
-    ) BaseStrategy(_vault) {
-        _grantRole(DEFAULT_ADMIN_ROLE, vault.governance());
-        _grantRole(STRATEGIST_ROLE, vault.governance());
-
+        IUniPositionValue _positionValue,
+        address[] memory strategists
+    ) AccessStrategy(_vault, strategists) {
         canStartNewPos = true;
 
         borrowAsset = _borrowAsset;
@@ -165,8 +162,6 @@ contract DeltaNeutralLpV3 is BaseStrategy, AccessControl {
 
     /// @notice Gives ratio of vault asset to borrow asset, e.g. WMATIC/USD (assuming usdc = usd)
     AggregatorV3Interface immutable borrowAssetFeed;
-
-    bytes32 public constant STRATEGIST_ROLE = keccak256("STRATEGIST_ROLE");
 
     function startPosition(int24 tickLow, int24 tickHigh, uint256 slippageToleranceBps)
         external

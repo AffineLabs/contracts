@@ -25,8 +25,10 @@ library SslpV3 {
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
         IUniswapV3Pool(0x45dDa9cb7c25131DF268515131f647d726f50608),
-        IUniPositionValue(0xA39e57ab61C40C11B3adCBc606ECF1c924e5e90B)
+        IUniPositionValue(0xA39e57ab61C40C11B3adCBc606ECF1c924e5e90B),
+        _getStrategists()
         );
+        require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
     }
 
     /// @notice Deploy the strategy on polygon using the WMATIC/USDC pool
@@ -39,8 +41,10 @@ library SslpV3 {
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
         IUniswapV3Pool(0xA374094527e1673A86dE625aa59517c5dE346d32), // wmatic 
-        IUniPositionValue(0xA39e57ab61C40C11B3adCBc606ECF1c924e5e90B)
+        IUniPositionValue(0xA39e57ab61C40C11B3adCBc606ECF1c924e5e90B),
+        _getStrategists()
         );
+        require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
     }
 
     function deployEth(BaseVault vault) internal returns (DeltaNeutralLpV3 strategy) {
@@ -52,8 +56,15 @@ library SslpV3 {
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
         IUniswapV3Pool(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640), // weth/usdc pool (5 bps)
-        IUniPositionValue(0x6D47519a92Cd9F1f031888e5D04e563fB91Fa06D)
+        IUniPositionValue(0x6D47519a92Cd9F1f031888e5D04e563fB91Fa06D),
+        _getStrategists()
         );
+        require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
+    }
+
+    function _getStrategists() internal view returns (address[] memory strategists) {
+        strategists = new address[](1);
+        strategists[0] = 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d;
     }
 }
 
