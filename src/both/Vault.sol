@@ -15,7 +15,7 @@ import {AffineVault} from "../AffineVault.sol";
 import {Affine4626} from "../Affine4626.sol";
 import {DetailedShare} from "../both/Detailed.sol";
 
-contract Vault is AffineVault, Affine4626, DetailedShare {
+contract Vault is AffineVault, DetailedShare {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -23,13 +23,7 @@ contract Vault is AffineVault, Affine4626, DetailedShare {
         external
         initializer
     {
-        AffineVault.baseInitialize(_governance, ERC20(vaultAsset));
-        __ERC20_init(_name, _symbol);
-        __ERC4626_init(IERC20MetadataUpgradeable(vaultAsset));
-    }
-
-    function asset() public view override(AffineVault, ERC4626Upgradeable) returns (address) {
-        return AffineVault.asset();
+        AffineVault.baseInitialize(_governance, vaultAsset, _name, _symbol);
     }
 
     /// @notice See {IERC4626-totalAssets}
@@ -65,6 +59,19 @@ contract Vault is AffineVault, Affine4626, DetailedShare {
     /// @notice  Fee charged on redemption of shares, number is in bps
     uint256 public withdrawalFee;
     uint256 constant SECS_PER_YEAR = 365 days;
+
+    event ManagementFeeSet(uint256 oldFee, uint256 newFee);
+    event WithdrawalFeeSet(uint256 oldFee, uint256 newFee);
+
+    function setManagementFee(uint256 feeBps) external onlyGovernance {
+        emit ManagementFeeSet({oldFee: managementFee, newFee: feeBps});
+        managementFee = feeBps;
+    }
+
+    function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
+        emit WithdrawalFeeSet({oldFee: withdrawalFee, newFee: feeBps});
+        withdrawalFee = feeBps;
+    }
 
     function _assessFees() internal override {
         // duration / SECS_PER_YEAR * feebps / MAX_BPS * totalSupply

@@ -82,11 +82,11 @@ contract L2Vault is
      * META-TRANSACTION SUPPORT
      *
      */
-    function _msgSender() internal view override(ContextUpgradeable, BaseRelayRecipient) returns (address) {
+    function _msgSender() internal view override (ContextUpgradeable, BaseRelayRecipient) returns (address) {
         return BaseRelayRecipient._msgSender();
     }
 
-    function _msgData() internal view override(ContextUpgradeable, BaseRelayRecipient) returns (bytes calldata) {
+    function _msgData() internal view override (ContextUpgradeable, BaseRelayRecipient) returns (bytes calldata) {
         return BaseRelayRecipient._msgData();
     }
 
@@ -108,7 +108,7 @@ contract L2Vault is
      */
 
     /// @notice See {IERC4626-asset}
-    function asset() public view override(BaseVault, IERC4626) returns (address assetTokenAddress) {
+    function asset() public view override (BaseVault, IERC4626) returns (address assetTokenAddress) {
         return address(_asset);
     }
 

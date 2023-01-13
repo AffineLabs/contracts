@@ -7,19 +7,19 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Vault} from "../both/Vault.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
+import {VaultBaseTests} from "./VaultBaseTests.sol";
 
 /// @notice Test common vault functionalities.
-contract EthVaultTest is TestPlus {
+contract EthVaultTest is VaultBaseTests {
     using stdStorage for StdStorage;
-
-    Vault vault;
-    MockERC20 asset;
 
     function setUp() public {
         asset = new MockERC20("Mock", "MT", 6);
 
         vault = new Vault();
         vault.initialize(governance, address(asset), "USD Earn", "usdEarn");
+
+        VaultBaseTests.initialize(vault);
     }
 
     /// @notice Test vault initialization.
@@ -29,5 +29,7 @@ contract EthVaultTest is TestPlus {
 
         assertEq(vault.name(), "USD Earn");
         assertEq(vault.symbol(), "usdEarn");
+        assertEq(vault.decimals(), 18);
+        assertEq(vault.lastHarvest(), block.timestamp);
     }
 }

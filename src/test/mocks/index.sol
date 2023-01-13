@@ -22,3 +22,5 @@ contract MockL2Vault is L2Vault {
 }
 
 contract MockL1Vault is L1Vault {}
+
+contract MockVault is L1Vault {}

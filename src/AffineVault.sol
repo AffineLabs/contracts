@@ -7,12 +7,15 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
+import {IERC20MetadataUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import {Affine4626} from "./Affine4626.sol";
 import {AffineGovernable} from "./AffineGovernable.sol";
 import {BridgeEscrow} from "./BridgeEscrow.sol";
 import {BaseStrategy as Strategy} from "./BaseStrategy.sol";
 import {uncheckedInc} from "./libs/Unchecked.sol";
 
-contract AffineVault is AffineGovernable, AccessControlUpgradeable {
+contract AffineVault is Affine4626, AffineGovernable {
     using SafeTransferLib for ERC20;
 
     /**
@@ -23,18 +26,24 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable {
     /// @notice The token that the vault takes in and gives to strategies, e.g. USDC
     ERC20 _asset;
 
-    function asset() public view virtual returns (address) {
+    function asset() public view virtual override returns (address) {
         return address(_asset);
     }
 
-    function baseInitialize(address _governance, ERC20 vaultAsset) internal virtual {
+    function baseInitialize(address _governance, address vaultAsset, string memory _name, string memory _symbol)
+        internal
+        virtual
+    {
         governance = _governance;
-        _asset = vaultAsset;
+        _asset = ERC20(vaultAsset);
+        __ERC4626_init(IERC20MetadataUpgradeable(vaultAsset));
+        __ERC20_init(_name, _symbol);
 
         // All roles use the default admin role
         // governance has the admin role and can grant/remove a role to any account
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
         _grantRole(HARVESTER, governance);
+        _grantRole(GUARDIAN_ROLE, _governance);
 
         lastHarvest = uint128(block.timestamp);
     }

@@ -4,8 +4,6 @@ pragma solidity =0.8.16;
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {MathUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
-import {IERC20MetadataUpgradeable} from
-    "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 abstract contract Affine4626 is ERC4626Upgradeable, PausableUpgradeable, AccessControlUpgradeable {
@@ -32,6 +30,7 @@ abstract contract Affine4626 is ERC4626Upgradeable, PausableUpgradeable, AccessC
      */
     function deposit(uint256 assets, address receiver) public virtual override whenNotPaused returns (uint256) {
         uint256 shares = previewDeposit(assets);
+        require(shares > 0, "Vault: zero shares");
         _deposit(_msgSender(), receiver, assets, shares);
         return shares;
     }
