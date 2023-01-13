@@ -12,7 +12,7 @@ import {IERC20MetadataUpgradeable} from
 import {Affine4626} from "./Affine4626.sol";
 import {AffineGovernable} from "./AffineGovernable.sol";
 import {BridgeEscrow} from "./BridgeEscrow.sol";
-import {BaseStrategy as Strategy} from "./BaseStrategy.sol";
+import {AffineStrategy as Strategy} from "./AffineStrategy.sol";
 import {uncheckedInc} from "./libs/Unchecked.sol";
 
 contract AffineVault is Affine4626, AffineGovernable {
