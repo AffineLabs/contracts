@@ -4,6 +4,7 @@ pragma solidity =0.8.16;
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {IERC20MetadataUpgradeable} from
     "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import {MathUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
@@ -58,8 +59,31 @@ contract Vault is AffineVault, Affine4626, DetailedShare {
     }
 
     /*//////////////////////////////////////////////////////////////
+                             EXCHANGE RATES
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @dev See {IERC4262-previewWithdraw}.
+     */
+    function previewWithdraw(uint256 assetsToUser) public view virtual override returns (uint256) {
+        // assets * ((1 - feeBps) / 1e3) = assetsToUser
+        // assets * ((1e3 - feeBps) / 1e3) = assetsToUser
+        uint256 assets = assetsToUser.mulDivUp(MAX_BPS, MAX_BPS - withdrawalFee);
+        return _convertToShares(assets, MathUpgradeable.Rounding.Up);
+    }
+
+    /**
+     * @dev See {IERC4262-previewRedeem}.
+     */
+    function previewRedeem(uint256 shares) public view virtual override returns (uint256) {
+        uint256 assets = _convertToAssets(shares, MathUpgradeable.Rounding.Down);
+        return assets - _getWithdrawalFee(assets);
+    }
+
+    /*//////////////////////////////////////////////////////////////
                                   FEES
     //////////////////////////////////////////////////////////////*/
+
     /// @notice Fee charged to vault over a year, number is in bps
     uint256 public managementFee;
     /// @notice  Fee charged on redemption of shares, number is in bps
@@ -80,8 +104,8 @@ contract Vault is AffineVault, Affine4626, DetailedShare {
     }
 
     /// @dev  Return amount of `asset` to be given to user after applying withdrawal fee
-    function _getWithdrawalFee(uint256 tokenAmount) internal view returns (uint256) {
-        return tokenAmount.mulDivUp(withdrawalFee, MAX_BPS);
+    function _getWithdrawalFee(uint256 assets) internal view returns (uint256) {
+        return assets.mulDivUp(withdrawalFee, MAX_BPS);
     }
     /*//////////////////////////////////////////////////////////////
                            CAPITAL MANAGEMENT
