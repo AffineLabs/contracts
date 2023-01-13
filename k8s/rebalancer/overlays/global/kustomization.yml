@@ -3,6 +3,6 @@ kind: Kustomization
 images:
 - name: rebalancer
   newName: 743156738557.dkr.ecr.us-east-1.amazonaws.com/rebalancer
-  newTag: 044818e072c49e5a8b42bfb46420b6c3b3017a95
+  newTag: 77d4d3e5fc30e6ead8c7f60e87a5aef58a6d9495
 resources:
 - ../../base
