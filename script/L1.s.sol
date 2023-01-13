@@ -69,22 +69,6 @@ contract Deploy is Script, Base {
             100,
             IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31));
         require(address(cvx.asset()) == vault.asset());
-
-        // SSLP strat
-        uint256 longPct = 10 ** 15;
-        uint256 masterChefPID = 1;
-        DeltaNeutralLp dnlp = new DeltaNeutralLp(
-           vault, 
-            longPct,
-            ILendingPoolAddressesProviderRegistry(0x52D306e36E3B6B02c153d0266ff0f85d18BCD413),
-            ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), // Asset to borrow (WETH)
-            AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419),
-            IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F),
-            IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd),
-            masterChefPID,
-            false,
-            ERC20(0x6B3595068778DD592e39A122f4f5a5cF09C90fE2));
-        require(address(dnlp.asset()) == vault.asset());
     }
 
     function run() external {

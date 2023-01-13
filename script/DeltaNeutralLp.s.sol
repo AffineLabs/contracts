@@ -23,8 +23,14 @@ library Sslp {
         IMasterChef(0x0769fd68dFb93167989C6f7254cd0D766Fb2841F), // MasterChef
         1, // Masterchef PID
         true, // use MasterChefV2 interface
-        ERC20(0x0b3F868E0BE5597D5DB7fEB59E1CADBb0fdDa50a)
+        ERC20(0x0b3F868E0BE5597D5DB7fEB59E1CADBb0fdDa50a),
+        _getStrategists()
         );
+    }
+
+    function _getStrategists() internal view returns (address[] memory strategists) {
+        strategists = new address[](1);
+        strategists[0] = 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d;
     }
 
     /// @dev WETH/USDC on sushiswap
@@ -39,7 +45,8 @@ library Sslp {
         IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd), // MasterChef
         1, // Masterchef PID for WETH/USDC
         false, // use MasterChefV2 interface
-        ERC20(0x6B3595068778DD592e39A122f4f5a5cF09C90fE2)
+        ERC20(0x6B3595068778DD592e39A122f4f5a5cF09C90fE2),
+        _getStrategists()
         );
     }
 }

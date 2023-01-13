@@ -50,6 +50,11 @@
         "internalType": "contract ERC20",
         "name": "_sushiToken",
         "type": "address"
+      },
+      {
+        "internalType": "address[]",
+        "name": "strategists",
+        "type": "address[]"
       }
     ],
     "stateMutability": "nonpayable",
