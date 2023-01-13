@@ -4,7 +4,6 @@ pragma solidity =0.8.16;
 import {BaseStrategy} from "../../BaseStrategy.sol";
 import {AffineStrategy} from "../../AffineStrategy.sol";
 import {BaseVault} from "../../BaseVault.sol";
-import {AffineVault} from "../../AffineVault.sol";
 import {MockERC20} from "./MockERC20.sol";
 import {Vault} from "../../both/Vault.sol";
 
@@ -33,7 +32,7 @@ contract TestStrategyDivestSlippage is TestStrategy {
 }
 
 contract TestStrategyForEthVault is AffineStrategy {
-    constructor(AffineVault _vault) AffineStrategy(_vault) {}
+    constructor(Vault _vault) AffineStrategy(_vault) {}
 
     function _divest(uint256 amount) internal virtual override returns (uint256) {
         uint256 amountToSend = amount > balanceOfAsset() ? balanceOfAsset() : amount;

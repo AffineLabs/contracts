@@ -217,26 +217,26 @@ abstract contract VaultBaseTests is TestPlus {
         assertEq(vault.totalAssets(), 1e18 / 2);
     }
 
-    // /// @notice Test that withdrawal fee is deducted while withdwaring.
-    // function testWithdrawalFee() public {
-    //     vm.prank(governance);
-    //     vault.setWithdrawalFee(50);
+    /// @notice Test that withdrawal fee is deducted while withdwaring.
+    function testWithdrawalFee() public {
+        vm.prank(governance);
+        vault.setWithdrawalFee(50);
 
-    //     uint256 amountAsset = 1e18;
+        uint256 amountAsset = 1e18;
 
-    //     changePrank(alice);
-    //     asset.mint(alice, amountAsset);
-    //     asset.approve(address(vault), type(uint256).max);
-    //     vault.deposit(amountAsset, alice);
+        changePrank(alice);
+        asset.mint(alice, amountAsset);
+        asset.approve(address(vault), type(uint256).max);
+        vault.deposit(amountAsset, alice);
 
-    //     vault.redeem(vault.balanceOf(alice), alice, alice);
-    //     assertEq(vault.balanceOf(alice), 0);
+        vault.redeem(vault.balanceOf(alice), alice, alice);
+        assertEq(vault.balanceOf(alice), 0);
 
-    //     // User gets the original amount with 50bps deducted
-    //     assertEq(asset.balanceOf(alice), (amountAsset * (10_000 - 50)) / 10_000);
-    //     // Governance gets the 50bps fee
-    //     assertEq(asset.balanceOf(vault.governance()), (amountAsset * 50) / 10_000);
-    // }
+        // User gets the original amount with 50bps deducted
+        assertEq(asset.balanceOf(alice), (amountAsset * (10_000 - 50)) / 10_000);
+        // Governance gets the 50bps fee
+        assertEq(asset.balanceOf(vault.governance()), (amountAsset * 50) / 10_000);
+    }
 
     /// @notice Test that goveranance can modify management fees.
     function testSettingFees() public {
