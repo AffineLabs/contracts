@@ -8,4 +8,14 @@ interface IUniPositionValue {
         external
         view
         returns (uint256 amount0, uint256 amount1);
+
+    function principal(INonfungiblePositionManager positionManager, uint256 tokenId, uint160 sqrtRatioX96)
+        external
+        view
+        returns (uint256 amount0, uint256 amount1);
+
+    function fees(INonfungiblePositionManager positionManager, uint256 tokenId)
+        external
+        view
+        returns (uint256 amount0, uint256 amount1);
 }

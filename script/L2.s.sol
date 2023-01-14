@@ -34,7 +34,7 @@ import {SslpV3} from "./DeltaNeutralLpV3.s.sol";
 contract Deploy is Script, Base {
     ICREATE3Factory create3;
 
-    function _getSaltFile(string memory fileName) internal returns (bytes32 salt) {
+    function _getSaltFile(string memory fileName) internal view returns (bytes32 salt) {
         bytes memory saltData = vm.readFileBinary(fileName);
         salt = bytes32(saltData);
     }
@@ -109,23 +109,6 @@ contract Deploy is Script, Base {
     function _deployStrategies(Base.L2Config memory config, L2Vault vault) internal {
         L2AAVEStrategy aave = new L2AAVEStrategy(vault, config.aaveRegistry);
         require(address(aave.asset()) == vault.asset());
-
-        DeltaNeutralLp sslp = new DeltaNeutralLp(
-            vault,
-            0.001e18, // long pct
-            ILendingPoolAddressesProviderRegistry(0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19),
-            ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619), // wrapped eth
-            AggregatorV3Interface(0xF9680D99D6C9589e2a93a78A04A279e509205945),
-            IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506), // sushiswap router
-            IMasterChef(0x0769fd68dFb93167989C6f7254cd0D766Fb2841F), // MasterChef
-            1, // Masterchef PID
-            true, // use MasterChefV2 interface
-            ERC20(0x0b3F868E0BE5597D5DB7fEB59E1CADBb0fdDa50a)
-        );
-        require(address(sslp.asset()) == vault.asset());
-
-        DeltaNeutralLpV3 sslpV3 = SslpV3.deployPoly(vault);
-        require(address(sslpV3.asset()) == vault.asset());
     }
 
     function run() external {

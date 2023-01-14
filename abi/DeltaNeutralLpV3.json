@@ -7,11 +7,6 @@
         "type": "address"
       },
       {
-        "internalType": "uint256",
-        "name": "_slippageTolerance",
-        "type": "uint256"
-      },
-      {
         "internalType": "contract ILendingPoolAddressesProviderRegistry",
         "name": "_registry",
         "type": "address"
@@ -40,6 +35,16 @@
         "internalType": "contract IUniswapV3Pool",
         "name": "_pool",
         "type": "address"
+      },
+      {
+        "internalType": "contract IUniPositionValue",
+        "name": "_positionValue",
+        "type": "address"
+      },
+      {
+        "internalType": "address[]",
+        "name": "strategists",
+        "type": "address[]"
       }
     ],
     "stateMutability": "nonpayable",
@@ -549,6 +554,37 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "positionFees",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "assets",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "borrows",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "positionValue",
+    "outputs": [
+      {
+        "internalType": "contract IUniPositionValue",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -592,19 +628,6 @@
         "internalType": "contract ISwapRouter",
         "name": "",
         "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "slippageTolerance",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
       }
     ],
     "stateMutability": "view",
