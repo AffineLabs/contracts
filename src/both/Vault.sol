@@ -4,6 +4,7 @@ pragma solidity =0.8.16;
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {IERC20MetadataUpgradeable} from
     "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {MathUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -13,12 +14,11 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
 import {AffineVault} from "../AffineVault.sol";
-import {Affine4626} from "../Affine4626.sol";
 import {DetailedShare} from "../both/Detailed.sol";
 
-contract Vault is AffineVault, Affine4626, DetailedShare {
+contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare {
     using SafeTransferLib for ERC20;
-    using FixedPointMathLib for uint256;
+    using MathUpgradeable for uint256;
 
     function initialize(address _governance, address vaultAsset, string memory _name, string memory _symbol)
         external
@@ -36,6 +36,73 @@ contract Vault is AffineVault, Affine4626, DetailedShare {
     /// @notice See {IERC4626-totalAssets}
     function totalAssets() public view virtual override returns (uint256) {
         return vaultTVL() - lockedProfit();
+    }
+
+    bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN");
+
+    /// @notice Pause the contract
+    function pause() external onlyRole(GUARDIAN_ROLE) {
+        _pause();
+    }
+
+    /// @notice Unpause the contract
+    function unpause() external onlyRole(GUARDIAN_ROLE) {
+        _unpause();
+    }
+
+    function maxDeposit(address) public view virtual override returns (uint256) {
+        return type(uint256).max;
+    }
+
+    /**
+     * @dev See {IERC4262-deposit}.
+     */
+    function deposit(uint256 assets, address receiver) public virtual override whenNotPaused returns (uint256) {
+        uint256 shares = previewDeposit(assets);
+        _deposit(_msgSender(), receiver, assets, shares);
+        return shares;
+    }
+
+    /**
+     * @dev See {IERC4262-mint}.
+     */
+    function mint(uint256 shares, address receiver) public virtual override whenNotPaused returns (uint256) {
+        uint256 assets = previewMint(shares);
+        _deposit(_msgSender(), receiver, assets, shares);
+
+        return assets;
+    }
+
+    /**
+     * @dev See {IERC4262-withdraw}.
+     */
+    function withdraw(uint256 assets, address receiver, address owner)
+        public
+        virtual
+        override
+        whenNotPaused
+        returns (uint256)
+    {
+        uint256 shares = _convertToShares(assets, MathUpgradeable.Rounding.Up);
+        _withdraw(_msgSender(), receiver, owner, assets, shares);
+
+        return shares;
+    }
+
+    /**
+     * @dev See {IERC4262-redeem}.
+     */
+    function redeem(uint256 shares, address receiver, address owner)
+        public
+        virtual
+        override
+        whenNotPaused
+        returns (uint256)
+    {
+        uint256 assets = _convertToAssets(shares, MathUpgradeable.Rounding.Down);
+        _withdraw(_msgSender(), receiver, owner, assets, shares);
+
+        return assets;
     }
 
     function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
@@ -66,9 +133,9 @@ contract Vault is AffineVault, Affine4626, DetailedShare {
      * @dev See {IERC4262-previewWithdraw}.
      */
     function previewWithdraw(uint256 assetsToUser) public view virtual override returns (uint256) {
-        // assets * ((1 - feeBps) / 1e3) = assetsToUser
-        // assets * ((1e3 - feeBps) / 1e3) = assetsToUser
-        uint256 assets = assetsToUser.mulDivUp(MAX_BPS, MAX_BPS - withdrawalFee);
+        // assets * ((1 - feeBps) / 1e4) = assetsToUser
+        // assets * ((1e4 - feeBps) / 1e4) = assetsToUser
+        uint256 assets = assetsToUser.mulDiv(MAX_BPS, MAX_BPS - withdrawalFee, MathUpgradeable.Rounding.Up);
         return _convertToShares(assets, MathUpgradeable.Rounding.Up);
     }
 
@@ -78,6 +145,30 @@ contract Vault is AffineVault, Affine4626, DetailedShare {
     function previewRedeem(uint256 shares) public view virtual override returns (uint256) {
         uint256 assets = _convertToAssets(shares, MathUpgradeable.Rounding.Down);
         return assets - _getWithdrawalFee(assets);
+    }
+
+    function _convertToShares(uint256 assets, MathUpgradeable.Rounding rounding)
+        internal
+        view
+        virtual
+        override
+        returns (uint256 shares)
+    {
+        uint256 _totalSupply = totalSupply() + 1e8;
+        uint256 _totalAssets = totalAssets() + 1;
+        return assets.mulDiv(_totalSupply, _totalAssets, rounding);
+    }
+
+    function _convertToAssets(uint256 shares, MathUpgradeable.Rounding rounding)
+        internal
+        view
+        virtual
+        override
+        returns (uint256 assets)
+    {
+        uint256 _totalSupply = totalSupply() + 1e8;
+        uint256 _totalAssets = totalAssets() + 1;
+        return shares.mulDiv(_totalAssets, _totalSupply, rounding);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -105,7 +196,7 @@ contract Vault is AffineVault, Affine4626, DetailedShare {
 
     /// @dev  Return amount of `asset` to be given to user after applying withdrawal fee
     function _getWithdrawalFee(uint256 assets) internal view returns (uint256) {
-        return assets.mulDivUp(withdrawalFee, MAX_BPS);
+        return assets.mulDiv(withdrawalFee, MAX_BPS, MathUpgradeable.Rounding.Up);
     }
     /*//////////////////////////////////////////////////////////////
                            CAPITAL MANAGEMENT
