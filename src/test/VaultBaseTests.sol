@@ -5,11 +5,11 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-import {Vault} from "../both/Vault.sol";
-
 import {MockERC20} from "./mocks/MockERC20.sol";
-import {AffineStrategy} from "../AffineStrategy.sol";
-import {TestStrategyForEthVault} from "./mocks/TestStrategy.sol";
+import {Vault} from "../both/Vault.sol";
+import {BaseVault} from "../BaseVault.sol";
+import {BaseStrategy} from "../BaseStrategy.sol";
+import {TestStrategy} from "./mocks/TestStrategy.sol";
 
 abstract contract VaultBaseTests is TestPlus {
     using stdStorage for StdStorage;
@@ -116,7 +116,7 @@ abstract contract VaultBaseTests is TestPlus {
         asset.mint(user, amount);
         asset.approve(address(vault), type(uint256).max);
 
-        TestStrategyForEthVault strategy = new TestStrategyForEthVault(vault);
+        TestStrategy strategy = new TestStrategy(BaseVault(address(vault)));
         vm.startPrank(governance);
         vault.addStrategy(strategy, 10_000);
         vm.stopPrank();
@@ -139,7 +139,7 @@ abstract contract VaultBaseTests is TestPlus {
         asset.mint(user, amount);
         asset.approve(address(vault), type(uint256).max);
 
-        TestStrategyForEthVault strategy = new TestStrategyForEthVault(vault);
+        TestStrategy strategy = new TestStrategy(BaseVault(address(vault)));
         vm.startPrank(governance);
         vault.addStrategy(strategy, 10_000);
         vm.stopPrank();
@@ -164,19 +164,19 @@ abstract contract VaultBaseTests is TestPlus {
 
     //     // Add this contract as a strategy
     //     changePrank(governance);
-    //     AffineStrategy myStrat = AffineStrategy(address(this));
+    //     BaseStrategy myStrat = BaseStrategy(address(this));
     //     vault.addStrategy(myStrat, 10_000);
 
     //     // call to balanceOfAsset in harvest() will return 1e18
-    //     vm.mockCall(address(this), abi.encodeWithSelector(AffineStrategy.balanceOfAsset.selector), abi.encode(1e18));
+    //     vm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfAsset.selector), abi.encode(1e18));
     //     // block.timestamp must be >= lastHarvest + LOCK_INTERVAL when harvesting
     //     vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
 
     //     // Call harvest to update lastHarvest, note that no shares are minted here because
     //     // (block.timestamp - lastHarvest) = LOCK_INTERVAL + 1 =  3 hours + 1 second
     //     // and feeBps gets truncated to zero
-    //     AffineStrategy[] memory strategyList = new AffineStrategy[](1);
-    //     strategyList[0] = AffineStrategy(address(this));
+    //     BaseStrategy[] memory strategyList = new BaseStrategy[](1);
+    //     strategyList[0] = BaseStrategy(address(this));
     //     vault.harvest(strategyList);
 
     //     vm.warp(block.timestamp + 365 days / 2);
@@ -193,19 +193,19 @@ abstract contract VaultBaseTests is TestPlus {
     function testLockedProfit() public {
         // Add this contract as a strategy
         changePrank(governance);
-        AffineStrategy myStrat = AffineStrategy(address(this));
+        BaseStrategy myStrat = BaseStrategy(address(this));
         vault.addStrategy(myStrat, 10_000);
 
         // call to balanceOfAsset in harvest() will return 1e18
-        vm.mockCall(address(this), abi.encodeWithSelector(AffineStrategy.balanceOfAsset.selector), abi.encode(1e18));
+        vm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfAsset.selector), abi.encode(1e18));
         // block.timestamp must be >= lastHarvest + LOCK_INTERVAL when harvesting
         vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
 
         asset.mint(address(myStrat), 1e18);
         asset.approve(address(vault), type(uint256).max);
 
-        AffineStrategy[] memory strategyList = new AffineStrategy[](1);
-        strategyList[0] = AffineStrategy(address(this));
+        BaseStrategy[] memory strategyList = new BaseStrategy[](1);
+        strategyList[0] = BaseStrategy(address(this));
         vault.harvest(strategyList);
 
         assertEq(vault.lockedProfit(), 1e18);

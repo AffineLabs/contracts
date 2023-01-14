@@ -5,6 +5,7 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 
 import {Vault} from "../both/Vault.sol";
+import {BaseVault} from "../BaseVault.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {VaultBaseTests} from "./VaultBaseTests.sol";
