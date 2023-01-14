@@ -107,6 +107,7 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
 
     function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
         internal
+        virtual
         override
     {
         _liquidate(assets);
@@ -181,7 +182,7 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
     uint256 public withdrawalFee;
     uint256 constant SECS_PER_YEAR = 365 days;
 
-    function _assessFees() internal override {
+    function _assessFees() internal virtual override {
         // duration / SECS_PER_YEAR * feebps / MAX_BPS * totalSupply
         uint256 duration = block.timestamp - lastHarvest;
 
@@ -195,7 +196,7 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
     }
 
     /// @dev  Return amount of `asset` to be given to user after applying withdrawal fee
-    function _getWithdrawalFee(uint256 assets) internal view returns (uint256) {
+    function _getWithdrawalFee(uint256 assets) internal view virtual returns (uint256) {
         return assets.mulDiv(withdrawalFee, MAX_BPS, MathUpgradeable.Rounding.Up);
     }
     /*//////////////////////////////////////////////////////////////
