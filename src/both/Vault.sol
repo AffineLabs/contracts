@@ -4,6 +4,7 @@ pragma solidity =0.8.16;
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {IERC20MetadataUpgradeable} from
     "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {MathUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
@@ -27,10 +28,19 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
         AffineVault.baseInitialize(_governance, ERC20(vaultAsset));
         __ERC20_init(_name, _symbol);
         __ERC4626_init(IERC20MetadataUpgradeable(vaultAsset));
+        _grantRole(GUARDIAN_ROLE, governance);
     }
 
     function asset() public view override(AffineVault, ERC4626Upgradeable) returns (address) {
         return AffineVault.asset();
+    }
+
+    function decimals() public view virtual override(ERC20Upgradeable, IERC20MetadataUpgradeable) returns (uint8) {
+        // E.g. for USDC, we want the initial price of a share to be $100.
+        // For an initial price of 1 USDC / share we would have 1e6 * 1e8 / 1 = 1e14 shares. This a 1:1 ratio of assets:shares
+        // if our shares have 14 (= 6 + 8) decimals.
+        // But since we want 100 USDC / share for the intial price, we add an extra two decimal places.
+        return _asset.decimals() + 10;
     }
 
     /// @notice See {IERC4626-totalAssets}
@@ -103,6 +113,13 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
         _withdraw(_msgSender(), receiver, owner, assets, shares);
 
         return assets;
+    }
+
+    function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
+        require(shares > 0, "Vault: zero shares");
+        _mint(receiver, shares);
+        _asset.safeTransferFrom(caller, address(this), assets);
+        emit Deposit(caller, receiver, assets, shares);
     }
 
     function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
@@ -180,6 +197,20 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
     uint256 public managementFee;
     /// @notice  Fee charged on redemption of shares, number is in bps
     uint256 public withdrawalFee;
+
+    event ManagementFeeSet(uint256 oldFee, uint256 newFee);
+    event WithdrawalFeeSet(uint256 oldFee, uint256 newFee);
+
+    function setManagementFee(uint256 feeBps) external onlyGovernance {
+        emit ManagementFeeSet({oldFee: managementFee, newFee: feeBps});
+        managementFee = feeBps;
+    }
+
+    function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
+        emit WithdrawalFeeSet({oldFee: withdrawalFee, newFee: feeBps});
+        withdrawalFee = feeBps;
+    }
+
     uint256 constant SECS_PER_YEAR = 365 days;
 
     function _assessFees() internal virtual override {
