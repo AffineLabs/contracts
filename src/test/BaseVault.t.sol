@@ -13,6 +13,7 @@ import {BridgeEscrow} from "../BridgeEscrow.sol";
 import {IWormhole} from "../interfaces/IWormhole.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
 import {BaseVault} from "../BaseVault.sol";
+import {AffineVault} from "../AffineVault.sol";
 
 contract BaseVaultLiquidate is BaseVault {
     function liquidate(uint256 amount) public returns (uint256) {
@@ -35,25 +36,26 @@ contract BaseVaultLiquidate is BaseVault {
     }
 }
 
+contract AffineVaultLiquidate is AffineVault {
+    function liquidate(uint256 amount) public returns (uint256) {
+        return _liquidate(amount);
+    }
+
+    function initialize(address _governance, address vaultAsset, string memory _name, string memory _symbol)
+        external
+        initializer
+    {
+        baseInitialize(_governance, vaultAsset, _name, _symbol);
+    }
+}
+
 /// @notice Test general functionalities of vaults.
-contract BaseVaultTest is TestPlus {
+abstract contract TestSuite is TestPlus {
     using stdStorage for StdStorage;
 
     MockERC20 token;
     BaseVaultLiquidate vault;
     uint8 constant MAX_STRATEGIES = 20;
-
-    function setUp() public {
-        token = new MockERC20("Mock", "MT", 18);
-        vault = new BaseVaultLiquidate();
-
-        vault.baseInitializeMock(
-            address(this), // governance
-            token, // token
-            address(0),
-            BridgeEscrow(address(0))
-        );
-    }
 
     /// @notice Test harvesting strategies and makes sure locked profit works.
     function testHarvest() public {
@@ -238,16 +240,19 @@ contract BaseVaultTest is TestPlus {
         assertEq(strat1TvlBps, 100);
         assertEq(strat2TvlBps, 200);
     }
+}
 
-    /// @notice Test updating wormhole router. Only governance should be able to do it.
-    function testSetWormRouter() public {
-        address wormRouter = makeAddr("worm_router");
-        vault.setWormholeRouter(wormRouter);
-        assertEq(vault.wormholeRouter(), wormRouter);
-        // only gov can call
-        vm.prank(alice);
-        vm.expectRevert("Only Governance.");
-        vault.setWormholeRouter(address(0));
+contract BaseVaultTest is TestSuite {
+    function setUp() public {
+        token = new MockERC20("Mock", "MT", 18);
+        vault = new BaseVaultLiquidate();
+
+        vault.baseInitializeMock(
+            address(this), // governance
+            token, // token
+            address(0),
+            BridgeEscrow(address(0))
+        );
     }
 
     /// @notice Test updating bridge escrow contract. Only governance should be able to do it.
@@ -259,5 +264,30 @@ contract BaseVaultTest is TestPlus {
         vm.prank(alice);
         vm.expectRevert("Only Governance.");
         vault.setBridgeEscrow(BridgeEscrow(address(0)));
+    }
+
+    /// @notice Test updating wormhole router. Only governance should be able to do it.
+    function testSetWormRouter() public {
+        address wormRouter = makeAddr("worm_router");
+        vault.setWormholeRouter(wormRouter);
+        assertEq(vault.wormholeRouter(), wormRouter);
+        // only gov can call
+        vm.prank(alice);
+        vm.expectRevert("Only Governance.");
+        vault.setWormholeRouter(address(0));
+    }
+}
+
+contract AffineVaultTest is TestSuite {
+    function setUp() public {
+        token = new MockERC20("Mock", "MT", 18);
+        AffineVaultLiquidate affineVault = new AffineVaultLiquidate();
+        affineVault.initialize(
+            address(this), // governance
+            address(token), // token
+            "Test Earn",
+            "testEarn"
+        );
+        vault = BaseVaultLiquidate(address(affineVault));
     }
 }
