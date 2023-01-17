@@ -36,11 +36,7 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
     }
 
     function decimals() public view virtual override(ERC20Upgradeable, IERC20MetadataUpgradeable) returns (uint8) {
-        // E.g. for USDC, we want the initial price of a share to be $100.
-        // For an initial price of 1 USDC / share we would have 1e6 * 1e8 / 1 = 1e14 shares. This a 1:1 ratio of assets:shares
-        // if our shares have 14 (= 6 + 8) decimals.
-        // But since we want a 100:1 asset / share for the intial price, we add an extra two decimal places.
-        return _asset.decimals() + 10;
+        return 18;
     }
 
     /// @notice See {IERC4626-totalAssets}
@@ -165,6 +161,13 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
         return assets - _getWithdrawalFee(assets);
     }
 
+    function initialSharesPerAsset() public pure virtual returns (uint256) {
+        // E.g. for USDC, we want the initial price of a share to be $100.
+        // For an initial price of 1 USDC / share we would have 1e6 * 1e10 / 1 = 1e16 shares.
+        // This a 1:0.01 ratio of assets:shares if this vault has 18 decimals
+        return 1e10;
+    }
+
     function _convertToShares(uint256 assets, MathUpgradeable.Rounding rounding)
         internal
         view
@@ -172,7 +175,7 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
         override
         returns (uint256 shares)
     {
-        uint256 _totalSupply = totalSupply() + 1e8;
+        uint256 _totalSupply = totalSupply() + initialSharesPerAsset();
         uint256 _totalAssets = totalAssets() + 1;
         return assets.mulDiv(_totalSupply, _totalAssets, rounding);
     }
@@ -184,7 +187,7 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
         override
         returns (uint256 assets)
     {
-        uint256 _totalSupply = totalSupply() + 1e8;
+        uint256 _totalSupply = totalSupply() + initialSharesPerAsset();
         uint256 _totalAssets = totalAssets() + 1;
         return shares.mulDiv(_totalAssets, _totalSupply, rounding);
     }
