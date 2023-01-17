@@ -7,12 +7,10 @@ import { HardhatUserConfig, NetworkUserConfig } from "hardhat/types";
 import "@typechain/hardhat";
 import "@nomiclabs/hardhat-ethers";
 
-import "@nomiclabs/hardhat-etherscan";
 import "hardhat-change-network";
 import "hardhat-abi-exporter";
 import "@primitivefi/hardhat-dodoc";
 import "@openzeppelin/hardhat-upgrades";
-import "@openzeppelin/hardhat-defender";
 
 import "./tasks/accounts";
 import "./tasks/unblock";
@@ -96,14 +94,6 @@ const config: HardhatUserConfig = {
         enabled: true,
         runs: 10_000,
       },
-    },
-  },
-  etherscan: {
-    apiKey: {
-      mainnet: ETHERSCAN_API_KEY,
-      goerli: ETHERSCAN_API_KEY,
-      polygon: POLYGONSCAN_API_KEY,
-      polygonMumbai: POLYGONSCAN_API_KEY,
     },
   },
 
