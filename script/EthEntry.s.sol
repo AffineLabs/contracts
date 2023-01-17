@@ -30,7 +30,7 @@ contract Deploy is Script, Base {
         Vault impl = new Vault();
 
         // Initialize proxy with correct data
-        bytes memory initData = abi.encodeCall(Vault.initialize, (governance, usdc, "USD Earn", "usdEarn"));
+        bytes memory initData = abi.encodeCall(Vault.initialize, (governance, usdc, "USD Earn Eth", "usdEarnEth"));
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
 
         // Check that values were set correctly.

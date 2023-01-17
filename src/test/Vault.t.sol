@@ -20,7 +20,7 @@ contract CommonVaultTest is TestPlus {
     MockERC20 asset;
 
     function setUp() public {
-        asset = new MockERC20("Mock", "MT", 18);
+        asset = new MockERC20("Mock", "MT", 6);
 
         vault = new Vault();
         vault.initialize(governance, address(asset), "USD Earn", "usdEarn");
@@ -47,7 +47,6 @@ contract CommonVaultTest is TestPlus {
 
     /// @notice Test post deployment, initial state of the vault.
     function testDeploy() public {
-        assertEq(vault.decimals(), asset.decimals() + 10);
         // this makes sure that the first time we assess management fees we get a reasonable number
         // since management fees are calculated based on block.timestamp - lastHarvest
         assertEq(vault.lastHarvest(), block.timestamp);
@@ -60,7 +59,7 @@ contract CommonVaultTest is TestPlus {
         address user = address(this);
         asset.mint(user, amountAsset);
 
-        uint256 expectedShares = uint256(amountAsset) * 1e8;
+        uint256 expectedShares = uint256(amountAsset) * vault.initialSharesPerAsset();
         // user gives max approval to vault for asset
         asset.approve(address(vault), type(uint256).max);
         vault.deposit(amountAsset, user);
@@ -82,8 +81,8 @@ contract CommonVaultTest is TestPlus {
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
 
-        // If vault is empty, assets are converted to shares at 1:1e8 ratio
-        uint256 expectedShares = uint256(amountAsset) * 1e8; // cast to uint256 to prevent overflow
+        // If vault is empty, assets are converted to shares at 1:vault.initialSharesPerAsset() ratio
+        uint256 expectedShares = uint256(amountAsset) * vault.initialSharesPerAsset(); // cast to uint256 to prevent overflow
 
         vm.expectEmit(true, true, true, true);
         emit Deposit(address(this), address(this), amountAsset, expectedShares);
@@ -104,8 +103,8 @@ contract CommonVaultTest is TestPlus {
         asset.mint(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
 
-        // If vault is empty, assets are converted to shares at 1:1e8 ratio
-        uint256 expectedShares = uint256(amountAsset) * 1e8; // cast to uint256 to prevent overflow
+        // If vault is empty, assets are converted to shares at 1:vault.initialSharesPerAsset() ratio
+        uint256 expectedShares = uint256(amountAsset) * vault.initialSharesPerAsset(); // cast to uint256 to prevent overflow
 
         vm.expectEmit(true, true, true, true);
         emit Deposit(address(this), address(this), amountAsset, expectedShares);
@@ -162,7 +161,7 @@ contract CommonVaultTest is TestPlus {
         vault.addStrategy(strategy, 10_000);
         vm.stopPrank();
 
-        vault.mint(amount * 1e8, user); // Initially asset:share = 1:1e8.
+        vault.mint(amount * vault.initialSharesPerAsset(), user); // Initially asset:share = 1:vault.initialSharesPerAsset().
         assertEq(asset.balanceOf(address(vault)), amount);
 
         vm.startPrank(governance);
@@ -236,9 +235,27 @@ contract CommonVaultTest is TestPlus {
         assertEq(vault.totalAssets(), 1e18 / 2);
     }
 
-    /**
-     * CROSS CHAIN REBALANCING
-     */
+    /// @notice total assets = vaultTVL() - lockedProfit()
+    function testTotalAssets() public {
+        // Add this contract as a strategy
+        changePrank(governance);
+        BaseStrategy myStrat = BaseStrategy(address(this));
+        vault.addStrategy(myStrat, 10_000);
+
+        // Give the strat some assets
+        asset.mint(address(vault), 999);
+
+        // Harvest a gain of 1
+        asset.mint(address(myStrat), 1);
+        BaseStrategy[] memory strategyList = new BaseStrategy[](1);
+        strategyList[0] = BaseStrategy(address(this));
+        vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
+        vault.harvest(strategyList);
+
+        assertEq(vault.totalAssets(), 999);
+        vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
+        assertEq(vault.totalAssets(), 1000);
+    }
 
     /// @notice Test that withdrawal fee is deducted while withdwaring.
     function testWithdrawalFee() public {

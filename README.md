@@ -117,4 +117,4 @@ Add -b to actually deploy the contracts
 
 ## Documentation
 
-You can find documentation (auto-generated from Natspec comments) in the `docs/` folder. You'll need to run `yarn hardhat dodoc` first to build the docs.
+You can find documentation in the `docs/` folder.
