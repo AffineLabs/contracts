@@ -39,7 +39,7 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
         // E.g. for USDC, we want the initial price of a share to be $100.
         // For an initial price of 1 USDC / share we would have 1e6 * 1e8 / 1 = 1e14 shares. This a 1:1 ratio of assets:shares
         // if our shares have 14 (= 6 + 8) decimals.
-        // But since we want 100 USDC / share for the intial price, we add an extra two decimal places.
+        // But since we want a 100:1 asset / share for the intial price, we add an extra two decimal places.
         return _asset.decimals() + 10;
     }
 

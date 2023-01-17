@@ -236,9 +236,27 @@ contract CommonVaultTest is TestPlus {
         assertEq(vault.totalAssets(), 1e18 / 2);
     }
 
-    /**
-     * CROSS CHAIN REBALANCING
-     */
+    /// @notice total assets = vaultTVL() - lockedProfit()
+    function testTotalAssets() public {
+        // Add this contract as a strategy
+        changePrank(governance);
+        BaseStrategy myStrat = BaseStrategy(address(this));
+        vault.addStrategy(myStrat, 10_000);
+
+        // Give the strat some assets
+        asset.mint(address(vault), 999);
+
+        // Harvest a gain of 1
+        asset.mint(address(myStrat), 1);
+        BaseStrategy[] memory strategyList = new BaseStrategy[](1);
+        strategyList[0] = BaseStrategy(address(this));
+        vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
+        vault.harvest(strategyList);
+
+        assertEq(vault.totalAssets(), 999);
+        vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
+        assertEq(vault.totalAssets(), 1000);
+    }
 
     /// @notice Test that withdrawal fee is deducted while withdwaring.
     function testWithdrawalFee() public {
