@@ -9,8 +9,6 @@ import "@nomiclabs/hardhat-ethers";
 
 import "hardhat-change-network";
 import "hardhat-abi-exporter";
-import "@primitivefi/hardhat-dodoc";
-import "@openzeppelin/hardhat-upgrades";
 
 import "./tasks/accounts";
 import "./tasks/unblock";
@@ -112,14 +110,6 @@ const config: HardhatUserConfig = {
     spacing: 2,
     // We use both Openzeppelin and solmate ERC20, so exporting abi will throw "duplicate output destination" error
     except: [":ERC20$", ":ILendingPoolAddressesProviderRegistry$"],
-  },
-  dodoc: {
-    include: ["src"],
-    runOnCompile: false,
-  },
-  defender: {
-    apiKey: process.env.DEFENDER_API_KEY || "",
-    apiSecret: process.env.DEFENDER_API_SECRET || "",
   },
 };
 
