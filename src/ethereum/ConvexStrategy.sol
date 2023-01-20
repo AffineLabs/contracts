@@ -9,16 +9,18 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 import {BaseVault} from "../BaseVault.sol";
 import {BaseStrategy} from "../BaseStrategy.sol";
-import {ICurvePool} from "../interfaces/curve.sol";
+import {ICurvePool, I3CrvMetaPoolZap} from "../interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "../interfaces/convex.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+
+import "forge-std/Script.sol";
 
 contract ConvexStrategy is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    // Asset index of USDC during deposit and withdraw.
-    int128 public constant ASSET_INDEX = 1;
+    /// @notice Index assigned to `asset` by curve. Used during deposit/withdraw.
+    int128 public immutable assetIndex;
     uint256 public constant MIN_TOKEN_AMT = 0.1e18; // 0.1 CRV or CVX
     address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
@@ -26,6 +28,8 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
     /// @dev https://curve.readthedocs.io/exchange-deposits.html#curve-stableswap-exchange-deposit-contracts
     ICurvePool public immutable curvePool;
     ERC20 public immutable curveLpToken;
+    bool immutable isMetaPool;
+    I3CrvMetaPoolZap public immutable zapper;
 
     /// @notice Id of the curve pool (used by convex booster).
     uint256 public immutable convexPid;
@@ -41,12 +45,22 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
     /// @notice Role with authority to manage strategies.
     bytes32 public constant STRATEGIST = keccak256("STRATEGIST");
 
-    constructor(BaseVault _vault, ICurvePool _curvePool, uint256 _convexPid, IConvexBooster _convexBooster)
-        BaseStrategy(_vault)
-    {
+    constructor(
+        BaseVault _vault,
+        int128 _assetIndex,
+        bool _isMetaPool,
+        ICurvePool _curvePool,
+        I3CrvMetaPoolZap _zapper,
+        uint256 _convexPid,
+        IConvexBooster _convexBooster
+    ) BaseStrategy(_vault) {
+        assetIndex = _assetIndex;
+        isMetaPool = _isMetaPool;
         curvePool = _curvePool;
+        zapper = _zapper;
         convexPid = _convexPid;
         convexBooster = _convexBooster;
+        if (isMetaPool) require(address(zapper) != address(0), "Zapper required");
 
         IConvexBooster.PoolInfo memory poolInfo = convexBooster.poolInfo(convexPid);
         cvxRewarder = IConvexRewards(poolInfo.crvRewards);
@@ -66,11 +80,22 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
     }
 
     function deposit(uint256 assets, uint256 minLpTokens) external onlyRole(STRATEGIST) {
-        // e.g. in a FRAX-USDC stableswap pool, the 0 index is for FRAX and the index 1 is for USDC.
-        uint256[2] memory depositAmounts = [uint256(0), 0];
-        depositAmounts[uint256(uint128(ASSET_INDEX))] = assets;
-        curvePool.add_liquidity({depositAmounts: depositAmounts, minMintAmount: minLpTokens});
+        _depositIntoCurve(assets, minLpTokens);
         convexBooster.depositAll(convexPid, true);
+    }
+
+    function _depositIntoCurve(uint256 assets, uint256 minLpTokens) internal {
+        // E.g. in a FRAX-USDC stableswap pool, the 0 index is for FRAX and the index 1 is for USDC.
+        if (isMetaPool) {
+            uint256[4] memory depositAmounts = [uint256(0), 0, 0, 0];
+            depositAmounts[uint256(uint128(assetIndex))] = assets;
+            zapper.add_liquidity({pool: address(curvePool), depositAmounts: depositAmounts, minMintAmount: minLpTokens});
+        } else {
+            console.log("we are in second branch");
+            uint256[2] memory depositAmounts = [uint256(0), 0];
+            depositAmounts[uint256(uint128(assetIndex))] = assets;
+            curvePool.add_liquidity({depositAmounts: depositAmounts, minMintAmount: minLpTokens});
+        }
     }
 
     function _divest(uint256 assets) internal override returns (uint256) {
@@ -160,13 +185,25 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
         if (maxLpTokensToBurn > currLpBal) {
             cvxRewarder.withdrawAndUnwrap(maxLpTokensToBurn - currLpBal, true);
         }
+        _withdrawFromCurve(maxLpTokensToBurn, minAssetsReceived);
+    }
 
-        curvePool.remove_liquidity_one_coin(curveLpToken.balanceOf(address(this)), ASSET_INDEX, minAssetsReceived);
+    function _withdrawFromCurve(uint256 maxLpTokensToBurn, uint256 minAssetsReceived) internal {
+        if (isMetaPool) {
+            zapper.remove_liquidity_one_coin({
+                pool: address(curvePool),
+                burnAmount: maxLpTokensToBurn,
+                index: assetIndex,
+                minAmount: minAssetsReceived
+            });
+        } else {
+            curvePool.remove_liquidity_one_coin(curveLpToken.balanceOf(address(this)), assetIndex, minAssetsReceived);
+        }
     }
 
     function totalLockedValue() external override returns (uint256) {
         uint256 lpTokenBal = curveLpToken.balanceOf(address(this)) + cvxRewarder.balanceOf(address(this));
-        uint256 assetsLp = curvePool.calc_withdraw_one_coin(lpTokenBal, ASSET_INDEX);
+        uint256 assetsLp = curvePool.calc_withdraw_one_coin(lpTokenBal, assetIndex);
         return balanceOfAsset() + assetsLp;
     }
 }
