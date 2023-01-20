@@ -13,8 +13,6 @@ import {ICurvePool, I3CrvMetaPoolZap} from "../interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "../interfaces/convex.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
-import "forge-std/Script.sol";
-
 contract ConvexStrategy is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -91,7 +89,6 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
             depositAmounts[uint256(uint128(assetIndex))] = assets;
             zapper.add_liquidity({pool: address(curvePool), depositAmounts: depositAmounts, minMintAmount: minLpTokens});
         } else {
-            console.log("we are in second branch");
             uint256[2] memory depositAmounts = [uint256(0), 0];
             depositAmounts[uint256(uint128(assetIndex))] = assets;
             curvePool.add_liquidity({depositAmounts: depositAmounts, minMintAmount: minLpTokens});
