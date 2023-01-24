@@ -20,13 +20,6 @@ import {L1CompoundStrategy} from "../src/ethereum/L1CompoundStrategy.sol";
 import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
-import {CurveStrategy} from "../src/ethereum/CurveStrategy.sol";
-import {I3CrvMetaPoolZap, ILiquidityGauge, ICurvePool, IMinter} from "../src/interfaces/curve.sol";
-
-import {ConvexStrategy} from "../src/ethereum/ConvexStrategy.sol";
-import {ICurvePool} from "../src/interfaces/curve.sol";
-import {IConvexBooster, IConvexRewards} from "../src/interfaces/convex.sol";
-
 import {DeltaNeutralLp} from "../src/both/DeltaNeutralLp.sol";
 import {AggregatorV3Interface} from "../src/interfaces/AggregatorV3Interface.sol";
 import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol";

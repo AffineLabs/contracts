@@ -19,6 +19,7 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
 
     /// @notice Index assigned to `asset` by curve. Used during deposit/withdraw.
     int128 public immutable assetIndex;
+    uint8 immutable assetDecimals;
     uint256 public constant MIN_TOKEN_AMT = 0.1e18; // 0.1 CRV or CVX
     address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
@@ -57,6 +58,7 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
         uint256 _convexPid
     ) BaseStrategy(_vault) {
         assetIndex = _assetIndex;
+        assetDecimals = ERC20(_vault.asset()).decimals();
         isMetaPool = _isMetaPool;
         curvePool = _curvePool;
         zapper = _zapper;
@@ -167,9 +169,7 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
     /// @notice Try to increase balance of `asset` to `assets`.
     function _withdraw(uint256 assets) internal {
         uint256 currAssets = asset.balanceOf(address(this));
-        if (currAssets >= assets) {
-            return;
-        }
+        if (currAssets >= assets) return;
 
         // price * (num of lp tokens) = dollars
         uint256 currLpBal = curveLpToken.balanceOf(address(this));
@@ -178,17 +178,15 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
         uint256 dollarsOfLp = lpTokenBal.mulWadDown(price);
 
         // Get the amount of dollars to remove from vault, and the equivalent amount of lp token.
-        // We assume that the  vault `asset` is $1.00 (i.e. we assume that USDC is 1.00). Convert to 18 decimals.
-        uint256 dollarsOfAssetsToDivest = Math.min((assets - currAssets) * 1e12, dollarsOfLp);
+        // We assume that the  vault `asset` is $1.00 (e.g. we assume that USDC is 1.00). Convert to 18 decimals.
+        uint256 dollarsOfAssetsToDivest = Math.min(_giveDecimals(assets - currAssets, assetDecimals, 18), dollarsOfLp);
         uint256 lpTokensToDivest = dollarsOfAssetsToDivest.divWadDown(price);
 
         // Minimum amount of dollars received is 99% of dollar value of lp shares (trading fees, slippage)
         // Convert back to `asset` decimals.
-        uint256 minAssetsReceived = dollarsOfAssetsToDivest.mulDivDown(99, 100) / 1e12;
+        uint256 minAssetsReceived = _giveDecimals(dollarsOfAssetsToDivest.mulDivDown(99, 100), 18, assetDecimals);
         // Increase the cap on lp tokens by 1% to account for curve's trading fees
         uint256 maxLpTokensToBurn = Math.min(lpTokenBal, lpTokensToDivest.mulDivDown(101, 100));
-
-        // if (maxLpTokensToBurn < MIN_LP_AMOUNT) return;
 
         // Withdraw from CVX rewarder contract if needed to get correct amount of lp tokens
         if (maxLpTokensToBurn > currLpBal) {
@@ -210,6 +208,16 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
         } else {
             curvePool.remove_liquidity_one_coin(curveLpToken.balanceOf(address(this)), assetIndex, minAssetsReceived);
         }
+    }
+
+    function _giveDecimals(uint256 number, uint256 inDecimals, uint256 outDecimals) internal pure returns (uint256) {
+        if (inDecimals > outDecimals) {
+            number = number / (10 ** (inDecimals - outDecimals));
+        }
+        if (inDecimals < outDecimals) {
+            number = number * (10 ** (outDecimals - inDecimals));
+        }
+        return number;
     }
 
     function totalLockedValue() external override returns (uint256) {
