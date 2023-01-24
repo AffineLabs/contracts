@@ -28,11 +28,16 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
     ERC20 public immutable curveLpToken;
     bool immutable isMetaPool;
     I3CrvMetaPoolZap public immutable zapper;
+    /**
+     * @notice The minimum amount of lp tokens to count towards tvl or be liquidated during withdrawals.
+     * @dev `calc_withdraw_one_coin` and `remove_liquidity_one_coin` may fail when using amounts smaller than this.
+     */
+    uint256 constant MIN_LP_AMOUNT = 100;
 
     /// @notice Id of the curve pool (used by convex booster).
     uint256 public immutable convexPid;
     // Convex booster contract address. Used for depositing curve lp tokens.
-    IConvexBooster public immutable convexBooster;
+    IConvexBooster public constant convexBooster = IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
     /// @notice BaseRewardPool address
     IConvexRewards public immutable cvxRewarder;
 
@@ -49,23 +54,28 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
         bool _isMetaPool,
         ICurvePool _curvePool,
         I3CrvMetaPoolZap _zapper,
-        uint256 _convexPid,
-        IConvexBooster _convexBooster
+        uint256 _convexPid
     ) BaseStrategy(_vault) {
         assetIndex = _assetIndex;
         isMetaPool = _isMetaPool;
         curvePool = _curvePool;
         zapper = _zapper;
         convexPid = _convexPid;
-        convexBooster = _convexBooster;
         if (isMetaPool) require(address(zapper) != address(0), "Zapper required");
 
         IConvexBooster.PoolInfo memory poolInfo = convexBooster.poolInfo(convexPid);
         cvxRewarder = IConvexRewards(poolInfo.crvRewards);
         curveLpToken = ERC20(poolInfo.lptoken);
 
-        // For deposing `asset` into curv and depositing curve lp tokens into convex
-        asset.safeApprove(address(curvePool), type(uint256).max);
+        // Curve Approvals (minting/burning lp tokens)
+        if (isMetaPool) {
+            asset.safeApprove(address(zapper), type(uint256).max);
+            curveLpToken.safeApprove(address(zapper), type(uint256).max);
+        } else {
+            asset.safeApprove(address(curvePool), type(uint256).max);
+        }
+
+        // Convex Approvals
         curveLpToken.safeApprove(address(convexBooster), type(uint256).max);
 
         // For trading CVX and CRV
@@ -178,6 +188,8 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
         // Increase the cap on lp tokens by 1% to account for curve's trading fees
         uint256 maxLpTokensToBurn = Math.min(lpTokenBal, lpTokensToDivest.mulDivDown(101, 100));
 
+        // if (maxLpTokensToBurn < MIN_LP_AMOUNT) return;
+
         // Withdraw from CVX rewarder contract if needed to get correct amount of lp tokens
         if (maxLpTokensToBurn > currLpBal) {
             cvxRewarder.withdrawAndUnwrap(maxLpTokensToBurn - currLpBal, true);
@@ -186,6 +198,8 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
     }
 
     function _withdrawFromCurve(uint256 maxLpTokensToBurn, uint256 minAssetsReceived) internal {
+        if (maxLpTokensToBurn < MIN_LP_AMOUNT) return;
+
         if (isMetaPool) {
             zapper.remove_liquidity_one_coin({
                 pool: address(curvePool),
@@ -200,7 +214,15 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
 
     function totalLockedValue() external override returns (uint256) {
         uint256 lpTokenBal = curveLpToken.balanceOf(address(this)) + cvxRewarder.balanceOf(address(this));
-        uint256 assetsLp = curvePool.calc_withdraw_one_coin(lpTokenBal, assetIndex);
+        uint256 assetsLp;
+        if (lpTokenBal < MIN_LP_AMOUNT) return balanceOfAsset();
+
+        if (isMetaPool) {
+            assetsLp =
+                zapper.calc_withdraw_one_coin({pool: address(curvePool), tokenAmount: lpTokenBal, index: assetIndex});
+        } else {
+            assetsLp = curvePool.calc_withdraw_one_coin(lpTokenBal, assetIndex);
+        }
         return balanceOfAsset() + assetsLp;
     }
 }
