@@ -56,7 +56,7 @@ contract ConvexStratTest is TestPlus {
 
         // To be able to call functions restricted to strategist role.
         vm.startPrank(vault.governance());
-        strategy.grantRole(strategy.STRATEGIST(), address(this));
+        strategy.grantRole(strategy.STRATEGIST_ROLE(), address(this));
         vm.stopPrank();
 
         crv = strategy.CRV();

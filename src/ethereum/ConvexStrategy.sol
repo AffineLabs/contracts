@@ -45,9 +45,6 @@ contract ConvexStrategy is AccessStrategy {
     ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
     ERC20 public constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
 
-    /// @notice Role with authority to manage strategies.
-    bytes32 public constant STRATEGIST = keccak256("STRATEGIST");
-
     constructor(
         BaseVault _vault,
         int128 _assetIndex,
@@ -83,13 +80,9 @@ contract ConvexStrategy is AccessStrategy {
         // For trading CVX and CRV
         CRV.safeApprove(address(ROUTER), type(uint256).max);
         CVX.safeApprove(address(ROUTER), type(uint256).max);
-
-        // Grant roles
-        _grantRole(DEFAULT_ADMIN_ROLE, vault.governance());
-        _grantRole(STRATEGIST, vault.governance());
     }
 
-    function deposit(uint256 assets, uint256 minLpTokens) external onlyRole(STRATEGIST) {
+    function deposit(uint256 assets, uint256 minLpTokens) external onlyRole(STRATEGIST_ROLE) {
         _depositIntoCurve(assets, minLpTokens);
         convexBooster.depositAll(convexPid, true);
     }
@@ -120,15 +113,18 @@ contract ConvexStrategy is AccessStrategy {
      * @dev Useful in the case that we want to do multiple withdrawals ahead of a big divestment from the vault. Doing the
      * withdrawals manually (in chunks) will give us less slippage
      */
-    function withdrawAssets(uint256 assets) external onlyRole(STRATEGIST) {
+    function withdrawAssets(uint256 assets) external onlyRole(STRATEGIST_ROLE) {
         _withdraw(assets);
     }
 
-    function claimRewards() external onlyRole(STRATEGIST) {
+    function claimRewards() external onlyRole(STRATEGIST_ROLE) {
         cvxRewarder.getReward();
     }
 
-    function claimAndSellRewards(uint256 minAssetsFromCrv, uint256 minAssetsFromCvx) external onlyRole(STRATEGIST) {
+    function claimAndSellRewards(uint256 minAssetsFromCrv, uint256 minAssetsFromCvx)
+        external
+        onlyRole(STRATEGIST_ROLE)
+    {
         cvxRewarder.getReward();
         // Sell CRV rewards if we have at least MIN_TOKEN_AMT tokens
         // Routing through WETH for high liquidity
