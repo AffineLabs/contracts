@@ -5,15 +5,14 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 import {BaseVault} from "../BaseVault.sol";
-import {BaseStrategy} from "../BaseStrategy.sol";
+import {AccessStrategy} from "../both/AccessStrategy.sol";
 import {ICurvePool, I3CrvMetaPoolZap} from "../interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "../interfaces/convex.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
-contract ConvexStrategy is BaseStrategy, AccessControl {
+contract ConvexStrategy is AccessStrategy {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -55,8 +54,9 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
         bool _isMetaPool,
         ICurvePool _curvePool,
         I3CrvMetaPoolZap _zapper,
-        uint256 _convexPid
-    ) BaseStrategy(_vault) {
+        uint256 _convexPid,
+        address[] memory strategists
+    ) AccessStrategy(_vault, strategists) {
         assetIndex = _assetIndex;
         assetDecimals = ERC20(_vault.asset()).decimals();
         isMetaPool = _isMetaPool;

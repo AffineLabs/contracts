@@ -10,8 +10,9 @@ import {Deploy} from "./Deploy.sol";
 import {L1Vault} from "../ethereum/L1Vault.sol";
 import {ConvexStrategy} from "../ethereum/ConvexStrategy.sol";
 import {ICurvePool, I3CrvMetaPoolZap} from "../interfaces/curve.sol";
-import {IConvexBooster, IConvexRewards} from "../interfaces/convex.sol";
-import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import {IConvexBooster} from "../interfaces/convex.sol";
+
+import {DeployLib} from "../../script/ConvexStrategy.s.sol";
 
 import "forge-std/console.sol";
 
@@ -26,13 +27,17 @@ contract ConvexStratTest is TestPlus {
     ERC20 cvx;
 
     function _deployStrategy() internal virtual {
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+
         strategy = new ConvexStrategy(
             {_vault: vault, 
             _assetIndex: 1,
             _isMetaPool: false, 
             _curvePool: ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
             _zapper: I3CrvMetaPoolZap(address(0)),
-            _convexPid: 100
+            _convexPid: 100,
+            strategists: strategists
             });
     }
 
@@ -169,13 +174,6 @@ contract ConvexStratMIMTest is ConvexStratTest {
     }
 
     function _deployStrategy() internal override {
-        strategy = new ConvexStrategy(
-            {_vault: vault, 
-            _assetIndex: 2,
-            _isMetaPool: true, 
-            _curvePool: ICurvePool(0x5a6A4D54456819380173272A5E8E9B9904BdF41B),
-            _zapper:I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359),
-            _convexPid: 40
-            });
+        strategy = DeployLib.deployMim3Crv(vault);
     }
 }

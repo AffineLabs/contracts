@@ -30,6 +30,11 @@
         "internalType": "uint256",
         "name": "_convexPid",
         "type": "uint256"
+      },
+      {
+        "internalType": "address[]",
+        "name": "strategists",
+        "type": "address[]"
       }
     ],
     "stateMutability": "nonpayable",
@@ -178,6 +183,19 @@
   {
     "inputs": [],
     "name": "STRATEGIST",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "STRATEGIST_ROLE",
     "outputs": [
       {
         "internalType": "bytes32",
