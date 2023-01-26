@@ -84,7 +84,7 @@ contract EmergencyWithdrawalQueue {
             headPtr += 1;
         } catch Error(string memory reason) {
             if (keccak256(bytes(reason)) == keccak256("L2Vault: bad dequeue")) {
-                // do nothing while we wait for the vault to get enough assets
+                // Do nothing while we wait for the vault to get enough assets
                 revert("Ewq: assets pending");
             } else {
                 // The request is invalid for some reason

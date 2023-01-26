@@ -13,6 +13,7 @@ contract L2WormholeRouter is WormholeRouter {
 
     constructor(L2Vault _vault, IWormhole _wormhole) WormholeRouter(_vault, _wormhole) {}
 
+    /// @notice Let L1 know that is should receive `amount` of `asset`.
     function reportFundTransfer(uint256 amount) external payable {
         require(msg.sender == address(vault), "WR: Only vault");
         bytes memory payload = abi.encode(Constants.L2_FUND_TRANSFER_REPORT, amount);
@@ -20,6 +21,7 @@ contract L2WormholeRouter is WormholeRouter {
         wormhole.publishMessage{value: msg.value}(uint32(sequence), payload, consistencyLevel);
     }
 
+    /// @notice Request of `amount` of `asset` from L1Vault.
     function requestFunds(uint256 amount) external payable {
         require(msg.sender == address(vault), "WR: Only vault");
         bytes memory payload = abi.encode(Constants.L2_FUND_REQUEST, amount);
@@ -27,6 +29,7 @@ contract L2WormholeRouter is WormholeRouter {
         wormhole.publishMessage{value: msg.value}(uint32(sequence), payload, consistencyLevel);
     }
 
+    /// @notice Receive `message` confirming transfer from L1Vault.
     function receiveFunds(bytes calldata message) external {
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
@@ -37,6 +40,7 @@ contract L2WormholeRouter is WormholeRouter {
         vault.bridgeEscrow().clearFunds(amount, "");
     }
 
+    /// @notice Receive `message` with L1Vault's tvl data.
     function receiveTVL(bytes calldata message) external {
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
