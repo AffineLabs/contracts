@@ -8,6 +8,14 @@ contract EmergencyWithdrawalQueue {
     /// @notice Address of Alpine vault.
     L2Vault public immutable vault;
 
+    constructor(L2Vault _vault) {
+        vault = _vault;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                              QUEUE STATE
+    //////////////////////////////////////////////////////////////*/
+
     /// @notice Struct representing withdrawalRequest stored in each queue node.
     struct WithdrawalRequest {
         address owner;
@@ -29,11 +37,29 @@ contract EmergencyWithdrawalQueue {
     /// @notice Pointer to tail of the queue.
     uint128 public tailPtr = 0;
 
+    /// @notice current size of the queue
+    function size() public view returns (uint256) {
+        return (tailPtr + 1) - headPtr;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                                  DEBT
+    //////////////////////////////////////////////////////////////*/
+
     /// @notice Debt in shares unit.
     uint256 public shareDebt;
 
+    /// @notice Total debt
+    function totalDebt() public view returns (uint256) {
+        return vault.convertToAssets(shareDebt);
+    }
+
     // @notice User debts in share unit
     mapping(address => uint256) public ownerToDebt;
+
+    /*//////////////////////////////////////////////////////////////
+                                PUSH/POP
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Emitted when we push onto the queue.
@@ -46,20 +72,6 @@ contract EmergencyWithdrawalQueue {
     /// @notice Emitted when we pop a request from the queue. See `Push` for the parameter info
     /// @dev This is only emitted when we successfully burn the user's shares. Invalid requests are skipped.
     event Pop(uint256 indexed pos, address indexed owner, address indexed receiver, uint256 shares);
-
-    constructor(L2Vault _vault) {
-        vault = _vault;
-    }
-
-    /// @notice current size of the queue
-    function size() public view returns (uint256) {
-        return (tailPtr + 1) - headPtr;
-    }
-
-    /// @notice Total debt
-    function totalDebt() public view returns (uint256) {
-        return vault.convertToAssets(shareDebt);
-    }
 
     /// @notice Enqueue user withdrawal requests to the queue.
     function enqueue(address owner, address receiver, uint256 shares) external {
