@@ -72,7 +72,7 @@ contract DeltaNeutralV3Test is TestPlus {
         deal(address(asset), address(strategy), startAssets);
 
         strategy.startPosition(tickLow, tickHigh, slippageBps);
-        // Can't start a new positon
+        // Can't start a new position
         assertFalse(strategy.canStartNewPos());
         // Ntft exists and we own it
         uint256 lpId = strategy.lpId();

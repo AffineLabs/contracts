@@ -13,6 +13,11 @@ contract L1WormholeRouter is WormholeRouter {
 
     constructor(L1Vault _vault, IWormhole _wormhole) WormholeRouter(_vault, _wormhole) {}
 
+    /**
+     * @notice Send tvl message to L2.
+     * @param tvl The current tvl of L1Vault
+     * @param received True if L1Vault received latest transfer from L2.
+     */
     function reportTVL(uint256 tvl, bool received) external payable {
         require(msg.sender == address(vault), "WR: only vault");
         bytes memory payload = abi.encode(Constants.L1_TVL, tvl, received);
@@ -22,6 +27,7 @@ contract L1WormholeRouter is WormholeRouter {
         wormhole.publishMessage{value: msg.value}(uint32(sequence), payload, consistencyLevel);
     }
 
+    /// @notice Let L2 know that is should receive `amount` of `asset`.
     function reportFundTransfer(uint256 amount) external payable {
         require(msg.sender == address(vault), "WR: only vault");
         bytes memory payload = abi.encode(Constants.L1_FUND_TRANSFER_REPORT, amount);
@@ -29,6 +35,11 @@ contract L1WormholeRouter is WormholeRouter {
         wormhole.publishMessage{value: msg.value}(uint32(sequence), payload, consistencyLevel);
     }
 
+    /**
+     * @notice Receive message confirming transfer from L2Vault.
+     * @param message The wormhole VAA.
+     * @param data The exitProof for the Polygon Pos Bridge RootChainManager.
+     */
     function receiveFunds(bytes calldata message, bytes calldata data) external {
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
@@ -40,6 +51,7 @@ contract L1WormholeRouter is WormholeRouter {
         vault.bridgeEscrow().clearFunds(amount, data);
     }
 
+    /// @notice Receive `message` with a request for funds from L2.
     function receiveFundRequest(bytes calldata message) external {
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);

@@ -11,7 +11,9 @@ import {L1Vault} from "./L1Vault.sol";
 contract L1BridgeEscrow is BridgeEscrow {
     using SafeTransferLib for ERC20;
 
+    /// @notice The L1Vault.
     L1Vault public immutable vault;
+    /// @notice Polygon Pos Bridge manager. See https://github.com/maticnetwork/pos-portal/blob/41d45f7eff5b298941a2547afa0073a6c36b2b9c/contracts/root/RootChainManager/RootChainManager.sol
     IRootChainManager public immutable rootChainManager;
 
     constructor(L1Vault _vault, IRootChainManager _manager) BridgeEscrow(_vault) {

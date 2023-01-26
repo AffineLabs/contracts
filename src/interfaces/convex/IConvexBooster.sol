@@ -13,6 +13,7 @@ interface IConvexBooster {
         bool shutdown;
     }
 
+    function poolLength() external returns (uint256);
     function poolInfo(uint256 _pid) external returns (PoolInfo memory);
     function depositAll(uint256 _pid, bool _stake) external returns (bool);
     function crv() external returns (address);

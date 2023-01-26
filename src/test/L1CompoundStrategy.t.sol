@@ -113,7 +113,7 @@ contract CompoundStratTest is TestPlus {
         investHalfOfVaultAssetInCompund();
 
         uint256 curretActualBalanceOfUnderlying = strategy.cToken().balanceOfUnderlying(address(strategy));
-        // Simulate decrese in cUSDC price.
+        // Simulate decrease in cUSDC price.
         vm.mockCall(
             cTokenAddr,
             abi.encodeWithSelector(ICToken.balanceOfUnderlying.selector),

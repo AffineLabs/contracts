@@ -20,13 +20,6 @@ import {L1CompoundStrategy} from "../src/ethereum/L1CompoundStrategy.sol";
 import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
-import {CurveStrategy} from "../src/ethereum/CurveStrategy.sol";
-import {I3CrvMetaPoolZap, ILiquidityGauge, ICurvePool, IMinter} from "../src/interfaces/curve.sol";
-
-import {ConvexStrategy} from "../src/ethereum/ConvexStrategy.sol";
-import {ICurvePool} from "../src/interfaces/curve.sol";
-import {IConvexBooster, IConvexRewards} from "../src/interfaces/convex.sol";
-
 import {DeltaNeutralLp} from "../src/both/DeltaNeutralLp.sol";
 import {AggregatorV3Interface} from "../src/interfaces/AggregatorV3Interface.sol";
 import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol";
@@ -45,29 +38,6 @@ contract Deploy is Script, Base {
         console.log("about to log bytes salt");
         console.logBytes(abi.encodePacked(salt));
         vm.writeFileBinary(fileName, abi.encodePacked(salt));
-    }
-
-    function _deployStrategies(L1Vault vault) internal {
-        // Compound strat
-        L1CompoundStrategy comp = new L1CompoundStrategy(vault, ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563));
-        require(address(comp.asset()) == vault.asset());
-
-        // Curve Strat
-        CurveStrategy curve = new CurveStrategy(vault, 
-                         ERC20(0x5a6A4D54456819380173272A5E8E9B9904BdF41B),
-                         I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359), 
-                         2,
-                         ILiquidityGauge(0xd8b712d29381748dB89c36BCa0138d7c75866ddF)
-                         );
-        require(address(curve.asset()) == vault.asset());
-
-        // Convex strat
-        ConvexStrategy cvx = new ConvexStrategy(
-           vault, 
-            ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
-            100,
-            IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31));
-        require(address(cvx.asset()) == vault.asset());
     }
 
     function run() external {
@@ -126,7 +96,6 @@ contract Deploy is Script, Base {
         require(router.vault() == vault);
         require(router.wormhole() == wormhole);
 
-        if (!testnet) _deployStrategies(vault);
         vm.stopBroadcast();
     }
 }
