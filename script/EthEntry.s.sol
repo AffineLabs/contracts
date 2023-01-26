@@ -7,10 +7,18 @@ import "forge-std/Script.sol";
 
 import {Base} from "./Base.sol";
 import {Vault} from "../src/both/Vault.sol";
+import {BaseVault} from "../src/BaseVault.sol";
+import {DeployLib} from "./ConvexStrategy.s.sol";
 
 /* solhint-disable reason-string */
 
 contract Deploy is Script, Base {
+    function deployStrategies() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+        DeployLib.deployMim3Crv(BaseVault(0x78Bb94Feab383ccEd39766a7d6CF31dED177Ad0c));
+    }
+
     function run() external {
         // Get config info
         bool testnet = vm.envBool("TEST");
