@@ -18,7 +18,7 @@ import {AffineGovernable} from "../AffineGovernable.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 import {Dollar, DollarMath} from "../libs/DollarMath.sol";
-import {DetailedShare} from "./Detailed.sol";
+import {DetailedShare} from "../both/Detailed.sol";
 
 contract TwoAssetBasket is
     ERC20Upgradeable,
@@ -75,11 +75,11 @@ contract TwoAssetBasket is
         return "1";
     }
 
-    function _msgSender() internal view override (ContextUpgradeable, BaseRelayRecipient) returns (address) {
+    function _msgSender() internal view override(ContextUpgradeable, BaseRelayRecipient) returns (address) {
         return BaseRelayRecipient._msgSender();
     }
 
-    function _msgData() internal view override (ContextUpgradeable, BaseRelayRecipient) returns (bytes calldata) {
+    function _msgData() internal view override(ContextUpgradeable, BaseRelayRecipient) returns (bytes calldata) {
         return BaseRelayRecipient._msgData();
     }
 

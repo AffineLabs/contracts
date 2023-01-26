@@ -6,7 +6,6 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {SlippageUtils} from "../libs/SlippageUtils.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
@@ -18,10 +17,10 @@ import {
 } from "../interfaces/aave.sol";
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 import {BaseVault} from "../BaseVault.sol";
-import {BaseStrategy} from "../BaseStrategy.sol";
+import {AccessStrategy} from "./AccessStrategy.sol";
 import {IMasterChef} from "../interfaces/sushiswap/IMasterChef.sol";
 
-contract DeltaNeutralLp is BaseStrategy, AccessControl {
+contract DeltaNeutralLp is AccessStrategy {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
     using SlippageUtils for uint256;
@@ -36,11 +35,9 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         IMasterChef _masterChef,
         uint256 _masterChefPid,
         bool _useMasterChefV2,
-        ERC20 _sushiToken
-    ) BaseStrategy(_vault) {
-        _grantRole(DEFAULT_ADMIN_ROLE, vault.governance());
-        _grantRole(STRATEGIST_ROLE, vault.governance());
-
+        ERC20 _sushiToken,
+        address[] memory strategists
+    ) AccessStrategy(_vault, strategists) {
         canStartNewPos = true;
         longPercentage = _longPct;
 
@@ -74,8 +71,6 @@ contract DeltaNeutralLp is BaseStrategy, AccessControl {
         // To stake lp tokens
         abPair.safeApprove(address(_masterChef), type(uint256).max);
     }
-
-    bytes32 public constant STRATEGIST_ROLE = keccak256("STRATEGIST");
 
     /// @notice Get price of WETH in USDC (borrowPrice) from chainlink. Has 8 decimals.
     function _chainlinkPriceOfBorrow() internal view returns (uint256 borrowPrice) {

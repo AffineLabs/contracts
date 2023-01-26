@@ -8,7 +8,6 @@ artifacts
 typechain
 hh-cache
 .openzeppelin/unknown-*.json
-abi/
 
 # Foundry
 out

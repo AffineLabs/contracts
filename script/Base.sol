@@ -36,7 +36,7 @@ abstract contract Base is Script {
         address wormhole;
     }
 
-    function _getConfigJson(bool mainnet, bool layer1) internal returns (bytes memory) {
+    function _getConfigJson(bool mainnet, bool layer1) internal view returns (bytes memory) {
         string memory root = vm.projectRoot();
         string memory path = string.concat(root, "/script/config.json");
         string memory allJson = vm.readFile(path);

@@ -121,14 +121,10 @@ async function _ethDefender(forking: boolean, testnet: boolean) {
   await addToAddressBookAndDefender(ethNetwork, "EthAlpSave", "L1Vault", l1VaultAddr);
   await addToAddressBookAndDefender(ethNetwork, "EthWormholeRouter", "L1WormholeRouter", routerAddr, [], false);
 
-  // Skip one tx (the deployment implementation)
-  const ethEarnAddr = txs[5].contractAddress;
-  await addToAddressBookAndDefender(ethNetwork, "EthUsdcEarn", "Vault", ethEarnAddr, [], true);
-
   if (!testnet) {
-    const compAddr = txs[6].contractAddress;
-    const curveAddr = txs[7].contractAddress;
-    const cvxAddr = txs[8].contractAddress;
+    const compAddr = txs[4].contractAddress;
+    const curveAddr = txs[5].contractAddress;
+    const cvxAddr = txs[6].contractAddress;
 
     await addToAddressBookAndDefender(ethNetwork, "L1CompoundStrategy", "L1CompoundStrategy", compAddr, [], false);
     await addToAddressBookAndDefender(ethNetwork, "CurveStrategy", "CurveStrategy", curveAddr, [], true);
@@ -174,12 +170,6 @@ async function _polygonDefender(forking: boolean, testnet: boolean) {
   if (!testnet) {
     const aaveStratAddr = txs[9].contractAddress;
     await addToAddressBookAndDefender(network, "PolygonAAVEStrategy", "L2AAVEStrategy", aaveStratAddr, [], false);
-
-    const sslpAddr = txs[10].contractAddress;
-    await addToAddressBookAndDefender(network, "PolygonSSLPSushiSwap", "DeltaNeutralLp", sslpAddr, [], true);
-
-    const sslpV3Addr = txs[11].contractAddress;
-    await addToAddressBookAndDefender(network, "PolygonSSLPUniV3", "DeltaNeutralLpV3", sslpV3Addr, [], true);
   }
 }
 

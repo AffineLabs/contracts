@@ -7,12 +7,8 @@ import { HardhatUserConfig, NetworkUserConfig } from "hardhat/types";
 import "@typechain/hardhat";
 import "@nomiclabs/hardhat-ethers";
 
-import "@nomiclabs/hardhat-etherscan";
 import "hardhat-change-network";
 import "hardhat-abi-exporter";
-import "@primitivefi/hardhat-dodoc";
-import "@openzeppelin/hardhat-upgrades";
-import "@openzeppelin/hardhat-defender";
 
 import "./tasks/accounts";
 import "./tasks/unblock";
@@ -98,14 +94,6 @@ const config: HardhatUserConfig = {
       },
     },
   },
-  etherscan: {
-    apiKey: {
-      mainnet: ETHERSCAN_API_KEY,
-      goerli: ETHERSCAN_API_KEY,
-      polygon: POLYGONSCAN_API_KEY,
-      polygonMumbai: POLYGONSCAN_API_KEY,
-    },
-  },
 
   typechain: {
     outDir: "typechain",
@@ -122,14 +110,6 @@ const config: HardhatUserConfig = {
     spacing: 2,
     // We use both Openzeppelin and solmate ERC20, so exporting abi will throw "duplicate output destination" error
     except: [":ERC20$", ":ILendingPoolAddressesProviderRegistry$"],
-  },
-  dodoc: {
-    include: ["src"],
-    runOnCompile: false,
-  },
-  defender: {
-    apiKey: process.env.DEFENDER_API_KEY || "",
-    apiSecret: process.env.DEFENDER_API_SECRET || "",
   },
 };
 

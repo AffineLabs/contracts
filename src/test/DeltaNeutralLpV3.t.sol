@@ -8,6 +8,7 @@ import "forge-std/Components.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 import {L2Vault} from "../polygon/L2Vault.sol";
 import {DeltaNeutralLpV3} from "../both/DeltaNeutralLpV3.sol";
@@ -23,10 +24,10 @@ contract DeltaNeutralV3Test is TestPlus {
     ERC20 borrowAsset;
     int24 tickLow;
     int24 tickHigh;
-    uint256 slippageBps = 500;
+    uint256 slippageBps = 1000;
 
     function _selectFork() internal virtual {
-        vm.createSelectFork("polygon", 31_824_532);
+        vm.createSelectFork("polygon", 38_008_645);
     }
 
     function _usdc() internal virtual returns (address) {
@@ -144,14 +145,44 @@ contract DeltaNeutralV3Test is TestPlus {
         assertEq(strategy.totalLockedValue(), 0);
         assertApproxEqRel(asset.balanceOf(address(vault)), 1000e6, 0.02e18);
     }
+
+    function testFeeView() public {
+        deal(address(asset), address(strategy), 1000e6);
+        strategy.startPosition(tickLow, tickHigh, slippageBps);
+
+        (uint256 assetsFee, uint256 borrowsFee) = strategy.positionFees();
+        console.log("assetsFee: %s, borrowsFee: %s", assetsFee, borrowsFee);
+        assertTrue(assetsFee == 0 && borrowsFee == 0);
+
+        deal(address(asset), address(this), 1000e6);
+        asset.approve(address(strategy.router()), type(uint256).max);
+
+        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
+            tokenIn: address(asset),
+            tokenOut: address(borrowAsset),
+            fee: strategy.poolFee(),
+            recipient: address(this),
+            deadline: block.timestamp,
+            amountIn: 1000e6,
+            amountOutMinimum: 0,
+            sqrtPriceLimitX96: 0
+        });
+
+        strategy.router().exactInputSingle(params);
+
+        (assetsFee, borrowsFee) = strategy.positionFees();
+        console.log("assetsFee: %s, borrowsFee: %s", assetsFee, borrowsFee);
+        assertTrue(assetsFee > 0);
+        assertTrue(borrowsFee == 0);
+    }
 }
 
 contract DeltaNeutralV3EthTest is DeltaNeutralV3Test {
     function _selectFork() internal override {
-        vm.createSelectFork("ethereum", 16_149_218);
+        vm.createSelectFork("ethereum", 16_394_906);
     }
 
-    function _usdc() internal override returns (address) {
+    function _usdc() internal pure override returns (address) {
         return 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     }
 

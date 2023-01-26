@@ -54,6 +54,10 @@ solc-select install 0.8.16
 solc-select use 0.8.16
 ```
 
+### Husky
+
+Install pre-commit hooks: `yarn husky install`
+
 ## Usage
 
 Create a `.env` file in the root of this repo. It should contain the same variables seen in `.env.example`.
@@ -113,4 +117,4 @@ Add -b to actually deploy the contracts
 
 ## Documentation
 
-You can find documentation (auto-generated from Natspec comments) in the `docs/` folder. You'll need to run `yarn hardhat dodoc` first to build the docs.
+You can find documentation in the `docs/` folder.
