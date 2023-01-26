@@ -31,16 +31,20 @@ contract TwoAssetBasket is
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    // The token which we take in to buy btc and weth, e.g. USDC
+    /// @notice The asset which we take in to buy btc and weth, e.g. USDC
     ERC20 public asset;
+    /// @notice The wrapped bitcoin address.
     ERC20 public btc;
+    /// @notice The wrapped eth address
     ERC20 public weth;
 
+    /// @notice [r1, r2] is the ratio of btcoin to ethereum
     uint256[2] public ratios;
 
+    /// @notice The uniswap router.
     IUniswapV2Router02 public constant ROUTER = IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
 
-    // These must be USD price feeds for btc and weth
+    /// @notice USD price feeds for btc and weth
     mapping(ERC20 => AggregatorV3Interface) public tokenToOracle;
 
     function initialize(
@@ -97,12 +101,12 @@ contract TwoAssetBasket is
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
-    /// @notice Pause the contract
+    /// @notice Pause the contract.
     function pause() external onlyGovernance {
         _pause();
     }
 
-    /// @notice Unpause the contract
+    /// @notice Unpause the contract.
     function unpause() external onlyGovernance {
         _unpause();
     }
@@ -116,15 +120,18 @@ contract TwoAssetBasket is
         address indexed caller, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
     );
 
+    /// @notice 4626 style deposits
     function deposit(uint256 assets, address receiver) external returns (uint256 shares) {
         shares = _deposit(assets, receiver);
     }
 
+    /// @notice 4626 style deposits with slippage protection.
     function deposit(uint256 assets, address receiver, uint256 minSharesOut) external returns (uint256 shares) {
         shares = _deposit(assets, receiver);
         require(shares > minSharesOut, "TAB: min shares");
     }
 
+    /// @dev deposit helper. Converts `asset` into apporiate amount of
     function _deposit(uint256 assets, address receiver) internal whenNotPaused returns (uint256 shares) {
         // Get current amounts of btc/eth (in dollars) => 8 decimals
         uint256 vaultDollars = Dollar.unwrap(valueOfVault());
@@ -173,6 +180,7 @@ contract TwoAssetBasket is
         _mint(receiver, shares);
     }
 
+    /// @notice 4626 style withdrawals.
     function withdraw(uint256 assets, address receiver, address owner, uint256 maxSharesBurned)
         external
         returns (uint256 shares)
@@ -181,10 +189,12 @@ contract TwoAssetBasket is
         require(shares < maxSharesBurned, "TAB: max shares");
     }
 
+    /// @notice 4626 style withdrawals with slippage protection.
     function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares) {
         shares = _withdraw(assets, receiver, owner);
     }
 
+    /// @notice Withdraw helper.
     function _withdraw(uint256 assets, address receiver, address owner)
         internal
         whenNotPaused
@@ -221,6 +231,7 @@ contract TwoAssetBasket is
         asset.safeTransfer(receiver, assetsReceived);
     }
 
+    /// @notice 4626 style redemptions with slippage protection.
     function redeem(uint256 shares, address receiver, address owner, uint256 minAssetsOut)
         external
         returns (uint256 assets)
@@ -229,10 +240,12 @@ contract TwoAssetBasket is
         require(assets > minAssetsOut, "TAB: min assets");
     }
 
+    /// @notice 4626 style redemptions.
     function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets) {
         assets = _redeem(shares, receiver, owner);
     }
 
+    /// @dev Redemption helper.
     function _redeem(uint256 shares, address receiver, address owner) internal whenNotPaused returns (uint256 assets) {
         // Convert shares to dollar amounts
 
@@ -255,6 +268,7 @@ contract TwoAssetBasket is
         asset.safeTransfer(receiver, assets);
     }
 
+    /// @dev Sell wbtc/weth.
     function _sell(Dollar dollarsFromBtc, Dollar dollarsFromEth) internal returns (uint256 assetsReceived) {
         if (Dollar.unwrap(dollarsFromBtc) > 0) {
             uint256[] memory btcAmounts = ROUTER.swapExactTokensForTokens({
@@ -289,6 +303,7 @@ contract TwoAssetBasket is
     // Dollars always have 8 decimals
     using DollarMath for Dollar;
 
+    /// @dev Get chainlink price of usdc, wbtc, weth.
     function _getTokenPrice(ERC20 token) internal view returns (Dollar) {
         // NOTE: Chainlink price feeds report prices of the "base unit" of your token. So
         // we receive the price of 1 ether (1e18 wei). The price also comes with its own decimals. E.g. a price
@@ -303,21 +318,23 @@ contract TwoAssetBasket is
         return Dollar.wrap(uint256(price));
     }
 
+    /// @notice Total dollar value of vault.
     function valueOfVault() public view returns (Dollar) {
         (Dollar btcDollars, Dollar ethDollars) = _valueOfVaultComponents();
         return btcDollars.add(ethDollars);
     }
 
+    /// @dev Convert a token amount into a dollar amount.
     function _valueOfToken(ERC20 token, uint256 amount) public view returns (Dollar) {
         // Convert tokens to dollars using as many decimal places as the price feed gives us
         // e.g. Say ether is $1. If the price feed uses 8 decimals then a price of $1 is 1e8.
         // If we have 2 ether then return 2 * 1e8 as the dollar value of our balance
-
         uint256 tokenPrice = Dollar.unwrap(_getTokenPrice(token));
         uint256 dollarValue = (amount * tokenPrice) / (10 ** token.decimals());
         return Dollar.wrap(dollarValue);
     }
 
+    /// @dev Dollar value held in each component asset (i.e. wbtc and weth).
     function _valueOfVaultComponents() public view returns (Dollar, Dollar) {
         uint256 btcBal = btc.balanceOf(address(this));
         uint256 ethBal = weth.balanceOf(address(this));
@@ -327,6 +344,7 @@ contract TwoAssetBasket is
         return (btcDollars, ethDollars);
     }
 
+    /// @dev Convert dollar amounts to token amounts.
     function _tokensFromDollars(ERC20 token, Dollar amountDollars) internal view returns (uint256) {
         // Convert dollars to tokens with token's amount of decimals
         uint256 oneToken = 10 ** token.decimals();
@@ -431,6 +449,7 @@ contract TwoAssetBasket is
         return (Dollar.wrap(dollarsFromBtc), Dollar.wrap(assetDollars - dollarsFromBtc));
     }
 
+    /// @dev Paths used when buying/selling weth.
     function _pathEth(bool buy) internal view returns (address[] memory path) {
         path = new address[](2);
         if (buy) {
@@ -442,6 +461,7 @@ contract TwoAssetBasket is
         }
     }
 
+    /// @dev Paths used when buying/selling wbtc.
     function _pathBtc(bool buy) internal view returns (address[] memory path) {
         path = new address[](3);
         if (buy) {
