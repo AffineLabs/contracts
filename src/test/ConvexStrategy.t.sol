@@ -9,9 +9,12 @@ import {Deploy} from "./Deploy.sol";
 
 import {L1Vault} from "../ethereum/L1Vault.sol";
 import {ConvexStrategy} from "../ethereum/ConvexStrategy.sol";
-import {ICurvePool} from "../interfaces/curve.sol";
-import {IConvexBooster, IConvexRewards} from "../interfaces/convex.sol";
-import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import {ICurvePool, I3CrvMetaPoolZap} from "../interfaces/curve.sol";
+import {IConvexBooster} from "../interfaces/convex.sol";
+
+import {DeployLib} from "../../script/ConvexStrategy.s.sol";
+
+import "forge-std/console.sol";
 
 /// @notice Test convex FRAX-USDC strategy
 contract ConvexStratTest is TestPlus {
@@ -23,25 +26,37 @@ contract ConvexStratTest is TestPlus {
     ERC20 crv;
     ERC20 cvx;
 
+    function _deployStrategy() internal virtual {
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+
+        strategy = new ConvexStrategy(
+            {_vault: vault, 
+            _assetIndex: 1,
+            _isMetaPool: false, 
+            _curvePool: ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
+            _zapper: I3CrvMetaPoolZap(address(0)),
+            _convexPid: 100,
+            strategists: strategists
+            });
+    }
+
     function setUp() public {
         vm.createSelectFork("ethereum", 15_624_364);
         vault = deployL1Vault();
 
-        // make vault token equal to the L1 usdc address
+        // Make vault asset equal to usdc
         vm.store(
             address(vault),
             bytes32(stdstore.target(address(vault)).sig("asset()").find()),
             bytes32(uint256(uint160(address(usdc))))
         );
-        strategy = new ConvexStrategy(
-            vault, 
-            ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
-            100,
-            IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31));
+
+        _deployStrategy();
 
         // To be able to call functions restricted to strategist role.
         vm.startPrank(vault.governance());
-        strategy.grantRole(strategy.STRATEGIST(), address(this));
+        strategy.grantRole(strategy.STRATEGIST_ROLE(), address(this));
         vm.stopPrank();
 
         crv = strategy.CRV();
@@ -106,7 +121,7 @@ contract ConvexStratTest is TestPlus {
         strategy.withdrawAssets(assetsToDivest);
     }
 
-    /// @notice Test claiming rewards work.
+    /// @notice Test claiming rewards.
     function testRewards() public {
         deal(address(usdc), address(strategy), 1e12);
         strategy.deposit(1e12, 0);
@@ -118,7 +133,7 @@ contract ConvexStratTest is TestPlus {
         assertGt(strategy.CRV().balanceOf(address(strategy)), 0);
     }
 
-    /// @notice Test that selling reward token works.
+    /// @notice Test selling reward tokens.
     function testCanSellRewards() public {
         deal(address(strategy.CRV()), address(strategy), strategy.MIN_TOKEN_AMT() * 10);
         deal(address(strategy.CVX()), address(strategy), strategy.MIN_TOKEN_AMT() * 10);
@@ -132,7 +147,7 @@ contract ConvexStratTest is TestPlus {
         assertEq(strategy.CVX().balanceOf(address(strategy)), 0);
     }
 
-    /// @notice Fuzz test of make sure that tvl calculation works in random scenarios.
+    /// @notice Fuzz test of tvl function.
     function testTVLFuzz(uint64 lpTokens, uint64 cvxLpTokens) public {
         deal(address(strategy.curveLpToken()), address(strategy), lpTokens);
         deal(address(strategy.cvxRewarder()), address(strategy), cvxLpTokens);
@@ -140,5 +155,25 @@ contract ConvexStratTest is TestPlus {
         uint256 tvl = strategy.totalLockedValue();
         if (tvl < 100) return;
         assertApproxEqRel(tvl, (uint256(lpTokens) + cvxLpTokens) / 1e12, 0.02e18);
+    }
+}
+
+contract ConvexStratMIMTest is ConvexStratTest {
+    // Make this public and run it in order to get convex pool id for a given lp token
+    function testBooster() internal {
+        IConvexBooster booster = strategy.convexBooster();
+        uint256 length = booster.poolLength();
+        console.log("length: ", length);
+
+        for (uint256 i = 0; i < length; ++i) {
+            IConvexBooster.PoolInfo memory poolInfo = booster.poolInfo(i);
+            if (poolInfo.lptoken == 0x5a6A4D54456819380173272A5E8E9B9904BdF41B) {
+                console.log("pid: ", i);
+            }
+        }
+    }
+
+    function _deployStrategy() internal override {
+        strategy = DeployLib.deployMim3Crv(vault);
     }
 }

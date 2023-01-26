@@ -5,20 +5,20 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 import {BaseVault} from "../BaseVault.sol";
-import {BaseStrategy} from "../BaseStrategy.sol";
-import {ICurvePool} from "../interfaces/curve.sol";
+import {AccessStrategy} from "../both/AccessStrategy.sol";
+import {ICurvePool, I3CrvMetaPoolZap} from "../interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "../interfaces/convex.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
-contract ConvexStrategy is BaseStrategy, AccessControl {
+contract ConvexStrategy is AccessStrategy {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    // Asset index of USDC during deposit and withdraw.
-    int128 public constant ASSET_INDEX = 1;
+    /// @notice Index assigned to `asset` by curve. Used during deposit/withdraw.
+    int128 public immutable assetIndex;
+    uint8 immutable assetDecimals;
     uint256 public constant MIN_TOKEN_AMT = 0.1e18; // 0.1 CRV or CVX
     address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
@@ -26,11 +26,18 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
     /// @dev https://curve.readthedocs.io/exchange-deposits.html#curve-stableswap-exchange-deposit-contracts
     ICurvePool public immutable curvePool;
     ERC20 public immutable curveLpToken;
+    bool immutable isMetaPool;
+    I3CrvMetaPoolZap public immutable zapper;
+    /**
+     * @notice The minimum amount of lp tokens to count towards tvl or be liquidated during withdrawals.
+     * @dev `calc_withdraw_one_coin` and `remove_liquidity_one_coin` may fail when using amounts smaller than this.
+     */
+    uint256 constant MIN_LP_AMOUNT = 100;
 
     /// @notice Id of the curve pool (used by convex booster).
     uint256 public immutable convexPid;
     // Convex booster contract address. Used for depositing curve lp tokens.
-    IConvexBooster public immutable convexBooster;
+    IConvexBooster public constant convexBooster = IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
     /// @notice BaseRewardPool address
     IConvexRewards public immutable cvxRewarder;
 
@@ -38,39 +45,59 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
     ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
     ERC20 public constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
 
-    /// @notice Role with authority to manage strategies.
-    bytes32 public constant STRATEGIST = keccak256("STRATEGIST");
-
-    constructor(BaseVault _vault, ICurvePool _curvePool, uint256 _convexPid, IConvexBooster _convexBooster)
-        BaseStrategy(_vault)
-    {
+    constructor(
+        BaseVault _vault,
+        int128 _assetIndex,
+        bool _isMetaPool,
+        ICurvePool _curvePool,
+        I3CrvMetaPoolZap _zapper,
+        uint256 _convexPid,
+        address[] memory strategists
+    ) AccessStrategy(_vault, strategists) {
+        assetIndex = _assetIndex;
+        assetDecimals = ERC20(_vault.asset()).decimals();
+        isMetaPool = _isMetaPool;
         curvePool = _curvePool;
+        zapper = _zapper;
         convexPid = _convexPid;
-        convexBooster = _convexBooster;
+        if (isMetaPool) require(address(zapper) != address(0), "Zapper required");
 
         IConvexBooster.PoolInfo memory poolInfo = convexBooster.poolInfo(convexPid);
         cvxRewarder = IConvexRewards(poolInfo.crvRewards);
         curveLpToken = ERC20(poolInfo.lptoken);
 
-        // For deposing `asset` into curv and depositing curve lp tokens into convex
-        asset.safeApprove(address(curvePool), type(uint256).max);
+        // Curve Approvals (minting/burning lp tokens)
+        if (isMetaPool) {
+            asset.safeApprove(address(zapper), type(uint256).max);
+            curveLpToken.safeApprove(address(zapper), type(uint256).max);
+        } else {
+            asset.safeApprove(address(curvePool), type(uint256).max);
+        }
+
+        // Convex Approvals
         curveLpToken.safeApprove(address(convexBooster), type(uint256).max);
 
         // For trading CVX and CRV
         CRV.safeApprove(address(ROUTER), type(uint256).max);
         CVX.safeApprove(address(ROUTER), type(uint256).max);
-
-        // Grant roles
-        _grantRole(DEFAULT_ADMIN_ROLE, vault.governance());
-        _grantRole(STRATEGIST, vault.governance());
     }
 
-    function deposit(uint256 assets, uint256 minLpTokens) external onlyRole(STRATEGIST) {
-        // e.g. in a FRAX-USDC stableswap pool, the 0 index is for FRAX and the index 1 is for USDC.
-        uint256[2] memory depositAmounts = [uint256(0), 0];
-        depositAmounts[uint256(uint128(ASSET_INDEX))] = assets;
-        curvePool.add_liquidity({depositAmounts: depositAmounts, minMintAmount: minLpTokens});
+    function deposit(uint256 assets, uint256 minLpTokens) external onlyRole(STRATEGIST_ROLE) {
+        _depositIntoCurve(assets, minLpTokens);
         convexBooster.depositAll(convexPid, true);
+    }
+
+    function _depositIntoCurve(uint256 assets, uint256 minLpTokens) internal {
+        // E.g. in a FRAX-USDC stableswap pool, the 0 index is for FRAX and the index 1 is for USDC.
+        if (isMetaPool) {
+            uint256[4] memory depositAmounts = [uint256(0), 0, 0, 0];
+            depositAmounts[uint256(uint128(assetIndex))] = assets;
+            zapper.add_liquidity({pool: address(curvePool), depositAmounts: depositAmounts, minMintAmount: minLpTokens});
+        } else {
+            uint256[2] memory depositAmounts = [uint256(0), 0];
+            depositAmounts[uint256(uint128(assetIndex))] = assets;
+            curvePool.add_liquidity({depositAmounts: depositAmounts, minMintAmount: minLpTokens});
+        }
     }
 
     function _divest(uint256 assets) internal override returns (uint256) {
@@ -86,15 +113,18 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
      * @dev Useful in the case that we want to do multiple withdrawals ahead of a big divestment from the vault. Doing the
      * withdrawals manually (in chunks) will give us less slippage
      */
-    function withdrawAssets(uint256 assets) external onlyRole(STRATEGIST) {
+    function withdrawAssets(uint256 assets) external onlyRole(STRATEGIST_ROLE) {
         _withdraw(assets);
     }
 
-    function claimRewards() external onlyRole(STRATEGIST) {
+    function claimRewards() external onlyRole(STRATEGIST_ROLE) {
         cvxRewarder.getReward();
     }
 
-    function claimAndSellRewards(uint256 minAssetsFromCrv, uint256 minAssetsFromCvx) external onlyRole(STRATEGIST) {
+    function claimAndSellRewards(uint256 minAssetsFromCrv, uint256 minAssetsFromCvx)
+        external
+        onlyRole(STRATEGIST_ROLE)
+    {
         cvxRewarder.getReward();
         // Sell CRV rewards if we have at least MIN_TOKEN_AMT tokens
         // Routing through WETH for high liquidity
@@ -135,9 +165,7 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
     /// @notice Try to increase balance of `asset` to `assets`.
     function _withdraw(uint256 assets) internal {
         uint256 currAssets = asset.balanceOf(address(this));
-        if (currAssets >= assets) {
-            return;
-        }
+        if (currAssets >= assets) return;
 
         // price * (num of lp tokens) = dollars
         uint256 currLpBal = curveLpToken.balanceOf(address(this));
@@ -146,13 +174,13 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
         uint256 dollarsOfLp = lpTokenBal.mulWadDown(price);
 
         // Get the amount of dollars to remove from vault, and the equivalent amount of lp token.
-        // We assume that the  vault `asset` is $1.00 (i.e. we assume that USDC is 1.00). Convert to 18 decimals.
-        uint256 dollarsOfAssetsToDivest = Math.min((assets - currAssets) * 1e12, dollarsOfLp);
+        // We assume that the  vault `asset` is $1.00 (e.g. we assume that USDC is 1.00). Convert to 18 decimals.
+        uint256 dollarsOfAssetsToDivest = Math.min(_giveDecimals(assets - currAssets, assetDecimals, 18), dollarsOfLp);
         uint256 lpTokensToDivest = dollarsOfAssetsToDivest.divWadDown(price);
 
         // Minimum amount of dollars received is 99% of dollar value of lp shares (trading fees, slippage)
         // Convert back to `asset` decimals.
-        uint256 minAssetsReceived = dollarsOfAssetsToDivest.mulDivDown(99, 100) / 1e12;
+        uint256 minAssetsReceived = _giveDecimals(dollarsOfAssetsToDivest.mulDivDown(99, 100), 18, assetDecimals);
         // Increase the cap on lp tokens by 1% to account for curve's trading fees
         uint256 maxLpTokensToBurn = Math.min(lpTokenBal, lpTokensToDivest.mulDivDown(101, 100));
 
@@ -160,13 +188,45 @@ contract ConvexStrategy is BaseStrategy, AccessControl {
         if (maxLpTokensToBurn > currLpBal) {
             cvxRewarder.withdrawAndUnwrap(maxLpTokensToBurn - currLpBal, true);
         }
+        _withdrawFromCurve(maxLpTokensToBurn, minAssetsReceived);
+    }
 
-        curvePool.remove_liquidity_one_coin(curveLpToken.balanceOf(address(this)), ASSET_INDEX, minAssetsReceived);
+    function _withdrawFromCurve(uint256 maxLpTokensToBurn, uint256 minAssetsReceived) internal {
+        if (maxLpTokensToBurn < MIN_LP_AMOUNT) return;
+
+        if (isMetaPool) {
+            zapper.remove_liquidity_one_coin({
+                pool: address(curvePool),
+                burnAmount: maxLpTokensToBurn,
+                index: assetIndex,
+                minAmount: minAssetsReceived
+            });
+        } else {
+            curvePool.remove_liquidity_one_coin(curveLpToken.balanceOf(address(this)), assetIndex, minAssetsReceived);
+        }
+    }
+
+    function _giveDecimals(uint256 number, uint256 inDecimals, uint256 outDecimals) internal pure returns (uint256) {
+        if (inDecimals > outDecimals) {
+            number = number / (10 ** (inDecimals - outDecimals));
+        }
+        if (inDecimals < outDecimals) {
+            number = number * (10 ** (outDecimals - inDecimals));
+        }
+        return number;
     }
 
     function totalLockedValue() external override returns (uint256) {
         uint256 lpTokenBal = curveLpToken.balanceOf(address(this)) + cvxRewarder.balanceOf(address(this));
-        uint256 assetsLp = curvePool.calc_withdraw_one_coin(lpTokenBal, ASSET_INDEX);
+        uint256 assetsLp;
+        if (lpTokenBal < MIN_LP_AMOUNT) return balanceOfAsset();
+
+        if (isMetaPool) {
+            assetsLp =
+                zapper.calc_withdraw_one_coin({pool: address(curvePool), tokenAmount: lpTokenBal, index: assetIndex});
+        } else {
+            assetsLp = curvePool.calc_withdraw_one_coin(lpTokenBal, assetIndex);
+        }
         return balanceOfAsset() + assetsLp;
     }
 }
