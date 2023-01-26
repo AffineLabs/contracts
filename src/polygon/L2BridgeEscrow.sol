@@ -14,12 +14,14 @@ interface IChildERC20 {
 contract L2BridgeEscrow is BridgeEscrow {
     using SafeTransferLib for ERC20;
 
+    /// @notice The L2Vault.
     L2Vault public immutable vault;
 
     constructor(L2Vault _vault) BridgeEscrow(_vault) {
         vault = _vault;
     }
 
+    /// @notice Send `amount` of `asset` to L1BridgeEscrow.
     function withdraw(uint256 amount) external {
         require(msg.sender == address(vault), "BE: Only vault");
         IChildERC20(address(asset)).withdraw(amount);
