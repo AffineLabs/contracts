@@ -105,7 +105,7 @@ contract L2Vault is
                              ERC4626 BASICS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice See {IERC4626-asset}
+    /// @inheritdoc BaseVault
     function asset() public view override(BaseVault, IERC4626) returns (address assetTokenAddress) {
         return address(_asset);
     }
@@ -185,13 +185,11 @@ contract L2Vault is
                                 DEPOSITS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice See {IERC4626-deposit}
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
         shares = previewDeposit(assets);
         _deposit(assets, shares, receiver);
     }
 
-    /// @notice See {IERC4626-mint}
     function mint(uint256 shares, address receiver) external whenNotPaused returns (uint256 assets) {
         assets = previewMint(shares);
         _deposit(assets, shares, receiver);
@@ -234,12 +232,10 @@ contract L2Vault is
         emergencyWithdrawalQueue = _ewq;
     }
 
-    /// @notice See {IERC4626-redeem}
     function redeem(uint256 shares, address receiver, address owner) external whenNotPaused returns (uint256 assets) {
         assets = _redeem(_convertToAssets(shares, Rounding.Down), shares, receiver, owner);
     }
 
-    /// @notice See {IERC4626-withdraw}
     function withdraw(uint256 assets, address receiver, address owner)
         external
         whenNotPaused
@@ -301,12 +297,10 @@ contract L2Vault is
         Zero // Toward zero
     }
 
-    /// @notice See {IERC4626-totalAssets}
     function totalAssets() public view returns (uint256 totalManagedAssets) {
         return vaultTVL() + l1TotalLockedValue - lockedProfit() - lockedTVL();
     }
 
-    /// @notice See {IERC4626-convertToShares}
     function convertToShares(uint256 assets) public view returns (uint256 shares) {
         shares = _convertToShares(assets, Rounding.Down);
     }
@@ -327,7 +321,6 @@ contract L2Vault is
         }
     }
 
-    /// @notice See {IERC4626-convertToAssets}
     function convertToAssets(uint256 shares) public view returns (uint256 assets) {
         assets = _convertToAssets(shares, Rounding.Down);
     }
@@ -344,22 +337,18 @@ contract L2Vault is
         }
     }
 
-    /// @notice See {IERC4626-previewDeposit}
     function previewDeposit(uint256 assets) public view returns (uint256 shares) {
         return _convertToShares(assets, Rounding.Down);
     }
 
-    /// @notice See {IERC4626-previewMint}
     function previewMint(uint256 shares) public view returns (uint256 assets) {
         assets = _convertToAssets(shares, Rounding.Up);
     }
 
-    /// @notice See {IERC4626-previewWithdraw}
     function previewWithdraw(uint256 assets) public view returns (uint256 shares) {
         shares = _convertToShares(assets, Rounding.Up);
     }
 
-    /// @notice See {IERC4626-previewRedeem}
     function previewRedeem(uint256 shares) public view returns (uint256 assets) {
         uint256 rawAssets = _convertToAssets(shares, Rounding.Down);
         uint256 assetsFee = _getWithdrawalFee(rawAssets);
@@ -379,24 +368,20 @@ contract L2Vault is
                        DEPOSIT/WITHDRAWAL LIMITS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice See {IERC4626-maxDeposit}
     function maxDeposit(address receiver) public pure returns (uint256 maxAssets) {
         receiver;
         maxAssets = type(uint256).max;
     }
 
-    /// @notice See {IERC4626-maxMint}
     function maxMint(address receiver) public pure returns (uint256 maxShares) {
         receiver;
         maxShares = type(uint256).max;
     }
 
-    /// @notice See {IERC4626-maxRedeem}
     function maxRedeem(address owner) public view returns (uint256 maxShares) {
         maxShares = balanceOf(owner);
     }
 
-    /// @notice See {IERC4626-maxWithdraw}
     function maxWithdraw(address owner) public view returns (uint256 maxAssets) {
         maxAssets = _convertToAssets(balanceOf(owner), Rounding.Down);
     }
