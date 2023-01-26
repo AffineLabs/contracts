@@ -20,7 +20,7 @@ interface ILendingPool {
 
     /**
      * @dev Emitted on withdraw()
-     * @param reserve The address of the underlyng asset being withdrawn
+     * @param reserve The address of the underlying asset being withdrawn
      * @param user The address initiating the withdrawal, owner of aTokens
      * @param to Address that will receive the underlying
      * @param amount The amount to be withdrawn
@@ -231,7 +231,7 @@ interface ILendingPool {
     function repay(address asset, uint256 amount, uint256 rateMode, address onBehalfOf) external returns (uint256);
 
     /**
-     * @dev Allows a borrower to swap his debt between stable and variable mode, or viceversa
+     * @dev Allows a borrower to swap his debt between stable and variable mode, or vice-versa
      * @param asset The address of the underlying asset borrowed
      * @param rateMode The rate mode that the user wants to swap to
      *

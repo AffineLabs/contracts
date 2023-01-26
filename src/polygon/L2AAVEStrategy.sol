@@ -30,19 +30,17 @@ contract L2AAVEStrategy is BaseStrategy {
         aToken.safeApprove(address(lendingPool), type(uint256).max);
     }
 
-    /**
-     * INVESTMENT
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                               INVESTMENT
+    //////////////////////////////////////////////////////////////*/
     function _afterInvest(uint256 amount) internal override {
         if (amount == 0) return;
         lendingPool.deposit(address(asset), amount, address(this), 0);
     }
 
-    /**
-     * DIVESTMENT
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                               DIVESTMENT
+    //////////////////////////////////////////////////////////////*/
     function _divest(uint256 assets) internal override returns (uint256) {
         // Withdraw only the needed amounts from the lending pool
         uint256 currAssets = balanceOfAsset();
@@ -59,10 +57,9 @@ contract L2AAVEStrategy is BaseStrategy {
         return amountToSend;
     }
 
-    /**
-     * TVL ESTIMATION
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                             TVL ESTIMATION
+    //////////////////////////////////////////////////////////////*/
     function totalLockedValue() public view override returns (uint256) {
         return balanceOfAsset() + aToken.balanceOf(address(this));
     }
