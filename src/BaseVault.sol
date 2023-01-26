@@ -27,7 +27,6 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
                              INITIALIZATION
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice The input asset.
     ERC20 _asset;
 
     /// @notice The token that the vault takes in and tries to get more of, e.g. USDC
@@ -36,7 +35,7 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
     }
 
     /**
-     * @notice Initialize the vault
+     * @dev Initialize the vault.
      * @param _governance The governance address.
      * @param vaultAsset The vault's input asset.
      * @param _wormholeRouter The wormhole router.
@@ -52,7 +51,7 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
         bridgeEscrow = _bridgeEscrow;
 
         // All roles use the default admin role
-        // governance has the admin role and can grant/remove a role to any account
+        // Governance has the admin role and all roles
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
         _grantRole(HARVESTER, governance);
 
@@ -117,8 +116,8 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
 
     /**
      * @notice An ordered array of strategies representing the withdrawal queue. The withdrawal queue is used
-     * whenever the vault wants to pull money out of strategies (cross-chain rebalancing and user withdrawals)xw
-     * @dev The first strategy in the array is withdrawn from first.
+     * whenever the vault wants to pull money out of strategies (cross-chain rebalancing and user withdrawals).
+     * @dev The first strategy in the array (index 0) is withdrawn from first.
      * This is a list of the currently active strategies  (all non-zero addresses are active).
      */
     Strategy[MAX_STRATEGIES] public withdrawalQueue;
@@ -156,7 +155,7 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
                                STRATEGIES
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice The total amount of underlying tokens held in strategies at the time of the last harvest.
+    /// @notice The total amount of underlying assets held in strategies at the time of the last harvest.
     uint256 public totalStrategyHoldings;
 
     struct StrategyInfo {
@@ -164,8 +163,8 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
         uint16 tvlBps;
         uint232 balance;
     }
-    /// @notice A map of strategy addresses to details
 
+    /// @notice A map of strategy addresses to details
     mapping(Strategy => StrategyInfo) public strategies;
 
     uint256 constant MAX_BPS = 10_000;
