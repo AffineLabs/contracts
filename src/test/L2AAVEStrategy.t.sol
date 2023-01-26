@@ -29,7 +29,7 @@ contract AAVEStratTest is TestPlus {
 
         strategy = new L2AAVEStrategy(
             vault,
-            0xE6ef11C967898F9525D550014FDEdCFAB63536B5 // aave adress provider registry
+            0xE6ef11C967898F9525D550014FDEdCFAB63536B5
         );
         vm.prank(governance);
         vault.addStrategy(strategy, 5000);

@@ -12,52 +12,59 @@ import {BridgeEscrow} from "./BridgeEscrow.sol";
 import {BaseStrategy as Strategy} from "./BaseStrategy.sol";
 import {uncheckedInc} from "./libs/Unchecked.sol";
 
+/**
+ * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding
+ * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
+ * strategy liquidation.
+ */
 contract AffineVault is AffineGovernable, AccessControlUpgradeable {
     using SafeTransferLib for ERC20;
 
-    /**
-     * UNDERLYING ASSET AND INITIALIZATION
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                             INITIALIZATION
+    //////////////////////////////////////////////////////////////*/
 
-    /// @notice The token that the vault takes in and gives to strategies, e.g. USDC
     ERC20 _asset;
 
+    /// @notice The token that the vault takes in and tries to get more of, e.g. USDC
     function asset() public view virtual returns (address) {
         return address(_asset);
     }
 
+    /**
+     * @dev Initialize the vault.
+     * @param _governance The governance address.
+     * @param vaultAsset The vault's input asset.
+     */
     function baseInitialize(address _governance, ERC20 vaultAsset) internal virtual {
         governance = _governance;
         _asset = vaultAsset;
 
         // All roles use the default admin role
-        // governance has the admin role and can grant/remove a role to any account
+        // Governance has the admin role and all roles
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
         _grantRole(HARVESTER, governance);
 
         lastHarvest = uint128(block.timestamp);
     }
 
-    /**
-     * AUTHENTICATION
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                             AUTHENTICATION
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Role with authority to call "harvest", i.e. update this vault's tvl
     bytes32 public constant HARVESTER = keccak256("HARVESTER");
 
-    /**
-     * WITHDRAWAL QUEUE
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                            WITHDRAWAL QUEUE
+    //////////////////////////////////////////////////////////////*/
 
     uint8 constant MAX_STRATEGIES = 20;
 
     /**
      * @notice An ordered array of strategies representing the withdrawal queue. The withdrawal queue is used
-     * whenever the vault wants to pull money out of strategies (cross-chain rebalancing and user withdrawals)xw
-     * @dev The first strategy in the array is withdrawn from first.
+     * whenever the vault wants to pull money out of strategies.
+     * @dev The first strategy in the array (index 0) is withdrawn from first.
      * This is a list of the currently active strategies  (all non-zero addresses are active).
      */
     Strategy[MAX_STRATEGIES] public withdrawalQueue;
@@ -91,12 +98,11 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable {
      */
     event WithdrawalQueueSet(Strategy[MAX_STRATEGIES] newQueue);
 
-    /**
-     * STRATEGIES
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                               STRATEGIES
+    //////////////////////////////////////////////////////////////*/
 
-    /// @notice The total amount of underlying tokens held in strategies at the time of the last harvest.
+    /// @notice The total amount of underlying assets held in strategies at the time of the last harvest.
     uint256 public totalStrategyHoldings;
 
     struct StrategyInfo {
@@ -104,8 +110,8 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable {
         uint16 tvlBps;
         uint232 balance;
     }
-    /// @notice A map of strategy addresses to details
 
+    /// @notice A map of strategy addresses to details
     mapping(Strategy => StrategyInfo) public strategies;
 
     uint256 constant MAX_BPS = 10_000;
@@ -219,10 +225,9 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable {
      */
     event StrategyAllocsUpdated(Strategy[] strategyList, uint16[] strategyBps);
 
-    /**
-     * STRATEGY DEPOSIT/WITHDRAWAL
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                      STRATEGY DEPOSIT/WITHDRAWAL
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Emitted after the Vault deposits into a strategy contract.
@@ -306,10 +311,9 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable {
         }
     }
 
-    /**
-     * HARVESTING
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                               HARVESTING
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice A timestamp representing when the most recent harvest occurred.
@@ -402,6 +406,10 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable {
         uint256 unlockedProfit = (maxLockedProfit * (block.timestamp - lastHarvest)) / LOCK_INTERVAL;
         return maxLockedProfit - unlockedProfit;
     }
+
+    /*//////////////////////////////////////////////////////////////
+                        LIQUIDATION/REBALANCING
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice The total amount of the underlying asset the vault has.
     function vaultTVL() public view returns (uint256) {

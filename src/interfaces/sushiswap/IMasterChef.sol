@@ -26,7 +26,7 @@ interface IMasterChef {
 
     struct PoolInfoV2 {
         uint256 allocPoint; // How many allocation points assigned to this pool. SUSHI to distribute per block.
-        uint256 lastRewardTime; // Timestamp when SUSHI distribution occured.
+        uint256 lastRewardTime; // Timestamp when SUSHI distribution occurred.
         uint256 accSushiPerShare; // Accumulated SUSHI per share, times 1e12. See below.
     }
 

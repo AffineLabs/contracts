@@ -48,11 +48,11 @@ contract Deploy is Script, Base {
     }
 
     function _deployStrategies(L1Vault vault) internal {
-        // Compound strat
+        // Compound strategy
         L1CompoundStrategy comp = new L1CompoundStrategy(vault, ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563));
         require(address(comp.asset()) == vault.asset());
 
-        // Curve Strat
+        // Curve Strategy
         CurveStrategy curve = new CurveStrategy(vault, 
                          ERC20(0x5a6A4D54456819380173272A5E8E9B9904BdF41B),
                          I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359), 
@@ -61,7 +61,7 @@ contract Deploy is Script, Base {
                          );
         require(address(curve.asset()) == vault.asset());
 
-        // Convex strat
+        // Convex strategy
         ConvexStrategy cvx = new ConvexStrategy(
            vault, 
             ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),

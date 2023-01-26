@@ -64,11 +64,11 @@ contract ConvexStratTest is TestPlus {
         assertGt(rewardTokenBalance, 0);
 
         uint256 tvl = strategy.totalLockedValue();
-        emit log_named_uint("strat tvl: ", tvl);
+        emit log_named_uint("strategy tvl: ", tvl);
         assertApproxEqRel(tvl, 1e6, 1e18);
     }
 
-    /// @notice Test slippage doesn't incure error while claiming/selling rewards.
+    /// @notice We can set limits on the amount of `asset` received when selling rewards.
     function testCanSlip() public {
         deal(address(usdc), address(strategy), 1e12);
         deal(address(crv), address(strategy), 10e18);
