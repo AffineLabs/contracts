@@ -31,6 +31,10 @@ contract TwoAssetBasket is
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
+    /*//////////////////////////////////////////////////////////////
+                          ASSET CONFIGURATION
+    //////////////////////////////////////////////////////////////*/
+
     /// @notice The asset which we take in to buy btc and weth, e.g. USDC
     ERC20 public asset;
     /// @notice The wrapped bitcoin address.
@@ -75,6 +79,10 @@ contract TwoAssetBasket is
         weth.safeApprove(address(ROUTER), type(uint256).max);
     }
 
+    /*//////////////////////////////////////////////////////////////
+                           META-TRANSACTIONS
+    //////////////////////////////////////////////////////////////*/
+
     function versionRecipient() external pure override returns (string memory) {
         return "1";
     }
@@ -99,6 +107,10 @@ contract TwoAssetBasket is
         return 18;
     }
 
+    /*//////////////////////////////////////////////////////////////
+                               GOVERNANCE
+    //////////////////////////////////////////////////////////////*/
+
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
     /// @notice Pause the contract.
@@ -111,14 +123,10 @@ contract TwoAssetBasket is
         _unpause();
     }
 
-    /**
-     * DEPOSIT / WITHDRAW
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                                DEPOSIT
+    //////////////////////////////////////////////////////////////*/
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
-    event Withdraw(
-        address indexed caller, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
-    );
 
     /// @notice 4626 style deposits
     function deposit(uint256 assets, address receiver) external returns (uint256 shares) {
@@ -179,6 +187,13 @@ contract TwoAssetBasket is
         emit Deposit(_msgSender(), receiver, assets, shares);
         _mint(receiver, shares);
     }
+    /*//////////////////////////////////////////////////////////////
+                                WITHDRAW
+    //////////////////////////////////////////////////////////////*/
+
+    event Withdraw(
+        address indexed caller, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
+    );
 
     /// @notice 4626 style withdrawals.
     function withdraw(uint256 assets, address receiver, address owner, uint256 maxSharesBurned)
@@ -208,11 +223,6 @@ contract TwoAssetBasket is
 
         uint256 assetsReceived = _sell(dollarsFromBtc, dollarsFromEth);
 
-        // NOTE: The user eats the slippage and trading fees. E.g. if you request $10 you may only get $9 out
-
-        // Calculate number of shares to burn with numShares = dollarAmount * shares_per_dollar
-        // Try to burn numShares, will revert if user does not have enough
-
         // NOTE: Even if assetsReceived > assets, the vault only sold $assetsDollars worth of assets
         // (according to chainlink). The share price is a chainlink price, and so the user can at most be asked to
         // burn $assetsDollars worth of shares
@@ -221,6 +231,7 @@ contract TwoAssetBasket is
         uint256 assetsDollars = Dollar.unwrap(_valueOfToken(asset, assets));
         shares = (assetsDollars * totalSupply()) / vaultDollars;
 
+        // Try to burn shares, will revert if user does not have enough
         address caller = _msgSender();
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
@@ -272,7 +283,7 @@ contract TwoAssetBasket is
     function _sell(Dollar dollarsFromBtc, Dollar dollarsFromEth) internal returns (uint256 assetsReceived) {
         if (Dollar.unwrap(dollarsFromBtc) > 0) {
             uint256[] memory btcAmounts = ROUTER.swapExactTokensForTokens({
-                // asset token => dollars => btc conversion
+                // asset => dollars => btc conversion
                 amountIn: Math.min(_tokensFromDollars(btc, dollarsFromBtc), btc.balanceOf(address(this))),
                 amountOutMin: 0,
                 path: _pathBtc(false),
@@ -284,7 +295,6 @@ contract TwoAssetBasket is
 
         if (Dollar.unwrap(dollarsFromEth) > 0) {
             uint256[] memory ethAmounts = ROUTER.swapExactTokensForTokens({
-                // asset token => dollars => eth conversion
                 amountIn: Math.min(_tokensFromDollars(weth, dollarsFromEth), weth.balanceOf(address(this))),
                 amountOutMin: 0,
                 path: _pathEth(false),
@@ -295,10 +305,9 @@ contract TwoAssetBasket is
         }
     }
 
-    /**
-     * EXCHANGE RATES
-     *
-     */
+    /*//////////////////////////////////////////////////////////////
+                             EXCHANGE RATES
+    //////////////////////////////////////////////////////////////*/
 
     // Dollars always have 8 decimals
     using DollarMath for Dollar;
@@ -354,7 +363,7 @@ contract TwoAssetBasket is
         return (amountDollarsInt * oneToken) / tokenPrice;
     }
 
-    /// @notice   When depositing, determine amount of asset token that should be used to buy BTC and ETH respectively
+    /// @notice  When depositing, determine amount of asset token that should be used to buy BTC and ETH respectively/
     function _getBuySplits(uint256 assets) public view returns (uint256 assetToBtc, uint256 assetToEth) {
         uint256 assetDollars = Dollar.unwrap(_valueOfToken(asset, assets));
 
@@ -475,11 +484,9 @@ contract TwoAssetBasket is
         }
     }
 
-    /**
-     * DETAILED PRICE INFO
-     *
-     */
-
+    /*//////////////////////////////////////////////////////////////
+                             DETAILED INFO
+    //////////////////////////////////////////////////////////////*/
     function detailedTVL() external view override returns (Number memory tvl) {
         Dollar vaultDollars = valueOfVault();
         tvl = Number({num: Dollar.unwrap(vaultDollars), decimals: 8});
