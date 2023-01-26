@@ -8,28 +8,15 @@ import "forge-std/Script.sol";
 import {Base} from "./Base.sol";
 import {Vault} from "../src/both/Vault.sol";
 import {BaseVault} from "../src/BaseVault.sol";
-import {CurveStrategy} from "../src/ethereum/CurveStrategy.sol";
-import {I3CrvMetaPoolZap, ILiquidityGauge, ICurvePool, IMinter} from "../src/interfaces/curve.sol";
+import {DeployLib} from "./ConvexStrategy.s.sol";
 
 /* solhint-disable reason-string */
-
-library EthEntry {
-    function deployCurve(BaseVault vault) internal returns (CurveStrategy curve) {
-        curve = new CurveStrategy(vault, 
-                         ERC20(0x5a6A4D54456819380173272A5E8E9B9904BdF41B),
-                         I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359), 
-                         2,
-                         ILiquidityGauge(0xd8b712d29381748dB89c36BCa0138d7c75866ddF)
-                         );
-        require(address(curve.asset()) == vault.asset());
-    }
-}
 
 contract Deploy is Script, Base {
     function deployStrategies() external {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
-        EthEntry.deployCurve(BaseVault(0x78Bb94Feab383ccEd39766a7d6CF31dED177Ad0c));
+        DeployLib.deployMim3Crv(BaseVault(0x78Bb94Feab383ccEd39766a7d6CF31dED177Ad0c));
     }
 
     function run() external {
