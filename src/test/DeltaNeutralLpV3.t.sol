@@ -13,12 +13,14 @@ import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRoute
 import {L2Vault} from "../polygon/L2Vault.sol";
 import {DeltaNeutralLpV3} from "../both/DeltaNeutralLpV3.sol";
 import {SslpV3} from "../../script/DeltaNeutralLpV3.s.sol";
+import {EthVaults} from "../../script/EthVaults.s.sol";
+import {BaseVault} from "../BaseVault.sol";
 
 /// @notice Test SSLP Strategy with Uniswap V3 in polygon.
 contract DeltaNeutralV3Test is TestPlus {
     using stdStorage for StdStorage;
 
-    L2Vault vault;
+    BaseVault vault;
     DeltaNeutralLpV3 strategy;
     ERC20 asset;
     ERC20 borrowAsset;
@@ -29,9 +31,20 @@ contract DeltaNeutralV3Test is TestPlus {
     function _selectFork() internal virtual {
         vm.createSelectFork("polygon", 38_008_645);
     }
-
-    function _usdc() internal virtual returns (address) {
+    function _asset() internal virtual returns (address) {
         return 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+    }
+
+    function _setAsset() internal virtual {
+        vm.store(
+            address(vault),
+            bytes32(stdstore.target(address(vault)).sig("asset()").find()),
+            bytes32(uint256(uint160(_asset())))
+        );
+    }
+
+    function _deployVault() internal virtual {
+        vault = deployL2Vault();
     }
 
     function _deployStrategy() internal virtual {
@@ -40,13 +53,8 @@ contract DeltaNeutralV3Test is TestPlus {
 
     function setUp() public {
         _selectFork();
-
-        vault = deployL2Vault();
-        vm.store(
-            address(vault),
-            bytes32(stdstore.target(address(vault)).sig("asset()").find()),
-            bytes32(uint256(uint160(_usdc())))
-        );
+        _deployVault();
+        _setAsset();
         _deployStrategy();
 
         // Get ticks where liquidity will be added
@@ -57,7 +65,7 @@ contract DeltaNeutralV3Test is TestPlus {
         tickLow = usableTick - 20 * tSpace;
         tickHigh = usableTick + 20 * tSpace;
 
-        vm.startPrank(governance);
+        vm.startPrank(vault.governance());
         vault.addStrategy(strategy, 5000);
         strategy.grantRole(strategy.STRATEGIST_ROLE(), address(this));
         vm.stopPrank();
@@ -182,11 +190,29 @@ contract DeltaNeutralV3EthTest is DeltaNeutralV3Test {
         vm.createSelectFork("ethereum", 16_394_906);
     }
 
-    function _usdc() internal pure override returns (address) {
+    function _asset() internal pure override returns (address) {
         return 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     }
 
     function _deployStrategy() internal override {
         strategy = SslpV3.deployEth(vault);
+    }
+}
+
+contract DeltaNeutralV3EthWethTest is DeltaNeutralV3Test {
+    function _selectFork() internal override {
+        vm.createSelectFork("ethereum", 16_394_906);
+    }
+
+    function _asset() internal pure override returns (address) {}
+
+    function _setAsset() internal virtual override {}
+
+    function _deployVault() internal override {
+        vault = BaseVault(EthVaults.deployEthWeth());
+    }
+
+    function _deployStrategy() internal override {
+        strategy = SslpV3.deployEthWeth(vault);
     }
 }

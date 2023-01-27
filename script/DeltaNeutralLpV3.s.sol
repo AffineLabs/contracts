@@ -62,6 +62,21 @@ library SslpV3 {
         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
     }
 
+    function deployEthWeth(BaseVault vault) internal returns (DeltaNeutralLpV3 strategy) {
+        strategy = new DeltaNeutralLpV3(
+        vault,
+        ILendingPoolAddressesProviderRegistry(0x52D306e36E3B6B02c153d0266ff0f85d18BCD413),
+        ERC20(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599), // wbtc
+        AggregatorV3Interface(0xdeb288F737066589598e9214E782fa5A8eD689e8), // btc/eth price feed
+        ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
+        INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
+        IUniswapV3Pool(0xCBCdF9626bC03E24f779434178A73a0B4bad62eD), // wbtc/eth pool 
+        IUniPositionValue(0xfB2DaDdd7390f7e22Db849713Ff73405c9792F69),
+        _getStrategists()
+        );
+        require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
+    }
+
     function _getStrategists() internal view returns (address[] memory strategists) {
         strategists = new address[](1);
         strategists[0] = 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d;

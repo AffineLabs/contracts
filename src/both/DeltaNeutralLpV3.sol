@@ -325,7 +325,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
             // borrow amount / (borrow : asset ratio) = asset amount
             price = (oneBorrow << 192) / (uint256(sqrtPriceX96) ** 2);
         } else {
-            // borrow amount / (borrow : asset ratio) = asset amount
+            // borrow amount * (asset : borrow ratio) = asset amount
             price = (oneBorrow * uint256(sqrtPriceX96) ** 2) >> 192;
         }
         return price;
