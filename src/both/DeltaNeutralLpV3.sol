@@ -63,24 +63,34 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         aToken.safeApprove(address(lendingPool), type(uint256).max);
         borrowAsset.safeApprove(address(lendingPool), type(uint256).max);
 
-        // To trade usdc/matic
+        // To trade asset/borrowAsset
         asset.safeApprove(address(_router), type(uint256).max);
         borrowAsset.safeApprove(address(_router), type(uint256).max);
 
         // To add liquidity
         asset.safeApprove(address(_lpManager), type(uint256).max);
         borrowAsset.safeApprove(address(_lpManager), type(uint256).max);
+
+        // xyz/eth chainlink feeds has 18 decimals and xyz/usd chainlink feeds has 8 decimals.
+        decimalDiff = (address(asset) == WETH ? 18 : 8) - asset.decimals();
     }
 
     /// @notice Convert `borrowAsset` (e.g. MATIC) to `asset` (e.g. USDC)
-    function _borrowToAsset(uint256 amountB, uint256 clPrice) internal pure returns (uint256 assets) {
-        // The first divisition gets rid of the decimals of wmatic. The second converts dollars to usdc
-        // TODO: make this work for any set of decimals
-        assets = amountB.mulWadDown(clPrice) / 1e2;
+    function _borrowToAsset(uint256 amountB, uint256 clPrice) internal view returns (uint256 assets) {
+        // The first divisition gets rid of the decimals of `borrowAsset`. The second converts dollars to `asset`
+        if (decimalDiff < 0) {
+            assets = (amountB * (10 ** decimalDiff)).mulWadDown(clPrice);
+        } else {
+            assets = amountB.mulWadDown(clPrice) / (10 ** decimalDiff);
+        }
     }
 
-    function _assetToBorrow(uint256 assets, uint256 clPrice) internal pure returns (uint256 borrows) {
-        borrows = (assets * 1e2).divWadDown(clPrice);
+    function _assetToBorrow(uint256 assets, uint256 clPrice) internal view returns (uint256 borrows) {
+        if (decimalDiff < 0) {
+            borrows = assets.divWadDown(clPrice) / (10 ** decimalDiff);
+        } else {
+            borrows = (assets * (10 ** decimalDiff)).divWadDown(clPrice);
+        }
     }
 
     function _getPrice() internal view returns (uint256 priceOfBorrowAsset) {
@@ -162,6 +172,9 @@ contract DeltaNeutralLpV3 is AccessStrategy {
 
     /// @notice Gives ratio of vault asset to borrow asset, e.g. WMATIC/USD (assuming usdc = usd)
     AggregatorV3Interface immutable borrowAssetFeed;
+
+    address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    uint256 public immutable decimalDiff;
 
     function startPosition(int24 tickLow, int24 tickHigh, uint256 slippageToleranceBps)
         external
@@ -255,7 +268,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         (uint256 amount0FromUni, uint256 amount1FromUni, uint256 amount0Fees, uint256 amount1Fees) =
             _removeLiquidity(slippageBps);
 
-        // Buy enough matic to pay back debt
+        // Buy enough `borrowAsset` to pay back debt
         uint256 debt;
         uint256 assetsOrBorrowsSold;
         uint256 assetsOrBorrowsReceived;
@@ -263,18 +276,18 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         {
             debt = debtToken.balanceOf(address(this));
             uint256 bBal = borrowAsset.balanceOf(address(this));
-            uint256 maticToBuy = debt > bBal ? debt - bBal : 0;
-            uint256 maticToSell = bBal > debt ? bBal - debt : 0;
+            uint256 borrowAssetToBuy = debt > bBal ? debt - bBal : 0;
+            uint256 borrowAssetToSell = bBal > debt ? bBal - debt : 0;
 
-            if (maticToBuy > 0) {
+            if (borrowAssetToBuy > 0) {
                 (assetsOrBorrowsSold, assetsOrBorrowsReceived) =
-                    _swapExactOutputSingle(asset, borrowAsset, maticToBuy, slippageBps);
+                    _swapExactOutputSingle(asset, borrowAsset, borrowAssetToBuy, slippageBps);
             }
-            if (maticToSell > 0) {
+            if (borrowAssetToSell > 0) {
                 (assetsOrBorrowsSold, assetsOrBorrowsReceived) =
-                    _swapExactSingle(borrowAsset, asset, maticToSell, slippageBps);
+                    _swapExactSingle(borrowAsset, asset, borrowAssetToSell, slippageBps);
             }
-            assetSold = maticToBuy > 0;
+            assetSold = borrowAssetToBuy > 0;
         }
 
         // Repay debt
@@ -309,10 +322,10 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         // We are converting "one" of `borrowAsset` into some amount of `asset`.
         uint256 oneBorrow = 10 ** borrowAsset.decimals();
         if (address(asset) == token0) {
-            // eth_amount / (eth_usdc ratio)  = eth_amount * usdc/eth ratio = usdc amount
+            // borrow amount / (borrow : asset ratio) = asset amount
             price = (oneBorrow << 192) / (uint256(sqrtPriceX96) ** 2);
         } else {
-            // eth_amount * usdc/eth ratio = usdc amount
+            // borrow amount / (borrow : asset ratio) = asset amount
             price = (oneBorrow * uint256(sqrtPriceX96) ** 2) >> 192;
         }
         return price;
