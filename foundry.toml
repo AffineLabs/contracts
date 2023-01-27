@@ -7,14 +7,17 @@ solc_version = "0.8.16"
 optimizer_runs = 2000000
 fs_permissions = [{ access = "read-write", path = "./"}]
 
+[profile.default.fmt]
+number_underscore = "thousands"
+
 [profile.default.rpc_endpoints]
 mumbai = "https://polygon-mumbai.g.alchemy.com/v2/${ALCHEMY_POLYGON_MUMBAI_KEY}"
 goerli = "https://eth-goerli.alchemyapi.io/v2/${ALCHEMY_ETH_GOERLI_KEY}"
 ethereum = "https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_ETH_MAINNET_KEY}"
 polygon = "https://polygon-mainnet.g.alchemy.com/v2/${ALCHEMY_POLYGON_MAINNET_KEY}"
 
-[profile.default.fmt]
-number_underscore = "thousands"
+[profile.default.etherscan]
+ethereum = { key = "${ETHERSCAN_API_KEY}", chain = 1 }
 
 [profile.ci.fuzz]
 runs = 10000
