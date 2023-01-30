@@ -10,7 +10,7 @@ import {BaseVault} from "../BaseVault.sol";
 import {AccessStrategy} from "../both/AccessStrategy.sol";
 import {ICurvePool, I3CrvMetaPoolZap} from "../interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "../interfaces/convex.sol";
-import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 contract ConvexStrategy is AccessStrategy {
     using SafeTransferLib for ERC20;
@@ -190,19 +190,62 @@ contract ConvexStrategy is AccessStrategy {
     IConvexRewards public immutable cvxRewarder;
 
     /// @notice The UniswapV2 router used for trades.
-    IUniswapV2Router02 public constant ROUTER = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+    ISwapRouter public constant ROUTER = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
     /// @notice The CRV token. Given as a reward for deposits into convex contracts.
     ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
     /// @notice The CVX token. Given as a reward for deposits into convex contracts.
     ERC20 public constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
     /// @notice All trades are made with WETH as the middle asset, e.g. CRV => WETH => USDC.
     address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    /// @notice We won't sell any CRV or CVX unless we have 0.1 of them.
-    uint256 public constant MIN_TOKEN_AMT = 0.1e18;
+    /// @notice We won't sell any CRV or CVX unless we have 0.01 of them.
+    uint256 public constant MIN_TOKEN_AMT = 0.01e18;
 
     /// @notice Claim convex rewards.
     function claimRewards() external onlyRole(STRATEGIST_ROLE) {
+        _claimRewards();
+    }
+
+    function _claimRewards() internal {
         cvxRewarder.getReward();
+    }
+
+    /// @notice Sell rewards.
+    function sellRewards(uint256 minAssetsFromCrv, uint256 minAssetsFromCvx) external onlyRole(STRATEGIST_ROLE) {
+        _sellRewards(minAssetsFromCrv, minAssetsFromCvx);
+    }
+
+    function _sellRewards(uint256 minAssetsFromCrv, uint256 minAssetsFromCvx) internal {
+        // Sell CRV rewards if we have at least MIN_TOKEN_AMT tokens
+        uint256 crvBal = CRV.balanceOf(address(this));
+        if (crvBal > MIN_TOKEN_AMT) {
+            ISwapRouter.ExactInputSingleParams memory paramsCrv = ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(CRV),
+                tokenOut: address(asset),
+                fee: 10_000,
+                recipient: address(this),
+                deadline: block.timestamp,
+                amountIn: crvBal,
+                amountOutMinimum: minAssetsFromCrv,
+                sqrtPriceLimitX96: 0
+            });
+            ROUTER.exactInputSingle(paramsCrv);
+        }
+
+        // Sell CVX rewards
+        uint256 cvxBal = CVX.balanceOf(address(this));
+        if (cvxBal > MIN_TOKEN_AMT) {
+            ISwapRouter.ExactInputSingleParams memory paramsCvx = ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(CVX),
+                tokenOut: address(asset),
+                fee: 10_000,
+                recipient: address(this),
+                deadline: block.timestamp,
+                amountIn: cvxBal,
+                amountOutMinimum: minAssetsFromCvx,
+                sqrtPriceLimitX96: 0
+            });
+            ROUTER.exactInputSingle(paramsCvx);
+        }
     }
 
     /// @notice Claim convex rewards and sell them for `asset`.
@@ -210,41 +253,8 @@ contract ConvexStrategy is AccessStrategy {
         external
         onlyRole(STRATEGIST_ROLE)
     {
-        cvxRewarder.getReward();
-        // Sell CRV rewards if we have at least MIN_TOKEN_AMT tokens
-        // Routing through WETH for high liquidity
-        address[] memory crvPath = new address[](3);
-        crvPath[0] = address(CRV);
-        crvPath[1] = WETH;
-        crvPath[2] = address(asset);
-
-        uint256 crvBal = CRV.balanceOf(address(this));
-        if (crvBal >= MIN_TOKEN_AMT) {
-            ROUTER.swapExactTokensForTokens({
-                amountIn: crvBal,
-                amountOutMin: minAssetsFromCrv,
-                path: crvPath,
-                to: address(this),
-                deadline: block.timestamp
-            });
-        }
-
-        // Sell CVX rewards if we have at least MIN_TOKEN_AMT tokens
-        address[] memory cvxPath = new address[](3);
-        cvxPath[0] = address(CVX);
-        cvxPath[1] = WETH;
-        cvxPath[2] = address(asset);
-
-        uint256 cvxBal = CVX.balanceOf(address(this));
-        if (cvxBal >= MIN_TOKEN_AMT) {
-            ROUTER.swapExactTokensForTokens({
-                amountIn: cvxBal,
-                amountOutMin: minAssetsFromCvx,
-                path: cvxPath,
-                to: address(this),
-                deadline: block.timestamp
-            });
-        }
+        _claimRewards();
+        _sellRewards(minAssetsFromCrv, minAssetsFromCvx);
     }
 
     /*//////////////////////////////////////////////////////////////

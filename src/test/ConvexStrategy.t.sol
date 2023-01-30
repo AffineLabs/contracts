@@ -42,7 +42,7 @@ contract ConvexStratTest is TestPlus {
     }
 
     function setUp() public {
-        vm.createSelectFork("ethereum", 15_624_364);
+        vm.createSelectFork("ethereum", 16_520_958);
         vault = deployL1Vault();
 
         // Make vault asset equal to usdc
@@ -145,6 +145,22 @@ contract ConvexStratTest is TestPlus {
         // We sold all of our crv
         assertEq(strategy.CRV().balanceOf(address(strategy)), 0);
         assertEq(strategy.CVX().balanceOf(address(strategy)), 0);
+    }
+
+    /// @notice Make sure that we get the correct amount of assets when selling rewards
+    function testRewardsAreNearSpotPrice() public {
+        // CRV is about $1.03 as of block 16520958
+        deal(address(strategy.CRV()), address(strategy), 10e18);
+
+        strategy.claimAndSellRewards(0, 0);
+        uint256 crvUsdc = usdc.balanceOf(address(strategy));
+        assertApproxEqRel(crvUsdc, 10.3e6, 0.05e18);
+
+        // CVX is about $5.92 as of block 16520958
+        deal(address(strategy.CVX()), address(strategy), 10e18);
+        strategy.claimAndSellRewards(0, 0);
+        uint256 cvxUsdc = usdc.balanceOf(address(strategy)) - crvUsdc;
+        assertApproxEqRel(cvxUsdc, 59.2e6, 0.05e18);
     }
 
     /// @notice Fuzz test of tvl function.
