@@ -257,6 +257,12 @@ contract ConvexStrategy is AccessStrategy {
         _sellRewards(minAssetsFromCrv, minAssetsFromCvx);
     }
 
+    function pendingRewards() external view returns (uint256, uint256) {
+        uint256 pendingCrv = cvxRewarder.earned(address(this));
+        uint256 pendingCvx;
+        return (pendingCrv, pendingCvx);
+    }
+
     /*//////////////////////////////////////////////////////////////
                                   TVL
     //////////////////////////////////////////////////////////////*/

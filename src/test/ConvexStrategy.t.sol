@@ -127,6 +127,9 @@ contract ConvexStratTest is TestPlus {
         strategy.deposit(1e12, 0);
         vm.warp(block.timestamp + 365 days);
 
+        (uint256 pendingCrv, uint256 pendingCvx) = strategy.pendingRewards();
+        assertGt(pendingCrv, 0);
+
         strategy.claimRewards();
 
         assertGt(strategy.CVX().balanceOf(address(strategy)), 0);
