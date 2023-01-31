@@ -426,12 +426,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
+        "name": "pendingCrv",
         "type": "uint256"
       }
     ],
@@ -488,6 +483,19 @@
       }
     ],
     "name": "sellRewards",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newStrategy",
+        "type": "address"
+      }
+    ],
+    "name": "sendAllTokens",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -559,6 +567,19 @@
       }
     ],
     "name": "withdrawAssets",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "numLpTokens",
+        "type": "uint256"
+      }
+    ],
+    "name": "withdrawFromConvex",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

@@ -148,10 +148,9 @@ contract ConvexStrategy is AccessStrategy {
         // Increase the cap on lp tokens by 1% to account for curve's trading fees
         uint256 maxLpTokensToBurn = Math.min(lpTokenBal, lpTokensToDivest.mulDivDown(101, 100));
 
-        // Withdraw from CVX rewarder contract if needed to get correct amount of lp tokens
-        if (maxLpTokensToBurn > currLpBal) {
-            cvxRewarder.withdrawAndUnwrap(maxLpTokensToBurn - currLpBal, true);
-        }
+        // Withdraw from convex if needed to get correct amount of curve lp tokens
+        if (maxLpTokensToBurn > currLpBal) _withdrawFromConvex(maxLpTokensToBurn - currLpBal);
+
         _withdrawFromCurve(maxLpTokensToBurn, minAssetsReceived);
     }
 
@@ -180,6 +179,14 @@ contract ConvexStrategy is AccessStrategy {
             number = number * (10 ** (outDecimals - inDecimals));
         }
         return number;
+    }
+
+    function withdrawFromConvex(uint256 numLpTokens) external onlyRole(STRATEGIST_ROLE) {
+        _withdrawFromConvex(numLpTokens);
+    }
+
+    function _withdrawFromConvex(uint256 numLpTokens) internal {
+        cvxRewarder.withdrawAndUnwrap({amount: numLpTokens, claim: true});
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -257,10 +264,10 @@ contract ConvexStrategy is AccessStrategy {
         _sellRewards(minAssetsFromCrv, minAssetsFromCvx);
     }
 
-    function pendingRewards() external view returns (uint256, uint256) {
-        uint256 pendingCrv = cvxRewarder.earned(address(this));
-        uint256 pendingCvx;
-        return (pendingCrv, pendingCvx);
+    /// @notice Amount of CRV to be gained during next claim.
+    /// @dev The amount of CVX to be gained can be calculated off chain: https://docs.convexfinance.com/convexfinanceintegration/cvx-minting
+    function pendingRewards() external view returns (uint256 pendingCrv) {
+        pendingCrv = cvxRewarder.earned(address(this));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -279,5 +286,28 @@ contract ConvexStrategy is AccessStrategy {
             assetsLp = curvePool.calc_withdraw_one_coin(lpTokenBal, assetIndex);
         }
         return balanceOfAsset() + assetsLp;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                                UPGRADES
+    //////////////////////////////////////////////////////////////*/
+    function sendAllTokens(address newStrategy) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // Withdraw from convex
+        uint256 stakedBal = cvxRewarder.balanceOf(address(this));
+        if (stakedBal > 0) {
+            _withdrawFromConvex(stakedBal);
+        }
+
+        // Send `asset`, curve lp, cvx, crv tokens to the new address
+        _sweepToken(asset, newStrategy);
+        _sweepToken(curveLpToken, newStrategy);
+        _sweepToken(CRV, newStrategy);
+        _sweepToken(CVX, newStrategy);
+    }
+
+    function _sweepToken(ERC20 token, address to) internal {
+        uint256 bal = token.balanceOf(address(this));
+        if (bal == 0) return;
+        token.safeTransfer(to, bal);
     }
 }

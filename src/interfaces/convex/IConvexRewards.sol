@@ -8,7 +8,7 @@ interface IConvexRewards {
     //withdraw to a convex tokenized deposit
     function withdraw(uint256 _amount, bool _claim) external returns (bool);
     //withdraw directly to curve LP token
-    function withdrawAndUnwrap(uint256 _amount, bool _claim) external returns (bool);
+    function withdrawAndUnwrap(uint256 amount, bool claim) external returns (bool);
     // Withdraw to curve LP token while also claiming any rewards
     function withdrawAllAndUnwrap(bool claim) external;
     // claim rewards

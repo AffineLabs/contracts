@@ -127,11 +127,9 @@ contract ConvexStratTest is TestPlus {
         strategy.deposit(1e12, 0);
         vm.warp(block.timestamp + 365 days);
 
-        (uint256 pendingCrv, uint256 pendingCvx) = strategy.pendingRewards();
-        assertGt(pendingCrv, 0);
+        assertGt(strategy.pendingRewards(), 0);
 
         strategy.claimRewards();
-
         assertGt(strategy.CVX().balanceOf(address(strategy)), 0);
         assertGt(strategy.CRV().balanceOf(address(strategy)), 0);
     }
@@ -174,6 +172,28 @@ contract ConvexStratTest is TestPlus {
         uint256 tvl = strategy.totalLockedValue();
         if (tvl < 100) return;
         assertApproxEqRel(tvl, (uint256(lpTokens) + cvxLpTokens) / 1e12, 0.02e18);
+    }
+
+    function testHoldingsSwap() public {
+        deal(address(strategy.curveLpToken()), address(strategy), 1e18);
+        deal(address(strategy.cvxRewarder()), address(strategy), 1e18);
+        deal(address(usdc), address(strategy), 1e6);
+        deal(address(crv), address(strategy), 1e18);
+        deal(address(cvx), address(strategy), 1e18);
+
+        vm.prank(vault.governance());
+        strategy.sendAllTokens(address(this));
+
+        assertEq(strategy.curveLpToken().balanceOf(address(strategy)), 0);
+        assertEq(strategy.curveLpToken().balanceOf(address(this)), 2e18);
+        assertEq(strategy.cvxRewarder().balanceOf(address(strategy)), 0);
+        assertEq(strategy.cvxRewarder().balanceOf(address(this)), 0);
+        assertEq(usdc.balanceOf(address(strategy)), 0);
+        assertEq(usdc.balanceOf(address(this)), 1e6);
+        assertEq(crv.balanceOf(address(strategy)), 0);
+        assertTrue(crv.balanceOf(address(this)) >= 1e18); // You get some dust when withdrawing in same block
+        assertEq(cvx.balanceOf(address(strategy)), 0);
+        assertTrue(cvx.balanceOf(address(this)) >= 1e18);
     }
 }
 
