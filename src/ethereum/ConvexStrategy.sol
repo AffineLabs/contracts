@@ -10,7 +10,7 @@ import {BaseVault} from "../BaseVault.sol";
 import {AccessStrategy} from "../both/AccessStrategy.sol";
 import {ICurvePool, I3CrvMetaPoolZap} from "../interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "../interfaces/convex.sol";
-import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 contract ConvexStrategy is AccessStrategy {
     using SafeTransferLib for ERC20;
@@ -38,7 +38,7 @@ contract ConvexStrategy is AccessStrategy {
         convexPid = _convexPid;
         if (isMetaPool) require(address(zapper) != address(0), "Zapper required");
 
-        IConvexBooster.PoolInfo memory poolInfo = convexBooster.poolInfo(convexPid);
+        IConvexBooster.PoolInfo memory poolInfo = CVX_BOOSTER.poolInfo(convexPid);
         cvxRewarder = IConvexRewards(poolInfo.crvRewards);
         curveLpToken = ERC20(poolInfo.lptoken);
 
@@ -51,7 +51,7 @@ contract ConvexStrategy is AccessStrategy {
         }
 
         // Convex Approvals
-        curveLpToken.safeApprove(address(convexBooster), type(uint256).max);
+        curveLpToken.safeApprove(address(CVX_BOOSTER), type(uint256).max);
 
         // For trading CVX and CRV
         CRV.safeApprove(address(ROUTER), type(uint256).max);
@@ -76,12 +76,12 @@ contract ConvexStrategy is AccessStrategy {
     /// @notice Id of the curve pool (used by convex booster).
     uint256 public immutable convexPid;
     /// @notice Convex booster. Used for depositing curve lp tokens.
-    IConvexBooster public constant convexBooster = IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+    IConvexBooster public constant CVX_BOOSTER = IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
 
     /// @notice Deposit `assets` and receive at least `minLpTokens` of CRV lp tokens.
     function deposit(uint256 assets, uint256 minLpTokens) external onlyRole(STRATEGIST_ROLE) {
         _depositIntoCurve(assets, minLpTokens);
-        convexBooster.depositAll(convexPid, true);
+        CVX_BOOSTER.depositAll(convexPid, true);
     }
 
     /// @dev Deposits into curve using metapool if necessary.
@@ -148,10 +148,9 @@ contract ConvexStrategy is AccessStrategy {
         // Increase the cap on lp tokens by 1% to account for curve's trading fees
         uint256 maxLpTokensToBurn = Math.min(lpTokenBal, lpTokensToDivest.mulDivDown(101, 100));
 
-        // Withdraw from CVX rewarder contract if needed to get correct amount of lp tokens
-        if (maxLpTokensToBurn > currLpBal) {
-            cvxRewarder.withdrawAndUnwrap(maxLpTokensToBurn - currLpBal, true);
-        }
+        // Withdraw from convex if needed to get correct amount of curve lp tokens
+        if (maxLpTokensToBurn > currLpBal) _withdrawFromConvex(maxLpTokensToBurn - currLpBal);
+
         _withdrawFromCurve(maxLpTokensToBurn, minAssetsReceived);
     }
 
@@ -182,6 +181,14 @@ contract ConvexStrategy is AccessStrategy {
         return number;
     }
 
+    function withdrawFromConvex(uint256 numLpTokens) external onlyRole(STRATEGIST_ROLE) {
+        _withdrawFromConvex(numLpTokens);
+    }
+
+    function _withdrawFromConvex(uint256 numLpTokens) internal {
+        cvxRewarder.withdrawAndUnwrap({amount: numLpTokens, claim: true});
+    }
+
     /*//////////////////////////////////////////////////////////////
                                 REWARDS
     //////////////////////////////////////////////////////////////*/
@@ -190,19 +197,62 @@ contract ConvexStrategy is AccessStrategy {
     IConvexRewards public immutable cvxRewarder;
 
     /// @notice The UniswapV2 router used for trades.
-    IUniswapV2Router02 public constant ROUTER = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+    ISwapRouter public constant ROUTER = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
     /// @notice The CRV token. Given as a reward for deposits into convex contracts.
     ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
     /// @notice The CVX token. Given as a reward for deposits into convex contracts.
     ERC20 public constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
     /// @notice All trades are made with WETH as the middle asset, e.g. CRV => WETH => USDC.
     address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    /// @notice We won't sell any CRV or CVX unless we have 0.1 of them.
-    uint256 public constant MIN_TOKEN_AMT = 0.1e18;
+    /// @notice We won't sell any CRV or CVX unless we have 0.01 of them.
+    uint256 constant MIN_REWARD_AMOUNT = 0.01e18;
 
     /// @notice Claim convex rewards.
     function claimRewards() external onlyRole(STRATEGIST_ROLE) {
+        _claimRewards();
+    }
+
+    function _claimRewards() internal {
         cvxRewarder.getReward();
+    }
+
+    /// @notice Sell rewards.
+    function sellRewards(uint256 minAssetsFromCrv, uint256 minAssetsFromCvx) external onlyRole(STRATEGIST_ROLE) {
+        _sellRewards(minAssetsFromCrv, minAssetsFromCvx);
+    }
+
+    function _sellRewards(uint256 minAssetsFromCrv, uint256 minAssetsFromCvx) internal {
+        // Sell CRV rewards if we have at least MIN_REWARD_AMOUNT tokens
+        uint256 crvBal = CRV.balanceOf(address(this));
+        if (crvBal > MIN_REWARD_AMOUNT) {
+            ISwapRouter.ExactInputSingleParams memory paramsCrv = ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(CRV),
+                tokenOut: address(asset),
+                fee: 10_000,
+                recipient: address(this),
+                deadline: block.timestamp,
+                amountIn: crvBal,
+                amountOutMinimum: minAssetsFromCrv,
+                sqrtPriceLimitX96: 0
+            });
+            ROUTER.exactInputSingle(paramsCrv);
+        }
+
+        // Sell CVX rewards
+        uint256 cvxBal = CVX.balanceOf(address(this));
+        if (cvxBal > MIN_REWARD_AMOUNT) {
+            ISwapRouter.ExactInputSingleParams memory paramsCvx = ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(CVX),
+                tokenOut: address(asset),
+                fee: 10_000,
+                recipient: address(this),
+                deadline: block.timestamp,
+                amountIn: cvxBal,
+                amountOutMinimum: minAssetsFromCvx,
+                sqrtPriceLimitX96: 0
+            });
+            ROUTER.exactInputSingle(paramsCvx);
+        }
     }
 
     /// @notice Claim convex rewards and sell them for `asset`.
@@ -210,41 +260,14 @@ contract ConvexStrategy is AccessStrategy {
         external
         onlyRole(STRATEGIST_ROLE)
     {
-        cvxRewarder.getReward();
-        // Sell CRV rewards if we have at least MIN_TOKEN_AMT tokens
-        // Routing through WETH for high liquidity
-        address[] memory crvPath = new address[](3);
-        crvPath[0] = address(CRV);
-        crvPath[1] = WETH;
-        crvPath[2] = address(asset);
+        _claimRewards();
+        _sellRewards(minAssetsFromCrv, minAssetsFromCvx);
+    }
 
-        uint256 crvBal = CRV.balanceOf(address(this));
-        if (crvBal >= MIN_TOKEN_AMT) {
-            ROUTER.swapExactTokensForTokens({
-                amountIn: crvBal,
-                amountOutMin: minAssetsFromCrv,
-                path: crvPath,
-                to: address(this),
-                deadline: block.timestamp
-            });
-        }
-
-        // Sell CVX rewards if we have at least MIN_TOKEN_AMT tokens
-        address[] memory cvxPath = new address[](3);
-        cvxPath[0] = address(CVX);
-        cvxPath[1] = WETH;
-        cvxPath[2] = address(asset);
-
-        uint256 cvxBal = CVX.balanceOf(address(this));
-        if (cvxBal >= MIN_TOKEN_AMT) {
-            ROUTER.swapExactTokensForTokens({
-                amountIn: cvxBal,
-                amountOutMin: minAssetsFromCvx,
-                path: cvxPath,
-                to: address(this),
-                deadline: block.timestamp
-            });
-        }
+    /// @notice Amount of CRV to be gained during next claim.
+    /// @dev The amount of CVX to be gained can be calculated off chain: https://docs.convexfinance.com/convexfinanceintegration/cvx-minting
+    function pendingRewards() external view returns (uint256 pendingCrv) {
+        pendingCrv = cvxRewarder.earned(address(this));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -263,5 +286,28 @@ contract ConvexStrategy is AccessStrategy {
             assetsLp = curvePool.calc_withdraw_one_coin(lpTokenBal, assetIndex);
         }
         return balanceOfAsset() + assetsLp;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                                UPGRADES
+    //////////////////////////////////////////////////////////////*/
+    function sendAllTokens(address newStrategy) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // Withdraw from convex
+        uint256 stakedBal = cvxRewarder.balanceOf(address(this));
+        if (stakedBal > 0) {
+            _withdrawFromConvex(stakedBal);
+        }
+
+        // Send `asset`, curve lp, cvx, crv tokens to the new address
+        _sweepToken(asset, newStrategy);
+        _sweepToken(curveLpToken, newStrategy);
+        _sweepToken(CRV, newStrategy);
+        _sweepToken(CVX, newStrategy);
+    }
+
+    function _sweepToken(ERC20 token, address to) internal {
+        uint256 bal = token.balanceOf(address(this));
+        if (bal == 0) return;
+        token.safeTransfer(to, bal);
     }
 }
