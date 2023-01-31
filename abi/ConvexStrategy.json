@@ -143,12 +143,12 @@
   },
   {
     "inputs": [],
-    "name": "DEFAULT_ADMIN_ROLE",
+    "name": "CVX_BOOSTER",
     "outputs": [
       {
-        "internalType": "bytes32",
+        "internalType": "contract IConvexBooster",
         "name": "",
-        "type": "bytes32"
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -156,12 +156,12 @@
   },
   {
     "inputs": [],
-    "name": "MIN_TOKEN_AMT",
+    "name": "DEFAULT_ADMIN_ROLE",
     "outputs": [
       {
-        "internalType": "uint256",
+        "internalType": "bytes32",
         "name": "",
-        "type": "uint256"
+        "type": "bytes32"
       }
     ],
     "stateMutability": "view",
@@ -255,19 +255,6 @@
     "name": "claimRewards",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "convexBooster",
-    "outputs": [
-      {
-        "internalType": "contract IConvexBooster",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {

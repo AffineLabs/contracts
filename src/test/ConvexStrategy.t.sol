@@ -138,8 +138,8 @@ contract ConvexStratTest is TestPlus {
 
     /// @notice Test selling reward tokens.
     function testCanSellRewards() public {
-        deal(address(strategy.CRV()), address(strategy), strategy.MIN_TOKEN_AMT() * 10);
-        deal(address(strategy.CVX()), address(strategy), strategy.MIN_TOKEN_AMT() * 10);
+        deal(address(strategy.CRV()), address(strategy), 1e18);
+        deal(address(strategy.CVX()), address(strategy), 1e18);
 
         strategy.claimAndSellRewards(0, 0);
 
@@ -180,7 +180,7 @@ contract ConvexStratTest is TestPlus {
 contract ConvexStratMIMTest is ConvexStratTest {
     // Make this public and run it in order to get convex pool id for a given lp token
     function testBooster() internal {
-        IConvexBooster booster = strategy.convexBooster();
+        IConvexBooster booster = strategy.CVX_BOOSTER();
         uint256 length = booster.poolLength();
         console.log("length: ", length);
 

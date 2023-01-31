@@ -38,7 +38,7 @@ contract ConvexStrategy is AccessStrategy {
         convexPid = _convexPid;
         if (isMetaPool) require(address(zapper) != address(0), "Zapper required");
 
-        IConvexBooster.PoolInfo memory poolInfo = convexBooster.poolInfo(convexPid);
+        IConvexBooster.PoolInfo memory poolInfo = CVX_BOOSTER.poolInfo(convexPid);
         cvxRewarder = IConvexRewards(poolInfo.crvRewards);
         curveLpToken = ERC20(poolInfo.lptoken);
 
@@ -51,7 +51,7 @@ contract ConvexStrategy is AccessStrategy {
         }
 
         // Convex Approvals
-        curveLpToken.safeApprove(address(convexBooster), type(uint256).max);
+        curveLpToken.safeApprove(address(CVX_BOOSTER), type(uint256).max);
 
         // For trading CVX and CRV
         CRV.safeApprove(address(ROUTER), type(uint256).max);
@@ -76,12 +76,12 @@ contract ConvexStrategy is AccessStrategy {
     /// @notice Id of the curve pool (used by convex booster).
     uint256 public immutable convexPid;
     /// @notice Convex booster. Used for depositing curve lp tokens.
-    IConvexBooster public constant convexBooster = IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+    IConvexBooster public constant CVX_BOOSTER = IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
 
     /// @notice Deposit `assets` and receive at least `minLpTokens` of CRV lp tokens.
     function deposit(uint256 assets, uint256 minLpTokens) external onlyRole(STRATEGIST_ROLE) {
         _depositIntoCurve(assets, minLpTokens);
-        convexBooster.depositAll(convexPid, true);
+        CVX_BOOSTER.depositAll(convexPid, true);
     }
 
     /// @dev Deposits into curve using metapool if necessary.
@@ -198,7 +198,7 @@ contract ConvexStrategy is AccessStrategy {
     /// @notice All trades are made with WETH as the middle asset, e.g. CRV => WETH => USDC.
     address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     /// @notice We won't sell any CRV or CVX unless we have 0.01 of them.
-    uint256 public constant MIN_TOKEN_AMT = 0.01e18;
+    uint256 constant MIN_REWARD_AMOUNT = 0.01e18;
 
     /// @notice Claim convex rewards.
     function claimRewards() external onlyRole(STRATEGIST_ROLE) {
@@ -215,9 +215,9 @@ contract ConvexStrategy is AccessStrategy {
     }
 
     function _sellRewards(uint256 minAssetsFromCrv, uint256 minAssetsFromCvx) internal {
-        // Sell CRV rewards if we have at least MIN_TOKEN_AMT tokens
+        // Sell CRV rewards if we have at least MIN_REWARD_AMOUNT tokens
         uint256 crvBal = CRV.balanceOf(address(this));
-        if (crvBal > MIN_TOKEN_AMT) {
+        if (crvBal > MIN_REWARD_AMOUNT) {
             ISwapRouter.ExactInputSingleParams memory paramsCrv = ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(CRV),
                 tokenOut: address(asset),
@@ -233,7 +233,7 @@ contract ConvexStrategy is AccessStrategy {
 
         // Sell CVX rewards
         uint256 cvxBal = CVX.balanceOf(address(this));
-        if (cvxBal > MIN_TOKEN_AMT) {
+        if (cvxBal > MIN_REWARD_AMOUNT) {
             ISwapRouter.ExactInputSingleParams memory paramsCvx = ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(CVX),
                 tokenOut: address(asset),
