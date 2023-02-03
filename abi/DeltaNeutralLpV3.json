@@ -370,19 +370,6 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "debtToken",
-    "outputs": [
-      {
-        "internalType": "contract ERC20",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "uint256",

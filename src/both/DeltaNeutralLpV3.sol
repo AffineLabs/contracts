@@ -92,6 +92,19 @@ contract DeltaNeutralLpV3 is AccessStrategy {
                           POSITION MANAGEMENT
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Emitted when a position is started.
+     * @param position The position id.
+     * @param assetCollateral The amount of `asset` deposited into aave.
+     * @param borrows The amount of debt created.
+     * @param borrowPrices Asset/Borrow prices. Index 0 contains the chainlink price of `borrow`.
+     * Index 1 contains the spot (Uniswap) price.
+     * @param tickLow The lower tick at which liquidity was provided.
+     * @param tickHigh The higher ick at which liquidity was provided.
+     * @param assetsToUni Amount of `asset` in uniswap lp position.
+     * @param borrowsToUni Amount of `borrow` in uniswap lp position.
+     * @param timestamp The block timestamp.
+     */
     event PositionStart(
         uint32 indexed position,
         uint256 assetCollateral,
@@ -104,17 +117,26 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         uint256 timestamp
     );
 
+    /// @notice The current position index. Starts at 0 and increases by 1 each time a new position is opened.
     uint32 public currentPosition;
+    /// @notice True if we can start a new position. Only one position is allowed at a time.
     bool public canStartNewPos;
 
     /// @notice The asset we want to borrow, e.g. WMATIC
     ERC20 public immutable borrowAsset;
+    ///@dev Aave lending pool.
     ILendingPool immutable lendingPool;
-    /// @notice The asset we get when we borrow our `borrowAsset` from aave
-    ERC20 public immutable debtToken;
-    /// @notice The asset we get deposit `asset` into aave
+    /// @dev Aave debt receipt token.
+    ERC20 immutable debtToken;
+    /// @dev Aave deposit receipt token.
     ERC20 public immutable aToken;
 
+    /**
+     * @notice Start a position.
+     * @param tickLow The lower tick at which we will provide liquidity.
+     * @param tickHigh The lower tick at which we will provide liquidity.
+     * @param slippageToleranceBps Maximum bps of asset/borrow that will not be added as liquidity.
+     */
     function startPosition(int24 tickLow, int24 tickHigh, uint256 slippageToleranceBps)
         external
         onlyRole(STRATEGIST_ROLE)
@@ -124,10 +146,9 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         currentPosition += 1;
         canStartNewPos = false;
 
-        // Borrow Matic at 75% (88% liquidation threshold and 85.5% max LTV)
+        // Borrow at 75% LTV
         // If x is amount we want to deposit into aave
         // .75x = Total - x => 1.75x = Total => x = Total / 1.75 => Total * 4/7
-        // Deposit asset in aave
         uint256 assets = asset.balanceOf(address(this));
         uint256 assetsToDeposit = assets.mulDivDown(4, 7);
         lendingPool.deposit({asset: address(asset), amount: assetsToDeposit, onBehalfOf: address(this), referralCode: 0});
@@ -135,7 +156,6 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         uint256 borrowPrice = _getPrice();
         uint256 borrowAssetsDeposited = _assetToBorrow(assetsToDeposit, borrowPrice);
 
-        // https://docs.aave.com/developers/v/2.0/the-core-protocol/lendingpool#borrow
         lendingPool.borrow({
             asset: address(borrowAsset),
             amount: borrowAssetsDeposited.mulDivDown(3, 4),
@@ -163,8 +183,20 @@ contract DeltaNeutralLpV3 is AccessStrategy {
     }
 
     /**
-     * @param assetSold True if we sold asset and bough borrow, false otherwise
-     * @param assetsOrBorrowsSold The amount of asset or borrow sold in order to repay the debt
+     * @notice Emitted when a position is closed.
+     * @param  position The position id.
+     * @param  assetsFromUni Amount of `asset` withdrawn from uniswap lp position.
+     * @param borrowsFromUni Amount of `borrow` withdrawn from uniswap lp position.
+     * @param assetFees Amount of fees (in `asset`) earned by uniswap lp position.
+     * @param borrowFees Amount of fees (in `borrow`) earned by uniswap lp position.
+     * @param borrowPrices Asset/Borrow prices. Index 0 contains the chainlink price of `borrow`.
+     * Index 1 contains the spot (Uniswap) price.
+     * @param assetSold True if we sold `asset` and bought `borrow`, false otherwise.
+     * @param assetsOrBorrowsSold The amount of `asset` or `borrow` sold in order to repay the debt.
+     * @param assetsOrBorrowsReceived The amount of `asset` or `borrow` received.
+     * @param assetCollateral The aToken balance (before withdrawal from aave)
+     * @param borrowDebtPaid The debt token balance (before repayment)
+     * @param timestamp Block timestamp.
      */
     event PositionEnd(
         uint32 indexed position,
@@ -181,13 +213,14 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         uint256 timestamp
     );
 
+    /// @notice End position using at most `slippageBps` of slippage.
     function endPosition(uint256 slippageBps) external onlyRole(STRATEGIST_ROLE) {
         _endPosition(slippageBps);
     }
 
+    /// @dev End posiion helper (also used during divestiment)
     function _endPosition(uint256 slippageBps) internal {
         // Set position metadata
-
         require(!canStartNewPos, "DNLP: position is inactive");
         canStartNewPos = true;
 
@@ -195,7 +228,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         (uint256 amount0FromUni, uint256 amount1FromUni, uint256 amount0Fees, uint256 amount1Fees) =
             _removeLiquidity(slippageBps);
 
-        // Buy enough matic to pay back debt
+        // Buy enough `borrow` to pay back debt
         uint256 debt;
         uint256 assetsOrBorrowsSold;
         uint256 assetsOrBorrowsReceived;
@@ -228,7 +261,6 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         lpManager.burn(lpId);
         lpId = 0;
 
-        // This function is just being used to avoid the stack too deep error
         _emitEnd(
             amount0FromUni,
             amount1FromUni,
@@ -242,6 +274,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         );
     }
 
+    /// @dev Emit end position event. Useful for avoiding stack-too-deep error.
     function _emitEnd(
         uint256 amount0FromUni,
         uint256 amount1FromUni,
@@ -253,8 +286,8 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         uint256 assetCollateral,
         uint256 debt
     ) internal {
-        (uint256 assetsFromUni, uint256 borrowsFromUni) = _convertToAB(amount0FromUni, amount1FromUni);
-        (uint256 assetFees, uint256 borrowFees) = _convertToAB(amount0Fees, amount1Fees);
+        (uint256 assetsFromUni, uint256 borrowsFromUni) = _maybeFlip(amount0FromUni, amount1FromUni);
+        (uint256 assetFees, uint256 borrowFees) = _maybeFlip(amount0Fees, amount1Fees);
 
         {
             emit PositionEnd({
@@ -278,21 +311,32 @@ contract DeltaNeutralLpV3 is AccessStrategy {
                                 UNISWAP
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice The router used for swaps
+    /// @dev The uniswap router used for swaps.
     ISwapRouter public immutable router;
+    /// @notice The uniswap nft manager (for adding/removing liquidity).
     INonfungiblePositionManager public immutable lpManager;
     /// @notice The pool's fee. We need this to identify the pool.
     uint24 public immutable poolFee;
+    /// @notice The asset/borrow uniswap pool with fee `poolFee`.
     IUniswapV3Pool public immutable pool;
-    /// @notice True if `asset` is pool.token0();
     address immutable token0;
     address immutable token1;
+
+    /// @notice Id of our liquidity nft. Non-zero if a position is active.
     uint256 public lpId;
+    /// @notice The amount of liquidity in our current position.
     uint128 public lpLiquidity;
-    /// @notice A wrapper around the positionValue lib (written in solidity 0.7)
+    /// @notice A wrapper around the PositionValue lib (written in solidity 0.7)
     IUniPositionValue public immutable positionValue;
 
-    /// @dev Another function to avoid stack too deep error. Via-ir compilation takes too long.
+    /**
+     * @dev Add liquidity to uniswap.
+     * @param amountA The amount `asset` to deposit.
+     * @param amountB The amount of `borrow` to deposit.
+     * @param tickLow Lower liquidity tick.
+     * @param tickHigh Higher liquidity tick.
+     * @param  slippageToleranceBps Max slippage in bps.
+     */
     function _addLiquidity(
         uint256 amountA,
         uint256 amountB,
@@ -300,7 +344,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         int24 tickHigh,
         uint256 slippageToleranceBps
     ) internal returns (uint256 assetsToUni, uint256 borrowsToUni) {
-        (uint256 amount0, uint256 amount1) = _convertTo01(amountA, amountB);
+        (uint256 amount0, uint256 amount1) = _maybeFlip(amountA, amountB);
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
             token0: token0,
             token1: token1,
@@ -315,16 +359,17 @@ contract DeltaNeutralLpV3 is AccessStrategy {
             deadline: block.timestamp
         });
         (uint256 tokenId, uint128 liquidity, uint256 amount0Uni, uint256 amount1Uni) = lpManager.mint(params);
-        (assetsToUni, borrowsToUni) = _convertToAB(amount0Uni, amount1Uni);
+        (assetsToUni, borrowsToUni) = _maybeFlip(amount0Uni, amount1Uni);
         lpId = tokenId;
         lpLiquidity = liquidity;
     }
 
+    /// @dev Remove liquidity from uniswap with at most `slippageBps` of slippage
     function _removeLiquidity(uint256 slippageBps)
         internal
         returns (uint256 amount0FromLiq, uint256 amount1FromLiq, uint256 amount0Fees, uint256 amount1Fees)
     {
-        // Get the amounts that the position has collected in fees. The fees are also sent to this address
+        // Get the amounts that the position has collected in fees. The fees sent to this address.
         (amount0Fees, amount1Fees) = _collectFees();
 
         // Get amount of tokens in our lp position
@@ -345,12 +390,14 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         (amount0FromLiq, amount1FromLiq) = _collectFees();
     }
 
+    /// @dev Get value of lp nft tokens in terms of `token0` and `token1`.
     function _getTokensInLp() internal view returns (uint256 amount0, uint256 amount1) {
         if (lpLiquidity == 0) return (amount0, amount1);
         (uint160 sqrtPriceX96,,,,,,) = pool.slot0();
         (amount0, amount1) = positionValue.total(lpManager, lpId, sqrtPriceX96);
     }
 
+    /// @dev Collect amounts owed to us, whether do to fees or due to burning liquidity.
     function _collectFees() internal returns (uint256 amount0, uint256 amount1) {
         // This will actually transfer the tokens owed after decreasing the liquidity
         INonfungiblePositionManager.CollectParams memory params = INonfungiblePositionManager.CollectParams({
@@ -363,6 +410,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         (amount0, amount1) = lpManager.collect(params);
     }
 
+    /// @dev Swap `amountIn` of  `from` to `to` using at most `slippageBps` slippage.
     function _swapExactSingle(ERC20 from, ERC20 to, uint256 amountIn, uint256 slippageBps)
         internal
         returns (uint256 sold, uint256 received)
@@ -384,6 +432,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         sold = amountIn;
     }
 
+    /// @dev Swap `from` to `amountOut` of `to` using at most `slippageBps` slippage.
     function _swapExactOutputSingle(ERC20 from, ERC20 to, uint256 amountOut, uint256 slippageBps)
         internal
         returns (uint256 sold, uint256 received)
@@ -408,45 +457,32 @@ contract DeltaNeutralLpV3 is AccessStrategy {
                            FORMAT CONVERSIONS
     //////////////////////////////////////////////////////////////*/
 
-    /// @dev Given two numbers in AB (assets, borrows) format, convert to Uniswap's token0, token1 format
-    function _convertTo01(uint256 assets, uint256 borrowAssets) internal view returns (uint256, uint256) {
-        if (address(asset) == token0) return (assets, borrowAssets);
-        else return (borrowAssets, assets);
-    }
-
-    /// @dev Given two numbers in 01 (token0, token1) format, convert to our AB format (assets, borrows). This will just flip
-    /// the numbers if asset != token0.
-    function _convertToAB(uint256 amount0, uint256 amount1) internal view returns (uint256, uint256) {
-        return _convertTo01(amount0, amount1);
-    }
-
-    function _convertAmounts(ERC20 from, uint256 amountFrom) internal view returns (uint256 amountTo) {
-        uint256 borrowPrice = _getPrice();
-        if (address(from) == address(asset)) {
-            amountTo = _assetToBorrow(amountFrom, borrowPrice);
-        } else {
-            amountTo = _borrowToAsset(amountFrom, borrowPrice);
-        }
+    /// @dev Given two numbers in 01 (token0, token1) format, convert to our AB format (assets, borrows), and vice-versa.
+    /// This will just flip the numbers if asset != token0.
+    function _maybeFlip(uint256 amount0, uint256 amount1) internal view returns (uint256, uint256) {
+        if (address(asset) == token0) return (amount0, amount1);
+        else return (amount1, amount0);
     }
 
     /*//////////////////////////////////////////////////////////////
                              EXCHAGE RATES
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Gives ratio of vault asset to borrow asset, e.g. WMATIC/USD (assuming usdc = usd)
+    /// @dev Gives ratio of vault asset to borrow asset, e.g. WMATIC/USD (we assume that usd = usdc)
     AggregatorV3Interface immutable borrowAssetFeed;
 
-    /// @notice Convert `borrowAsset` (e.g. MATIC) to `asset` (e.g. USDC)
+    /// @dev Convert `borrowAsset` (e.g. MATIC) to `asset` (e.g. USDC)
     function _borrowToAsset(uint256 amountB, uint256 clPrice) internal pure returns (uint256 assets) {
         // The first division gets rid of the decimals of wmatic. The second converts dollars to usdc
-        // TODO: make this work for any set of decimals
         assets = amountB.mulWadDown(clPrice) / 1e2;
     }
 
+    /// @dev Convert `asset` to `borrowAsset`
     function _assetToBorrow(uint256 assets, uint256 clPrice) internal pure returns (uint256 borrows) {
         borrows = (assets * 1e2).divWadDown(clPrice);
     }
 
+    /// @dev Get chainlink ratio of asset/borrow.
     function _getPrice() internal view returns (uint256 priceOfBorrowAsset) {
         (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = borrowAssetFeed.latestRoundData();
         require(price > 0, "Chainlink price <= 0");
@@ -456,6 +492,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         priceOfBorrowAsset = uint256(price);
     }
 
+    /// @dev Get equivalent `asset` amount of "one" (10 ** decimals()) borrow.
     function _getBorrowSpotPrice() internal view returns (uint256 price) {
         (uint160 sqrtPriceX96,,,,,,) = pool.slot0();
 
@@ -469,6 +506,16 @@ contract DeltaNeutralLpV3 is AccessStrategy {
             price = (oneBorrow * uint256(sqrtPriceX96) ** 2) >> 192;
         }
         return price;
+    }
+
+    /// @dev Convert `amountFrom` of `from` to the other token. This is a borrow -> asset or asset -> borrow conversion.
+    function _convertAmounts(ERC20 from, uint256 amountFrom) internal view returns (uint256 amountTo) {
+        uint256 borrowPrice = _getPrice();
+        if (address(from) == address(asset)) {
+            amountTo = _assetToBorrow(amountFrom, borrowPrice);
+        } else {
+            amountTo = _borrowToAsset(amountFrom, borrowPrice);
+        }
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -489,14 +536,16 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         return balanceOfAsset() + assetsMatic + aToken.balanceOf(address(this)) + assetsLp - assetsDebt;
     }
 
+    /// @notice The value of the lp position in `asset`.
     function valueOfLpPosition() public view returns (uint256 assetsLp) {
         (uint256 token0InLp, uint256 token1InLp) = _getTokensInLp();
-        (uint256 assetsInLp, uint256 borrowAssetsInLp) = _convertToAB(token0InLp, token1InLp);
+        (uint256 assetsInLp, uint256 borrowAssetsInLp) = _maybeFlip(token0InLp, token1InLp);
         assetsLp = assetsInLp + _borrowToAsset(borrowAssetsInLp, _getPrice());
     }
 
+    /// @notice The value of the fees accrued by the current lp position.
     function positionFees() public view returns (uint256 assets, uint256 borrows) {
         (uint256 token0Fees, uint256 token1Fees) = positionValue.fees(lpManager, lpId);
-        return _convertToAB(token0Fees, token1Fees);
+        return _maybeFlip(token0Fees, token1Fees);
     }
 }
