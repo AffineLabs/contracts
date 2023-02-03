@@ -30,8 +30,8 @@ contract DeltaNeutralLpV3 is AccessStrategy {
     constructor(
         BaseVault _vault,
         ILendingPoolAddressesProviderRegistry _registry,
-        ERC20 _borrowAsset,
-        AggregatorV3Interface _borrowAssetFeed,
+        ERC20 _borrow,
+        AggregatorV3Interface _borrowFeed,
         ISwapRouter _router,
         INonfungiblePositionManager _lpManager,
         IUniswapV3Pool _pool,
@@ -40,8 +40,8 @@ contract DeltaNeutralLpV3 is AccessStrategy {
     ) AccessStrategy(_vault, strategists) {
         canStartNewPos = true;
 
-        borrowAsset = _borrowAsset;
-        borrowAssetFeed = _borrowAssetFeed;
+        borrow = _borrow;
+        borrowFeed = _borrowFeed;
 
         // Uni info
         router = _router;
@@ -55,21 +55,21 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         address[] memory providers = _registry.getAddressesProvidersList();
         ILendingPoolAddressesProvider provider = ILendingPoolAddressesProvider(providers[providers.length - 1]);
         lendingPool = ILendingPool(provider.getLendingPool());
-        debtToken = ERC20(lendingPool.getReserveData(address(borrowAsset)).variableDebtTokenAddress);
+        debtToken = ERC20(lendingPool.getReserveData(address(borrow)).variableDebtTokenAddress);
         aToken = ERC20(lendingPool.getReserveData(address(asset)).aTokenAddress);
 
         // Depositing/withdrawing/repaying debt from lendingPool
         asset.safeApprove(address(lendingPool), type(uint256).max);
         aToken.safeApprove(address(lendingPool), type(uint256).max);
-        borrowAsset.safeApprove(address(lendingPool), type(uint256).max);
+        borrow.safeApprove(address(lendingPool), type(uint256).max);
 
         // To trade usdc/matic
         asset.safeApprove(address(_router), type(uint256).max);
-        borrowAsset.safeApprove(address(_router), type(uint256).max);
+        borrow.safeApprove(address(_router), type(uint256).max);
 
         // To add liquidity
         asset.safeApprove(address(_lpManager), type(uint256).max);
-        borrowAsset.safeApprove(address(_lpManager), type(uint256).max);
+        borrow.safeApprove(address(_lpManager), type(uint256).max);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -123,7 +123,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
     bool public canStartNewPos;
 
     /// @notice The asset we want to borrow, e.g. WMATIC
-    ERC20 public immutable borrowAsset;
+    ERC20 public immutable borrow;
     ///@dev Aave lending pool.
     ILendingPool immutable lendingPool;
     /// @dev Aave debt receipt token.
@@ -154,11 +154,11 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         lendingPool.deposit({asset: address(asset), amount: assetsToDeposit, onBehalfOf: address(this), referralCode: 0});
 
         uint256 borrowPrice = _getPrice();
-        uint256 borrowAssetsDeposited = _assetToBorrow(assetsToDeposit, borrowPrice);
+        uint256 borrowsDeposited = _assetToBorrow(assetsToDeposit, borrowPrice);
 
         lendingPool.borrow({
-            asset: address(borrowAsset),
-            amount: borrowAssetsDeposited.mulDivDown(3, 4),
+            asset: address(borrow),
+            amount: borrowsDeposited.mulDivDown(3, 4),
             interestRateMode: 2,
             referralCode: 0,
             onBehalfOf: address(this)
@@ -166,7 +166,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
 
         // Provide liquidity on uniswap
         (uint256 assetsToUni, uint256 borrowsToUni) = _addLiquidity(
-            assets - assetsToDeposit, borrowAsset.balanceOf(address(this)), tickLow, tickHigh, slippageToleranceBps
+            assets - assetsToDeposit, borrow.balanceOf(address(this)), tickLow, tickHigh, slippageToleranceBps
         );
 
         emit PositionStart({
@@ -235,23 +235,23 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         bool assetSold;
         {
             debt = debtToken.balanceOf(address(this));
-            uint256 bBal = borrowAsset.balanceOf(address(this));
+            uint256 bBal = borrow.balanceOf(address(this));
             uint256 maticToBuy = debt > bBal ? debt - bBal : 0;
             uint256 maticToSell = bBal > debt ? bBal - debt : 0;
 
             if (maticToBuy > 0) {
                 (assetsOrBorrowsSold, assetsOrBorrowsReceived) =
-                    _swapExactOutputSingle(asset, borrowAsset, maticToBuy, slippageBps);
+                    _swapExactOutputSingle(asset, borrow, maticToBuy, slippageBps);
             }
             if (maticToSell > 0) {
                 (assetsOrBorrowsSold, assetsOrBorrowsReceived) =
-                    _swapExactSingle(borrowAsset, asset, maticToSell, slippageBps);
+                    _swapExactSingle(borrow, asset, maticToSell, slippageBps);
             }
             assetSold = maticToBuy > 0;
         }
 
         // Repay debt
-        lendingPool.repay({asset: address(borrowAsset), amount: debt, rateMode: 2, onBehalfOf: address(this)});
+        lendingPool.repay({asset: address(borrow), amount: debt, rateMode: 2, onBehalfOf: address(this)});
 
         // Withdraw from aave
         uint256 assetCollateral = aToken.balanceOf(address(this));
@@ -469,35 +469,35 @@ contract DeltaNeutralLpV3 is AccessStrategy {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Gives ratio of vault asset to borrow asset, e.g. WMATIC/USD (we assume that usd = usdc)
-    AggregatorV3Interface immutable borrowAssetFeed;
+    AggregatorV3Interface immutable borrowFeed;
 
-    /// @dev Convert `borrowAsset` (e.g. MATIC) to `asset` (e.g. USDC)
+    /// @dev Convert `borrow` (e.g. MATIC) to `asset` (e.g. USDC)
     function _borrowToAsset(uint256 amountB, uint256 clPrice) internal pure returns (uint256 assets) {
         // The first division gets rid of the decimals of wmatic. The second converts dollars to usdc
         assets = amountB.mulWadDown(clPrice) / 1e2;
     }
 
-    /// @dev Convert `asset` to `borrowAsset`
+    /// @dev Convert `asset` to `borrow`
     function _assetToBorrow(uint256 assets, uint256 clPrice) internal pure returns (uint256 borrows) {
         borrows = (assets * 1e2).divWadDown(clPrice);
     }
 
     /// @dev Get chainlink ratio of asset/borrow.
-    function _getPrice() internal view returns (uint256 priceOfBorrowAsset) {
-        (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = borrowAssetFeed.latestRoundData();
+    function _getPrice() internal view returns (uint256 priceOfborrow) {
+        (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = borrowFeed.latestRoundData();
         require(price > 0, "Chainlink price <= 0");
         require(answeredInRound >= roundId, "Chainlink stale data");
         require(timestamp != 0, "Chainlink round not complete");
 
-        priceOfBorrowAsset = uint256(price);
+        priceOfborrow = uint256(price);
     }
 
     /// @dev Get equivalent `asset` amount of "one" (10 ** decimals()) borrow.
     function _getBorrowSpotPrice() internal view returns (uint256 price) {
         (uint160 sqrtPriceX96,,,,,,) = pool.slot0();
 
-        // We are converting "one" of `borrowAsset` into some amount of `asset`.
-        uint256 oneBorrow = 10 ** borrowAsset.decimals();
+        // We are converting "one" of `borrow` into some amount of `asset`.
+        uint256 oneBorrow = 10 ** borrow.decimals();
         if (address(asset) == token0) {
             // eth_amount / (eth_usdc ratio)  = eth_amount * usdc/eth ratio = usdc amount
             price = (oneBorrow << 192) / (uint256(sqrtPriceX96) ** 2);
@@ -527,7 +527,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         // balanceOfAsset + balanceOfMatic + aToken value + Uni Lp value - debt
         // lp tokens * (total assets) / total lp tokens
         uint256 borrowPrice = _getPrice();
-        uint256 assetsMatic = _borrowToAsset(borrowAsset.balanceOf(address(this)), borrowPrice);
+        uint256 assetsMatic = _borrowToAsset(borrow.balanceOf(address(this)), borrowPrice);
 
         // Get value of uniswap lp position
         uint256 assetsLp = valueOfLpPosition();
@@ -539,8 +539,8 @@ contract DeltaNeutralLpV3 is AccessStrategy {
     /// @notice The value of the lp position in `asset`.
     function valueOfLpPosition() public view returns (uint256 assetsLp) {
         (uint256 token0InLp, uint256 token1InLp) = _getTokensInLp();
-        (uint256 assetsInLp, uint256 borrowAssetsInLp) = _maybeFlip(token0InLp, token1InLp);
-        assetsLp = assetsInLp + _borrowToAsset(borrowAssetsInLp, _getPrice());
+        (uint256 assetsInLp, uint256 borrowsInLp) = _maybeFlip(token0InLp, token1InLp);
+        assetsLp = assetsInLp + _borrowToAsset(borrowsInLp, _getPrice());
     }
 
     /// @notice The value of the fees accrued by the current lp position.

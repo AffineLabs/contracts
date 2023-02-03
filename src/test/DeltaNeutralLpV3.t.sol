@@ -21,7 +21,7 @@ contract DeltaNeutralV3Test is TestPlus {
     L2Vault vault;
     DeltaNeutralLpV3 strategy;
     ERC20 asset;
-    ERC20 borrowAsset;
+    ERC20 borrow;
     int24 tickLow;
     int24 tickHigh;
     uint256 slippageBps = 1000;
@@ -63,7 +63,7 @@ contract DeltaNeutralV3Test is TestPlus {
         vm.stopPrank();
 
         asset = strategy.asset();
-        borrowAsset = strategy.borrowAsset();
+        borrow = strategy.borrow();
     }
 
     /// @notice Test that a position can be opened.
@@ -113,7 +113,7 @@ contract DeltaNeutralV3Test is TestPlus {
         manager.ownerOf(origLpId);
 
         assertApproxEqRel(asset.balanceOf(address(strategy)), 1000e6, 0.02e18);
-        assertEq(borrowAsset.balanceOf(address(strategy)), 0);
+        assertEq(borrow.balanceOf(address(strategy)), 0);
         assertEq(strategy.lpLiquidity(), 0);
     }
 
@@ -159,7 +159,7 @@ contract DeltaNeutralV3Test is TestPlus {
 
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
             tokenIn: address(asset),
-            tokenOut: address(borrowAsset),
+            tokenOut: address(borrow),
             fee: strategy.poolFee(),
             recipient: address(this),
             deadline: block.timestamp,
