@@ -42,7 +42,7 @@ contract ConvexStratTest is TestPlus {
     }
 
     function setUp() public {
-        vm.createSelectFork("ethereum", 15_624_364);
+        vm.createSelectFork("ethereum", 16_520_958);
         vault = deployL1Vault();
 
         // Make vault asset equal to usdc
@@ -127,16 +127,17 @@ contract ConvexStratTest is TestPlus {
         strategy.deposit(1e12, 0);
         vm.warp(block.timestamp + 365 days);
 
-        strategy.claimRewards();
+        assertGt(strategy.pendingRewards(), 0);
 
+        strategy.claimRewards();
         assertGt(strategy.CVX().balanceOf(address(strategy)), 0);
         assertGt(strategy.CRV().balanceOf(address(strategy)), 0);
     }
 
     /// @notice Test selling reward tokens.
     function testCanSellRewards() public {
-        deal(address(strategy.CRV()), address(strategy), strategy.MIN_TOKEN_AMT() * 10);
-        deal(address(strategy.CVX()), address(strategy), strategy.MIN_TOKEN_AMT() * 10);
+        deal(address(strategy.CRV()), address(strategy), 1e18);
+        deal(address(strategy.CVX()), address(strategy), 1e18);
 
         strategy.claimAndSellRewards(0, 0);
 
@@ -145,6 +146,22 @@ contract ConvexStratTest is TestPlus {
         // We sold all of our crv
         assertEq(strategy.CRV().balanceOf(address(strategy)), 0);
         assertEq(strategy.CVX().balanceOf(address(strategy)), 0);
+    }
+
+    /// @notice Make sure that we get the correct amount of assets when selling rewards
+    function testRewardsAreNearSpotPrice() public {
+        // CRV is about $1.03 as of block 16520958
+        deal(address(strategy.CRV()), address(strategy), 10e18);
+
+        strategy.claimAndSellRewards(0, 0);
+        uint256 crvUsdc = usdc.balanceOf(address(strategy));
+        assertApproxEqRel(crvUsdc, 10.3e6, 0.05e18);
+
+        // CVX is about $5.92 as of block 16520958
+        deal(address(strategy.CVX()), address(strategy), 10e18);
+        strategy.claimAndSellRewards(0, 0);
+        uint256 cvxUsdc = usdc.balanceOf(address(strategy)) - crvUsdc;
+        assertApproxEqRel(cvxUsdc, 59.2e6, 0.05e18);
     }
 
     /// @notice Fuzz test of tvl function.
@@ -156,12 +173,34 @@ contract ConvexStratTest is TestPlus {
         if (tvl < 100) return;
         assertApproxEqRel(tvl, (uint256(lpTokens) + cvxLpTokens) / 1e12, 0.02e18);
     }
+
+    function testHoldingsSwap() public {
+        deal(address(strategy.curveLpToken()), address(strategy), 1e18);
+        deal(address(strategy.cvxRewarder()), address(strategy), 1e18);
+        deal(address(usdc), address(strategy), 1e6);
+        deal(address(crv), address(strategy), 1e18);
+        deal(address(cvx), address(strategy), 1e18);
+
+        vm.prank(vault.governance());
+        strategy.sendAllTokens(address(this));
+
+        assertEq(strategy.curveLpToken().balanceOf(address(strategy)), 0);
+        assertEq(strategy.curveLpToken().balanceOf(address(this)), 2e18);
+        assertEq(strategy.cvxRewarder().balanceOf(address(strategy)), 0);
+        assertEq(strategy.cvxRewarder().balanceOf(address(this)), 0);
+        assertEq(usdc.balanceOf(address(strategy)), 0);
+        assertEq(usdc.balanceOf(address(this)), 1e6);
+        assertEq(crv.balanceOf(address(strategy)), 0);
+        assertTrue(crv.balanceOf(address(this)) >= 1e18); // You get some dust when withdrawing in same block
+        assertEq(cvx.balanceOf(address(strategy)), 0);
+        assertTrue(cvx.balanceOf(address(this)) >= 1e18);
+    }
 }
 
 contract ConvexStratMIMTest is ConvexStratTest {
     // Make this public and run it in order to get convex pool id for a given lp token
     function testBooster() internal {
-        IConvexBooster booster = strategy.convexBooster();
+        IConvexBooster booster = strategy.CVX_BOOSTER();
         uint256 length = booster.poolLength();
         console.log("length: ", length);
 

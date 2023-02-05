@@ -15,6 +15,8 @@ import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol"
 import {BaseVault} from "../src/BaseVault.sol";
 import {DeltaNeutralLpV3} from "../src/both/DeltaNeutralLpV3.sol";
 
+/*  solhint-disable reason-string */
+
 library SslpV3 {
     function deployPoly(BaseVault vault) internal returns (DeltaNeutralLpV3 strategy) {
         strategy = new DeltaNeutralLpV3(
