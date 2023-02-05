@@ -13,12 +13,12 @@
       },
       {
         "internalType": "contract ERC20",
-        "name": "_borrowAsset",
+        "name": "_borrow",
         "type": "address"
       },
       {
         "internalType": "contract AggregatorV3Interface",
-        "name": "_borrowAssetFeed",
+        "name": "_borrowFeed",
         "type": "address"
       },
       {
@@ -337,7 +337,7 @@
   },
   {
     "inputs": [],
-    "name": "borrowAsset",
+    "name": "borrow",
     "outputs": [
       {
         "internalType": "contract ERC20",
@@ -350,7 +350,7 @@
   },
   {
     "inputs": [],
-    "name": "borrowAssetFeed",
+    "name": "borrowFeed",
     "outputs": [
       {
         "internalType": "contract AggregatorV3Interface",
