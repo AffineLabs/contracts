@@ -26,7 +26,9 @@ library SslpV3 {
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
         IUniswapV3Pool(0x45dDa9cb7c25131DF268515131f647d726f50608),
         IUniPositionValue(0x53dc9584bf76922E56F8bf966f34C8Ae3E5AfAF2),
-        _getStrategists()
+        _getStrategists(),
+        5714, // ~4/7
+        7500 // =3/4
         );
         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
     }
@@ -42,7 +44,9 @@ library SslpV3 {
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
         IUniswapV3Pool(0xA374094527e1673A86dE625aa59517c5dE346d32), // wmatic 
         IUniPositionValue(0x53dc9584bf76922E56F8bf966f34C8Ae3E5AfAF2),
-        _getStrategists()
+        _getStrategists(),
+        5714, // ~4/7
+        7500 // =3/4
         );
         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
     }
@@ -57,7 +61,9 @@ library SslpV3 {
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
         IUniswapV3Pool(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640), // weth/usdc pool (5 bps)
         IUniPositionValue(0xfB2DaDdd7390f7e22Db849713Ff73405c9792F69),
-        _getStrategists()
+        _getStrategists(),
+        5714, // ~4/7
+        7500 // =3/4
         );
         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
     }
@@ -72,7 +78,9 @@ library SslpV3 {
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
         IUniswapV3Pool(0xCBCdF9626bC03E24f779434178A73a0B4bad62eD), // wbtc/eth pool 
         IUniPositionValue(0xfB2DaDdd7390f7e22Db849713Ff73405c9792F69),
-        _getStrategists()
+        _getStrategists(),
+        5952, // ~25/42
+        6800 // =17/25
         );
         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
     }
