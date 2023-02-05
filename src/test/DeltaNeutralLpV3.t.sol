@@ -210,8 +210,6 @@ contract DeltaNeutralV3EthWethTest is DeltaNeutralV3Test {
         vm.createSelectFork("ethereum", 16_394_906);
     }
 
-    function _asset() internal pure override returns (address) {}
-
     function _setAsset() internal virtual override {}
 
     function _deployVault() internal override {
