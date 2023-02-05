@@ -514,7 +514,12 @@ contract DeltaNeutralLpV3 is AccessStrategy {
     /// @dev Gives ratio of vault asset to borrow asset, e.g. WMATIC/USD (we assume that usd = usdc)
     AggregatorV3Interface immutable borrowFeed;
 
-    /// @dev Convert `borrow` (e.g. MATIC) to `asset` (e.g. USDC)
+    /**
+     * @dev Convert `borrow` (e.g. MATIC) to `asset` (e.g. USDC)
+     * 10^borrow_decimals in `borrow` = clPrice / 10^borrowFeed_decimals * 10^asset_decimals in `assets`
+     * thus amountB in `borrow` = amountB * clPrice * 10^(asset_decimals - borrow_decimals - borrowFeed_decimals)
+     * Also note that, decimalAdjust = abs(asset_decimals - borrow_decimals - borrowFeed_decimals)
+     */
     function _borrowToAsset(uint256 amountB, uint256 clPrice) internal view returns (uint256 assets) {
         if (decimalAdjustSign) {
             assets = amountB * clPrice * (10 ** decimalAdjust);
