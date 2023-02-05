@@ -24,7 +24,7 @@ contract L1DeltaNeutralTest is TestPlus {
     ERC20 usdc;
     ERC20 abPair;
     ERC20 asset;
-    ERC20 borrowAsset;
+    ERC20 borrow;
     uint256 masterChefPid;
 
     uint256 public constant IDEAL_SLIPPAGE_BPS = 200;
@@ -44,7 +44,7 @@ contract L1DeltaNeutralTest is TestPlus {
 
         abPair = strategy.abPair();
         asset = usdc;
-        borrowAsset = strategy.borrowAsset();
+        borrow = strategy.borrow();
     }
 
     /// @notice Test only address with strategist role can open a position.
@@ -68,25 +68,12 @@ contract L1DeltaNeutralTest is TestPlus {
         uint256 startAssets = 1000e6;
         deal(address(usdc), address(strategy), startAssets);
 
-        uint256 assetsToMatic = (startAssets) / 1000;
-        address[] memory path = new address[](2);
-        path[0] = address(strategy.asset());
-        path[1] = address(strategy.borrowAsset());
-
-        // I should get this much matic
-        uint256[] memory amounts = strategy.router().getAmountsOut(assetsToMatic, path);
-        uint256 amountMatic = amounts[1];
-
         vm.startPrank(vault.governance());
-
         strategy.startPosition(IDEAL_SLIPPAGE_BPS);
         assertFalse(strategy.canStartNewPos());
 
-        // I got the right amount of matic
-        assertApproxEqAbs(amountMatic, strategy.borrowAsset().balanceOf(address(strategy)), 0.01e18);
-
         // I have the right amount of aUSDC
-        assertEq(strategy.aToken().balanceOf(address(strategy)), (startAssets - assetsToMatic) * 4 / 7);
+        assertEq(strategy.aToken().balanceOf(address(strategy)), startAssets * 4 / 7);
 
         // I have the right amount of uniswap lp tokens
         uint256 masterChefStakedAmount =
@@ -128,7 +115,7 @@ contract L1DeltaNeutralTest is TestPlus {
 
         assertTrue(strategy.canStartNewPos());
         assertApproxEqRel(asset.balanceOf(address(strategy)), 1000e6, 0.01e18);
-        assertEq(borrowAsset.balanceOf(address(strategy)), 0);
+        assertEq(borrow.balanceOf(address(strategy)), 0);
         assertEq(abPair.balanceOf(address(strategy)), 0);
         assertEq(strategy.debtToken().balanceOf(address(strategy)), 0);
     }
@@ -224,7 +211,7 @@ contract L2DeltaNeutralTest is TestPlus {
     ERC20 usdc;
     ERC20 abPair;
     ERC20 asset;
-    ERC20 borrowAsset;
+    ERC20 borrow;
     uint256 masterChefPid;
 
     uint256 public constant IDEAL_SLIPPAGE_BPS = 200;
@@ -244,7 +231,7 @@ contract L2DeltaNeutralTest is TestPlus {
 
         abPair = strategy.abPair();
         asset = usdc;
-        borrowAsset = strategy.borrowAsset();
+        borrow = strategy.borrow();
     }
 
     /// @notice Test only address with strategist role can open a position.
@@ -268,25 +255,13 @@ contract L2DeltaNeutralTest is TestPlus {
         uint256 startAssets = 1000e6;
         deal(address(usdc), address(strategy), startAssets);
 
-        uint256 assetsToMatic = (startAssets) / 1000;
-        address[] memory path = new address[](2);
-        path[0] = address(strategy.asset());
-        path[1] = address(strategy.borrowAsset());
-
-        // I should get this much matic
-        uint256[] memory amounts = strategy.router().getAmountsOut(assetsToMatic, path);
-        uint256 amountMatic = amounts[1];
-
         vm.startPrank(vault.governance());
 
         strategy.startPosition(IDEAL_SLIPPAGE_BPS);
         assertFalse(strategy.canStartNewPos());
 
-        // I got the right amount of matic
-        assertApproxEqAbs(amountMatic, strategy.borrowAsset().balanceOf(address(strategy)), 0.01e18);
-
         // I have the right amount of aUSDC
-        assertEq(strategy.aToken().balanceOf(address(strategy)), (startAssets - assetsToMatic) * 4 / 7);
+        assertEq(strategy.aToken().balanceOf(address(strategy)), startAssets * 4 / 7);
 
         // I have the right amount of uniswap lp tokens
         uint256 masterChefStakedAmount =
@@ -328,7 +303,7 @@ contract L2DeltaNeutralTest is TestPlus {
 
         assertTrue(strategy.canStartNewPos());
         assertApproxEqRel(asset.balanceOf(address(strategy)), 1000e6, 0.01e18);
-        assertEq(borrowAsset.balanceOf(address(strategy)), 0);
+        assertEq(borrow.balanceOf(address(strategy)), 0);
         assertEq(abPair.balanceOf(address(strategy)), 0);
         assertEq(strategy.debtToken().balanceOf(address(strategy)), 0);
     }
