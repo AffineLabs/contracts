@@ -36,7 +36,7 @@ contract L2WormholeRouterTest is TestPlus {
     uint16 emitterChainId = uint16(2);
 
     function setUp() public {
-        vm.createSelectFork("polygon", 31_824_532);
+        forkPolygon();
         vault = Deploy.deployL2Vault();
         router = L2WormholeRouter(vault.wormholeRouter());
         wormhole = router.wormhole();
@@ -264,7 +264,7 @@ contract L1WormholeRouterTest is TestPlus {
     uint16 emitterChainId = uint16(5);
 
     function setUp() public {
-        vm.createSelectFork("ethereum", 14_971_385);
+        forkEth();
         vault = Deploy.deployL1Vault();
         router = L1WormholeRouter(vault.wormholeRouter());
         wormhole = router.wormhole();

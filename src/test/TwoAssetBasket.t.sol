@@ -25,7 +25,7 @@ contract BtcEthBasketTest is TestPlus {
     ERC20 weth;
 
     function setUp() public {
-        vm.createSelectFork("polygon", 31_824_532);
+        forkPolygon();
 
         basket = Deploy.deployTwoAssetBasket(usdc);
         router = new Router("Alp", 0x52c8e413Ed9E961565D8D1de67e805E81b26C01b);

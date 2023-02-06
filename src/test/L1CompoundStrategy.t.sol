@@ -27,7 +27,7 @@ contract CompoundStratTest is TestPlus {
     uint256 halfUSDC = oneUSDC / 2;
 
     function setUp() public {
-        vm.createSelectFork("ethereum", 14_971_385);
+        forkEth();
         vault = Deploy.deployL1Vault();
 
         // make vault token equal to the L1 usdc address
@@ -136,12 +136,12 @@ contract CompoundStratTest is TestPlus {
 
     /// @notice Test divesting certain amount less than TVL from strategy works.
     function testStrategyDivestsOnlyAmountNeeded() public {
-        // If the strategy already already has money, we only withdraw amountRequested - current money
+        // If the strategy already has money, we only withdraw amountRequested - current money
 
-        // Give the strategy 1 usdc and 2 usdc worth of cTokens
         deal(address(usdc), address(strategy), 3e6, false);
 
-        vm.startPrank(address(strategy));
+        // Mint two cTokens, only 1 should be liquidated during a request for $2
+        changePrank(address(strategy));
         strategy.cToken().mint(2e6);
 
         // Divest to get 2 usdc back to vault
@@ -151,7 +151,7 @@ contract CompoundStratTest is TestPlus {
         // We only withdrew 2 - 1 == 1 usdc worth of cToken. We gave 2 usdc to the vault
         assertEq(usdc.balanceOf(address(vault)), 2e6);
         assertEq(usdc.balanceOf(address(strategy)), 0);
-        assertEq(strategy.cToken().balanceOfUnderlying(address(strategy)), 1e6);
+        assertApproxEqAbs(strategy.cToken().balanceOfUnderlying(address(strategy)), 1e6, 1);
     }
 
     /// @notice Test attempting to divest an amount more than the TVL results in divestment of the TVL amount.
@@ -163,8 +163,8 @@ contract CompoundStratTest is TestPlus {
         strategy.divest(2e6);
 
         assertApproxEqAbs(vault.vaultTVL(), 1e6, 2);
-        // assertEq(vault.vaultTVL(), 1e6);
-        assertEq(strategy.totalLockedValue(), 0);
+        // There can still be a wei of cToken left unliquidated since balanceOfUnderlying rounds down
+        assertApproxEqAbs(strategy.totalLockedValue(), 0, 1);
     }
 
     /// @notice Test not selling lp token when there is enough assets to cover divestment.

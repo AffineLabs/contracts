@@ -31,7 +31,7 @@ contract ForwardTest is TestPlus {
     Forwarder forwarder;
 
     function setUp() public {
-        vm.createSelectFork("polygon", 31_824_532);
+        forkPolygon();
         vault = Deploy.deployL2Vault();
         basket = Deploy.deployTwoAssetBasket(token);
 
