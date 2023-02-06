@@ -27,7 +27,7 @@ contract DeltaNeutralV3Test is TestPlus {
     uint256 slippageBps = 1000;
 
     function _selectFork() internal virtual {
-        vm.createSelectFork("polygon", 38_008_645);
+        forkPolygon();
     }
 
     function _usdc() internal virtual returns (address) {
@@ -179,7 +179,7 @@ contract DeltaNeutralV3Test is TestPlus {
 
 contract DeltaNeutralV3EthTest is DeltaNeutralV3Test {
     function _selectFork() internal override {
-        vm.createSelectFork("ethereum", 16_394_906);
+        forkEth();
     }
 
     function _usdc() internal pure override returns (address) {

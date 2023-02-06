@@ -42,7 +42,7 @@ contract ConvexStratTest is TestPlus {
     }
 
     function setUp() public {
-        vm.createSelectFork("ethereum", 16_520_958);
+        forkEth();
         vault = deployL1Vault();
 
         // Make vault asset equal to usdc
