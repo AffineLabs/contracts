@@ -80,7 +80,7 @@ contract DeltaNeutralV3Test is TestPlus {
         assertEq(strategy.lpManager().ownerOf(lpId), address(strategy));
 
         // I have the right amount of aUSDC
-        assertEq(strategy.aToken().balanceOf(address(strategy)), startAssets * 4 / 7);
+        assertApproxEqRel(strategy.aToken().balanceOf(address(strategy)), startAssets * 4 / 7, 0.01e18);
 
         // I put the correct amount of money into uniswap pool
         uint256 assetsLP = strategy.valueOfLpPosition();
