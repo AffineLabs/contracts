@@ -13,8 +13,8 @@ contract TestPlus is Test, Deploy {
     address bob = makeAddr("bob");
     address charlie = makeAddr("charlie");
 
-    uint constant ETH_FORK_BLOCK = 16566573;
-    uint constant POLYGON_FORK_BLOCK = 38961333;
+    uint256 constant ETH_FORK_BLOCK = 16_566_573;
+    uint256 constant POLYGON_FORK_BLOCK = 38_961_333;
 
     function forkEth() internal {
         vm.createSelectFork("ethereum", ETH_FORK_BLOCK);

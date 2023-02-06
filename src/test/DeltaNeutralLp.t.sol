@@ -32,13 +32,15 @@ contract L1DeltaNeutralTest is TestPlus {
     function _fork() internal virtual {
         forkEth();
     }
-    function _deployVault() internal virtual  {
+
+    function _deployVault() internal virtual {
         vault = deployL1Vault();
     }
 
     function _usdc() internal virtual returns (address) {
         return 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     }
+
     function _deployStrategy() internal virtual {
         strategy = Sslp.deployEth(vault);
     }
@@ -223,18 +225,19 @@ contract L1DeltaNeutralTest is TestPlus {
 contract L2DeltaNeutralTest is L1DeltaNeutralTest {
     using stdStorage for StdStorage;
 
-      function _fork() internal override {
+    function _fork() internal override {
         forkPolygon();
     }
-    function _deployVault() internal override  {
+
+    function _deployVault() internal override {
         vault = deployL2Vault();
     }
 
     function _usdc() internal override returns (address) {
         return 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
     }
+
     function _deployStrategy() internal override {
         strategy = Sslp.deployPoly(vault);
     }
-
 }

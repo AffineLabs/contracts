@@ -138,7 +138,6 @@ contract CompoundStratTest is TestPlus {
     function testStrategyDivestsOnlyAmountNeeded() public {
         // If the strategy already has money, we only withdraw amountRequested - current money
 
-    
         deal(address(usdc), address(strategy), 3e6, false);
 
         // Mint two cTokens, only 1 should be liquidated during a request for $2
@@ -165,7 +164,7 @@ contract CompoundStratTest is TestPlus {
 
         assertApproxEqAbs(vault.vaultTVL(), 1e6, 2);
         // There can still be a wei of cToken left unliquidated since balanceOfUnderlying rounds down
-        assertApproxEqAbs(strategy.totalLockedValue(), 0, 1); 
+        assertApproxEqAbs(strategy.totalLockedValue(), 0, 1);
     }
 
     /// @notice Test not selling lp token when there is enough assets to cover divestment.
