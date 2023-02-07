@@ -14,6 +14,7 @@ import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol"
 
 import {BaseVault} from "../src/BaseVault.sol";
 import {DeltaNeutralLpV3} from "../src/both/DeltaNeutralLpV3.sol";
+import {EthVaults} from "./EthVaults.s.sol";
 
 /*  solhint-disable reason-string */
 
@@ -28,7 +29,9 @@ library SslpV3 {
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
         IUniswapV3Pool(0x45dDa9cb7c25131DF268515131f647d726f50608),
         IUniPositionValue(0x53dc9584bf76922E56F8bf966f34C8Ae3E5AfAF2),
-        _getStrategists()
+        _getStrategists(),
+        5714, // ~4/7
+        7500 // =3/4
         );
         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
     }
@@ -44,7 +47,9 @@ library SslpV3 {
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
         IUniswapV3Pool(0xA374094527e1673A86dE625aa59517c5dE346d32), // wmatic 
         IUniPositionValue(0x53dc9584bf76922E56F8bf966f34C8Ae3E5AfAF2),
-        _getStrategists()
+        _getStrategists(),
+        5714, // ~4/7
+        7500 // =3/4
         );
         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
     }
@@ -59,7 +64,26 @@ library SslpV3 {
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
         IUniswapV3Pool(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640), // weth/usdc pool (5 bps)
         IUniPositionValue(0xfB2DaDdd7390f7e22Db849713Ff73405c9792F69),
-        _getStrategists()
+        _getStrategists(),
+        5714, // ~4/7
+        7500 // =3/4
+        );
+        require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
+    }
+
+    function deployEthWeth(BaseVault vault) internal returns (DeltaNeutralLpV3 strategy) {
+        strategy = new DeltaNeutralLpV3(
+        vault,
+        ILendingPoolAddressesProviderRegistry(0x52D306e36E3B6B02c153d0266ff0f85d18BCD413),
+        ERC20(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599), // wbtc
+        AggregatorV3Interface(0xdeb288F737066589598e9214E782fa5A8eD689e8), // btc/eth price feed
+        ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
+        INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88),
+        IUniswapV3Pool(0xCBCdF9626bC03E24f779434178A73a0B4bad62eD), // wbtc/eth pool 
+        IUniPositionValue(0xfB2DaDdd7390f7e22Db849713Ff73405c9792F69),
+        _getStrategists(),
+        5952, // ~25/42
+        6800 // =17/25
         );
         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
     }
@@ -89,5 +113,11 @@ contract Deploy is Script {
     function runEth() external {
         _start();
         SslpV3.deployEth(BaseVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9));
+    }
+
+    function runEthWeth() external {
+        _start();
+        address strategyAddr = address(SslpV3.deployEthWeth(BaseVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9)));
+        console.log("Eth denominated sslp uni v3 strategy addr: %s", strategyAddr);
     }
 }
