@@ -30,7 +30,7 @@ contract DeltaNeutralV3Test is TestPlus {
     uint256 initStrategyBalance;
 
     function _selectFork() internal virtual {
-        vm.createSelectFork("polygon", 38_008_645);
+        forkPolygon();
     }
 
     function _asset() internal virtual returns (address) {
@@ -193,7 +193,7 @@ contract DeltaNeutralV3Test is TestPlus {
 
 contract DeltaNeutralV3EthTest is DeltaNeutralV3Test {
     function _selectFork() internal override {
-        vm.createSelectFork("ethereum", 16_394_906);
+        forkEth();
     }
 
     function _asset() internal pure override returns (address) {

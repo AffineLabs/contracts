@@ -26,7 +26,7 @@ contract RouterTest is TestPlus {
     TwoAssetBasket basket;
 
     function setUp() public {
-        vm.createSelectFork("polygon", 31_824_532);
+        forkPolygon();
         vault = Deploy.deployL2Vault();
         uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(token))));

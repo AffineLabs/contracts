@@ -13,6 +13,17 @@ contract TestPlus is Test, Deploy {
     address bob = makeAddr("bob");
     address charlie = makeAddr("charlie");
 
+    uint256 constant ETH_FORK_BLOCK = 16_566_573;
+    uint256 constant POLYGON_FORK_BLOCK = 38_961_333;
+
+    function forkEth() internal {
+        vm.createSelectFork("ethereum", ETH_FORK_BLOCK);
+    }
+
+    function forkPolygon() internal {
+        vm.createSelectFork("polygon", POLYGON_FORK_BLOCK);
+    }
+
     function assertInRange(uint256 a, uint256 b1, uint256 b2) internal {
         if (a < b1 || a > b2) {
             emit log("Error: a in range [b1, b2] not satisfied [uint]");

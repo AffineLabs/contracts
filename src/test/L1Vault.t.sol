@@ -25,7 +25,7 @@ contract L1VaultTest is TestPlus {
     IWormhole wormhole = IWormhole(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B);
 
     function setUp() public {
-        vm.createSelectFork("ethereum", 14_971_385);
+        forkEth();
         vault = Deploy.deployL1Vault();
 
         // depositFor will fail unless mapToken has been called. Let's use real ETH USDC addr (it is mapped)

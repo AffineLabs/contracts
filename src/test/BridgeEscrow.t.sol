@@ -26,7 +26,7 @@ contract L2BridgeEscrowTest is TestPlus {
 
     function setUp() public {
         // Forking here because a mock ERC20 will not have the `withdraw` function
-        vm.createSelectFork("polygon", 31_824_532);
+        forkPolygon();
         vault = deployL2Vault();
         // Set the asset
         vm.store(
