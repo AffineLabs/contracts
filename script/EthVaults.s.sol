@@ -37,6 +37,6 @@ contract Deploy is Script {
 
     function runEthWeth() external {
         _start();
-        EthVaults.deployEthWeth();
+        console.log("Eth denominated vault addr:", EthVaults.deployEthWeth());
     }
 }

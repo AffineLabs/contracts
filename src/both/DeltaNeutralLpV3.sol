@@ -73,13 +73,10 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         asset.safeApprove(address(_lpManager), type(uint256).max);
         borrow.safeApprove(address(_lpManager), type(uint256).max);
 
-        if (asset.decimals() >= borrow.decimals() + borrowFeed.decimals()) {
-            decimalAdjustSign = true;
-            decimalAdjust = asset.decimals() - borrowFeed.decimals() - borrow.decimals();
-        } else {
-            decimalAdjustSign = false;
-            decimalAdjust = borrow.decimals() + borrowFeed.decimals() - asset.decimals();
-        }
+        decimalAdjustSign = asset.decimals() >= borrow.decimals() + borrowFeed.decimals() ? true : false;
+        decimalAdjust = decimalAdjustSign
+            ? asset.decimals() - borrowFeed.decimals() - borrow.decimals()
+            : borrow.decimals() + borrowFeed.decimals() - asset.decimals();
 
         assetToDepositRatioBps = _assetToDepositRatioBps;
         collateralToBorrowRatioBps = _collateralToBorrowRatioBps;
@@ -100,6 +97,21 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         // Return the given amount
         return amountToSend;
     }
+
+    /*//////////////////////////////////////////////////////////////
+                          STRATEGY PARAMS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice What fraction of asset to deposit into aave in bps
+    uint256 public immutable assetToDepositRatioBps;
+    /// @notice What fraction of collateral to borrow from aave in bps
+    uint256 public immutable collateralToBorrowRatioBps;
+
+    /*//////////////////////////////////////////////////////////////
+                            CONSTANTS
+    //////////////////////////////////////////////////////////////*/
+
+    uint256 public constant MAX_BPS = 10_000;
 
     /*//////////////////////////////////////////////////////////////
                           POSITION MANAGEMENT
@@ -143,36 +155,6 @@ contract DeltaNeutralLpV3 is AccessStrategy {
     ERC20 immutable debtToken;
     /// @dev Aave deposit receipt token.
     ERC20 public immutable aToken;
-
-    /*//////////////////////////////////////////////////////////////
-                          PRICE CONVERSION
-    //////////////////////////////////////////////////////////////*/
-
-    /**
-     * @notice abs(asset.decimals() - borrow.decimals() - borrowFeed.decimals()). This value has significance
-     * while converting asset amount to borrow amount and vice versa.
-     */
-    uint256 public decimalAdjust;
-    /**
-     * @notice true if `asset.decimals() - borrow.decimals() - borrowFeed.decimals()` is positive. false
-     * otherwise.
-     */
-    bool public decimalAdjustSign;
-
-    /*//////////////////////////////////////////////////////////////
-                          STRATEGY PARAMS
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice What fraction of asset to deposit into aave in bps
-    uint256 public immutable assetToDepositRatioBps;
-    /// @notice What fraction of collateral to borrow from aave in bps
-    uint256 public immutable collateralToBorrowRatioBps;
-
-    /*//////////////////////////////////////////////////////////////
-                            CONSTANTS
-    //////////////////////////////////////////////////////////////*/
-
-    uint256 public constant MAX_BPS = 10_000;
 
     /**
      * @notice Start a position.
@@ -375,19 +357,19 @@ contract DeltaNeutralLpV3 is AccessStrategy {
     /**
      * @dev Add liquidity to uniswap.
      * @param amountA The amount `asset` to deposit.
-     * @param amountB The amount of `borrow` to deposit.
+     * @param borrows The amount of `borrow` to deposit.
      * @param tickLow Lower liquidity tick.
      * @param tickHigh Higher liquidity tick.
      * @param  slippageToleranceBps Max slippage in bps.
      */
     function _addLiquidity(
         uint256 amountA,
-        uint256 amountB,
+        uint256 borrows,
         int24 tickLow,
         int24 tickHigh,
         uint256 slippageToleranceBps
     ) internal returns (uint256 assetsToUni, uint256 borrowsToUni) {
-        (uint256 amount0, uint256 amount1) = _maybeFlip(amountA, amountB);
+        (uint256 amount0, uint256 amount1) = _maybeFlip(amountA, borrows);
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
             token0: token0,
             token1: token1,
@@ -515,16 +497,25 @@ contract DeltaNeutralLpV3 is AccessStrategy {
     AggregatorV3Interface immutable borrowFeed;
 
     /**
+     * @notice abs(asset.decimals() - borrow.decimals() - borrowFeed.decimals()). Used when converting between
+     * asset/borrow amounts
+     */
+    uint256 public immutable decimalAdjust;
+
+    /// @notice true if asset.decimals() - borrow.decimals() - borrowFeed.decimals() is >= 0. false otherwise.
+    bool public immutable decimalAdjustSign;
+
+    /**
      * @dev Convert `borrow` (e.g. MATIC) to `asset` (e.g. USDC)
      * 10^borrow_decimals in `borrow` = clPrice / 10^borrowFeed_decimals * 10^asset_decimals in `assets`
-     * thus amountB in `borrow` = amountB * clPrice * 10^(asset_decimals - borrow_decimals - borrowFeed_decimals)
+     * thus borrows in `borrow` = borrows * clPrice * 10^(asset_decimals - borrow_decimals - borrowFeed_decimals)
      * Also note that, decimalAdjust = abs(asset_decimals - borrow_decimals - borrowFeed_decimals)
      */
-    function _borrowToAsset(uint256 amountB, uint256 clPrice) internal view returns (uint256 assets) {
+    function _borrowToAsset(uint256 borrows, uint256 clPrice) internal view returns (uint256 assets) {
         if (decimalAdjustSign) {
-            assets = amountB * clPrice * (10 ** decimalAdjust);
+            assets = borrows * clPrice * (10 ** decimalAdjust);
         } else {
-            assets = amountB.mulDivDown(clPrice, 10 ** decimalAdjust);
+            assets = borrows.mulDivDown(clPrice, 10 ** decimalAdjust);
         }
     }
 

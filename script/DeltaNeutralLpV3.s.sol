@@ -14,6 +14,7 @@ import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol"
 
 import {BaseVault} from "../src/BaseVault.sol";
 import {DeltaNeutralLpV3} from "../src/both/DeltaNeutralLpV3.sol";
+import {EthVaults} from "./EthVaults.s.sol";
 
 /*  solhint-disable reason-string */
 
@@ -112,5 +113,11 @@ contract Deploy is Script {
     function runEth() external {
         _start();
         SslpV3.deployEth(BaseVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9));
+    }
+
+    function runEthWeth() external {
+        _start();
+        address strategyAddr = address(SslpV3.deployEthWeth(BaseVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9)));
+        console.log("Eth denominated sslp uni v3 strategy addr: %s", strategyAddr);
     }
 }
