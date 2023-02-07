@@ -8,7 +8,7 @@ import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUn
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import {BaseVault} from "../src/BaseVault.sol";
-import {DeltaNeutralLp, ILendingPoolAddressesProviderRegistry} from "../src/both/DeltaNeutralLp.sol";
+import {DeltaNeutralLp, ILendingPool} from "../src/both/DeltaNeutralLp.sol";
 import {IMasterChef} from "../src/interfaces/sushiswap/IMasterChef.sol";
 import {AggregatorV3Interface} from "../src/interfaces/AggregatorV3Interface.sol";
 
@@ -17,7 +17,7 @@ library Sslp {
     function deployPoly(BaseVault vault) internal returns (DeltaNeutralLp strategy) {
         strategy = new DeltaNeutralLp(
         vault,
-        ILendingPoolAddressesProviderRegistry(0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19),
+        ILendingPool(0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf),
         ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619),
         AggregatorV3Interface(0xF9680D99D6C9589e2a93a78A04A279e509205945),
         IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506), // sushiswap router
@@ -39,7 +39,7 @@ library Sslp {
     function deployEth(BaseVault vault) internal returns (DeltaNeutralLp strategy) {
         strategy = new DeltaNeutralLp(
         vault,
-        ILendingPoolAddressesProviderRegistry(0x52D306e36E3B6B02c153d0266ff0f85d18BCD413),
+        ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9),
         ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), // weth
         AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419), // eth-usdc feed
         IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F),
