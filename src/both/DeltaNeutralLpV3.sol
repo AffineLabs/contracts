@@ -9,12 +9,7 @@ import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRoute
 import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-import {
-    ILendingPoolAddressesProviderRegistry,
-    ILendingPoolAddressesProvider,
-    ILendingPool,
-    IProtocolDataProvider
-} from "../interfaces/aave.sol";
+import {ILendingPool} from "../interfaces/aave.sol";
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 import {IUniPositionValue} from "../interfaces/IUniPositionValue.sol";
 
@@ -29,7 +24,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
 
     constructor(
         BaseVault _vault,
-        ILendingPoolAddressesProviderRegistry _registry,
+        ILendingPool _lendingPool,
         ERC20 _borrow,
         AggregatorV3Interface _borrowFeed,
         ISwapRouter _router,
@@ -52,9 +47,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         token1 = pool.token1();
         positionValue = _positionValue;
 
-        address[] memory providers = _registry.getAddressesProvidersList();
-        ILendingPoolAddressesProvider provider = ILendingPoolAddressesProvider(providers[providers.length - 1]);
-        lendingPool = ILendingPool(provider.getLendingPool());
+        lendingPool = _lendingPool;
         debtToken = ERC20(lendingPool.getReserveData(address(borrow)).variableDebtTokenAddress);
         aToken = ERC20(lendingPool.getReserveData(address(asset)).aTokenAddress);
 
