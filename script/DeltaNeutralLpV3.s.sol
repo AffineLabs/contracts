@@ -7,13 +7,13 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {IUniPositionValue} from "../src/interfaces/IUniPositionValue.sol";
+import {IUniPositionValue} from "src/interfaces/IUniPositionValue.sol";
 
-import {AggregatorV3Interface} from "../src/interfaces/AggregatorV3Interface.sol";
-import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol";
+import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
+import {ILendingPoolAddressesProviderRegistry} from "src/interfaces/aave.sol";
 
-import {BaseVault} from "../src/BaseVault.sol";
-import {DeltaNeutralLpV3, ILendingPool} from "../src/both/DeltaNeutralLpV3.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {DeltaNeutralLpV3, ILendingPool} from "src/strategies/DeltaNeutralLpV3.sol";
 
 /*  solhint-disable reason-string */
 

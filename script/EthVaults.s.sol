@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import "forge-std/Script.sol";
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Vault} from "../src/both/Vault.sol";
+import {Vault} from "src/vaults/Vault.sol";
 
 library EthVaults {
     function deployEthWeth() internal returns (address) {

@@ -2,8 +2,8 @@
 pragma solidity =0.8.16;
 
 import {IWormhole} from "src/interfaces/IWormhole.sol";
-import {L2Vault} from "./L2Vault.sol";
-import {WormholeRouter} from "src/WormholeRouter.sol";
+import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
+import {WormholeRouter} from "./WormholeRouter.sol";
 import {Constants} from "src/libs/Constants.sol";
 
 contract L2WormholeRouter is WormholeRouter {

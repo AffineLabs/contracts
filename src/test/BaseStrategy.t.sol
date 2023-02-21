@@ -10,7 +10,7 @@ import {MockERC20} from "./mocks/MockERC20.sol";
 
 import {TestStrategy} from "./mocks/TestStrategy.sol";
 
-import {BaseVault} from "src/BaseVault.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
 
 /// @notice Test general functionalities of strategies.
 contract BaseStrategyTest is TestPlus {

@@ -5,11 +5,11 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-import {L2Vault} from "src/polygon/L2Vault.sol";
-import {L2WormholeRouter} from "src/polygon/L2WormholeRouter.sol";
-import {BaseStrategy} from "src/BaseStrategy.sol";
-import {L2BridgeEscrow} from "src/polygon/L2BridgeEscrow.sol";
-import {EmergencyWithdrawalQueue} from "src/polygon/EmergencyWithdrawalQueue.sol";
+import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
+import {L2WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L2WormholeRouter.sol";
+import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
+import {L2BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/L2BridgeEscrow.sol";
+import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/EmergencyWithdrawalQueue.sol";
 
 import {Deploy} from "./Deploy.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";

@@ -7,8 +7,8 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 
-import {L1Vault} from "src/ethereum/L1Vault.sol";
-import {ConvexStrategy} from "src/ethereum/ConvexStrategy.sol";
+import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
+import {ConvexStrategy} from "src/strategies/ConvexStrategy.sol";
 import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
 import {IConvexBooster} from "src/interfaces/convex.sol";
 

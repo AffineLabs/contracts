@@ -9,11 +9,11 @@ import {Deploy} from "./Deploy.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {TestStrategy, TestStrategyDivestSlippage} from "./mocks/TestStrategy.sol";
 
-import {BridgeEscrow} from "src/BridgeEscrow.sol";
+import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/BridgeEscrow.sol";
 import {IWormhole} from "src/interfaces/IWormhole.sol";
-import {BaseStrategy} from "src/BaseStrategy.sol";
-import {BaseVault} from "src/BaseVault.sol";
-import {AffineVault} from "src/AffineVault.sol";
+import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
 
 contract BaseVaultLiquidate is BaseVault {
     function liquidate(uint256 amount) public returns (uint256) {

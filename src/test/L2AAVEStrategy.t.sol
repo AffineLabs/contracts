@@ -7,9 +7,9 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 
-import {L2Vault} from "src/polygon/L2Vault.sol";
-import {L2AAVEStrategy} from "src/polygon/L2AAVEStrategy.sol";
-import {BridgeEscrow} from "src/BridgeEscrow.sol";
+import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
+import {L2AAVEStrategy} from "src/strategies/L2AAVEStrategy.sol";
+import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/BridgeEscrow.sol";
 
 /// @notice Test AAVE strategy
 contract AAVEStratTest is TestPlus {

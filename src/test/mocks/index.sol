@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-import {L1Vault} from "src/ethereum/L1Vault.sol";
-import {L2Vault} from "src/polygon/L2Vault.sol";
-import {BridgeEscrow} from "src/BridgeEscrow.sol";
-import "src/polygon/TwoAssetBasket.sol";
+import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
+import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
+import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/BridgeEscrow.sol";
+import "src/vaults/TwoAssetBasket.sol";
 
 // Mocks needed to update variables that are in packed slots (forge-std cannot write to packed slots yet)
 contract MockL2Vault is L2Vault {

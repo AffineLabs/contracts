@@ -5,10 +5,10 @@ import "forge-std/Script.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
-import {BaseVault} from "../src/BaseVault.sol";
-import {ConvexStrategy} from "../src/ethereum/ConvexStrategy.sol";
-import {ICurvePool, I3CrvMetaPoolZap} from "../src/interfaces/curve.sol";
-import {IConvexBooster, IConvexRewards} from "../src/interfaces/convex.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {ConvexStrategy} from "src/strategies/ConvexStrategy.sol";
+import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
+import {IConvexBooster, IConvexRewards} from "src/interfaces/convex.sol";
 
 library DeployLib {
     function deployMim3Crv(BaseVault vault) internal returns (ConvexStrategy strategy) {

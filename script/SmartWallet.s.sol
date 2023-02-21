@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "forge-std/Script.sol";
 
-import {SmartWallet} from "../src/both/SmartWallet.sol";
+import {SmartWallet} from "src/utils/SmartWallet.sol";
 
 /* solhint-disable reason-string */
 

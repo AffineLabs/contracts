@@ -9,8 +9,8 @@ import {
     ILendingPoolAddressesProviderRegistry, ILendingPoolAddressesProvider, ILendingPool
 } from "src/interfaces/aave.sol";
 
-import {BaseVault} from "src/BaseVault.sol";
-import {BaseStrategy} from "src/BaseStrategy.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {BaseStrategy} from "./BaseStrategy.sol";
 
 contract L2AAVEStrategy is BaseStrategy {
     using SafeTransferLib for ERC20;

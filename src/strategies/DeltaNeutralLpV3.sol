@@ -13,7 +13,7 @@ import {ILendingPool} from "src/interfaces/aave.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 import {IUniPositionValue} from "src/interfaces/IUniPositionValue.sol";
 
-import {BaseVault} from "src/BaseVault.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
 import {AccessStrategy} from "./AccessStrategy.sol";
 import {SlippageUtils} from "src/libs/SlippageUtils.sol";
 

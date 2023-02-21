@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-import {BaseStrategy} from "src/BaseStrategy.sol";
-import {BaseVault} from "src/BaseVault.sol";
+import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
 import {MockERC20} from "./MockERC20.sol";
 
 contract TestStrategy is BaseStrategy {

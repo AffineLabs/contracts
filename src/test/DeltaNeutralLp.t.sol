@@ -8,8 +8,8 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
-import {BaseVault} from "src/BaseVault.sol";
-import {DeltaNeutralLp, ILendingPool} from "src/both/DeltaNeutralLp.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {DeltaNeutralLp, ILendingPool} from "src/strategies/DeltaNeutralLp.sol";
 import {IMasterChef} from "src/interfaces/sushiswap/IMasterChef.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 

@@ -12,7 +12,7 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 
 import {ILendingPool} from "src/interfaces/aave.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
-import {BaseVault} from "src/BaseVault.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
 import {AccessStrategy} from "./AccessStrategy.sol";
 import {IMasterChef} from "src/interfaces/sushiswap/IMasterChef.sol";
 import {SlippageUtils} from "src/libs/SlippageUtils.sol";

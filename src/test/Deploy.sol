@@ -4,19 +4,19 @@ pragma solidity =0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {L2Vault} from "src/polygon/L2Vault.sol";
-import {BaseVault} from "src/BaseVault.sol";
+import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
 import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
-import {L1Vault} from "src/ethereum/L1Vault.sol";
-import {L2BridgeEscrow} from "src/polygon/L2BridgeEscrow.sol";
-import {L1BridgeEscrow} from "src/ethereum/L1BridgeEscrow.sol";
-import {TwoAssetBasket} from "src/polygon/TwoAssetBasket.sol";
+import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
+import {L2BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/L2BridgeEscrow.sol";
+import {L1BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/L1BridgeEscrow.sol";
+import {TwoAssetBasket} from "src/vaults/TwoAssetBasket.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {IWormhole} from "src/interfaces/IWormhole.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
-import {L1WormholeRouter} from "src/ethereum/L1WormholeRouter.sol";
-import {L2WormholeRouter} from "src/polygon/L2WormholeRouter.sol";
-import {EmergencyWithdrawalQueue} from "src/polygon/EmergencyWithdrawalQueue.sol";
+import {L1WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L1WormholeRouter.sol";
+import {L2WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L2WormholeRouter.sol";
+import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/EmergencyWithdrawalQueue.sol";
 import {Create3Deployer} from "./Create3Deployer.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";

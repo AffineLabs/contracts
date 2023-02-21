@@ -4,7 +4,7 @@ pragma solidity =0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
-import {BaseVault} from "./BaseVault.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
 
 abstract contract BridgeEscrow {
     using SafeTransferLib for ERC20;

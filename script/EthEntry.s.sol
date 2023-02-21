@@ -6,8 +6,8 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import "forge-std/Script.sol";
 
 import {Base} from "./Base.sol";
-import {Vault} from "../src/both/Vault.sol";
-import {BaseVault} from "../src/BaseVault.sol";
+import {Vault} from "src/vaults/Vault.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
 import {DeployLib} from "./ConvexStrategy.s.sol";
 
 /* solhint-disable reason-string */

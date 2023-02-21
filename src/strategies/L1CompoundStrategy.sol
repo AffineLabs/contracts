@@ -10,8 +10,8 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ICToken} from "src/interfaces/compound/ICToken.sol";
 import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
 
-import {BaseVault} from "src/BaseVault.sol";
-import {BaseStrategy} from "src/BaseStrategy.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {BaseStrategy} from "./BaseStrategy.sol";
 
 contract L1CompoundStrategy is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
