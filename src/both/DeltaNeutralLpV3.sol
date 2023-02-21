@@ -31,7 +31,9 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         INonfungiblePositionManager _lpManager,
         IUniswapV3Pool _pool,
         IUniPositionValue _positionValue,
-        address[] memory strategists
+        address[] memory strategists,
+        uint256 _assetToDepositRatioBps,
+        uint256 _collateralToBorrowRatioBps
     ) AccessStrategy(_vault, strategists) {
         canStartNewPos = true;
 
@@ -56,13 +58,21 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         aToken.safeApprove(address(lendingPool), type(uint256).max);
         borrow.safeApprove(address(lendingPool), type(uint256).max);
 
-        // To trade usdc/matic
+        // To trade asset/borrowAsset
         asset.safeApprove(address(_router), type(uint256).max);
         borrow.safeApprove(address(_router), type(uint256).max);
 
         // To add liquidity
         asset.safeApprove(address(_lpManager), type(uint256).max);
         borrow.safeApprove(address(_lpManager), type(uint256).max);
+
+        decimalAdjustSign = asset.decimals() >= borrow.decimals() + borrowFeed.decimals() ? true : false;
+        decimalAdjust = decimalAdjustSign
+            ? asset.decimals() - borrowFeed.decimals() - borrow.decimals()
+            : borrow.decimals() + borrowFeed.decimals() - asset.decimals();
+
+        assetToDepositRatioBps = _assetToDepositRatioBps;
+        collateralToBorrowRatioBps = _collateralToBorrowRatioBps;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -80,6 +90,21 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         // Return the given amount
         return amountToSend;
     }
+
+    /*//////////////////////////////////////////////////////////////
+                          STRATEGY PARAMS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice What fraction of asset to deposit into aave in bps
+    uint256 public immutable assetToDepositRatioBps;
+    /// @notice What fraction of collateral to borrow from aave in bps
+    uint256 public immutable collateralToBorrowRatioBps;
+
+    /*//////////////////////////////////////////////////////////////
+                            CONSTANTS
+    //////////////////////////////////////////////////////////////*/
+
+    uint256 public constant MAX_BPS = 10_000;
 
     /*//////////////////////////////////////////////////////////////
                           POSITION MANAGEMENT
@@ -143,7 +168,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         // If x is amount we want to deposit into aave
         // .75x = Total - x => 1.75x = Total => x = Total / 1.75 => Total * 4/7
         uint256 assets = asset.balanceOf(address(this));
-        uint256 assetsToDeposit = assets.mulDivDown(4, 7);
+        uint256 assetsToDeposit = assets.mulDivDown(assetToDepositRatioBps, MAX_BPS);
         lendingPool.deposit({asset: address(asset), amount: assetsToDeposit, onBehalfOf: address(this), referralCode: 0});
 
         uint256 borrowPrice = _getPrice();
@@ -151,7 +176,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
 
         lendingPool.borrow({
             asset: address(borrow),
-            amount: borrowsDeposited.mulDivDown(3, 4),
+            amount: borrowsDeposited.mulDivDown(collateralToBorrowRatioBps, MAX_BPS),
             interestRateMode: 2,
             referralCode: 0,
             onBehalfOf: address(this)
@@ -229,18 +254,18 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         {
             debt = debtToken.balanceOf(address(this));
             uint256 bBal = borrow.balanceOf(address(this));
-            uint256 maticToBuy = debt > bBal ? debt - bBal : 0;
-            uint256 maticToSell = bBal > debt ? bBal - debt : 0;
+            uint256 borrowsToBuy = debt > bBal ? debt - bBal : 0;
+            uint256 borrowsToSell = bBal > debt ? bBal - debt : 0;
 
-            if (maticToBuy > 0) {
+            if (borrowsToBuy > 0) {
                 (assetsOrBorrowsSold, assetsOrBorrowsReceived) =
-                    _swapExactOutputSingle(asset, borrow, maticToBuy, slippageBps);
+                    _swapExactOutputSingle(asset, borrow, borrowsToBuy, slippageBps);
             }
-            if (maticToSell > 0) {
+            if (borrowsToSell > 0) {
                 (assetsOrBorrowsSold, assetsOrBorrowsReceived) =
-                    _swapExactSingle(borrow, asset, maticToSell, slippageBps);
+                    _swapExactSingle(borrow, asset, borrowsToSell, slippageBps);
             }
-            assetSold = maticToBuy > 0;
+            assetSold = borrowsToBuy > 0;
         }
 
         // Repay debt
@@ -325,19 +350,19 @@ contract DeltaNeutralLpV3 is AccessStrategy {
     /**
      * @dev Add liquidity to uniswap.
      * @param amountA The amount `asset` to deposit.
-     * @param amountB The amount of `borrow` to deposit.
+     * @param borrows The amount of `borrow` to deposit.
      * @param tickLow Lower liquidity tick.
      * @param tickHigh Higher liquidity tick.
      * @param  slippageToleranceBps Max slippage in bps.
      */
     function _addLiquidity(
         uint256 amountA,
-        uint256 amountB,
+        uint256 borrows,
         int24 tickLow,
         int24 tickHigh,
         uint256 slippageToleranceBps
     ) internal returns (uint256 assetsToUni, uint256 borrowsToUni) {
-        (uint256 amount0, uint256 amount1) = _maybeFlip(amountA, amountB);
+        (uint256 amount0, uint256 amount1) = _maybeFlip(amountA, borrows);
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
             token0: token0,
             token1: token1,
@@ -464,15 +489,36 @@ contract DeltaNeutralLpV3 is AccessStrategy {
     /// @dev Gives ratio of vault asset to borrow asset, e.g. WMATIC/USD (we assume that usd = usdc)
     AggregatorV3Interface immutable borrowFeed;
 
-    /// @dev Convert `borrow` (e.g. MATIC) to `asset` (e.g. USDC)
-    function _borrowToAsset(uint256 amountB, uint256 clPrice) internal pure returns (uint256 assets) {
-        // The first division gets rid of the decimals of wmatic. The second converts dollars to usdc
-        assets = amountB.mulWadDown(clPrice) / 1e2;
+    /**
+     * @notice abs(asset.decimals() - borrow.decimals() - borrowFeed.decimals()). Used when converting between
+     * asset/borrow amounts
+     */
+    uint256 public immutable decimalAdjust;
+
+    /// @notice true if asset.decimals() - borrow.decimals() - borrowFeed.decimals() is >= 0. false otherwise.
+    bool public immutable decimalAdjustSign;
+
+    /**
+     * @dev Convert `borrow` (e.g. MATIC) to `asset` (e.g. USDC)
+     * 10^borrow_decimals in `borrow` = clPrice / 10^borrowFeed_decimals * 10^asset_decimals in `assets`
+     * thus borrows in `borrow` = borrows * clPrice * 10^(asset_decimals - borrow_decimals - borrowFeed_decimals)
+     * Also note that, decimalAdjust = abs(asset_decimals - borrow_decimals - borrowFeed_decimals)
+     */
+    function _borrowToAsset(uint256 borrows, uint256 clPrice) internal view returns (uint256 assets) {
+        if (decimalAdjustSign) {
+            assets = borrows * clPrice * (10 ** decimalAdjust);
+        } else {
+            assets = borrows.mulDivDown(clPrice, 10 ** decimalAdjust);
+        }
     }
 
     /// @dev Convert `asset` to `borrow`
-    function _assetToBorrow(uint256 assets, uint256 clPrice) internal pure returns (uint256 borrows) {
-        borrows = (assets * 1e2).divWadDown(clPrice);
+    function _assetToBorrow(uint256 assets, uint256 clPrice) internal view returns (uint256 borrows) {
+        if (decimalAdjustSign) {
+            borrows = assets / (clPrice * (10 ** decimalAdjust));
+        } else {
+            borrows = assets.mulDivDown(10 ** decimalAdjust, clPrice);
+        }
     }
 
     /// @dev Get chainlink ratio of asset/borrow.

@@ -13,25 +13,40 @@ import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRoute
 import {L2Vault} from "../polygon/L2Vault.sol";
 import {DeltaNeutralLpV3} from "../both/DeltaNeutralLpV3.sol";
 import {SslpV3} from "../../script/DeltaNeutralLpV3.s.sol";
+import {EthVaults} from "../../script/EthVaults.s.sol";
+import {BaseVault} from "../BaseVault.sol";
 
 /// @notice Test SSLP Strategy with Uniswap V3 in polygon.
 contract DeltaNeutralV3Test is TestPlus {
     using stdStorage for StdStorage;
 
-    L2Vault vault;
+    BaseVault vault;
     DeltaNeutralLpV3 strategy;
     ERC20 asset;
     ERC20 borrow;
     int24 tickLow;
     int24 tickHigh;
     uint256 slippageBps = 1000;
+    uint256 initStrategyBalance;
 
     function _selectFork() internal virtual {
         forkPolygon();
     }
 
-    function _usdc() internal virtual returns (address) {
+    function _asset() internal virtual returns (address) {
         return 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+    }
+
+    function _setAsset() internal virtual {
+        vm.store(
+            address(vault),
+            bytes32(stdstore.target(address(vault)).sig("asset()").find()),
+            bytes32(uint256(uint160(_asset())))
+        );
+    }
+
+    function _deployVault() internal virtual {
+        vault = deployL2Vault();
     }
 
     function _deployStrategy() internal virtual {
@@ -40,13 +55,8 @@ contract DeltaNeutralV3Test is TestPlus {
 
     function setUp() public {
         _selectFork();
-
-        vault = deployL2Vault();
-        vm.store(
-            address(vault),
-            bytes32(stdstore.target(address(vault)).sig("asset()").find()),
-            bytes32(uint256(uint160(_usdc())))
-        );
+        _deployVault();
+        _setAsset();
         _deployStrategy();
 
         // Get ticks where liquidity will be added
@@ -57,18 +67,19 @@ contract DeltaNeutralV3Test is TestPlus {
         tickLow = usableTick - 20 * tSpace;
         tickHigh = usableTick + 20 * tSpace;
 
-        vm.startPrank(governance);
+        vm.startPrank(vault.governance());
         vault.addStrategy(strategy, 5000);
         strategy.grantRole(strategy.STRATEGIST_ROLE(), address(this));
         vm.stopPrank();
 
         asset = strategy.asset();
         borrow = strategy.borrow();
+        initStrategyBalance = 1000 * (10 ** asset.decimals());
     }
 
     /// @notice Test that a position can be opened.
     function testCreatePosition() public {
-        uint256 startAssets = 1000e6;
+        uint256 startAssets = initStrategyBalance;
         deal(address(asset), address(strategy), startAssets);
 
         strategy.startPosition(tickLow, tickHigh, slippageBps);
@@ -80,11 +91,14 @@ contract DeltaNeutralV3Test is TestPlus {
         assertEq(strategy.lpManager().ownerOf(lpId), address(strategy));
 
         // I have the right amount of aUSDC
-        assertApproxEqRel(strategy.aToken().balanceOf(address(strategy)), startAssets * 4 / 7, 0.01e18);
+        assertEq(
+            strategy.aToken().balanceOf(address(strategy)), startAssets * strategy.assetToDepositRatioBps() / 10_000
+        );
 
         // I put the correct amount of money into uniswap pool
         uint256 assetsLP = strategy.valueOfLpPosition();
-        uint256 assetsInAAve = strategy.aToken().balanceOf(address(strategy)) * 3 / 4;
+        uint256 assetsInAAve =
+            strategy.aToken().balanceOf(address(strategy)) * strategy.collateralToBorrowRatioBps() / 10_000;
         emit log_named_uint("assetsLP: ", assetsLP);
         emit log_named_uint("assetsInAAve: ", assetsInAAve);
         // Not all of the ether gets added as liquiditty, and not all of the usdc gets added either
@@ -95,7 +109,7 @@ contract DeltaNeutralV3Test is TestPlus {
 
     /// @notice Test that a position can be ended.
     function testEndPosition() public {
-        deal(address(asset), address(strategy), 1000e6);
+        deal(address(asset), address(strategy), initStrategyBalance);
         strategy.startPosition(tickLow, tickHigh, slippageBps);
         uint256 origLpId = strategy.lpId();
 
@@ -112,7 +126,7 @@ contract DeltaNeutralV3Test is TestPlus {
         vm.expectRevert("ERC721: owner query for nonexistent token");
         manager.ownerOf(origLpId);
 
-        assertApproxEqRel(asset.balanceOf(address(strategy)), 1000e6, 0.02e18);
+        assertApproxEqRel(asset.balanceOf(address(strategy)), initStrategyBalance, 0.02e18);
         assertEq(borrow.balanceOf(address(strategy)), 0);
         assertEq(strategy.lpLiquidity(), 0);
     }
@@ -120,10 +134,10 @@ contract DeltaNeutralV3Test is TestPlus {
     /// @notice Test TVL calculation.
     function testTVL() public {
         assertEq(strategy.totalLockedValue(), 0);
-        deal(address(asset), address(strategy), 1000e6);
+        deal(address(asset), address(strategy), initStrategyBalance);
         strategy.startPosition(tickLow, tickHigh, slippageBps);
 
-        assertApproxEqRel(strategy.totalLockedValue(), 1000e6, 0.02e18);
+        assertApproxEqRel(strategy.totalLockedValue(), initStrategyBalance, 0.02e18);
     }
 
     /// @notice Test that value can divest from this strategy.
@@ -134,7 +148,7 @@ contract DeltaNeutralV3Test is TestPlus {
         strategy.divest(1);
         assertEq(asset.balanceOf(address(vault)), 1);
 
-        deal(address(asset), address(strategy), 1000e6);
+        deal(address(asset), address(strategy), initStrategyBalance);
         strategy.startPosition(tickLow, tickHigh, slippageBps);
 
         // We unwind position if there is a one
@@ -143,18 +157,18 @@ contract DeltaNeutralV3Test is TestPlus {
 
         assertTrue(strategy.canStartNewPos());
         assertEq(strategy.totalLockedValue(), 0);
-        assertApproxEqRel(asset.balanceOf(address(vault)), 1000e6, 0.02e18);
+        assertApproxEqRel(asset.balanceOf(address(vault)), initStrategyBalance, 0.02e18);
     }
 
     function testFeeView() public {
-        deal(address(asset), address(strategy), 1000e6);
+        deal(address(asset), address(strategy), initStrategyBalance);
         strategy.startPosition(tickLow, tickHigh, slippageBps);
 
         (uint256 assetsFee, uint256 borrowsFee) = strategy.positionFees();
         console.log("assetsFee: %s, borrowsFee: %s", assetsFee, borrowsFee);
         assertTrue(assetsFee == 0 && borrowsFee == 0);
 
-        deal(address(asset), address(this), 1000e6);
+        deal(address(asset), address(this), initStrategyBalance);
         asset.approve(address(strategy.router()), type(uint256).max);
 
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
@@ -163,7 +177,7 @@ contract DeltaNeutralV3Test is TestPlus {
             fee: strategy.poolFee(),
             recipient: address(this),
             deadline: block.timestamp,
-            amountIn: 1000e6,
+            amountIn: initStrategyBalance,
             amountOutMinimum: 0,
             sqrtPriceLimitX96: 0
         });
@@ -182,11 +196,27 @@ contract DeltaNeutralV3EthTest is DeltaNeutralV3Test {
         forkEth();
     }
 
-    function _usdc() internal pure override returns (address) {
+    function _asset() internal pure override returns (address) {
         return 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     }
 
     function _deployStrategy() internal override {
         strategy = SslpV3.deployEth(vault);
+    }
+}
+
+contract DeltaNeutralV3EthWethTest is DeltaNeutralV3Test {
+    function _selectFork() internal override {
+        vm.createSelectFork("ethereum", 16_394_906);
+    }
+
+    function _setAsset() internal virtual override {}
+
+    function _deployVault() internal override {
+        vault = BaseVault(EthVaults.deployEthWeth());
+    }
+
+    function _deployStrategy() internal override {
+        strategy = SslpV3.deployEthWeth(vault);
     }
 }
