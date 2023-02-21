@@ -10,11 +10,11 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
-import {L2Vault} from "../polygon/L2Vault.sol";
-import {DeltaNeutralLpV3} from "../both/DeltaNeutralLpV3.sol";
-import {SslpV3} from "../../script/DeltaNeutralLpV3.s.sol";
-import {EthVaults} from "../../script/EthVaults.s.sol";
-import {BaseVault} from "../BaseVault.sol";
+import {L2Vault} from "src/polygon/L2Vault.sol";
+import {DeltaNeutralLpV3} from "src/both/DeltaNeutralLpV3.sol";
+import {SslpV3} from "script/DeltaNeutralLpV3.s.sol";
+import {EthVaults} from "script/EthVaults.s.sol";
+import {BaseVault} from "src/BaseVault.sol";
 
 /// @notice Test SSLP Strategy with Uniswap V3 in polygon.
 contract DeltaNeutralV3Test is TestPlus {

@@ -2,7 +2,7 @@ pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
-import {IERC4626} from "../interfaces/IERC4626.sol";
+import {IERC4626} from "src/interfaces/IERC4626.sol";
 import {Multicallable} from "solady/src/utils/Multicallable.sol";
 import {BaseRelayRecipient} from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 

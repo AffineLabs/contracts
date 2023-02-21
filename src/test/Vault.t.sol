@@ -5,11 +5,11 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-import {Vault} from "../both/Vault.sol";
+import {Vault} from "src/both/Vault.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
-import {BaseStrategy} from "../BaseStrategy.sol";
-import {BaseVault} from "../BaseVault.sol";
+import {BaseStrategy} from "src/BaseStrategy.sol";
+import {BaseVault} from "src/BaseVault.sol";
 import {TestStrategy} from "./mocks/TestStrategy.sol";
 
 /// @notice Test common vault functionalities.

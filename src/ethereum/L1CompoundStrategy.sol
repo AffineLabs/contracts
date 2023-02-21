@@ -7,11 +7,11 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
-import {ICToken} from "../interfaces/compound/ICToken.sol";
-import {IComptroller} from "../interfaces/compound/IComptroller.sol";
+import {ICToken} from "src/interfaces/compound/ICToken.sol";
+import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
 
-import {BaseVault} from "../BaseVault.sol";
-import {BaseStrategy} from "../BaseStrategy.sol";
+import {BaseVault} from "src/BaseVault.sol";
+import {BaseStrategy} from "src/BaseStrategy.sol";
 
 contract L1CompoundStrategy is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;

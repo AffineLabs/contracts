@@ -4,8 +4,8 @@ pragma solidity =0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
-import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
-import {BridgeEscrow} from "../BridgeEscrow.sol";
+import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
+import {BridgeEscrow} from "src/BridgeEscrow.sol";
 import {L1Vault} from "./L1Vault.sol";
 
 contract L1BridgeEscrow is BridgeEscrow {

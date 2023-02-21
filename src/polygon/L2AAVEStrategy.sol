@@ -7,10 +7,10 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {
     ILendingPoolAddressesProviderRegistry, ILendingPoolAddressesProvider, ILendingPool
-} from "../interfaces/aave.sol";
+} from "src/interfaces/aave.sol";
 
-import {BaseVault} from "../BaseVault.sol";
-import {BaseStrategy} from "../BaseStrategy.sol";
+import {BaseVault} from "src/BaseVault.sol";
+import {BaseStrategy} from "src/BaseStrategy.sol";
 
 contract L2AAVEStrategy is BaseStrategy {
     using SafeTransferLib for ERC20;

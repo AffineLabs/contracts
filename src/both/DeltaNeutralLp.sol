@@ -10,12 +10,12 @@ import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUn
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-import {ILendingPool} from "../interfaces/aave.sol";
-import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
-import {BaseVault} from "../BaseVault.sol";
+import {ILendingPool} from "src/interfaces/aave.sol";
+import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
+import {BaseVault} from "src/BaseVault.sol";
 import {AccessStrategy} from "./AccessStrategy.sol";
-import {IMasterChef} from "../interfaces/sushiswap/IMasterChef.sol";
-import {SlippageUtils} from "../libs/SlippageUtils.sol";
+import {IMasterChef} from "src/interfaces/sushiswap/IMasterChef.sol";
+import {SlippageUtils} from "src/libs/SlippageUtils.sol";
 
 contract DeltaNeutralLp is AccessStrategy {
     using SafeTransferLib for ERC20;

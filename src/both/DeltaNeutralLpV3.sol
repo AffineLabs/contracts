@@ -9,13 +9,13 @@ import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRoute
 import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-import {ILendingPool} from "../interfaces/aave.sol";
-import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
-import {IUniPositionValue} from "../interfaces/IUniPositionValue.sol";
+import {ILendingPool} from "src/interfaces/aave.sol";
+import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
+import {IUniPositionValue} from "src/interfaces/IUniPositionValue.sol";
 
-import {BaseVault} from "../BaseVault.sol";
+import {BaseVault} from "src/BaseVault.sol";
 import {AccessStrategy} from "./AccessStrategy.sol";
-import {SlippageUtils} from "../libs/SlippageUtils.sol";
+import {SlippageUtils} from "src/libs/SlippageUtils.sol";
 
 contract DeltaNeutralLpV3 is AccessStrategy {
     using SafeTransferLib for ERC20;

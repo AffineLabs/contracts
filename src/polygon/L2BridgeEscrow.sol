@@ -4,7 +4,7 @@ pragma solidity =0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
-import {BridgeEscrow} from "../BridgeEscrow.sol";
+import {BridgeEscrow} from "src/BridgeEscrow.sol";
 import {L2Vault} from "./L2Vault.sol";
 
 interface IChildERC20 {

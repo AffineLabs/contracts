@@ -7,10 +7,10 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 
-import {L1Vault} from "../ethereum/L1Vault.sol";
-import {ICToken} from "../interfaces/compound/ICToken.sol";
-import {IComptroller} from "../interfaces/compound/IComptroller.sol";
-import {L1CompoundStrategy} from "../ethereum/L1CompoundStrategy.sol";
+import {L1Vault} from "src/ethereum/L1Vault.sol";
+import {ICToken} from "src/interfaces/compound/ICToken.sol";
+import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
+import {L1CompoundStrategy} from "src/ethereum/L1CompoundStrategy.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 /// @notice Test compound strategy

@@ -6,15 +6,15 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 
-import {IWormhole} from "../interfaces/IWormhole.sol";
-import {Constants} from "../libs/Constants.sol";
-import {L2Vault} from "../polygon/L2Vault.sol";
-import {L1Vault} from "../ethereum/L1Vault.sol";
-import {L1WormholeRouter} from "../ethereum/L1WormholeRouter.sol";
-import {BaseStrategy} from "../BaseStrategy.sol";
-import {EmergencyWithdrawalQueue} from "../polygon/EmergencyWithdrawalQueue.sol";
+import {IWormhole} from "src/interfaces/IWormhole.sol";
+import {Constants} from "src/libs/Constants.sol";
+import {L2Vault} from "src/polygon/L2Vault.sol";
+import {L1Vault} from "src/ethereum/L1Vault.sol";
+import {L1WormholeRouter} from "src/ethereum/L1WormholeRouter.sol";
+import {BaseStrategy} from "src/BaseStrategy.sol";
+import {EmergencyWithdrawalQueue} from "src/polygon/EmergencyWithdrawalQueue.sol";
 import {TestStrategy} from "./BaseVault.t.sol";
-import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
+import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
 
 /// @notice Test L1 vault specific functionalities.
 contract L1VaultTest is TestPlus {

@@ -6,10 +6,10 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import {BaseVault} from "../BaseVault.sol";
-import {AccessStrategy} from "../both/AccessStrategy.sol";
-import {ICurvePool, I3CrvMetaPoolZap} from "../interfaces/curve.sol";
-import {IConvexBooster, IConvexRewards} from "../interfaces/convex.sol";
+import {BaseVault} from "src/BaseVault.sol";
+import {AccessStrategy} from "src/both/AccessStrategy.sol";
+import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
+import {IConvexBooster, IConvexRewards} from "src/interfaces/convex.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 contract ConvexStrategy is AccessStrategy {

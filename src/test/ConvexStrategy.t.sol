@@ -7,12 +7,12 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 
-import {L1Vault} from "../ethereum/L1Vault.sol";
-import {ConvexStrategy} from "../ethereum/ConvexStrategy.sol";
-import {ICurvePool, I3CrvMetaPoolZap} from "../interfaces/curve.sol";
-import {IConvexBooster} from "../interfaces/convex.sol";
+import {L1Vault} from "src/ethereum/L1Vault.sol";
+import {ConvexStrategy} from "src/ethereum/ConvexStrategy.sol";
+import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
+import {IConvexBooster} from "src/interfaces/convex.sol";
 
-import {DeployLib} from "../../script/ConvexStrategy.s.sol";
+import {DeployLib} from "script/ConvexStrategy.s.sol";
 
 import "forge-std/console.sol";
 

@@ -7,8 +7,8 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import {BaseVault} from "../BaseVault.sol";
-import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
+import {BaseVault} from "src/BaseVault.sol";
+import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
 import {L1BridgeEscrow} from "./L1BridgeEscrow.sol";
 import {L1WormholeRouter} from "./L1WormholeRouter.sol";
 

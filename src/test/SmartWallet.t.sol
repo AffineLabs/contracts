@@ -6,7 +6,7 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
 
-import {SmartWallet} from "../both/SmartWallet.sol";
+import {SmartWallet} from "src/both/SmartWallet.sol";
 
 contract SmartWalletTest is TestPlus {
     MockERC20 asset1;

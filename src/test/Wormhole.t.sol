@@ -7,13 +7,13 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 
-import {L2Vault} from "../polygon/L2Vault.sol";
-import {L1Vault} from "../ethereum/L1Vault.sol";
-import {IWormhole} from "../interfaces/IWormhole.sol";
-import {L1WormholeRouter} from "../ethereum/L1WormholeRouter.sol";
-import {L2WormholeRouter} from "../polygon/L2WormholeRouter.sol";
-import {WormholeRouter} from "../WormholeRouter.sol";
-import {Constants} from "../libs/Constants.sol";
+import {L2Vault} from "src/polygon/L2Vault.sol";
+import {L1Vault} from "src/ethereum/L1Vault.sol";
+import {IWormhole} from "src/interfaces/IWormhole.sol";
+import {L1WormholeRouter} from "src/ethereum/L1WormholeRouter.sol";
+import {L2WormholeRouter} from "src/polygon/L2WormholeRouter.sol";
+import {WormholeRouter} from "src/WormholeRouter.sol";
+import {Constants} from "src/libs/Constants.sol";
 
 // This contract exists solely to test the internal view
 contract MockRouter is L2WormholeRouter {
