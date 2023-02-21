@@ -15,7 +15,7 @@ import {L2WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L2Wormhole
 import {Forwarder} from "src/vaults/cross-chain-vault/Forwarder.sol";
 import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/EmergencyWithdrawalQueue.sol";
 
-import {Router} from "src/vaults/cross-chain-vault/4626Router/Router.sol";
+import {Router} from "src/vaults/cross-chain-vault/router/Router.sol";
 import {TwoAssetBasket} from "src/vaults/TwoAssetBasket.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 

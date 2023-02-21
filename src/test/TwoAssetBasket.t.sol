@@ -12,7 +12,7 @@ import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUn
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 import {Dollar} from "src/libs/DollarMath.sol";
 import {TwoAssetBasket} from "src/vaults/TwoAssetBasket.sol";
-import {Router} from "src/vaults/cross-chain-vault/4626Router/Router.sol";
+import {Router} from "src/vaults/cross-chain-vault/router/Router.sol";
 import {IERC4626} from "src/interfaces/IERC4626.sol";
 
 /// @notice Test two asset basket functionalities.
