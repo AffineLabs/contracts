@@ -13,8 +13,7 @@ import {AggregatorV3Interface} from "../src/interfaces/AggregatorV3Interface.sol
 import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol";
 
 import {BaseVault} from "../src/BaseVault.sol";
-import {DeltaNeutralLpV3} from "../src/both/DeltaNeutralLpV3.sol";
-import {EthVaults} from "./EthVaults.s.sol";
+import {DeltaNeutralLpV3, ILendingPool} from "../src/both/DeltaNeutralLpV3.sol";
 
 /*  solhint-disable reason-string */
 
@@ -22,7 +21,7 @@ library SslpV3 {
     function deployPoly(BaseVault vault) internal returns (DeltaNeutralLpV3 strategy) {
         strategy = new DeltaNeutralLpV3(
         vault,
-        ILendingPoolAddressesProviderRegistry(0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19),
+        ILendingPool(0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf),
         ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619), // weth
         AggregatorV3Interface(0xF9680D99D6C9589e2a93a78A04A279e509205945), // eth/usd price feed
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
@@ -40,7 +39,7 @@ library SslpV3 {
     function deployPolyMatic(BaseVault vault) internal returns (DeltaNeutralLpV3 strategy) {
         strategy = new DeltaNeutralLpV3(
         vault,
-        ILendingPoolAddressesProviderRegistry(0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19),
+        ILendingPool(0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf),
         ERC20(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270), // WMATIC
         AggregatorV3Interface(0xAB594600376Ec9fD91F8e885dADF0CE036862dE0), // MATIC/USD price feed
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
@@ -57,7 +56,7 @@ library SslpV3 {
     function deployEth(BaseVault vault) internal returns (DeltaNeutralLpV3 strategy) {
         strategy = new DeltaNeutralLpV3(
         vault,
-        ILendingPoolAddressesProviderRegistry(0x52D306e36E3B6B02c153d0266ff0f85d18BCD413),
+        ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9),
         ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), // weth
         AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419), // eth/usd price feed
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 
@@ -74,7 +73,7 @@ library SslpV3 {
     function deployEthWeth(BaseVault vault) internal returns (DeltaNeutralLpV3 strategy) {
         strategy = new DeltaNeutralLpV3(
         vault,
-        ILendingPoolAddressesProviderRegistry(0x52D306e36E3B6B02c153d0266ff0f85d18BCD413),
+        ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9),
         ERC20(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599), // wbtc
         AggregatorV3Interface(0xdeb288F737066589598e9214E782fa5A8eD689e8), // btc/eth price feed
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564), 

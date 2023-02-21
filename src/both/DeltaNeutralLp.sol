@@ -10,12 +10,7 @@ import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUn
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-import {
-    ILendingPoolAddressesProviderRegistry,
-    ILendingPoolAddressesProvider,
-    ILendingPool,
-    IProtocolDataProvider
-} from "../interfaces/aave.sol";
+import {ILendingPool} from "../interfaces/aave.sol";
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 import {BaseVault} from "../BaseVault.sol";
 import {AccessStrategy} from "./AccessStrategy.sol";
@@ -29,7 +24,7 @@ contract DeltaNeutralLp is AccessStrategy {
 
     constructor(
         BaseVault _vault,
-        ILendingPoolAddressesProviderRegistry _registry,
+        ILendingPool _lendingPool,
         ERC20 _borrow,
         AggregatorV3Interface _borrowFeed,
         IUniswapV2Router02 _router,
@@ -47,12 +42,13 @@ contract DeltaNeutralLp is AccessStrategy {
 
         router = _router;
         abPair = ERC20(IUniswapV2Factory(_router.factory()).getPair(address(asset), address(borrow)));
-        address[] memory providers = _registry.getAddressesProvidersList();
-        ILendingPoolAddressesProvider provider = ILendingPoolAddressesProvider(providers[providers.length - 1]);
-        lendingPool = ILendingPool(provider.getLendingPool());
+
+        // Aave info
+        lendingPool = _lendingPool;
         debtToken = ERC20(lendingPool.getReserveData(address(borrow)).variableDebtTokenAddress);
         aToken = ERC20(lendingPool.getReserveData(address(asset)).aTokenAddress);
 
+        // Sushi info
         masterChef = _masterChef;
         masterChefPid = _masterChefPid;
         sushiToken = _sushiToken;
@@ -85,7 +81,7 @@ contract DeltaNeutralLp is AccessStrategy {
         require(price > 0, "DNLP: price <= 0");
         require(answeredInRound >= roundId, "DNLP: stale data");
         require(timestamp != 0, "DNLP: round not done");
-        borrowPrice = uint256(price); // Convert 8 decimals to 6 decimals, 1 WETH (1e18) = price USDC
+        borrowPrice = uint256(price);
     }
 
     /// @notice Get price of WETH in USDC (borrowPrice) from Sushiswap. Has 8 decimals.

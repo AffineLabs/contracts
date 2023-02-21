@@ -9,7 +9,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 import {BaseVault} from "../BaseVault.sol";
-import {DeltaNeutralLp, ILendingPoolAddressesProviderRegistry} from "../both/DeltaNeutralLp.sol";
+import {DeltaNeutralLp, ILendingPool} from "../both/DeltaNeutralLp.sol";
 import {IMasterChef} from "../interfaces/sushiswap/IMasterChef.sol";
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 
@@ -199,11 +199,11 @@ contract L1DeltaNeutralTest is TestPlus {
 
     /// @notice Fuzz test TVL function.
     function testTVLFuzz(uint256 assets) public {
-        // Reserve size for weth can be estimated from aWETH token
-        // See aAMMWETH token: https://etherscan.io/address/0xf9Fb4AD91812b704Ba883B11d2B576E890a6730A
-        // Max borrowable WETH available in AAVE in this block is around 819WETH or 1.3e6 USDC.
+        // See aWETH token: https://etherscan.io/address/0x030bA81f1c18d280636F32af80b9AAd02Cf0854e
+        // Max borrowable WETH available in AAVE in this block is around 450k WETH or 730e6 USDC (ethereum).
+        // Have to restrict debt size tro $20M since that's how there's available to borrow on polygon
         // Size of biggest position is debt * 4/3 * 7/4 = debt * 7/3
-        assets = bound(assets, 0, 2.6e6 * 1e6);
+        assets = bound(assets, 0, uint256(20e6 * 1e6) * 7 / 3);
 
         if (assets > 1e5) {
             assertEq(strategy.totalLockedValue(), 0);
