@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity =0.8.16;
 
-import "../polygon/ERC4626RouterBase.sol";
+import "./ERC4626RouterBase.sol";
 
 /// @title ERC4626Router contract
 contract ERC4626Router is ERC4626RouterBase {

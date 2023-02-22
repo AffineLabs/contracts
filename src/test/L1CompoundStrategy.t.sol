@@ -7,10 +7,11 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 
-import {L1Vault} from "../ethereum/L1Vault.sol";
-import {ICToken} from "../interfaces/compound/ICToken.sol";
-import {IComptroller} from "../interfaces/compound/IComptroller.sol";
-import {L1CompoundStrategy} from "../ethereum/L1CompoundStrategy.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
+import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
+import {ICToken} from "src/interfaces/compound/ICToken.sol";
+import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
+import {L1CompoundStrategy} from "src/strategies/L1CompoundStrategy.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 /// @notice Test compound strategy
@@ -36,7 +37,7 @@ contract CompoundStratTest is TestPlus {
         vm.store(address(vault), bytes32(slot), tokenAddr);
 
         strategy = new L1CompoundStrategy(
-            vault,
+            AffineVault(address(vault)),
             ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563) // cToken
         );
 

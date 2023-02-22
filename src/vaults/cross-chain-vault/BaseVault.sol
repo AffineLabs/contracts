@@ -9,11 +9,11 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
 import {Multicallable} from "solady/src/utils/Multicallable.sol";
 
-import {BaseStrategy as Strategy} from "./BaseStrategy.sol";
-import {AffineGovernable} from "./AffineGovernable.sol";
-import {BridgeEscrow} from "./BridgeEscrow.sol";
-import {WormholeRouter} from "./WormholeRouter.sol";
-import {uncheckedInc} from "./libs/Unchecked.sol";
+import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
+import {AffineGovernable} from "src/utils/AffineGovernable.sol";
+import {BridgeEscrow} from "./escrow/BridgeEscrow.sol";
+import {WormholeRouter} from "./wormhole/WormholeRouter.sol";
+import {uncheckedInc} from "src/libs/Unchecked.sol";
 
 /**
  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding

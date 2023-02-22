@@ -7,10 +7,9 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
-import {AffineGovernable} from "./AffineGovernable.sol";
-import {BridgeEscrow} from "./BridgeEscrow.sol";
-import {BaseStrategy as Strategy} from "./BaseStrategy.sol";
-import {uncheckedInc} from "./libs/Unchecked.sol";
+import {AffineGovernable} from "src/utils/AffineGovernable.sol";
+import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
+import {uncheckedInc} from "src/libs/Unchecked.sol";
 
 /**
  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding

@@ -14,8 +14,8 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
-import {AffineVault} from "../AffineVault.sol";
-import {DetailedShare} from "../both/Detailed.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
+import {DetailedShare} from "src/utils/Detailed.sol";
 
 contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare {
     using SafeTransferLib for ERC20;

@@ -7,14 +7,14 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-import {BaseVault} from "../src/BaseVault.sol";
-import {DeltaNeutralLp, ILendingPool} from "../src/both/DeltaNeutralLp.sol";
-import {IMasterChef} from "../src/interfaces/sushiswap/IMasterChef.sol";
-import {AggregatorV3Interface} from "../src/interfaces/AggregatorV3Interface.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
+import {DeltaNeutralLp, ILendingPool} from "src/strategies/DeltaNeutralLp.sol";
+import {IMasterChef} from "src/interfaces/sushiswap/IMasterChef.sol";
+import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 
 library Sslp {
     /// @dev WETH/USDC on polygon
-    function deployPoly(BaseVault vault) internal returns (DeltaNeutralLp strategy) {
+    function deployPoly(AffineVault vault) internal returns (DeltaNeutralLp strategy) {
         strategy = new DeltaNeutralLp(
         vault,
         ILendingPool(0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf),
@@ -36,7 +36,7 @@ library Sslp {
     }
 
     /// @dev WETH/USDC on sushiswap
-    function deployEth(BaseVault vault) internal returns (DeltaNeutralLp strategy) {
+    function deployEth(AffineVault vault) internal returns (DeltaNeutralLp strategy) {
         strategy = new DeltaNeutralLp(
         vault,
         ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9),
@@ -61,11 +61,11 @@ contract Deploy is Script {
 
     function runPoly() external {
         _start();
-        Sslp.deployPoly(BaseVault(0x829363736a5A9080e05549Db6d1271f070a7e224));
+        Sslp.deployPoly(AffineVault(0x829363736a5A9080e05549Db6d1271f070a7e224));
     }
 
     function runEth() external {
         _start();
-        Sslp.deployEth(BaseVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9));
+        Sslp.deployEth(AffineVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9));
     }
 }

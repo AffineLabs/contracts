@@ -7,11 +7,11 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
-import {ICToken} from "../interfaces/compound/ICToken.sol";
-import {IComptroller} from "../interfaces/compound/IComptroller.sol";
+import {ICToken} from "src/interfaces/compound/ICToken.sol";
+import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
 
-import {BaseVault} from "../BaseVault.sol";
-import {BaseStrategy} from "../BaseStrategy.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
+import {BaseStrategy} from "./BaseStrategy.sol";
 
 contract L1CompoundStrategy is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
@@ -32,7 +32,7 @@ contract L1CompoundStrategy is BaseStrategy, AccessControl {
     /// @notice Role with authority to manage strategies.
     bytes32 public constant STRATEGIST = keccak256("STRATEGIST");
 
-    constructor(BaseVault _vault, ICToken _cToken) BaseStrategy(_vault) {
+    constructor(AffineVault _vault, ICToken _cToken) BaseStrategy(_vault) {
         cToken = _cToken;
 
         // We can mint cToken and also sell it

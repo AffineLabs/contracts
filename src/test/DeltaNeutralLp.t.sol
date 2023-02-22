@@ -8,18 +8,18 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
-import {BaseVault} from "../BaseVault.sol";
-import {DeltaNeutralLp, ILendingPool} from "../both/DeltaNeutralLp.sol";
-import {IMasterChef} from "../interfaces/sushiswap/IMasterChef.sol";
-import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
+import {Vault} from "src/vaults/Vault.sol";
+import {DeltaNeutralLp, ILendingPool} from "src/strategies/DeltaNeutralLp.sol";
+import {IMasterChef} from "src/interfaces/sushiswap/IMasterChef.sol";
+import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 
-import {Sslp} from "../../script/DeltaNeutralLp.s.sol";
+import {Sslp} from "script/DeltaNeutralLp.s.sol";
 
 /// @notice Test SSLP Strategy with Sushiswap in L1.
 contract L1DeltaNeutralTest is TestPlus {
     using stdStorage for StdStorage;
 
-    BaseVault vault;
+    Vault vault;
     DeltaNeutralLp strategy;
     ERC20 usdc;
     ERC20 abPair;
@@ -34,7 +34,7 @@ contract L1DeltaNeutralTest is TestPlus {
     }
 
     function _deployVault() internal virtual {
-        vault = deployL1Vault();
+        vault = Vault(address(deployL1Vault()));
     }
 
     function _usdc() internal virtual returns (address) {
@@ -230,7 +230,7 @@ contract L2DeltaNeutralTest is L1DeltaNeutralTest {
     }
 
     function _deployVault() internal override {
-        vault = deployL2Vault();
+        vault = Vault(address(deployL2Vault()));
     }
 
     function _usdc() internal override returns (address) {

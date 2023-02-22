@@ -7,10 +7,10 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {
     ILendingPoolAddressesProviderRegistry, ILendingPoolAddressesProvider, ILendingPool
-} from "../interfaces/aave.sol";
+} from "src/interfaces/aave.sol";
 
-import {BaseVault} from "../BaseVault.sol";
-import {BaseStrategy} from "../BaseStrategy.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
+import {BaseStrategy} from "./BaseStrategy.sol";
 
 contract L2AAVEStrategy is BaseStrategy {
     using SafeTransferLib for ERC20;
@@ -20,7 +20,7 @@ contract L2AAVEStrategy is BaseStrategy {
     /// @notice Corresponding AAVE asset (USDC -> aUSDC)
     ERC20 public immutable aToken;
 
-    constructor(BaseVault _vault, address _registry) BaseStrategy(_vault) {
+    constructor(AffineVault _vault, address _registry) BaseStrategy(_vault) {
         address[] memory providers = ILendingPoolAddressesProviderRegistry(_registry).getAddressesProvidersList();
         lendingPool = ILendingPool(ILendingPoolAddressesProvider(providers[providers.length - 1]).getLendingPool());
         aToken = ERC20(lendingPool.getReserveData(address(asset)).aTokenAddress);

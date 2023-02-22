@@ -3,14 +3,14 @@ pragma solidity =0.8.16;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
-import {BaseVault} from "../BaseVault.sol";
-import {BaseStrategy} from "../BaseStrategy.sol";
-import {uncheckedInc} from "../libs/Unchecked.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
+import {BaseStrategy} from "./BaseStrategy.sol";
+import {uncheckedInc} from "src/libs/Unchecked.sol";
 
 contract AccessStrategy is BaseStrategy, AccessControl {
     bytes32 public constant STRATEGIST_ROLE = keccak256("STRATEGIST");
 
-    constructor(BaseVault _vault, address[] memory strategists) BaseStrategy(_vault) {
+    constructor(AffineVault _vault, address[] memory strategists) BaseStrategy(_vault) {
         // Governance is admin
         _grantRole(DEFAULT_ADMIN_ROLE, vault.governance());
         _grantRole(STRATEGIST_ROLE, vault.governance());

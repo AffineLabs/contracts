@@ -7,7 +7,7 @@
         "type": "address"
       },
       {
-        "internalType": "contract BaseVault",
+        "internalType": "contract Vault",
         "name": "_vault",
         "type": "address"
       },

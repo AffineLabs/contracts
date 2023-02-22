@@ -10,7 +10,8 @@ import {MockERC20} from "./mocks/MockERC20.sol";
 
 import {TestStrategy} from "./mocks/TestStrategy.sol";
 
-import {BaseVault} from "../BaseVault.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
 
 /// @notice Test general functionalities of strategies.
 contract BaseStrategyTest is TestPlus {
@@ -20,7 +21,7 @@ contract BaseStrategyTest is TestPlus {
     function setUp() public {
         rewardToken = new MockERC20("Mock Token", "MT", 18);
         BaseVault vault = Deploy.deployL2Vault();
-        strategy = new TestStrategy(vault);
+        strategy = new TestStrategy(AffineVault(address(vault)));
     }
 
     /// @notice Test only governance can sweep tokens from vaults.
