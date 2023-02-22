@@ -255,7 +255,7 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "vaultAddress",
+        "name": "user",
         "type": "address"
       },
       {
@@ -271,11 +271,6 @@
   },
   {
     "inputs": [
-      {
-        "internalType": "address",
-        "name": "vaultAddress",
-        "type": "address"
-      },
       {
         "internalType": "uint256",
         "name": "resolvedAmount",

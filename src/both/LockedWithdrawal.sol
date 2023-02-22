@@ -25,18 +25,17 @@ contract LockedWithdrawalEscrow is ERC20 {
         slaInSeconds = sla;
     }
 
-    function register(address vaultAddress, uint256 debtTokenShare) external {
+    function register(address user, uint256 debtTokenShare) external {
         // check if the sender is valut
-        require(address(vault) == vaultAddress, "Unrecognized vault");
+        require(address(vault) == msg.sender, "Unrecognized vault");
 
-        _mint(msg.sender, debtTokenShare);
-        requestedTimeStamp[msg.sender] = block.timestamp;
+        _mint(user, debtTokenShare);
+        requestedTimeStamp[user] = block.timestamp;
         pendingDebtToken += debtTokenShare;
     }
 
-    function resolveDebtToken(address vaultAddress, uint256 resolvedAmount) external {
-        require(address(vault) == vaultAddress, "Unrecognized vault");
-
+    function resolveDebtToken(uint256 resolvedAmount) external {
+        require(address(vault) == msg.sender, "Unrecognized vault");
         pendingDebtToken -= resolvedAmount;
     }
 
