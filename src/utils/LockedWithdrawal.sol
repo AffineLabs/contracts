@@ -5,7 +5,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
-import {Vault} from "../vaults/Vault.sol";
+import {BaseVault} from "../vaults/cross-chain-vault/BaseVault.sol";
 
 contract LockedWithdrawalEscrow is ERC20 {
     using SafeTransferLib for ERC20;
@@ -15,7 +15,7 @@ contract LockedWithdrawalEscrow is ERC20 {
     mapping(address => uint256) requestedTimeStamp;
     uint256 pendingDebtToken;
     uint256 slaInSeconds;
-    Vault vault;
+    BaseVault vault;
 
     /**
      * @notice Will initiate a ERC20 debt token
@@ -23,7 +23,7 @@ contract LockedWithdrawalEscrow is ERC20 {
      * @param _vault vault address attached to the withdrawl queue
      * @param sla minimum time of resolving the debt. user will be allowed to withdraw the funds
      */
-    constructor(ERC20 _payToken, Vault _vault, uint256 sla) ERC20("DebtToken", "DT", 18) {
+    constructor(ERC20 _payToken, BaseVault _vault, uint256 sla) ERC20("DebtToken", "DT", 18) {
         payToken = _payToken;
         pendingDebtToken = 0;
         vault = _vault;
