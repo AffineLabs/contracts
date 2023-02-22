@@ -106,11 +106,6 @@ contract Deploy is Script, Base {
         require(address(basket.tokenToOracle(basket.weth())) == config.feeds.weth);
     }
 
-    function _deployStrategies(Base.L2Config memory config, L2Vault vault) internal {
-        L2AAVEStrategy aave = new L2AAVEStrategy(vault, config.aaveRegistry);
-        require(address(aave.asset()) == vault.asset());
-    }
-
     function run() external {
         bool testnet = vm.envBool("TEST");
         Base.L2Config memory config = abi.decode(_getConfigJson({mainnet: !testnet, layer1: false}), (Base.L2Config));
@@ -165,9 +160,6 @@ contract Deploy is Script, Base {
 
         // Deploy TwoAssetBasket
         _deployBasket(config, forwarder);
-
-        // Deploy strategies
-        if (!testnet) _deployStrategies(config, vault);
 
         vm.stopBroadcast();
     }

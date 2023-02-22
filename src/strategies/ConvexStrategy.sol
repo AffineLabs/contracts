@@ -6,7 +6,7 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
 import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "src/interfaces/convex.sol";
@@ -22,7 +22,7 @@ contract ConvexStrategy is AccessStrategy {
     uint8 immutable assetDecimals;
 
     constructor(
-        BaseVault _vault,
+        AffineVault _vault,
         int128 _assetIndex,
         bool _isMetaPool,
         ICurvePool _curvePool,

@@ -56,7 +56,7 @@ abstract contract CommonVaultTestSuite is TestPlus {
 
     /// @notice Test harvesting strategies and makes sure locked profit works.
     function testHarvest() public {
-        BaseStrategy newStrategy1 = new TestStrategy(vault);
+        BaseStrategy newStrategy1 = new TestStrategy(AffineVault(address(vault)));
         vault.addStrategy(newStrategy1, 1000);
         token.mint(address(newStrategy1), 1000);
         assertTrue(newStrategy1.balanceOfAsset() != 0);
@@ -71,7 +71,7 @@ abstract contract CommonVaultTestSuite is TestPlus {
 
     /// @notice Test addition to new strategy works.
     function testStrategyAddition() public {
-        TestStrategy strategy = new TestStrategy(vault);
+        TestStrategy strategy = new TestStrategy(AffineVault(address(vault)));
         vault.addStrategy(strategy, 1000);
         assertEq(address(vault.withdrawalQueue(0)), address(strategy));
         (, uint256 tvlBps,) = vault.strategies(strategy);
@@ -81,7 +81,7 @@ abstract contract CommonVaultTestSuite is TestPlus {
     /// @notice Test removal of strategies work.
     function testStrategyRemoval() public {
         // Adding a strategy increases our totalBps
-        TestStrategy strategy = new TestStrategy(vault);
+        TestStrategy strategy = new TestStrategy(AffineVault(address(vault)));
         vault.addStrategy(strategy, 1000);
         assertEq(vault.totalBps(), 1000);
 
@@ -99,7 +99,7 @@ abstract contract CommonVaultTestSuite is TestPlus {
     /// @notice Test divesting of funds work after a strategy is removed from withdrawal queue.
     function testRemoveStrategyAndDivest() public {
         // Add strategy
-        TestStrategy strategy = new TestStrategy(vault);
+        TestStrategy strategy = new TestStrategy(AffineVault(address(vault)));
         vault.addStrategy(strategy, 1000);
 
         // Give strategy money
@@ -122,7 +122,7 @@ abstract contract CommonVaultTestSuite is TestPlus {
     /// @notice Test getter for withdrwal queue.
     function testGetWithdrawalQueue() public {
         for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
-            vault.addStrategy(new TestStrategy(vault), 10);
+            vault.addStrategy(new TestStrategy(AffineVault(address(vault))), 10);
         }
         for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
             assertTrue(vault.getWithdrawalQueue()[i] == vault.withdrawalQueue(i));
@@ -137,7 +137,7 @@ abstract contract CommonVaultTestSuite is TestPlus {
     function testSetWithdrawalQueue() public {
         BaseStrategy[MAX_STRATEGIES] memory newQueue;
         for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
-            newQueue[i] = new TestStrategy(vault);
+            newQueue[i] = new TestStrategy(AffineVault(address(vault)));
         }
         vault.setWithdrawalQueue(newQueue);
         for (uint256 i = 0; i < MAX_STRATEGIES; ++i) {
@@ -147,7 +147,7 @@ abstract contract CommonVaultTestSuite is TestPlus {
 
     /// @notice Test liquidating certain amount of assets from the vault.
     function testLiquidate() public {
-        BaseStrategy newStrategy1 = new TestStrategy(vault);
+        BaseStrategy newStrategy1 = new TestStrategy(AffineVault(address(vault)));
         token.mint(address(newStrategy1), 10);
         vault.addStrategy(newStrategy1, 10);
         BaseStrategy[] memory strategies = new BaseStrategy[](1);
@@ -161,8 +161,8 @@ abstract contract CommonVaultTestSuite is TestPlus {
 
     /// @notice Test internal rebalanceing of vault.
     function testRebalance() public {
-        BaseStrategy strat1 = new TestStrategy(vault);
-        BaseStrategy strat2 = new TestStrategy(vault);
+        BaseStrategy strat1 = new TestStrategy(AffineVault(address(vault)));
+        BaseStrategy strat2 = new TestStrategy(AffineVault(address(vault)));
 
         vault.addStrategy(strat1, 6000);
         vault.addStrategy(strat2, 4000);
@@ -190,8 +190,8 @@ abstract contract CommonVaultTestSuite is TestPlus {
         // If we lose money when divesting from strategies, then we might have to
         // to send a truncated amount to one of the strategies in need of assets
 
-        BaseStrategy strat1 = new TestStrategy(vault);
-        BaseStrategy strat2 = new TestStrategyDivestSlippage(vault);
+        BaseStrategy strat1 = new TestStrategy(AffineVault(address(vault)));
+        BaseStrategy strat2 = new TestStrategyDivestSlippage(AffineVault(address(vault)));
 
         vault.addStrategy(strat1, 6000);
         vault.addStrategy(strat2, 4000);
@@ -216,8 +216,8 @@ abstract contract CommonVaultTestSuite is TestPlus {
 
     /// @notice Test updating strategy allocation bps.
     function testUpdateStrategyAllocations() public {
-        BaseStrategy strat1 = new TestStrategy(vault);
-        BaseStrategy strat2 = new TestStrategy(vault);
+        BaseStrategy strat1 = new TestStrategy(AffineVault(address(vault)));
+        BaseStrategy strat2 = new TestStrategy(AffineVault(address(vault)));
 
         vault.addStrategy(strat1, 5000);
         vault.addStrategy(strat2, 5000);

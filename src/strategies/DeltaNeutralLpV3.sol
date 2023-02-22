@@ -13,7 +13,7 @@ import {ILendingPool} from "src/interfaces/aave.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 import {IUniPositionValue} from "src/interfaces/IUniPositionValue.sol";
 
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "./AccessStrategy.sol";
 import {SlippageUtils} from "src/libs/SlippageUtils.sol";
 
@@ -23,7 +23,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
     using SlippageUtils for uint256;
 
     constructor(
-        BaseVault _vault,
+        AffineVault _vault,
         ILendingPool _lendingPool,
         ERC20 _borrow,
         AggregatorV3Interface _borrowFeed,

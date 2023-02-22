@@ -9,7 +9,7 @@ import {
     ILendingPoolAddressesProviderRegistry, ILendingPoolAddressesProvider, ILendingPool
 } from "src/interfaces/aave.sol";
 
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
 import {BaseStrategy} from "./BaseStrategy.sol";
 
 contract L2AAVEStrategy is BaseStrategy {
@@ -20,7 +20,7 @@ contract L2AAVEStrategy is BaseStrategy {
     /// @notice Corresponding AAVE asset (USDC -> aUSDC)
     ERC20 public immutable aToken;
 
-    constructor(BaseVault _vault, address _registry) BaseStrategy(_vault) {
+    constructor(AffineVault _vault, address _registry) BaseStrategy(_vault) {
         address[] memory providers = ILendingPoolAddressesProviderRegistry(_registry).getAddressesProvidersList();
         lendingPool = ILendingPool(ILendingPoolAddressesProvider(providers[providers.length - 1]).getLendingPool());
         aToken = ERC20(lendingPool.getReserveData(address(asset)).aTokenAddress);

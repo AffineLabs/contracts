@@ -10,7 +10,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ICToken} from "src/interfaces/compound/ICToken.sol";
 import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
 
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
 import {BaseStrategy} from "./BaseStrategy.sol";
 
 contract L1CompoundStrategy is BaseStrategy, AccessControl {
@@ -32,7 +32,7 @@ contract L1CompoundStrategy is BaseStrategy, AccessControl {
     /// @notice Role with authority to manage strategies.
     bytes32 public constant STRATEGIST = keccak256("STRATEGIST");
 
-    constructor(BaseVault _vault, ICToken _cToken) BaseStrategy(_vault) {
+    constructor(AffineVault _vault, ICToken _cToken) BaseStrategy(_vault) {
         cToken = _cToken;
 
         // We can mint cToken and also sell it

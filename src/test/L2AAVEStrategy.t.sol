@@ -7,22 +7,22 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 
-import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
-import {L2AAVEStrategy} from "src/strategies/L2AAVEStrategy.sol";
+import {Vault} from "src/vaults/Vault.sol";
 import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/BridgeEscrow.sol";
+import {L2AAVEStrategy} from "src/strategies/L2AAVEStrategy.sol";
 
 /// @notice Test AAVE strategy
 contract AAVEStratTest is TestPlus {
     using stdStorage for StdStorage;
 
-    L2Vault vault;
+    Vault vault;
     L2AAVEStrategy strategy;
     // Mumbai USDC that AAVE takes in
     ERC20 usdc = ERC20(0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e);
 
     function setUp() public {
         vm.createSelectFork("mumbai", 25_804_436);
-        vault = Deploy.deployL2Vault();
+        vault = Vault(address(Deploy.deployL2Vault()));
         uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
         vm.store(address(vault), bytes32(slot), tokenAddr);

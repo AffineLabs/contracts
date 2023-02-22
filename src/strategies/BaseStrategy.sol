@@ -2,7 +2,7 @@
 pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -10,13 +10,13 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 abstract contract BaseStrategy {
     using SafeTransferLib for ERC20;
 
-    constructor(BaseVault _vault) {
+    constructor(AffineVault _vault) {
         vault = _vault;
         asset = ERC20(_vault.asset());
     }
 
     /// @notice The vault which will deposit/withdraw from the this contract
-    BaseVault public immutable vault;
+    AffineVault public immutable vault;
 
     modifier onlyVault() {
         require(msg.sender == address(vault), "BS: only vault");

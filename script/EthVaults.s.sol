@@ -7,7 +7,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {Vault} from "src/vaults/Vault.sol";
 
 library EthVaults {
-    function deployEthWeth() internal returns (address) {
+    function deployEthWeth() internal returns (Vault) {
         // Deploy implementation
         Vault impl = new Vault();
 
@@ -25,7 +25,7 @@ library EthVaults {
 
         // Check that values were set correctly.
         Vault vault = Vault(address(proxy));
-        return address(vault);
+        return vault;
     }
 }
 
@@ -37,6 +37,6 @@ contract Deploy is Script {
 
     function runEthWeth() external {
         _start();
-        console.log("Eth denominated vault addr:", EthVaults.deployEthWeth());
+        console.log("Eth denominated vault addr:", address(EthVaults.deployEthWeth()));
     }
 }

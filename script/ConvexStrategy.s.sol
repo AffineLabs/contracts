@@ -5,13 +5,13 @@ import "forge-std/Script.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
 import {ConvexStrategy} from "src/strategies/ConvexStrategy.sol";
 import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "src/interfaces/convex.sol";
 
 library DeployLib {
-    function deployMim3Crv(BaseVault vault) internal returns (ConvexStrategy strategy) {
+    function deployMim3Crv(AffineVault vault) internal returns (ConvexStrategy strategy) {
         strategy = new ConvexStrategy(
             {_vault: vault, 
             _assetIndex: 2,
@@ -37,6 +37,6 @@ contract Deploy is Script {
 
     function runMim3Crv() external {
         _start();
-        DeployLib.deployMim3Crv(BaseVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9));
+        DeployLib.deployMim3Crv(AffineVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9));
     }
 }

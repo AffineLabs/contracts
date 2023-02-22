@@ -12,13 +12,13 @@ import {IUniPositionValue} from "src/interfaces/IUniPositionValue.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 import {ILendingPoolAddressesProviderRegistry} from "src/interfaces/aave.sol";
 
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
 import {DeltaNeutralLpV3, ILendingPool} from "src/strategies/DeltaNeutralLpV3.sol";
 
 /*  solhint-disable reason-string */
 
 library SslpV3 {
-    function deployPoly(BaseVault vault) internal returns (DeltaNeutralLpV3 strategy) {
+    function deployPoly(AffineVault vault) internal returns (DeltaNeutralLpV3 strategy) {
         strategy = new DeltaNeutralLpV3(
         vault,
         ILendingPool(0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf),
@@ -36,7 +36,7 @@ library SslpV3 {
     }
 
     /// @notice Deploy the strategy on polygon using the WMATIC/USDC pool
-    function deployPolyMatic(BaseVault vault) internal returns (DeltaNeutralLpV3 strategy) {
+    function deployPolyMatic(AffineVault vault) internal returns (DeltaNeutralLpV3 strategy) {
         strategy = new DeltaNeutralLpV3(
         vault,
         ILendingPool(0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf),
@@ -53,7 +53,7 @@ library SslpV3 {
         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
     }
 
-    function deployEth(BaseVault vault) internal returns (DeltaNeutralLpV3 strategy) {
+    function deployEth(AffineVault vault) internal returns (DeltaNeutralLpV3 strategy) {
         strategy = new DeltaNeutralLpV3(
         vault,
         ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9),
@@ -70,7 +70,7 @@ library SslpV3 {
         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
     }
 
-    function deployEthWeth(BaseVault vault) internal returns (DeltaNeutralLpV3 strategy) {
+    function deployEthWeth(AffineVault vault) internal returns (DeltaNeutralLpV3 strategy) {
         strategy = new DeltaNeutralLpV3(
         vault,
         ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9),
@@ -101,22 +101,22 @@ contract Deploy is Script {
 
     function runPoly() external {
         _start();
-        SslpV3.deployPoly(BaseVault(0x829363736a5A9080e05549Db6d1271f070a7e224));
+        SslpV3.deployPoly(AffineVault(0x829363736a5A9080e05549Db6d1271f070a7e224));
     }
 
     function runPolyMatic() external {
         _start();
-        SslpV3.deployPolyMatic(BaseVault(0x829363736a5A9080e05549Db6d1271f070a7e224));
+        SslpV3.deployPolyMatic(AffineVault(0x829363736a5A9080e05549Db6d1271f070a7e224));
     }
 
     function runEth() external {
         _start();
-        SslpV3.deployEth(BaseVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9));
+        SslpV3.deployEth(AffineVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9));
     }
 
     function runEthWeth() external {
         _start();
-        address strategyAddr = address(SslpV3.deployEthWeth(BaseVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9)));
+        address strategyAddr = address(SslpV3.deployEthWeth(AffineVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9)));
         console.log("Eth denominated sslp uni v3 strategy addr: %s", strategyAddr);
     }
 }

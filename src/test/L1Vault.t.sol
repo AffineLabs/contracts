@@ -8,6 +8,7 @@ import {MockERC20} from "./mocks/MockERC20.sol";
 
 import {IWormhole} from "src/interfaces/IWormhole.sol";
 import {Constants} from "src/libs/Constants.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
 import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
 import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
 import {L1WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L1WormholeRouter.sol";
@@ -63,7 +64,7 @@ contract L1VaultTest is TestPlus {
 
     /// @notice Test callback after receiving funds in bridge escrow works.
     function testafterReceive() public {
-        BaseStrategy newStrategy1 = new TestStrategy(vault);
+        BaseStrategy newStrategy1 = new TestStrategy(AffineVault(address(vault)));
 
         changePrank(governance);
         vault.addStrategy(newStrategy1, 1);
@@ -81,7 +82,7 @@ contract L1VaultTest is TestPlus {
     function testLockedProfit() public {
         changePrank(governance);
 
-        BaseStrategy newStrategy1 = new TestStrategy(vault);
+        BaseStrategy newStrategy1 = new TestStrategy(AffineVault(address(vault)));
         vault.addStrategy(newStrategy1, 1000);
 
         deal(address(asset), address(newStrategy1), 1000, true);

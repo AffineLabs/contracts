@@ -133,7 +133,7 @@ contract CommonVaultTest is TestPlus {
         asset.mint(user, amount);
         asset.approve(address(vault), type(uint256).max);
 
-        TestStrategy strategy = new TestStrategy(BaseVault(address(vault)));
+        TestStrategy strategy = new TestStrategy(vault);
         vm.startPrank(governance);
         vault.addStrategy(strategy, 10_000);
         vm.stopPrank();
@@ -156,7 +156,7 @@ contract CommonVaultTest is TestPlus {
         asset.mint(user, amount);
         asset.approve(address(vault), type(uint256).max);
 
-        TestStrategy strategy = new TestStrategy(BaseVault(address(vault)));
+        TestStrategy strategy = new TestStrategy(vault);
         vm.startPrank(governance);
         vault.addStrategy(strategy, 10_000);
         vm.stopPrank();
