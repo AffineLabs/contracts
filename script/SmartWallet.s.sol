@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "forge-std/Script.sol";
 
-import {SmartWallet} from "../src/both/SmartWallet.sol";
+import {SmartWallet} from "src/utils/SmartWallet.sol";
 
 /* solhint-disable reason-string */
 
@@ -12,7 +12,8 @@ contract Deploy is Script {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
 
-        SmartWallet wallet = new SmartWallet(deployer);
-        require(wallet.hasRole(wallet.OWNER(), deployer));
+        address rahul = 0x2033a56d6215424B3389bb863261D3B44709Fb79;
+        SmartWallet wallet = new SmartWallet(rahul);
+        require(wallet.hasRole(wallet.OWNER(), rahul));
     }
 }

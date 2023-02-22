@@ -5,11 +5,11 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-import {Vault} from "../both/Vault.sol";
+import {Vault} from "src/vaults/Vault.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
-import {BaseStrategy} from "../BaseStrategy.sol";
-import {BaseVault} from "../BaseVault.sol";
+import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
 import {TestStrategy} from "./mocks/TestStrategy.sol";
 
 /// @notice Test common vault functionalities.
@@ -133,7 +133,7 @@ contract CommonVaultTest is TestPlus {
         asset.mint(user, amount);
         asset.approve(address(vault), type(uint256).max);
 
-        TestStrategy strategy = new TestStrategy(BaseVault(address(vault)));
+        TestStrategy strategy = new TestStrategy(vault);
         vm.startPrank(governance);
         vault.addStrategy(strategy, 10_000);
         vm.stopPrank();
@@ -156,7 +156,7 @@ contract CommonVaultTest is TestPlus {
         asset.mint(user, amount);
         asset.approve(address(vault), type(uint256).max);
 
-        TestStrategy strategy = new TestStrategy(BaseVault(address(vault)));
+        TestStrategy strategy = new TestStrategy(vault);
         vm.startPrank(governance);
         vault.addStrategy(strategy, 10_000);
         vm.stopPrank();

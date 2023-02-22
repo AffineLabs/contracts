@@ -8,11 +8,11 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import "./mocks/index.sol";
 
-import {L2Vault} from "../polygon/L2Vault.sol";
-import {BridgeEscrow} from "../BridgeEscrow.sol";
-import {L2BridgeEscrow} from "../polygon/L2BridgeEscrow.sol";
-import {L1BridgeEscrow} from "../ethereum/L1BridgeEscrow.sol";
-import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
+import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
+import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/BridgeEscrow.sol";
+import {L2BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/L2BridgeEscrow.sol";
+import {L1BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/L1BridgeEscrow.sol";
+import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
 
 /// @notice Test functionalities of l2 bridge escrow contract.
 contract L2BridgeEscrowTest is TestPlus {

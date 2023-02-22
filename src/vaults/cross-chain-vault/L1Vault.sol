@@ -7,10 +7,10 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import {BaseVault} from "../BaseVault.sol";
-import {IRootChainManager} from "../interfaces/IRootChainManager.sol";
-import {L1BridgeEscrow} from "./L1BridgeEscrow.sol";
-import {L1WormholeRouter} from "./L1WormholeRouter.sol";
+import {BaseVault} from "./BaseVault.sol";
+import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
+import {L1BridgeEscrow} from "./escrow/L1BridgeEscrow.sol";
+import {L1WormholeRouter} from "./wormhole/L1WormholeRouter.sol";
 
 contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     using SafeTransferLib for ERC20;

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-import {IWormhole} from "../interfaces/IWormhole.sol";
-import {L1Vault} from "./L1Vault.sol";
-import {WormholeRouter} from "../WormholeRouter.sol";
-import {Constants} from "../libs/Constants.sol";
+import {IWormhole} from "src/interfaces/IWormhole.sol";
+import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
+import {WormholeRouter} from "./WormholeRouter.sol";
+import {Constants} from "src/libs/Constants.sol";
 
 contract L1WormholeRouter is WormholeRouter {
     function otherLayerWormholeId() public pure override returns (uint16) {

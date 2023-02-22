@@ -5,27 +5,27 @@ import "forge-std/Script.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
-import {L2Vault} from "../src/polygon/L2Vault.sol";
-import {ICREATE3Factory} from "../src/interfaces/ICreate3Factory.sol";
-import {CREATE3Factory} from "../src/test/CREATE3Factory.sol";
-import {IWormhole} from "../src/interfaces/IWormhole.sol";
-import {IRootChainManager} from "../src/interfaces/IRootChainManager.sol";
-import {L2BridgeEscrow} from "../src/polygon/L2BridgeEscrow.sol";
-import {L2WormholeRouter} from "../src/polygon/L2WormholeRouter.sol";
-import {Forwarder} from "../src/polygon/Forwarder.sol";
-import {EmergencyWithdrawalQueue} from "../src/polygon/EmergencyWithdrawalQueue.sol";
+import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
+import {ICREATE3Factory} from "src/interfaces/ICreate3Factory.sol";
+import {CREATE3Factory} from "src/test/CREATE3Factory.sol";
+import {IWormhole} from "src/interfaces/IWormhole.sol";
+import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
+import {L2BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/L2BridgeEscrow.sol";
+import {L2WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L2WormholeRouter.sol";
+import {Forwarder} from "src/vaults/cross-chain-vault/Forwarder.sol";
+import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/EmergencyWithdrawalQueue.sol";
 
-import {Router} from "../src/polygon/Router.sol";
-import {TwoAssetBasket} from "../src/polygon/TwoAssetBasket.sol";
-import {AggregatorV3Interface} from "../src/interfaces/AggregatorV3Interface.sol";
+import {Router} from "src/vaults/cross-chain-vault/router/Router.sol";
+import {TwoAssetBasket} from "src/vaults/TwoAssetBasket.sol";
+import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 
-import {L2AAVEStrategy} from "../src/polygon/L2AAVEStrategy.sol";
+import {L2AAVEStrategy} from "src/strategies/L2AAVEStrategy.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-import {ILendingPoolAddressesProviderRegistry} from "../src/interfaces/aave.sol";
+import {ILendingPoolAddressesProviderRegistry} from "src/interfaces/aave.sol";
 
-import {IMasterChef} from "../src/interfaces/sushiswap/IMasterChef.sol";
-import {DeltaNeutralLp} from "../src/both/DeltaNeutralLp.sol";
-import {DeltaNeutralLpV3} from "../src/both/DeltaNeutralLpV3.sol";
+import {IMasterChef} from "src/interfaces/sushiswap/IMasterChef.sol";
+import {DeltaNeutralLp} from "src/strategies/DeltaNeutralLp.sol";
+import {DeltaNeutralLpV3} from "src/strategies/DeltaNeutralLpV3.sol";
 
 import {Base} from "./Base.sol";
 import {SslpV3} from "./DeltaNeutralLpV3.s.sol";
@@ -106,11 +106,6 @@ contract Deploy is Script, Base {
         require(address(basket.tokenToOracle(basket.weth())) == config.feeds.weth);
     }
 
-    function _deployStrategies(Base.L2Config memory config, L2Vault vault) internal {
-        L2AAVEStrategy aave = new L2AAVEStrategy(vault, config.aaveRegistry);
-        require(address(aave.asset()) == vault.asset());
-    }
-
     function run() external {
         bool testnet = vm.envBool("TEST");
         Base.L2Config memory config = abi.decode(_getConfigJson({mainnet: !testnet, layer1: false}), (Base.L2Config));
@@ -165,9 +160,6 @@ contract Deploy is Script, Base {
 
         // Deploy TwoAssetBasket
         _deployBasket(config, forwarder);
-
-        // Deploy strategies
-        if (!testnet) _deployStrategies(config, vault);
 
         vm.stopBroadcast();
     }

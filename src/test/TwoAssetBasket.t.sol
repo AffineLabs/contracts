@@ -9,12 +9,11 @@ import {Deploy} from "./Deploy.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
-import {Dollar} from "../libs/DollarMath.sol";
-import {TwoAssetBasket} from "../polygon/TwoAssetBasket.sol";
-import {Router} from "../polygon/Router.sol";
-import {IERC4626} from "../interfaces/IERC4626.sol";
-import {ERC4626RouterBase} from "../polygon/ERC4626RouterBase.sol";
+import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
+import {Dollar} from "src/libs/DollarMath.sol";
+import {TwoAssetBasket} from "src/vaults/TwoAssetBasket.sol";
+import {Router} from "src/vaults/cross-chain-vault/router/Router.sol";
+import {IERC4626} from "src/interfaces/IERC4626.sol";
 
 /// @notice Test two asset basket functionalities.
 contract BtcEthBasketTest is TestPlus {

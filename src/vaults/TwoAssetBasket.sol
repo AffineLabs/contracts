@@ -14,11 +14,11 @@ import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Cont
 
 import {BaseRelayRecipient} from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
-import {AffineGovernable} from "../AffineGovernable.sol";
+import {AffineGovernable} from "src/utils/AffineGovernable.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
-import {Dollar, DollarMath} from "../libs/DollarMath.sol";
-import {DetailedShare} from "../both/Detailed.sol";
+import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
+import {Dollar, DollarMath} from "src/libs/DollarMath.sol";
+import {DetailedShare} from "src/utils/Detailed.sol";
 
 contract TwoAssetBasket is
     ERC20Upgradeable,

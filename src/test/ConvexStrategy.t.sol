@@ -7,12 +7,12 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 
-import {L1Vault} from "../ethereum/L1Vault.sol";
-import {ConvexStrategy} from "../ethereum/ConvexStrategy.sol";
-import {ICurvePool, I3CrvMetaPoolZap} from "../interfaces/curve.sol";
-import {IConvexBooster} from "../interfaces/convex.sol";
+import {Vault} from "src/vaults/Vault.sol";
+import {ConvexStrategy} from "src/strategies/ConvexStrategy.sol";
+import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
+import {IConvexBooster} from "src/interfaces/convex.sol";
 
-import {DeployLib} from "../../script/ConvexStrategy.s.sol";
+import {DeployLib} from "script/ConvexStrategy.s.sol";
 
 import "forge-std/console.sol";
 
@@ -21,7 +21,7 @@ contract ConvexStratTest is TestPlus {
     using stdStorage for StdStorage;
 
     ERC20 usdc = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-    L1Vault vault;
+    Vault vault;
     ConvexStrategy strategy;
     ERC20 crv;
     ERC20 cvx;
@@ -43,7 +43,7 @@ contract ConvexStratTest is TestPlus {
 
     function setUp() public {
         forkEth();
-        vault = deployL1Vault();
+        vault = Vault(address(deployL1Vault()));
 
         // Make vault asset equal to usdc
         vm.store(

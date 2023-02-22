@@ -9,11 +9,11 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 
-import {L2Vault} from "../polygon/L2Vault.sol";
-import {TwoAssetBasket} from "../polygon/TwoAssetBasket.sol";
-import {Forwarder} from "../polygon/Forwarder.sol";
+import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
+import {TwoAssetBasket} from "src/vaults/TwoAssetBasket.sol";
+import {Forwarder} from "src/vaults/cross-chain-vault/Forwarder.sol";
 import {MinimalForwarder} from "@openzeppelin/contracts/metatx/MinimalForwarder.sol";
-import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
+import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 import {Deploy} from "./Deploy.sol";
 
 // Because of https://github.com/ethereum/solidity/issues/3556
