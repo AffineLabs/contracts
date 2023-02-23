@@ -1,0 +1,15 @@
+[
+  {
+    "inputs": [],
+    "name": "debtEscrow",
+    "outputs": [
+      {
+        "internalType": "contract ILockedWithdrawalEscrow",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

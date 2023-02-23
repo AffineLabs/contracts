@@ -16,8 +16,9 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {DetailedShare} from "src/utils/Detailed.sol";
+import {VaultV2Storage} from "src/vaults/VaultV2Storage.sol";
 
-contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare {
+contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare, VaultV2Storage {
     using SafeTransferLib for ERC20;
     using MathUpgradeable for uint256;
 
@@ -125,8 +126,23 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
     {
         _liquidate(assets);
 
-        // Slippage during liquidation means we might get less than `assets` amount of `_asset`
-        assets = Math.min(_asset.balanceOf(address(this)), assets);
+        // If user tries to withdraw too much, register request on LockedWithdrawalEscrow
+        uint256 currAssets = _asset.balanceOf(address(this));
+        if (currAssets < assets) {
+            uint256 sharesToLock = _convertToShares(assets - currAssets, MathUpgradeable.Rounding.Up);
+            // Lock users shares in escrow
+            _transfer({from: owner, to: address(debtEscrow), amount: sharesToLock});
+
+            // Register withdrawal request
+            debtEscrow.registerWithdrawalRequest(sharesToLock, _msgSender());
+
+            // Reduce amount of shares that will be burned in this transaction
+            shares -= sharesToLock;
+            assets = currAssets;
+        }
+
+        if (shares == 0 || assets == 0) return;
+
         uint256 assetsFee = _getWithdrawalFee(assets);
         uint256 assetsToUser = assets - assetsFee;
 
