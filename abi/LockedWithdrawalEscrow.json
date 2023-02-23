@@ -2,18 +2,13 @@
   {
     "inputs": [
       {
-        "internalType": "contract ERC20",
-        "name": "_payToken",
-        "type": "address"
-      },
-      {
-        "internalType": "contract BaseVault",
+        "internalType": "contract AffineVault",
         "name": "_vault",
         "type": "address"
       },
       {
         "internalType": "uint256",
-        "name": "sla",
+        "name": "_sla",
         "type": "uint256"
       }
     ],
@@ -151,13 +146,7 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "user",
-        "type": "address"
-      }
-    ],
+    "inputs": [],
     "name": "canWithdraw",
     "outputs": [
       {
@@ -279,11 +268,11 @@
       },
       {
         "internalType": "uint256",
-        "name": "debtTokenShare",
+        "name": "debtShare",
         "type": "uint256"
       }
     ],
-    "name": "registerToWithdraw",
+    "name": "registerWithdrawalRequest",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -381,13 +370,7 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "user",
-        "type": "address"
-      }
-    ],
+    "inputs": [],
     "name": "withdrawableAmount",
     "outputs": [
       {

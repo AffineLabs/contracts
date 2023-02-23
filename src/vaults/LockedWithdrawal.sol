@@ -5,45 +5,47 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
-import {BaseVault} from "../vaults/cross-chain-vault/BaseVault.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
 
 contract LockedWithdrawalEscrow is ERC20 {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    ERC20 payToken;
-    mapping(address => uint256) requestedTimeStamp;
-    uint256 pendingDebtToken;
-    uint256 slaInSeconds;
-    BaseVault vault;
+    // token paid to user
+    ERC20 immutable asset;
 
-    /**
-     * @notice Will initiate a ERC20 debt token
-     * @param _payToken base token paid to user
-     * @param _vault vault address attached to the withdrawl queue
-     * @param sla minimum time of resolving the debt. user will be allowed to withdraw the funds
-     */
-    constructor(ERC20 _payToken, BaseVault _vault, uint256 sla) ERC20("DebtToken", "DT", 18) {
-        payToken = _payToken;
-        pendingDebtToken = 0;
+    // Last withdrawal request time map
+    mapping(address => uint256) requestTimes;
+
+    // amount of pending debt token share to resolve
+    // The share assigned to the user immediately, need to keep track of it until resolved.
+    uint256 pendingDebtToken;
+
+    // Max locked withdrawal time, user can withdaraw funds after sla
+    uint256 immutable sla;
+
+    AffineVault vault;
+
+    constructor(AffineVault _vault, uint256 _sla) ERC20("DebtToken", "DT", 18) {
+        asset = ERC20(_vault.asset());
         vault = _vault;
-        slaInSeconds = sla;
+        sla = _sla;
     }
 
     /**
      * @notice User register to withdraw earn token
      * @param user user address
-     * @param debtTokenShare amount of debt token share for the withdrawal request
+     * @param debtShare amount of debt token share for the withdrawal request
      * NB: user withdrawal request will be locked until the SLA time is over.
      * NB: debtTokenShare = token_to_withdraw * price of token
      */
-    function registerToWithdraw(address user, uint256 debtTokenShare) external {
+    function registerWithdrawalRequest(address user, uint256 debtShare) external {
         // check if the sender is valut
         require(address(vault) == msg.sender, "Unrecognized vault");
 
-        _mint(user, debtTokenShare);
-        requestedTimeStamp[user] = block.timestamp;
-        pendingDebtToken += debtTokenShare;
+        _mint(user, debtShare);
+        requestTimes[user] = block.timestamp;
+        pendingDebtToken += debtShare;
     }
 
     /**
@@ -62,15 +64,12 @@ contract LockedWithdrawalEscrow is ERC20 {
      *     As we dont have cancellation policy then
      */
 
-    function redeem() external returns (uint256) {
+    function redeem() public returns (uint256) {
         // check for sla
-        require(requestedTimeStamp[msg.sender] + slaInSeconds <= block.timestamp, "Unresolved debts");
+        require(requestTimes[msg.sender] + sla <= block.timestamp, "Unresolved debts");
 
         // total share is total token supply  - not resolved debt token
         uint256 totalShare = totalSupply - pendingDebtToken;
-
-        // total token supply for payment
-        uint256 tokenSupply = payToken.balanceOf(address(this));
 
         // debt token share
         uint256 userShare = this.balanceOf(msg.sender);
@@ -78,11 +77,15 @@ contract LockedWithdrawalEscrow is ERC20 {
         // check if the user share is resolved
         require(userShare <= totalShare, "Unresolved debts");
 
+        // total token supply for payment
+        uint256 tokenSupply = asset.balanceOf(address(this));
+
         // amount of token to pay to user
         uint256 tokenShare = tokenSupply.mulDivDown(userShare, totalShare);
 
         // transfer the amount.
-        payToken.safeTransferFrom(address(this), msg.sender, tokenShare);
+        // asset.safeTransfer(msg.sender, tokenShare);
+        asset.safeTransfer(msg.sender, tokenShare);
         // burn the user token.
         _burn(msg.sender, userShare);
 
@@ -95,16 +98,15 @@ contract LockedWithdrawalEscrow is ERC20 {
 
     /**
      * @notice check if user can withdraw funds now.
-     * @param user user address
      */
-    function canWithdraw(address user) public view returns (bool) {
-        if (requestedTimeStamp[user] + slaInSeconds <= block.timestamp) {
+    function canWithdraw() public view returns (bool) {
+        if (requestTimes[msg.sender] + sla <= block.timestamp) {
             return false;
         }
 
         uint256 totalShare = totalSupply - pendingDebtToken;
 
-        if (totalShare < this.balanceOf(user)) {
+        if (totalShare < this.balanceOf(msg.sender)) {
             return false;
         }
 
@@ -113,10 +115,9 @@ contract LockedWithdrawalEscrow is ERC20 {
 
     /**
      * @notice return the amount of share user can withdraw
-     * @param user user address
      */
-    function withdrawableAmount(address user) public view returns (uint256) {
-        if (canWithdraw(user)) {
+    function withdrawableAmount() public view returns (uint256) {
+        if (canWithdraw()) {
             return 0;
         }
 
@@ -124,7 +125,7 @@ contract LockedWithdrawalEscrow is ERC20 {
         uint256 totalShare = totalSupply - pendingDebtToken;
 
         // total token supply for payment
-        uint256 tokenSupply = payToken.balanceOf(address(this));
+        uint256 tokenSupply = asset.balanceOf(address(this));
 
         // debt token share
         uint256 userShare = this.balanceOf(msg.sender);
