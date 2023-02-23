@@ -53,6 +53,11 @@ contract LockedWithdrawalEscrow is ERC20 {
      * @param resolvedAmount amount resolved after pay token to this contract.
      * This will increase the amount of paytoken and total supply of debt token in the pool
      * More user will be allowed to withdraw funds
+     *
+     *  NB: the resolved amount is the ratio of locked e-earn token and minimun e earn token
+     *  available to burn in vault.
+     *
+     *  resolvedAmount = pendinDebtToken * min(vault_available_e_earn_to_burn, locked_e_earn) / locked_e_earn
      */
     function resolveDebtToken(uint256 resolvedAmount) external {
         require(address(vault) == msg.sender, "Unrecognized vault");
@@ -72,7 +77,7 @@ contract LockedWithdrawalEscrow is ERC20 {
         uint256 totalShare = totalSupply - pendingDebtToken;
 
         // debt token share
-        uint256 userShare = this.balanceOf(msg.sender);
+        uint256 userShare = balanceOf[msg.sender];
 
         // check if the user share is resolved
         require(userShare <= totalShare, "Unresolved debts");
@@ -106,7 +111,7 @@ contract LockedWithdrawalEscrow is ERC20 {
 
         uint256 totalShare = totalSupply - pendingDebtToken;
 
-        if (totalShare < this.balanceOf(msg.sender)) {
+        if (totalShare < balanceOf[msg.sender]) {
             return false;
         }
 
@@ -128,7 +133,7 @@ contract LockedWithdrawalEscrow is ERC20 {
         uint256 tokenSupply = asset.balanceOf(address(this));
 
         // debt token share
-        uint256 userShare = this.balanceOf(msg.sender);
+        uint256 userShare = balanceOf[msg.sender];
 
         // amount of token to pay to user
         uint256 tokenShare = tokenSupply.mulDivDown(userShare, totalShare);
