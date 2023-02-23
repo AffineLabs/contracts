@@ -53,4 +53,27 @@ contract LockedWithdrawalTest is TestPlus {
         vm.prank(alice);
         assertEq(withdrawalEscrow.withdrawableAmount(), 0);
     }
+
+    function testRedeemFunds() public {
+        // do a withdrawal request
+        vm.warp(1_641_070_800);
+        vm.prank(address(vault));
+        withdrawalEscrow.registerWithdrawalRequest(alice, 1000);
+
+        // // // resolve pending
+        vm.prank(address(vault));
+        withdrawalEscrow.resolveDebtToken(1000);
+
+        vm.warp(1_641_070_900);
+        vm.prank(alice);
+        assertEq(withdrawalEscrow.canWithdraw(), true);
+
+        vm.prank(alice);
+        assertEq(withdrawalEscrow.withdrawableAmount(), 0);
+
+        vm.prank(alice);
+        assertEq(withdrawalEscrow.redeem(), 0);
+        // check balance of alice
+        assertEq(withdrawalEscrow.balanceOf(alice), 0);
+    }
 }

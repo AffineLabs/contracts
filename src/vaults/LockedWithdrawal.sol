@@ -94,7 +94,7 @@ contract LockedWithdrawalEscrow is ERC20 {
         // burn the user token.
         _burn(msg.sender, userShare);
 
-        return userShare;
+        return tokenShare;
     }
 
     ///////////////////////////////////////
