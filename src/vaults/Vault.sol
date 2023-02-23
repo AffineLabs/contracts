@@ -17,6 +17,7 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {DetailedShare} from "src/utils/Detailed.sol";
 import {VaultV2Storage} from "src/vaults/VaultV2Storage.sol";
+import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
 
 contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare, VaultV2Storage {
     using SafeTransferLib for ERC20;
@@ -252,13 +253,30 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
     /*//////////////////////////////////////////////////////////////
                            CAPITAL MANAGEMENT
     //////////////////////////////////////////////////////////////*/
-    /**
-     * @notice Deposit idle assets into strategies.
-     */
 
-    function depositIntoStrategies(uint256 amount) external whenNotPaused onlyRole(HARVESTER) {
+    /// @notice Deposit idle assets into strategies.
+    function depositIntoStrategies(uint256 assets) external whenNotPaused onlyRole(HARVESTER) {
         // Deposit entire balance of `_asset` into strategies
-        _depositIntoStrategies(amount);
+        _depositIntoStrategies(assets);
+    }
+
+    function settleStrategyDebt(uint256 assets) external {
+        Strategy strategy = Strategy(msg.sender);
+        require(strategies[strategy].isActive, "Vault: not an active strategy");
+
+        pendingDebt += _withdrawFromStrategy(strategy, assets);
+    }
+
+    function clearLockedShares() external onlyRole(HARVESTER) {
+        // Given a certain amount of pendingDebt, settle the debt by burning the equivalent amount of locked shares
+        // and sending the pendingDebt to debtEscrow
+        uint256 sharesToBurn = _convertToShares(pendingDebt, MathUpgradeable.Rounding.Up);
+        _burn(address(debtEscrow), sharesToBurn);
+
+        // Let debtEscrow know that we have settled a debt
+        _asset.transfer(address(debtEscrow), pendingDebt);
+        pendingDebt = 0;
+        debtEscrow.resolveDebtAmount(sharesToBurn);
     }
 
     /*//////////////////////////////////////////////////////////////

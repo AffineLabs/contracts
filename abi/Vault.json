@@ -573,6 +573,13 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "clearLockedShares",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -688,7 +695,7 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "amount",
+        "name": "assets",
         "type": "uint256"
       }
     ],
@@ -1123,6 +1130,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "pendingDebt",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -1318,6 +1338,19 @@
       }
     ],
     "name": "setWithdrawalQueue",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "assets",
+        "type": "uint256"
+      }
+    ],
+    "name": "settleStrategyDebt",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

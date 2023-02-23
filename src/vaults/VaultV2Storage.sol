@@ -6,4 +6,5 @@ import {ILockedWithdrawalEscrow} from "src/interfaces/ILockedWithdrawalEscrow.so
 contract VaultV2Storage {
     /// @notice The ILockedWithdrawalEscrow contract
     ILockedWithdrawalEscrow public debtEscrow;
+    uint256 public pendingDebt;
 }
