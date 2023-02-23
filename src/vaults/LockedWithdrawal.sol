@@ -105,7 +105,7 @@ contract LockedWithdrawalEscrow is ERC20 {
      * @notice check if user can withdraw funds now.
      */
     function canWithdraw() public view returns (bool) {
-        if (requestTimes[msg.sender] + sla <= block.timestamp) {
+        if (requestTimes[msg.sender] + sla >= block.timestamp) {
             return false;
         }
 
@@ -115,14 +115,14 @@ contract LockedWithdrawalEscrow is ERC20 {
             return false;
         }
 
-        return false;
+        return true;
     }
 
     /**
      * @notice return the amount of share user can withdraw
      */
     function withdrawableAmount() public view returns (uint256) {
-        if (canWithdraw()) {
+        if (!canWithdraw()) {
             return 0;
         }
 
