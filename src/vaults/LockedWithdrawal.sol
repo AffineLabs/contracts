@@ -94,14 +94,14 @@ contract LockedWithdrawalEscrow is ERC20 {
         uint256 totalAssets = asset.balanceOf(address(this));
 
         // amount of asset to pay to user
-        uint256 assetToUser = totalAssets.mulDivDown(userShares, resolvedShares);
+        uint256 assetsToUser = totalAssets.mulDivDown(userShares, resolvedShares);
 
         // transfer the amount.
-        asset.safeTransfer(msg.sender, assetToUser);
+        asset.safeTransfer(msg.sender, assetsToUser);
         // burn the user token.
         _burn(msg.sender, userShares);
 
-        return assetToUser;
+        return assetsToUser;
     }
 
     ///////////////////////////////////////
@@ -144,8 +144,8 @@ contract LockedWithdrawalEscrow is ERC20 {
         uint256 userShares = balanceOf[user];
 
         // amount of token to pay to user
-        uint256 assetToUser = totalAssets.mulDivDown(userShares, resolvedShares);
+        uint256 assetsToUser = totalAssets.mulDivDown(userShares, resolvedShares);
 
-        return assetToUser;
+        return assetsToUser;
     }
 }
