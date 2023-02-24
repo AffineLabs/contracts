@@ -12,19 +12,20 @@ contract LockedWithdrawalEscrow is ERC20 {
     using FixedPointMathLib for uint256;
 
     // token paid to user
-    ERC20 immutable asset;
+    ERC20 public immutable asset;
 
     // Last withdrawal request time map
-    mapping(address => uint256) requestTimes;
+    mapping(address => uint256) public requestTimes;
 
     // amount of pending debt token share to resolve
     // The share assigned to the user immediately, need to keep track of it until resolved.
-    uint256 pendingDebtToken;
+    uint256 public pendingDebtToken;
 
     // Max locked withdrawal time, user can withdaraw funds after sla
-    uint256 immutable sla;
+    uint256 public immutable sla;
 
-    AffineVault vault;
+    // Vault this escrow attached to
+    AffineVault public vault;
 
     constructor(AffineVault _vault, uint256 _sla) ERC20("DebtToken", "DT", 18) {
         asset = ERC20(_vault.asset());
@@ -36,8 +37,9 @@ contract LockedWithdrawalEscrow is ERC20 {
      * @notice User register to withdraw earn token
      * @param user user address
      * @param debtShare amount of debt token share for the withdrawal request
-     * NB: user withdrawal request will be locked until the SLA time is over.
-     * NB: debtTokenShare = token_to_withdraw * price of token
+     * @dev user withdrawal request will be locked until the SLA time is over.
+     * @dev debtShare = token_to_withdraw * price of token
+     * @dev user will get the share of debtShare after selling earn token
      */
     function registerWithdrawalRequest(address user, uint256 debtShare) external {
         // check if the sender is valut
@@ -51,13 +53,10 @@ contract LockedWithdrawalEscrow is ERC20 {
     /**
      * @notice Resolve the pending debt token after closing a position
      * @param resolvedAmount amount resolved after pay token to this contract.
-     * This will increase the amount of paytoken and total supply of debt token in the pool
-     * More user will be allowed to withdraw funds
-     *
-     *  NB: the resolved amount is the ratio of locked e-earn token and minimun e earn token
-     *  available to burn in vault.
-     *
-     *  resolvedAmount = pendinDebtToken * min(vault_available_e_earn_to_burn, locked_e_earn) / locked_e_earn
+     * @dev This will increase the amount of paytoken and total supply of debt token in the pool
+     * @dev More user will be allowed to withdraw funds
+     * @dev the resolved amount is the ratio of locked e-earn token and minimun e earn token available to burn in vault.
+     * @dev resolvedAmount = pendinDebtToken * min(vault_available_e_earn_to_burn, locked_e_earn) / locked_e_earn
      */
     function resolveDebtToken(uint256 resolvedAmount) external {
         require(address(vault) == msg.sender, "Unrecognized vault");
@@ -65,8 +64,9 @@ contract LockedWithdrawalEscrow is ERC20 {
     }
     /**
      * @notice Release all the available funds of the user.
-     *     NB: required to have enough share in debt token.
-     *     As we dont have cancellation policy then
+     * @return tokenShare amount of asset user gets
+     * @dev required to have enough share in debt token, As we dont have cancellation policy.
+     * @dev user will get the full amount proportion of debtShare
      */
 
     function redeem() public returns (uint256) {
@@ -103,6 +103,7 @@ contract LockedWithdrawalEscrow is ERC20 {
 
     /**
      * @notice check if user can withdraw funds now.
+     * @return true or false if user can withdraw the funds or not
      */
     function canWithdraw() public view returns (bool) {
         if (requestTimes[msg.sender] + sla >= block.timestamp) {
@@ -120,6 +121,7 @@ contract LockedWithdrawalEscrow is ERC20 {
 
     /**
      * @notice return the amount of share user can withdraw
+     * @return returns withdrawable asset amount
      */
     function withdrawableAmount() public view returns (uint256) {
         if (!canWithdraw()) {
