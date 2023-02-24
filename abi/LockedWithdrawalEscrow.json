@@ -218,7 +218,7 @@
   },
   {
     "inputs": [],
-    "name": "pendingDebtToken",
+    "name": "pendingDebtShares",
     "outputs": [
       {
         "internalType": "uint256",
@@ -330,7 +330,7 @@
         "type": "uint256"
       }
     ],
-    "name": "resolveDebtToken",
+    "name": "resolveDebtShares",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

@@ -42,7 +42,7 @@ contract LockedWithdrawalTest is TestPlus {
         withdrawalEscrow.registerWithdrawalRequest(alice, 1000);
 
         //resolve pending
-        withdrawalEscrow.resolveDebtToken(1000);
+        withdrawalEscrow.resolveDebtShares(1000);
 
         vm.warp(1_641_070_900);
         changePrank(alice);
@@ -58,7 +58,7 @@ contract LockedWithdrawalTest is TestPlus {
         withdrawalEscrow.registerWithdrawalRequest(alice, 1000);
 
         // resolve pending
-        withdrawalEscrow.resolveDebtToken(1000);
+        withdrawalEscrow.resolveDebtShares(1000);
 
         vm.warp(1_641_070_900);
         changePrank(alice);
@@ -78,7 +78,7 @@ contract LockedWithdrawalTest is TestPlus {
         withdrawalEscrow.registerWithdrawalRequest(alice, 1000);
 
         // resolve pending
-        withdrawalEscrow.resolveDebtToken(1000);
+        withdrawalEscrow.resolveDebtShares(1000);
 
         vm.warp(1_641_070_900);
         changePrank(alice);
@@ -104,7 +104,7 @@ contract LockedWithdrawalTest is TestPlus {
         // register bob
         withdrawalEscrow.registerWithdrawalRequest(bob, 2000);
 
-        withdrawalEscrow.resolveDebtToken(3000);
+        withdrawalEscrow.resolveDebtShares(3000);
 
         // allocate funds for escrow
         deal(vault.asset(), address(withdrawalEscrow), 3000);
@@ -130,7 +130,7 @@ contract LockedWithdrawalTest is TestPlus {
         // register bob
         withdrawalEscrow.registerWithdrawalRequest(bob, 2000);
 
-        withdrawalEscrow.resolveDebtToken(1000);
+        withdrawalEscrow.resolveDebtShares(1000);
 
         // allocate funds for escrow
         deal(vault.asset(), address(withdrawalEscrow), 1000);

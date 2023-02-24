@@ -18,19 +18,23 @@ contract LockedWithdrawalEscrow is ERC20 {
     mapping(address => uint256) public requestTimes;
 
     // amount of pending debt token share to resolve
-    // The share assigned to the user immediately, need to keep track of it until resolved.
-    uint256 public pendingDebtToken;
+    uint256 public pendingDebtShares;
 
     // Max locked withdrawal time, user can withdaraw funds after sla
     uint256 public immutable sla;
 
     // Vault this escrow attached to
-    AffineVault public vault;
+    AffineVault public immutable vault;
 
     constructor(AffineVault _vault, uint256 _sla) ERC20("DebtToken", "DT", 18) {
         asset = ERC20(_vault.asset());
         vault = _vault;
         sla = _sla;
+    }
+
+    modifier onlyVault() {
+        require(msg.sender == address(vault), "LWE: must be vault");
+        _;
     }
 
     /**
@@ -41,13 +45,10 @@ contract LockedWithdrawalEscrow is ERC20 {
      * @dev debtShare = token_to_withdraw * price of token
      * @dev user will get the share of debtShare after selling earn token
      */
-    function registerWithdrawalRequest(address user, uint256 debtShare) external {
-        // check if the sender is valut
-        require(address(vault) == msg.sender, "Unrecognized vault");
-
+    function registerWithdrawalRequest(address user, uint256 debtShare) external onlyVault {
         _mint(user, debtShare);
         requestTimes[user] = block.timestamp;
-        pendingDebtToken += debtShare;
+        pendingDebtShares += debtShare;
     }
 
     /**
@@ -58,43 +59,49 @@ contract LockedWithdrawalEscrow is ERC20 {
      * @dev the resolved amount is the ratio of locked e-earn token and minimun e earn token available to burn in vault.
      * @dev resolvedAmount = pendinDebtToken * min(vault_available_e_earn_to_burn, locked_e_earn) / locked_e_earn
      */
-    function resolveDebtToken(uint256 resolvedAmount) external {
-        require(address(vault) == msg.sender, "Unrecognized vault");
-        pendingDebtToken -= resolvedAmount;
+    function resolveDebtShares(uint256 resolvedAmount) external onlyVault {
+        pendingDebtShares -= resolvedAmount;
     }
+
+    /**
+     * @notice calculate the total resolved debt share
+     * @return total resoved debt share
+     */
+    function getTotalShare() internal view returns (uint256) {
+        // total share is total token supply  - not resolved debt token
+        return totalSupply - pendingDebtShares;
+    }
+
     /**
      * @notice Release all the available funds of the user.
      * @return tokenShare amount of asset user gets
      * @dev required to have enough share in debt token, As we dont have cancellation policy.
      * @dev user will get the full amount proportion of debtShare
      */
-
-    function redeem() public returns (uint256) {
+    function redeem() external returns (uint256) {
         // check for sla
-        require(requestTimes[msg.sender] + sla <= block.timestamp, "Unresolved debts");
+        require(block.timestamp > requestTimes[msg.sender] + sla, "LWE: before SLA time");
 
-        // total share is total token supply  - not resolved debt token
-        uint256 totalShare = totalSupply - pendingDebtToken;
+        uint256 totalShare = getTotalShare();
 
         // debt token share
         uint256 userShare = balanceOf[msg.sender];
 
         // check if the user share is resolved
-        require(userShare <= totalShare, "Unresolved debts");
+        require(userShare <= totalShare, "LWE: Unresolved debts");
 
         // total token supply for payment
-        uint256 tokenSupply = asset.balanceOf(address(this));
+        uint256 totalAssets = asset.balanceOf(address(this));
 
-        // amount of token to pay to user
-        uint256 tokenShare = tokenSupply.mulDivDown(userShare, totalShare);
+        // amount of asset to pay to user
+        uint256 assetToUser = totalAssets.mulDivDown(userShare, totalShare);
 
         // transfer the amount.
-        // asset.safeTransfer(msg.sender, tokenShare);
-        asset.safeTransfer(msg.sender, tokenShare);
+        asset.safeTransfer(msg.sender, assetToUser);
         // burn the user token.
         _burn(msg.sender, userShare);
 
-        return tokenShare;
+        return assetToUser;
     }
 
     ///////////////////////////////////////
@@ -106,11 +113,11 @@ contract LockedWithdrawalEscrow is ERC20 {
      * @return true or false if user can withdraw the funds or not
      */
     function canWithdraw() public view returns (bool) {
-        if (requestTimes[msg.sender] + sla >= block.timestamp) {
+        if (block.timestamp < requestTimes[msg.sender] + sla) {
             return false;
         }
 
-        uint256 totalShare = totalSupply - pendingDebtToken;
+        uint256 totalShare = getTotalShare();
 
         if (totalShare < balanceOf[msg.sender]) {
             return false;
@@ -128,18 +135,17 @@ contract LockedWithdrawalEscrow is ERC20 {
             return 0;
         }
 
-        // total share is total token supply  - not resolved debt token
-        uint256 totalShare = totalSupply - pendingDebtToken;
+        uint256 totalShare = getTotalShare();
 
         // total token supply for payment
-        uint256 tokenSupply = asset.balanceOf(address(this));
+        uint256 totalAssets = asset.balanceOf(address(this));
 
         // debt token share
         uint256 userShare = balanceOf[msg.sender];
 
         // amount of token to pay to user
-        uint256 tokenShare = tokenSupply.mulDivDown(userShare, totalShare);
+        uint256 assetToUser = totalAssets.mulDivDown(userShare, totalShare);
 
-        return tokenShare;
+        return assetToUser;
     }
 }
