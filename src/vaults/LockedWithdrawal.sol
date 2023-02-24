@@ -40,15 +40,15 @@ contract LockedWithdrawalEscrow is ERC20 {
     /**
      * @notice User register to withdraw earn token
      * @param user user address
-     * @param debtShare amount of debt token share for the withdrawal request
+     * @param debtShares amount of debt token share for the withdrawal request
      * @dev user withdrawal request will be locked until the SLA time is over.
-     * @dev debtShare = token_to_withdraw * price of token
+     * @dev debtShares = token_to_withdraw * price of token
      * @dev user will get the share of debtShare after selling earn token
      */
-    function registerWithdrawalRequest(address user, uint256 debtShare) external onlyVault {
-        _mint(user, debtShare);
+    function registerWithdrawalRequest(address user, uint256 debtShares) external onlyVault {
+        _mint(user, debtShares);
         requestTimes[user] = block.timestamp;
-        pendingDebtShares += debtShare;
+        pendingDebtShares += debtShares;
     }
 
     /**
@@ -85,21 +85,21 @@ contract LockedWithdrawalEscrow is ERC20 {
         uint256 resolvedShares = getResolvedShares();
 
         // debt token share
-        uint256 userShare = balanceOf[msg.sender];
+        uint256 userShares = balanceOf[msg.sender];
 
         // check if the user share is resolved
-        require(userShare <= resolvedShares, "LWE: Unresolved debts");
+        require(userShares <= resolvedShares, "LWE: Unresolved debts");
 
         // total token supply for payment
         uint256 totalAssets = asset.balanceOf(address(this));
 
         // amount of asset to pay to user
-        uint256 assetToUser = totalAssets.mulDivDown(userShare, resolvedShares);
+        uint256 assetToUser = totalAssets.mulDivDown(userShares, resolvedShares);
 
         // transfer the amount.
         asset.safeTransfer(msg.sender, assetToUser);
         // burn the user token.
-        _burn(msg.sender, userShare);
+        _burn(msg.sender, userShares);
 
         return assetToUser;
     }
@@ -117,9 +117,9 @@ contract LockedWithdrawalEscrow is ERC20 {
             return false;
         }
 
-        uint256 totalShare = getResolvedShares();
+        uint256 resolvedShares = getResolvedShares();
 
-        if (totalShare < balanceOf[user]) {
+        if (resolvedShares < balanceOf[user]) {
             return false;
         }
 
@@ -141,10 +141,10 @@ contract LockedWithdrawalEscrow is ERC20 {
         uint256 totalAssets = asset.balanceOf(address(this));
 
         // debt token share
-        uint256 userShare = balanceOf[user];
+        uint256 userShares = balanceOf[user];
 
         // amount of token to pay to user
-        uint256 assetToUser = totalAssets.mulDivDown(userShare, resolvedShares);
+        uint256 assetToUser = totalAssets.mulDivDown(userShares, resolvedShares);
 
         return assetToUser;
     }

@@ -300,7 +300,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "debtShare",
+        "name": "debtShares",
         "type": "uint256"
       }
     ],
