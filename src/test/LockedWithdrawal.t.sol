@@ -28,11 +28,10 @@ contract LockedWithdrawalTest is TestPlus {
 
         assertEq(withdrawalEscrow.balanceOf(alice), 1000);
 
-        vm.startPrank(alice);
-        assertEq(withdrawalEscrow.canWithdraw(), false);
+        assertEq(withdrawalEscrow.canWithdraw(alice), false);
 
         //withdrawable amount is zero due to no funds as asset
-        assertEq(withdrawalEscrow.withdrawableAmount(), 0);
+        assertEq(withdrawalEscrow.withdrawableAmount(alice), 0);
     }
 
     function testResolvePendingDebt() public {
@@ -45,10 +44,9 @@ contract LockedWithdrawalTest is TestPlus {
         withdrawalEscrow.resolveDebtShares(1000);
 
         vm.warp(1_641_070_900);
-        changePrank(alice);
-        assertEq(withdrawalEscrow.canWithdraw(), true);
+        assertEq(withdrawalEscrow.canWithdraw(alice), true);
 
-        assertEq(withdrawalEscrow.withdrawableAmount(), 0);
+        assertEq(withdrawalEscrow.withdrawableAmount(alice), 0);
     }
 
     function testRedeemFunds() public {
@@ -61,11 +59,12 @@ contract LockedWithdrawalTest is TestPlus {
         withdrawalEscrow.resolveDebtShares(1000);
 
         vm.warp(1_641_070_900);
+
+        assertEq(withdrawalEscrow.canWithdraw(alice), true);
+
+        assertEq(withdrawalEscrow.withdrawableAmount(alice), 0);
+
         changePrank(alice);
-        assertEq(withdrawalEscrow.canWithdraw(), true);
-
-        assertEq(withdrawalEscrow.withdrawableAmount(), 0);
-
         assertEq(withdrawalEscrow.redeem(), 0);
         // check balance of alice
         assertEq(withdrawalEscrow.balanceOf(alice), 0);
@@ -81,15 +80,16 @@ contract LockedWithdrawalTest is TestPlus {
         withdrawalEscrow.resolveDebtShares(1000);
 
         vm.warp(1_641_070_900);
-        changePrank(alice);
-        assertEq(withdrawalEscrow.canWithdraw(), true);
+
+        assertEq(withdrawalEscrow.canWithdraw(alice), true);
 
         // send asset to escrow
         deal(vault.asset(), address(withdrawalEscrow), 1234);
 
         // check alice get the full amount
-        assertEq(withdrawalEscrow.withdrawableAmount(), 1234);
+        assertEq(withdrawalEscrow.withdrawableAmount(alice), 1234);
 
+        changePrank(alice);
         assertEq(withdrawalEscrow.redeem(), 1234);
         // check balance of alice
         assertEq(withdrawalEscrow.balanceOf(alice), 0);
@@ -110,14 +110,16 @@ contract LockedWithdrawalTest is TestPlus {
         deal(vault.asset(), address(withdrawalEscrow), 3000);
 
         vm.warp(1_641_080_800);
+
+        assertEq(withdrawalEscrow.canWithdraw(alice), true);
+        assertEq(withdrawalEscrow.withdrawableAmount(alice), 1000);
+
         changePrank(alice);
-        assertEq(withdrawalEscrow.canWithdraw(), true);
-        assertEq(withdrawalEscrow.withdrawableAmount(), 1000);
         assertEq(withdrawalEscrow.redeem(), 1000);
 
+        assertEq(withdrawalEscrow.canWithdraw(bob), true);
+        assertEq(withdrawalEscrow.withdrawableAmount(bob), 2000);
         changePrank(bob);
-        assertEq(withdrawalEscrow.canWithdraw(), true);
-        assertEq(withdrawalEscrow.withdrawableAmount(), 2000);
         assertEq(withdrawalEscrow.redeem(), 2000);
     }
 
@@ -136,12 +138,11 @@ contract LockedWithdrawalTest is TestPlus {
         deal(vault.asset(), address(withdrawalEscrow), 1000);
 
         vm.warp(1_641_080_800);
-        changePrank(alice);
-        assertEq(withdrawalEscrow.canWithdraw(), true);
-        assertEq(withdrawalEscrow.withdrawableAmount(), 1000);
 
-        changePrank(bob);
-        assertEq(withdrawalEscrow.canWithdraw(), false);
-        assertEq(withdrawalEscrow.withdrawableAmount(), 0);
+        assertEq(withdrawalEscrow.canWithdraw(alice), true);
+        assertEq(withdrawalEscrow.withdrawableAmount(alice), 1000);
+
+        assertEq(withdrawalEscrow.canWithdraw(bob), false);
+        assertEq(withdrawalEscrow.withdrawableAmount(bob), 0);
     }
 }

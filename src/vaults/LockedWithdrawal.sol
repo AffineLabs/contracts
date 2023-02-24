@@ -67,7 +67,7 @@ contract LockedWithdrawalEscrow is ERC20 {
      * @notice calculate the total resolved debt share
      * @return total resoved debt share
      */
-    function getTotalShare() internal view returns (uint256) {
+    function getResolvedShares() internal view returns (uint256) {
         // total share is total token supply  - not resolved debt token
         return totalSupply - pendingDebtShares;
     }
@@ -82,19 +82,19 @@ contract LockedWithdrawalEscrow is ERC20 {
         // check for sla
         require(block.timestamp > requestTimes[msg.sender] + sla, "LWE: before SLA time");
 
-        uint256 totalShare = getTotalShare();
+        uint256 resolvedShares = getResolvedShares();
 
         // debt token share
         uint256 userShare = balanceOf[msg.sender];
 
         // check if the user share is resolved
-        require(userShare <= totalShare, "LWE: Unresolved debts");
+        require(userShare <= resolvedShares, "LWE: Unresolved debts");
 
         // total token supply for payment
         uint256 totalAssets = asset.balanceOf(address(this));
 
         // amount of asset to pay to user
-        uint256 assetToUser = totalAssets.mulDivDown(userShare, totalShare);
+        uint256 assetToUser = totalAssets.mulDivDown(userShare, resolvedShares);
 
         // transfer the amount.
         asset.safeTransfer(msg.sender, assetToUser);
@@ -112,14 +112,14 @@ contract LockedWithdrawalEscrow is ERC20 {
      * @notice check if user can withdraw funds now.
      * @return true or false if user can withdraw the funds or not
      */
-    function canWithdraw() public view returns (bool) {
-        if (block.timestamp < requestTimes[msg.sender] + sla) {
+    function canWithdraw(address user) public view returns (bool) {
+        if (block.timestamp < requestTimes[user] + sla) {
             return false;
         }
 
-        uint256 totalShare = getTotalShare();
+        uint256 totalShare = getResolvedShares();
 
-        if (totalShare < balanceOf[msg.sender]) {
+        if (totalShare < balanceOf[user]) {
             return false;
         }
 
@@ -130,21 +130,21 @@ contract LockedWithdrawalEscrow is ERC20 {
      * @notice return the amount of share user can withdraw
      * @return returns withdrawable asset amount
      */
-    function withdrawableAmount() public view returns (uint256) {
-        if (!canWithdraw()) {
+    function withdrawableAmount(address user) public view returns (uint256) {
+        if (!canWithdraw(user)) {
             return 0;
         }
 
-        uint256 totalShare = getTotalShare();
+        uint256 resolvedShares = getResolvedShares();
 
         // total token supply for payment
         uint256 totalAssets = asset.balanceOf(address(this));
 
         // debt token share
-        uint256 userShare = balanceOf[msg.sender];
+        uint256 userShare = balanceOf[user];
 
         // amount of token to pay to user
-        uint256 assetToUser = totalAssets.mulDivDown(userShare, totalShare);
+        uint256 assetToUser = totalAssets.mulDivDown(userShare, resolvedShares);
 
         return assetToUser;
     }
