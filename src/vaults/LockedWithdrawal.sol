@@ -80,7 +80,7 @@ contract LockedWithdrawalEscrow is ERC20 {
      */
     function redeem() external returns (uint256) {
         // check for sla
-        require(block.timestamp > requestTimes[msg.sender] + sla, "LWE: before SLA time");
+        require(block.timestamp >= requestTimes[msg.sender] + sla, "LWE: before SLA time");
 
         uint256 resolvedShares = getResolvedShares();
 

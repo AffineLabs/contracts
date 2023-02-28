@@ -15,9 +15,11 @@ contract LockedWithdrawalTest is TestPlus {
 
     LockedWithdrawalEscrow withdrawalEscrow;
     uint256 sla;
+    uint256 blockStartTime;
 
     function setUp() public {
         sla = 10;
+        blockStartTime = 100;
         vault = Deploy.deployL2Vault();
         withdrawalEscrow = new LockedWithdrawalEscrow(AffineVault(address(vault)), sla);
     }
@@ -36,14 +38,15 @@ contract LockedWithdrawalTest is TestPlus {
 
     function testResolvePendingDebt() public {
         // do a withdrawal request
-        vm.warp(1_641_070_800);
+        vm.warp(blockStartTime);
         vm.startPrank(address(vault));
         withdrawalEscrow.registerWithdrawalRequest(alice, 1000);
 
         //resolve pending
         withdrawalEscrow.resolveDebtShares(1000);
 
-        vm.warp(1_641_070_900);
+        vm.warp(blockStartTime + sla);
+
         assertEq(withdrawalEscrow.canWithdraw(alice), true);
 
         assertEq(withdrawalEscrow.withdrawableAmount(alice), 0);
@@ -51,14 +54,15 @@ contract LockedWithdrawalTest is TestPlus {
 
     function testRedeemFunds() public {
         // do a withdrawal request
-        vm.warp(1_641_070_800);
+        vm.warp(blockStartTime);
+
         vm.startPrank(address(vault));
         withdrawalEscrow.registerWithdrawalRequest(alice, 1000);
 
         // resolve pending
         withdrawalEscrow.resolveDebtShares(1000);
 
-        vm.warp(1_641_070_900);
+        vm.warp(blockStartTime + sla);
 
         assertEq(withdrawalEscrow.canWithdraw(alice), true);
 
@@ -72,14 +76,15 @@ contract LockedWithdrawalTest is TestPlus {
 
     function testRedeemDealFunds() public {
         // do a withdrawal request
-        vm.warp(1_641_070_800);
+        vm.warp(blockStartTime);
+
         vm.startPrank(address(vault));
         withdrawalEscrow.registerWithdrawalRequest(alice, 1000);
 
         // resolve pending
         withdrawalEscrow.resolveDebtShares(1000);
 
-        vm.warp(1_641_070_900);
+        vm.warp(blockStartTime + sla);
 
         assertEq(withdrawalEscrow.canWithdraw(alice), true);
 
@@ -96,7 +101,8 @@ contract LockedWithdrawalTest is TestPlus {
     }
 
     function testSharedWithdawalAmount() public {
-        vm.warp(1_641_070_800);
+        vm.warp(blockStartTime);
+
         vm.startPrank(address(vault));
         // register alice
         withdrawalEscrow.registerWithdrawalRequest(alice, 1000);
@@ -109,7 +115,7 @@ contract LockedWithdrawalTest is TestPlus {
         // allocate funds for escrow
         deal(vault.asset(), address(withdrawalEscrow), 3000);
 
-        vm.warp(1_641_080_800);
+        vm.warp(blockStartTime + sla);
 
         assertEq(withdrawalEscrow.canWithdraw(alice), true);
         assertEq(withdrawalEscrow.withdrawableAmount(alice), 1000);
@@ -124,7 +130,7 @@ contract LockedWithdrawalTest is TestPlus {
     }
 
     function testPartialDebtClearance() public {
-        vm.warp(1_641_070_800);
+        vm.warp(blockStartTime);
         vm.startPrank(address(vault));
         // register alice
         withdrawalEscrow.registerWithdrawalRequest(alice, 1000);
@@ -137,7 +143,7 @@ contract LockedWithdrawalTest is TestPlus {
         // allocate funds for escrow
         deal(vault.asset(), address(withdrawalEscrow), 1000);
 
-        vm.warp(1_641_080_800);
+        vm.warp(blockStartTime + sla);
 
         assertEq(withdrawalEscrow.canWithdraw(alice), true);
         assertEq(withdrawalEscrow.withdrawableAmount(alice), 1000);
