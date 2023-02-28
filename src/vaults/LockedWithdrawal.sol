@@ -60,6 +60,7 @@ contract LockedWithdrawalEscrow is ERC20 {
      * @dev resolvedAmount = pendinDebtToken * min(vault_available_e_earn_to_burn, locked_e_earn) / locked_e_earn
      */
     function resolveDebtShares(uint256 resolvedAmount) external onlyVault {
+        // check if we are resolving more than pending share
         pendingDebtShares -= resolvedAmount;
     }
 
@@ -73,6 +74,15 @@ contract LockedWithdrawalEscrow is ERC20 {
     }
 
     /**
+     * @notice checks if current time is before sla or not
+     * @return true if calls are made by user before sla period
+     */
+    function beforeSLA(address user) internal view returns (bool) {
+        // total share is total token supply  - not resolved debt token
+        return block.timestamp < requestTimes[user] + sla;
+    }
+
+    /**
      * @notice Release all the available funds of the user.
      * @return tokenShare amount of asset user gets
      * @dev required to have enough share in debt token, As we dont have cancellation policy.
@@ -80,7 +90,7 @@ contract LockedWithdrawalEscrow is ERC20 {
      */
     function redeem() external returns (uint256) {
         // check for sla
-        require(block.timestamp >= requestTimes[msg.sender] + sla, "LWE: before SLA time");
+        require(!beforeSLA(msg.sender), "LWE: before SLA time");
 
         uint256 resolvedShares = getResolvedShares();
 
@@ -113,7 +123,7 @@ contract LockedWithdrawalEscrow is ERC20 {
      * @return true or false if user can withdraw the funds or not
      */
     function canWithdraw(address user) public view returns (bool) {
-        if (block.timestamp < requestTimes[user] + sla) {
+        if (beforeSLA(user)) {
             return false;
         }
 
