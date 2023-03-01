@@ -21,7 +21,7 @@ contract DebtStrategy is AccessStrategy {
      * @param amount amount needs to be withdraw
      * @return amount withdrawn
      */
-    function divestToPayDebt(uint256 amount) external onlyVault returns (uint256) {
+    function divest(uint256 amount) external override onlyVault returns (uint256) {
         // increase the amount of debt
         debt += amount;
 
