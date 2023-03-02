@@ -4,6 +4,7 @@ pragma solidity =0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
 
@@ -113,6 +114,18 @@ contract LockedWithdrawalEscrow is ERC20 {
 
         return assetsToUser;
     }
+
+    ///////////////////////////////////////
+    ///         ERC-20 OVERRIDE
+    /// overriding transfer and transferFrom
+    /// to stop user redeem exploits
+    ///////////////////////////////////////
+
+    /**
+     * @dev Token is non transferable
+     */
+    function transfer(address to, uint256 amount) public override returns (bool) {}
+    function transferFrom(address from, address to, uint256 amount) public override returns (bool) {}
 
     ///////////////////////////////////////
     // View for the user / fontend
