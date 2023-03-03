@@ -157,15 +157,14 @@ contract CommonVaultTest is TestPlus {
         asset.approve(address(vault), type(uint256).max);
 
         TestStrategy strategy = new TestStrategy(vault);
-        vm.startPrank(governance);
+        vm.prank(governance);
         vault.addStrategy(strategy, 10_000);
-        vm.stopPrank();
 
         vault.mint(amount * vault.initialSharesPerAsset(), user); // Initially asset:share = 1:vault.initialSharesPerAsset().
         assertEq(asset.balanceOf(address(vault)), amount);
 
-        vm.startPrank(governance);
         uint256 capitalEfficientAmount = 50;
+        vm.prank(governance);
         vault.depositIntoStrategies(capitalEfficientAmount);
         assertEq(asset.balanceOf(address(vault)), amount - capitalEfficientAmount);
         assertEq(vault.vaultTVL(), amount);

@@ -256,8 +256,9 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
 
     /// @notice Deposit idle assets into strategies.
     function depositIntoStrategies(uint256 assets) external whenNotPaused onlyRole(HARVESTER) {
-        // Deposit entire balance of `_asset` into strategies
-        _depositIntoStrategies(assets);
+        // Leave aside some assets to send to withdrawalEscrow
+        if (assets <= pendingDebt) return;
+        _depositIntoStrategies(assets - pendingDebt);
     }
 
     function settleStrategyDebt(uint256 assets) external {
