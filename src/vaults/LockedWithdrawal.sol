@@ -4,7 +4,6 @@ pragma solidity =0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
 
@@ -21,7 +20,7 @@ contract LockedWithdrawalEscrow is ERC20 {
     // amount of pending debt token share to resolve
     uint256 public pendingDebtShares;
 
-    // Max locked withdrawal time, user can withdaraw funds after sla
+    // Max locked withdrawal time, user can withdraw funds after sla
     uint256 public immutable sla;
 
     // Vault this escrow attached to
@@ -55,10 +54,10 @@ contract LockedWithdrawalEscrow is ERC20 {
     /**
      * @notice Resolve the pending debt token after closing a position
      * @param resolvedAmount amount resolved after pay token to this contract.
-     * @dev This will increase the amount of paytoken and total supply of debt token in the pool
+     * @dev This will increase the amount of assets and total supply of debt token in the pool
      * @dev More user will be allowed to withdraw funds
-     * @dev the resolved amount is the ratio of locked e-earn token and minimun e earn token available to burn in vault.
-     * @dev resolvedAmount = pendinDebtToken * min(vault_available_e_earn_to_burn, locked_e_earn) / locked_e_earn
+     * @dev the resolved amount is the ratio of locked e-earn token and minimum e earn token available to burn in vault.
+     * @dev resolvedAmount = pendingDebtToken * min(vault_available_e_earn_to_burn, locked_e_earn) / locked_e_earn
      */
     function resolveDebtShares(uint256 resolvedAmount) external onlyVault {
         // check if we are resolving more than pending share
@@ -67,7 +66,7 @@ contract LockedWithdrawalEscrow is ERC20 {
 
     /**
      * @notice calculate the total resolved debt share
-     * @return total resoved debt share
+     * @return total resolved debt share
      */
     function getResolvedShares() internal view returns (uint256) {
         // total share is total token supply  - not resolved debt token
@@ -86,7 +85,7 @@ contract LockedWithdrawalEscrow is ERC20 {
     /**
      * @notice Release all the available funds of the user.
      * @return tokenShare amount of asset user gets
-     * @dev required to have enough share in debt token, As we dont have cancellation policy.
+     * @dev required to have enough share in debt token, As we don't have cancellation policy.
      * @dev user will get the full amount proportion of debtShare
      */
     function redeem() external returns (uint256) {
@@ -118,7 +117,7 @@ contract LockedWithdrawalEscrow is ERC20 {
     ///////////////////////////////////////
     ///         ERC-20 OVERRIDE
     /// overriding transfer and transferFrom
-    /// to stop user redeem exploits
+    /// to make debt token non-transferable
     ///////////////////////////////////////
 
     /**
@@ -128,7 +127,7 @@ contract LockedWithdrawalEscrow is ERC20 {
     function transferFrom(address from, address to, uint256 amount) public override returns (bool) {}
 
     ///////////////////////////////////////
-    // View for the user / fontend
+    // View for the user / font-end
     //////////////////////////////////////
 
     /**
