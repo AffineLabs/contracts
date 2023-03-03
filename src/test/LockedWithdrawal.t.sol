@@ -151,4 +151,32 @@ contract LockedWithdrawalTest is TestPlus {
         assertEq(withdrawalEscrow.canWithdraw(bob), false);
         assertEq(withdrawalEscrow.withdrawableAmount(bob), 0);
     }
+
+    function testTransferDebtToken() public {
+        vm.warp(blockStartTime);
+        vm.startPrank(address(vault));
+        // register alice
+        withdrawalEscrow.registerWithdrawalRequest(alice, 1000);
+
+        // register bob
+        withdrawalEscrow.registerWithdrawalRequest(bob, 2000);
+
+        withdrawalEscrow.resolveDebtShares(3000);
+
+        // allocate funds for escrow
+        deal(vault.asset(), address(withdrawalEscrow), 3000);
+
+        vm.warp(blockStartTime + sla);
+
+        // transfer funds to alice
+        changePrank(alice);
+        withdrawalEscrow.transfer(bob, 1000);
+
+        // should not change anything
+        assertEq(withdrawalEscrow.canWithdraw(alice), true);
+        assertEq(withdrawalEscrow.withdrawableAmount(alice), 1000);
+
+        assertEq(withdrawalEscrow.canWithdraw(bob), true);
+        assertEq(withdrawalEscrow.withdrawableAmount(bob), 2000);
+    }
 }
