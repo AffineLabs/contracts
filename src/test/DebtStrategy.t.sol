@@ -15,16 +15,16 @@ import {AffineVault} from "src/vaults/AffineVault.sol";
 /// @notice Test general functionalities of strategies.
 contract DebtStrategyTest is TestPlus {
     DebtStrategy strategy;
-    MockERC20 rewardToken;
     BaseVault vault;
+    ERC20 asset;
 
     function setUp() public {
-        rewardToken = new MockERC20("Mock Token", "MT", 18);
         vault = Deploy.deployL2Vault();
-        address[] memory strategiest = new address[](2);
-        strategiest[0] = alice;
-        strategiest[1] = bob;
-        strategy = new DebtStrategy(AffineVault(address(vault)), strategiest);
+        address[] memory strategists = new address[](2);
+        strategists[0] = alice;
+        strategists[1] = bob;
+        strategy = new DebtStrategy(AffineVault(address(vault)), strategists);
+        asset = ERC20(vault.asset());
     }
 
     /**
@@ -68,10 +68,10 @@ contract DebtStrategyTest is TestPlus {
         assertEq(strategy.debt(), 0);
 
         // remaining asset in strategy
-        assertEq(ERC20(vault.asset()).balanceOf(address(strategy)), 0);
+        assertEq(asset.balanceOf(address(strategy)), 0);
 
         // asset in vault
-        assertEq(ERC20(vault.asset()).balanceOf(address(vault)), debtAmount);
+        assertEq(asset.balanceOf(address(vault)), debtAmount);
     }
 
     /**
@@ -92,19 +92,21 @@ contract DebtStrategyTest is TestPlus {
         assertEq(strategy.debt(), 0);
 
         // remaining asset in strategy
-        assertEq(ERC20(vault.asset()).balanceOf(address(strategy)), strategyAssets - debtAmount);
+        assertEq(asset.balanceOf(address(strategy)), strategyAssets - debtAmount);
 
         // asset in vault
-        assertEq(ERC20(vault.asset()).balanceOf(address(vault)), debtAmount);
+        assertEq(asset.balanceOf(address(vault)), debtAmount);
     }
 
     /**
      * @notice test divest with less assets than debt in strategy
+     * @dev we resolve debt with full amount, so less amount could not be resolved automatically
+     * @dev need the strategist to run partial resolving.
      */
     function testDivestWithLessAssets() public {
         uint256 debtAmount = 100;
         uint256 strategyAssets = 50;
-        // assing asset to the strategy
+        // passing asset to the strategy
         deal(vault.asset(), address(strategy), strategyAssets);
 
         vm.prank(address(vault));
@@ -113,13 +115,67 @@ contract DebtStrategyTest is TestPlus {
         strategy.divest(debtAmount);
 
         // remaining debt
-        assertEq(strategy.debt(), debtAmount - strategyAssets);
+        assertEq(strategy.debt(), debtAmount);
 
         // remaining asset in strategy
-        assertEq(ERC20(vault.asset()).balanceOf(address(strategy)), 0);
+        assertEq(asset.balanceOf(address(strategy)), strategyAssets);
 
         // asset in vault
-        assertEq(ERC20(vault.asset()).balanceOf(address(vault)), strategyAssets);
+        assertEq(asset.balanceOf(address(vault)), 0);
+    }
+
+    /**
+     * @notice Resolving partial debt can only be done by strategists
+     */
+    function testResolvePartialDebt() public {
+        uint256 debtAmount = 100;
+        uint256 strategyAssets = 50;
+        // passing asset to the strategy
+        deal(vault.asset(), address(strategy), strategyAssets);
+
+        vm.prank(address(vault));
+
+        // divest
+        strategy.divest(debtAmount);
+
+        // remaining debt
+        assertEq(strategy.debt(), debtAmount);
+
+        // remaining asset in strategy
+        assertEq(asset.balanceOf(address(strategy)), strategyAssets);
+
+        // asset in vault
+        assertEq(asset.balanceOf(address(vault)), 0);
+
+        vm.prank(alice);
+        strategy.settleDebt();
+
+        // remaining debt
+        assertEq(strategy.debt(), debtAmount - strategyAssets);
+        // remaining asset in strategy
+        assertEq(asset.balanceOf(address(strategy)), 0);
+
+        // asset in vault
+        assertEq(asset.balanceOf(address(vault)), strategyAssets);
+    }
+
+    function testSettleWithNotStrategist() public {
+        uint256 debtAmount = 100;
+        uint256 strategyAssets = 50;
+        // passing asset to the strategy
+        deal(vault.asset(), address(strategy), strategyAssets);
+
+        vm.prank(address(vault));
+
+        // divest
+        strategy.divest(debtAmount);
+
+        // remaining debt
+        assertEq(strategy.debt(), debtAmount);
+
+        // call should revert not having strategist role
+        vm.expectRevert();
+        strategy.settleDebt();
     }
 
     /**

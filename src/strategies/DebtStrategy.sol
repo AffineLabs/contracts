@@ -22,22 +22,25 @@ contract DebtStrategy is AccessStrategy {
      * @return amount withdrawn
      */
     function divest(uint256 amount) external override onlyVault returns (uint256) {
-        // increase the amount of debt
-        debt += amount;
-
         // withdraw funds
         uint256 divestedAmount = _divest(amount);
 
         // settle debt
-        settleDebt();
+        // debt+amount is total debt as there might be existing debt.
+        if (asset.balanceOf(address(this)) < (debt + amount)) {
+            debt += amount;
+        } else {
+            asset.safeTransfer(address(vault), debt + amount);
+            debt = 0;
+        }
 
         return divestedAmount;
     }
 
     /**
-     * @notice transfer assets to vault to resovle debts
+     * @notice transfer assets to vault to resolve debts
      */
-    function settleDebt() public {
+    function settleDebt() external onlyRole(STRATEGIST_ROLE) {
         // max possible amount to settle
         uint256 settleAmount = Math.min(asset.balanceOf(address(this)), debt);
         // transfer asset to vault
