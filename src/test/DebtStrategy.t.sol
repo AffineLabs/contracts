@@ -5,7 +5,6 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
 import {TestPlus} from "./TestPlus.sol";
 import {Deploy} from "./Deploy.sol";
-import {MockERC20} from "./mocks/MockERC20.sol";
 
 import {DebtStrategy} from "src/strategies/DebtStrategy.sol";
 
