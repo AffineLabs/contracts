@@ -13,6 +13,7 @@ import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
 import {AffineGovernable} from "src/utils/AffineGovernable.sol";
 import {BridgeEscrow} from "./escrow/BridgeEscrow.sol";
 import {WormholeRouter} from "./wormhole/WormholeRouter.sol";
+import {VaultV2Storage} from "src/vaults/VaultV2Storage.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
 
 /**
@@ -20,7 +21,7 @@ import {uncheckedInc} from "src/libs/Unchecked.sol";
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
  * strategy liquidation.
  */
-abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multicallable {
+abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multicallable, VaultV2Storage {
     using SafeTransferLib for ERC20;
 
     /*//////////////////////////////////////////////////////////////

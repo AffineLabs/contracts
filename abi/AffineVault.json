@@ -311,6 +311,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "debtEscrow",
+    "outputs": [
+      {
+        "internalType": "contract ILockedWithdrawalEscrow",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -444,6 +457,19 @@
         "internalType": "uint128",
         "name": "",
         "type": "uint128"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "pendingDebt",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",

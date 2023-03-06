@@ -9,6 +9,7 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
 import {AffineGovernable} from "src/utils/AffineGovernable.sol";
 import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
+import {VaultV2Storage} from "src/vaults/VaultV2Storage.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
 
 /**
@@ -16,7 +17,7 @@ import {uncheckedInc} from "src/libs/Unchecked.sol";
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
  * strategy liquidation.
  */
-contract AffineVault is AffineGovernable, AccessControlUpgradeable {
+contract AffineVault is AffineGovernable, AccessControlUpgradeable, VaultV2Storage {
     using SafeTransferLib for ERC20;
 
     /*//////////////////////////////////////////////////////////////

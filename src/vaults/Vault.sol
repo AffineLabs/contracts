@@ -19,7 +19,7 @@ import {DetailedShare} from "src/utils/Detailed.sol";
 import {VaultV2Storage} from "src/vaults/VaultV2Storage.sol";
 import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
 
-contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare, VaultV2Storage {
+contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare {
     using SafeTransferLib for ERC20;
     using MathUpgradeable for uint256;
 
