@@ -29,3 +29,17 @@ contract TestStrategyDivestSlippage is TestStrategy {
         return amountToSend;
     }
 }
+
+contract TestIlliquidStrategy is TestStrategy {
+    constructor(AffineVault _vault) TestStrategy(_vault) {}
+
+    function _divest(uint256 amount, DivestType divestType) internal virtual override returns (uint256) {
+        if (divestType == DivestType.FORCED) {
+            uint256 amountToSend = amount > balanceOfAsset() ? balanceOfAsset() : amount;
+            asset.transfer(address(vault), amountToSend);
+            return amountToSend;
+        } else {
+            return 0;
+        }
+    }
+}

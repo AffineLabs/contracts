@@ -7,7 +7,7 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
-import {TestStrategy, TestStrategyDivestSlippage} from "./mocks/TestStrategy.sol";
+import {TestStrategy, TestStrategyDivestSlippage, TestIlliquidStrategy} from "./mocks/TestStrategy.sol";
 
 import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/BridgeEscrow.sol";
 import {IWormhole} from "src/interfaces/IWormhole.sol";
@@ -131,10 +131,6 @@ abstract contract CommonVaultTestSuite is TestPlus {
         }
     }
 
-    event WithdrawalQueueIndexesSwapped(
-        uint256 index1, uint256 index2, BaseStrategy indexed newStrategy1, BaseStrategy indexed newStrategy2
-    );
-
     /// @notice Test setter for withdrawal queue.
     function testSetWithdrawalQueue() public {
         BaseStrategy[MAX_STRATEGIES] memory newQueue;
@@ -238,6 +234,19 @@ abstract contract CommonVaultTestSuite is TestPlus {
 
         assertEq(strat1TvlBps, 100);
         assertEq(strat2TvlBps, 200);
+    }
+
+    function testPossibleDivestment() public {
+        BaseStrategy strat1 = new TestIlliquidStrategy(AffineVault(address(vault)));
+
+        vm.startPrank(address(vault));
+        token.mint(address(strat1), 1e18);
+
+        strat1.divest(1e18, DivestType.POSSIBLE);
+        assertEq(token.balanceOf(address(vault)), 0);
+
+        strat1.divest(1e18, DivestType.FORCED);
+        assertEq(token.balanceOf(address(vault)), 1e18);
     }
 }
 
