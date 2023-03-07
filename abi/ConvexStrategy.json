@@ -333,6 +333,11 @@
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
+      },
+      {
+        "internalType": "enum DivestType",
+        "name": "divestType",
+        "type": "uint8"
       }
     ],
     "name": "divest",

@@ -13,6 +13,7 @@ import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRoute
 import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
 import {EthVaults} from "script/EthVaults.s.sol";
 import {Vault} from "src/vaults/Vault.sol";
+import {DivestType} from "src/libs/DivestType.sol";
 import {DeltaNeutralLpV3} from "src/strategies/DeltaNeutralLpV3.sol";
 import {SslpV3} from "script/DeltaNeutralLpV3.s.sol";
 
@@ -145,7 +146,7 @@ contract DeltaNeutralV3Test is TestPlus {
         // If there's no position active, we just send our current balance
         deal(address(asset), address(strategy), 1);
         vm.prank(address(vault));
-        strategy.divest(1);
+        strategy.divest(1, DivestType.FORCED);
         assertEq(asset.balanceOf(address(vault)), 1);
 
         deal(address(asset), address(strategy), initStrategyBalance);
@@ -153,7 +154,7 @@ contract DeltaNeutralV3Test is TestPlus {
 
         // We unwind position if there is a one
         vm.prank(address(vault));
-        strategy.divest(type(uint256).max);
+        strategy.divest(type(uint256).max, DivestType.FORCED);
 
         assertTrue(strategy.canStartNewPos());
         assertEq(strategy.totalLockedValue(), 0);

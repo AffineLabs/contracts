@@ -12,7 +12,7 @@ import {TestStrategy, TestStrategyDivestSlippage} from "./mocks/TestStrategy.sol
 import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/BridgeEscrow.sol";
 import {IWormhole} from "src/interfaces/IWormhole.sol";
 import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {BaseVault, DivestType} from "src/vaults/cross-chain-vault/BaseVault.sol";
 import {AffineVault} from "src/vaults/AffineVault.sol";
 
 contract BaseVaultLiquidate is BaseVault {
@@ -112,7 +112,9 @@ abstract contract CommonVaultTestSuite is TestPlus {
         vault.harvest(strategies);
 
         // Divest (make sure divest is called on the strategy)
-        vm.expectCall(address(strategy), abi.encodeCall(BaseStrategy.divest, (strategy.totalLockedValue())));
+        vm.expectCall(
+            address(strategy), abi.encodeCall(BaseStrategy.divest, (strategy.totalLockedValue(), DivestType.FORCED))
+        );
         vault.removeStrategy(strategy);
 
         // The vault removed all money from the strategy

@@ -8,6 +8,7 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 
 import {Vault} from "src/vaults/Vault.sol";
+import {DivestType} from "src/libs/DivestType.sol";
 import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/BridgeEscrow.sol";
 import {L2AAVEStrategy} from "src/strategies/L2AAVEStrategy.sol";
 
@@ -69,7 +70,7 @@ contract AAVEStratTest is TestPlus {
 
         // Divest $2
         vm.prank(address(vault));
-        strategy.divest(2e6);
+        strategy.divest(2e6, DivestType.FORCED);
 
         // We only withdrew 2 - 1 == 1 aToken. We gave 1 usdc and 1 aToken to the vault
         assertEq(usdc.balanceOf(address(vault)), 2e6);
@@ -83,7 +84,7 @@ contract AAVEStratTest is TestPlus {
         _depositIntoStrat(1e6);
 
         vm.prank(address(vault));
-        strategy.divest(2e6);
+        strategy.divest(2e6, DivestType.FORCED);
 
         assertEq(vault.vaultTVL(), 1e6);
         assertEq(strategy.totalLockedValue(), 0);
@@ -97,7 +98,7 @@ contract AAVEStratTest is TestPlus {
         deal(address(usdc), address(strategy), 3e6, false);
 
         vm.prank(address(vault));
-        strategy.divest(2e6);
+        strategy.divest(2e6, DivestType.FORCED);
 
         assertEq(vault.vaultTVL(), 2e6);
         assertEq(strategy.totalLockedValue(), 1e6);

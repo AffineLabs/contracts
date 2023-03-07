@@ -8,7 +8,7 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
-import {Vault} from "src/vaults/Vault.sol";
+import {Vault, DivestType} from "src/vaults/Vault.sol";
 import {DeltaNeutralLp, ILendingPool} from "src/strategies/DeltaNeutralLp.sol";
 import {IMasterChef} from "src/interfaces/sushiswap/IMasterChef.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
@@ -155,7 +155,7 @@ contract L1DeltaNeutralTest is TestPlus {
         // If there's no position active, we fjust send our current balance
         deal(address(asset), address(strategy), 1);
         vm.prank(address(vault));
-        strategy.divest(1);
+        strategy.divest(1, DivestType.FORCED);
         assertEq(asset.balanceOf(address(vault)), 1);
 
         deal(address(asset), address(strategy), 1000e6);
@@ -165,7 +165,7 @@ contract L1DeltaNeutralTest is TestPlus {
 
         // We unwind position if there is a one
         vm.prank(address(vault));
-        strategy.divest(type(uint256).max);
+        strategy.divest(type(uint256).max, DivestType.FORCED);
 
         assertTrue(strategy.canStartNewPos());
         assertEq(strategy.totalLockedValue(), 0);

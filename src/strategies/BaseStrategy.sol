@@ -6,6 +6,8 @@ import {AffineVault} from "src/vaults/AffineVault.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
+import {DivestType} from "src/libs/DivestType.sol";
+
 /// @notice Base strategy contract
 abstract contract BaseStrategy {
     using SafeTransferLib for ERC20;
@@ -54,12 +56,12 @@ abstract contract BaseStrategy {
     /// @notice Withdraw vault's underlying asset from strategy.
     /// @param amount The amount to withdraw.
     /// @return The amount of `asset` divested from the strategy
-    function divest(uint256 amount) external onlyVault returns (uint256) {
-        return _divest(amount);
+    function divest(uint256 amount, DivestType divestType) external onlyVault returns (uint256) {
+        return _divest(amount, divestType);
     }
 
     /// @dev This function should not revert if we get less than `amount` out of the strategy
-    function _divest(uint256 amount) internal virtual returns (uint256) {}
+    function _divest(uint256 amount, DivestType divestType) internal virtual returns (uint256) {}
 
     /// @notice The total amount of `asset` that the strategy is managing
     /// @dev This should not overestimate, and should account for slippage during divestment

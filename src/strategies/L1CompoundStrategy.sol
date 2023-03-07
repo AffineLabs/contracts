@@ -12,6 +12,7 @@ import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {BaseStrategy} from "./BaseStrategy.sol";
+import {DivestType} from "src/libs/DivestType.sol";
 
 contract L1CompoundStrategy is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;
@@ -57,7 +58,7 @@ contract L1CompoundStrategy is BaseStrategy, AccessControl {
      * DIVESTMENT
      *
      */
-    function _divest(uint256 assets) internal override returns (uint256) {
+    function _divest(uint256 assets, DivestType /* divestType*/ ) internal override returns (uint256) {
         uint256 currAssets = balanceOfAsset();
         uint256 assetsReq = currAssets >= assets ? 0 : assets - currAssets;
 

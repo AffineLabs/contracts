@@ -16,8 +16,9 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {DetailedShare} from "src/utils/Detailed.sol";
-import {VaultV2Storage} from "src/vaults/VaultV2Storage.sol";
+
 import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
+import {DivestType} from "src/libs/DivestType.sol";
 
 contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare {
     using SafeTransferLib for ERC20;
@@ -265,7 +266,7 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
         Strategy strategy = Strategy(msg.sender);
         require(strategies[strategy].isActive, "Vault: not an active strategy");
 
-        pendingDebt += _withdrawFromStrategy(strategy, assets);
+        pendingDebt += _withdrawFromStrategy(strategy, assets, DivestType.FORCED);
     }
 
     function clearLockedShares() external onlyRole(HARVESTER) {

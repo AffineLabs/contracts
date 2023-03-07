@@ -16,6 +16,7 @@ import {AffineVault} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "./AccessStrategy.sol";
 import {IMasterChef} from "src/interfaces/sushiswap/IMasterChef.sol";
 import {SlippageUtils} from "src/libs/SlippageUtils.sol";
+import {DivestType} from "src/libs/DivestType.sol";
 
 contract DeltaNeutralLp is AccessStrategy {
     using SafeTransferLib for ERC20;
@@ -229,7 +230,7 @@ contract DeltaNeutralLp is AccessStrategy {
 
     /// @dev This strategy should be put at the end of the WQ so that we rarely divest from it. Divestment
     /// ideally occurs when the strategy does not have an open position
-    function _divest(uint256 assets) internal override returns (uint256) {
+    function _divest(uint256 assets, DivestType /* divestType */ ) internal override returns (uint256) {
         // Totally unwind the position with 5% slippage tolerance
         if (!canStartNewPos) _endPosition(500); //
         uint256 amountToSend = Math.min(assets, balanceOfAsset());

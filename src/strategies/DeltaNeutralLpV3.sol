@@ -16,6 +16,7 @@ import {IUniPositionValue} from "src/interfaces/IUniPositionValue.sol";
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "./AccessStrategy.sol";
 import {SlippageUtils} from "src/libs/SlippageUtils.sol";
+import {DivestType} from "src/libs/DivestType.sol";
 
 contract DeltaNeutralLpV3 is AccessStrategy {
     using SafeTransferLib for ERC20;
@@ -81,7 +82,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
 
     /// @dev This strategy should be put at the end of the WQ so that we rarely divest from it. Divestment
     /// ideally occurs when the strategy does not have an open position
-    function _divest(uint256 amount) internal override returns (uint256) {
+    function _divest(uint256 amount, DivestType /* divestType*/ ) internal override returns (uint256) {
         // Totally unwind the position
         if (!canStartNewPos) _endPosition(500);
 

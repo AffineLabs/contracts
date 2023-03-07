@@ -7,7 +7,7 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 
-import {AffineVault} from "src/vaults/AffineVault.sol";
+import {AffineVault, DivestType} from "src/vaults/AffineVault.sol";
 import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
 import {ICToken} from "src/interfaces/compound/ICToken.sol";
 import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
@@ -131,7 +131,7 @@ contract CompoundStratTest is TestPlus {
         uint256 tvl = strategy.totalLockedValue();
 
         changePrank(address(vault));
-        strategy.divest(tvl);
+        strategy.divest(tvl, DivestType.FORCED);
         assertInRange(usdc.balanceOf(address(vault)), oneUSDC - 1, oneUSDC);
     }
 
@@ -147,7 +147,7 @@ contract CompoundStratTest is TestPlus {
 
         // Divest to get 2 usdc back to vault
         changePrank(address(vault));
-        strategy.divest(2e6);
+        strategy.divest(2e6, DivestType.FORCED);
 
         // We only withdrew 2 - 1 == 1 usdc worth of cToken. We gave 2 usdc to the vault
         assertEq(usdc.balanceOf(address(vault)), 2e6);
@@ -161,7 +161,7 @@ contract CompoundStratTest is TestPlus {
         _depositIntoStrat(1e6);
 
         vm.prank(address(vault));
-        strategy.divest(2e6);
+        strategy.divest(2e6, DivestType.FORCED);
 
         assertApproxEqAbs(vault.vaultTVL(), 1e6, 2);
         // There can still be a wei of cToken left unliquidated since balanceOfUnderlying rounds down
@@ -176,7 +176,7 @@ contract CompoundStratTest is TestPlus {
         deal(address(usdc), address(strategy), 3e6, false);
 
         vm.prank(address(vault));
-        strategy.divest(2e6);
+        strategy.divest(2e6, DivestType.FORCED);
 
         assertEq(vault.vaultTVL(), 2e6);
         assertEq(strategy.totalLockedValue(), 1e6);

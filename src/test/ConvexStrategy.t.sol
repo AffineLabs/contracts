@@ -7,7 +7,7 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 
-import {Vault} from "src/vaults/Vault.sol";
+import {Vault, DivestType} from "src/vaults/Vault.sol";
 import {ConvexStrategy} from "src/strategies/ConvexStrategy.sol";
 import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
 import {IConvexBooster} from "src/interfaces/convex.sol";
@@ -108,7 +108,7 @@ contract ConvexStratTest is TestPlus {
         strategy.deposit(2e6, 0);
 
         vm.prank(address(vault));
-        strategy.divest(1e6);
+        strategy.divest(1e6, DivestType.FORCED);
         emit log_named_uint("vault usdc: ", usdc.balanceOf(address(vault)));
         assertTrue(usdc.balanceOf(address(vault)) == 1e6);
     }

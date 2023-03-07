@@ -16,6 +16,8 @@ import {WormholeRouter} from "./wormhole/WormholeRouter.sol";
 import {VaultV2Storage} from "src/vaults/VaultV2Storage.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
 
+import {DivestType} from "src/libs/DivestType.sol";
+
 /**
  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
@@ -243,7 +245,7 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
             _organizeWithdrawalQueue();
 
             // Take all money out of strategy.
-            _withdrawFromStrategy(strategy, strategy.totalLockedValue());
+            _withdrawFromStrategy(strategy, strategy.totalLockedValue(), DivestType.FORCED);
             break;
         }
     }
@@ -338,9 +340,12 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
      * @param assets  The amount of underlying tokens to withdraw.
      * @return The amount of assets actually received.
      */
-    function _withdrawFromStrategy(Strategy strategy, uint256 assets) internal returns (uint256) {
+    function _withdrawFromStrategy(Strategy strategy, uint256 assets, DivestType divestType)
+        internal
+        returns (uint256)
+    {
         // Withdraw from the strategy
-        uint256 amountWithdrawn = _divest(strategy, assets);
+        uint256 amountWithdrawn = _divest(strategy, assets, divestType);
 
         // Without this the next harvest would count the withdrawal as a loss.
         // We update the balance to the current tvl because a withdrawal can reduce the tvl by more than the amount
@@ -357,8 +362,8 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
     }
 
     /// @dev A small wrapper around divest(). We try-catch to make sure that a bad strategy does not pause withdrawals.
-    function _divest(Strategy strategy, uint256 assets) internal returns (uint256) {
-        try strategy.divest(assets) returns (uint256 amountDivested) {
+    function _divest(Strategy strategy, uint256 assets, DivestType divestType) internal returns (uint256) {
+        try strategy.divest(assets, divestType) returns (uint256 amountDivested) {
             return amountDivested;
         } catch {
             return 0;
@@ -500,8 +505,8 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
             uint256 amountNeeded = amount - balance;
             amountNeeded = Math.min(amountNeeded, strategies[strategy].balance);
 
-            // Force withdraw of token from strategy
-            uint256 withdrawn = _withdrawFromStrategy(strategy, amountNeeded);
+            // Withdraw `asset`
+            uint256 withdrawn = _withdrawFromStrategy(strategy, amountNeeded, DivestType.POSSIBLE);
             amountLiquidated += withdrawn;
         }
         emit Liquidation({assetsRequested: amount, assetsLiquidated: amountLiquidated});
@@ -537,7 +542,7 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
             uint256 idealStrategyTVL = (tvl * strategies[strategy].tvlBps) / MAX_BPS;
             uint256 currStrategyTVL = strategy.totalLockedValue();
             if (idealStrategyTVL < currStrategyTVL) {
-                _withdrawFromStrategy(strategy, currStrategyTVL - idealStrategyTVL);
+                _withdrawFromStrategy(strategy, currStrategyTVL - idealStrategyTVL, DivestType.POSSIBLE);
             }
             if (idealStrategyTVL > currStrategyTVL) {
                 amountsToInvest[i] = idealStrategyTVL - currStrategyTVL;

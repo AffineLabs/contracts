@@ -11,6 +11,7 @@ import {
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {BaseStrategy} from "./BaseStrategy.sol";
+import {DivestType} from "src/libs/DivestType.sol";
 
 contract L2AAVEStrategy is BaseStrategy {
     using SafeTransferLib for ERC20;
@@ -41,7 +42,7 @@ contract L2AAVEStrategy is BaseStrategy {
     /*//////////////////////////////////////////////////////////////
                                DIVESTMENT
     //////////////////////////////////////////////////////////////*/
-    function _divest(uint256 assets) internal override returns (uint256) {
+    function _divest(uint256 assets, DivestType /* divestType*/ ) internal override returns (uint256) {
         // Withdraw only the needed amounts from the lending pool
         uint256 currAssets = balanceOfAsset();
         uint256 assetsReq = currAssets >= assets ? 0 : assets - currAssets;
