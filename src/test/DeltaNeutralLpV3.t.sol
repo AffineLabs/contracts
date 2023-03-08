@@ -82,7 +82,7 @@ contract DeltaNeutralV3Test is TestPlus {
         uint256 startAssets = initStrategyBalance;
         deal(address(asset), address(strategy), startAssets);
 
-        strategy.startPosition(tickLow, tickHigh, slippageBps);
+        strategy.startPosition(startAssets, tickLow, tickHigh, slippageBps);
         // Can't start a new position
         assertFalse(strategy.canStartNewPos());
         // Ntft exists and we own it
@@ -101,16 +101,28 @@ contract DeltaNeutralV3Test is TestPlus {
             strategy.aToken().balanceOf(address(strategy)) * strategy.collateralToBorrowRatioBps() / 10_000;
         emit log_named_uint("assetsLP: ", assetsLP);
         emit log_named_uint("assetsInAAve: ", assetsInAAve);
-        // Not all of the ether gets added as liquiditty, and not all of the usdc gets added either
+        // Not all of the ether gets added as liquidity, and not all of the usdc gets added either
         // See https://uniswapv3book.com/docs/milestone_1/calculating-liquidity/
         // We do use 5% slippage though
         assertApproxEqRel(assetsLP, assetsInAAve * 2, 0.05e18);
     }
 
+    /**
+     * @notice test start position with more assets than balance
+     */
+    function testStartInvalidPosition() public {
+        uint256 startAssets = initStrategyBalance;
+        deal(address(asset), address(strategy), startAssets);
+
+        // call should revert
+        vm.expectRevert("DNLP: insufficient assets");
+        strategy.startPosition(startAssets + 1, tickLow, tickHigh, slippageBps);
+    }
+
     /// @notice Test that a position can be ended.
     function testEndPosition() public {
         deal(address(asset), address(strategy), initStrategyBalance);
-        strategy.startPosition(tickLow, tickHigh, slippageBps);
+        strategy.startPosition(initStrategyBalance, tickLow, tickHigh, slippageBps);
         uint256 origLpId = strategy.lpId();
 
         vm.expectRevert();
@@ -135,7 +147,7 @@ contract DeltaNeutralV3Test is TestPlus {
     function testTVL() public {
         assertEq(strategy.totalLockedValue(), 0);
         deal(address(asset), address(strategy), initStrategyBalance);
-        strategy.startPosition(tickLow, tickHigh, slippageBps);
+        strategy.startPosition(initStrategyBalance, tickLow, tickHigh, slippageBps);
 
         assertApproxEqRel(strategy.totalLockedValue(), initStrategyBalance, 0.02e18);
     }
@@ -149,7 +161,7 @@ contract DeltaNeutralV3Test is TestPlus {
         assertEq(asset.balanceOf(address(vault)), 1);
 
         deal(address(asset), address(strategy), initStrategyBalance);
-        strategy.startPosition(tickLow, tickHigh, slippageBps);
+        strategy.startPosition(initStrategyBalance, tickLow, tickHigh, slippageBps);
 
         // We unwind position if there is a one
         vm.prank(address(vault));
@@ -162,7 +174,7 @@ contract DeltaNeutralV3Test is TestPlus {
 
     function testFeeView() public {
         deal(address(asset), address(strategy), initStrategyBalance);
-        strategy.startPosition(tickLow, tickHigh, slippageBps);
+        strategy.startPosition(initStrategyBalance, tickLow, tickHigh, slippageBps);
 
         (uint256 assetsFee, uint256 borrowsFee) = strategy.positionFees();
         console.log("assetsFee: %s, borrowsFee: %s", assetsFee, borrowsFee);

@@ -155,19 +155,20 @@ contract DeltaNeutralLpV3 is AccessStrategy {
      * @param tickHigh The lower tick at which we will provide liquidity.
      * @param slippageToleranceBps Maximum bps of asset/borrow that will not be added as liquidity.
      */
-    function startPosition(int24 tickLow, int24 tickHigh, uint256 slippageToleranceBps)
+    function startPosition(uint256 assets, int24 tickLow, int24 tickHigh, uint256 slippageToleranceBps)
         external
         onlyRole(STRATEGIST_ROLE)
     {
         // Set position metadata
         require(canStartNewPos, "DNLP: position is active");
+        require(assets <= asset.balanceOf(address(this)), "DNLP: insufficient assets");
+
         currentPosition += 1;
         canStartNewPos = false;
 
         // Borrow at 75% LTV
         // If x is amount we want to deposit into aave
         // .75x = Total - x => 1.75x = Total => x = Total / 1.75 => Total * 4/7
-        uint256 assets = asset.balanceOf(address(this));
         uint256 assetsToDeposit = assets.mulDivDown(assetToDepositRatioBps, MAX_BPS);
         lendingPool.deposit({asset: address(asset), amount: assetsToDeposit, onBehalfOf: address(this), referralCode: 0});
 
