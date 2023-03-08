@@ -173,9 +173,10 @@ contract DeltaNeutralLp is AccessStrategy {
         uint256 timestamp
     );
 
-    function startPosition(uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
+    function startPosition(uint256 assets, uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
         // Set position metadata
         require(canStartNewPos, "DNLP: position is active");
+        require(assets <= asset.balanceOf(address(this)), "DNLP: insufficient assets");
         currentPosition += 1;
         canStartNewPos = false;
 
@@ -183,7 +184,7 @@ contract DeltaNeutralLp is AccessStrategy {
 
         // Deposit asset in aave. Then borrow at 75%
         // If x is amount we want to deposit into aave .75x = Total - x => 1.75x = Total => x = Total / 1.75 => Total * 4/7
-        uint256 assetsToDeposit = asset.balanceOf(address(this)).mulDivDown(4, 7);
+        uint256 assetsToDeposit = assets.mulDivDown(4, 7);
 
         lendingPool.deposit({asset: address(asset), amount: assetsToDeposit, onBehalfOf: address(this), referralCode: 0});
 
