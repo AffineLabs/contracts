@@ -172,6 +172,11 @@ contract DeltaNeutralLp is AccessStrategy {
         uint256 borrowsToSushi,
         uint256 timestamp
     );
+    /**
+     * @notice start a new position
+     * @param  assets asset amount to start position
+     * @param slippageToleranceBps slippage tolerance for liquidity pool
+     */
 
     function startPosition(uint256 assets, uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
         // Set position metadata

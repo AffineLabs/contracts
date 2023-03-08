@@ -151,6 +151,7 @@ contract DeltaNeutralLpV3 is AccessStrategy {
 
     /**
      * @notice Start a position.
+     * @param assets asset amount to start position
      * @param tickLow The lower tick at which we will provide liquidity.
      * @param tickHigh The lower tick at which we will provide liquidity.
      * @param slippageToleranceBps Maximum bps of asset/borrow that will not be added as liquidity.
