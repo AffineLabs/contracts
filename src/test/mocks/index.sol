@@ -6,6 +6,8 @@ import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
 import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/BridgeEscrow.sol";
 import "src/vaults/TwoAssetBasket.sol";
 
+import "./TestStrategy.sol";
+
 // Mocks needed to update variables that are in packed slots (forge-std cannot write to packed slots yet)
 contract MockL2Vault is L2Vault {
     function setCanTransferToL1(bool _can) external {

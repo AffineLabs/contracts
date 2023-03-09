@@ -8,7 +8,7 @@ import {Deploy} from "./Deploy.sol";
 
 import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
 import {AffineVault} from "src/vaults/AffineVault.sol";
-import {LockedWithdrawalEscrow} from "src/vaults/LockedWithdrawal.sol";
+import {LockedWithdrawalEscrow} from "src/vaults/LockedWithdrawalEscrow.sol";
 
 contract LockedWithdrawalTest is TestPlus {
     BaseVault vault;

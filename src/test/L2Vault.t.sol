@@ -15,7 +15,7 @@ import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/EmergencyWi
 import {Deploy} from "./Deploy.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockL2Vault} from "./mocks/index.sol";
-import {TestStrategy} from "./mocks/TestStrategy.sol";
+import {TestStrategy, TestIlliquidStrategy} from "./mocks/index.sol";
 
 /// @notice Test functionalities of L2 vault.
 contract L2VaultTest is TestPlus {
@@ -739,5 +739,32 @@ contract L2VaultTest is TestPlus {
         vm.prank(alice);
         vm.expectRevert("Only Governance.");
         vault.setRebalanceDelta(0);
+    }
+
+    function testIssueOwnDebtShares() public {
+        TestIlliquidStrategy strat1 = new TestIlliquidStrategy(AffineVault(address(vault)));
+        vm.prank(governance);
+        vault.addStrategy(strat1, 10_000);
+
+        asset.mint(address(vault), 100);
+        vm.prank(governance);
+        vault.depositIntoStrategies(100);
+
+        // Any call to the wormholerouter will do nothing, and we won't actually attempt to bridge funds
+        vm.mockCall(vault.wormholeRouter(), abi.encodeCall(L2WormholeRouter.reportFundTransfer, (0)), "");
+        vm.mockCall(address(vault.bridgeEscrow()), abi.encodeCall(L2BridgeEscrow.withdraw, (0)), "");
+
+        // L1Vault has tvl 50. L2Vault has to send 25 to meet the 1:1 ratio between layers
+        vm.prank(vault.wormholeRouter());
+        vault.receiveTVL(50, false);
+
+        // Vault has 25 in debt
+        assertEq(vault.totalStrategyDebt(), 25);
+
+        // Vault has debt shares
+        assertEq(vault.debtEscrow().balanceOf(address(vault)), 25);
+
+        // We send 0 in `asset` but bridge is still locked. TODO: fix
+        assertEq(vault.canTransferToL1(), false);
     }
 }

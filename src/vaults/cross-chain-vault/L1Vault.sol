@@ -84,7 +84,9 @@ contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
      */
     function processFundRequest(uint256 amountRequested) external {
         require(msg.sender == address(wormholeRouter), "L1: only router");
-        _liquidate(amountRequested);
+        (, uint256 debtCreated) = _liquidate(amountRequested);
+        debtEscrow.registerWithdrawalRequest(address(this), debtCreated);
+
         uint256 amountToSend = Math.min(_asset.balanceOf(address(this)), amountRequested);
         _asset.safeApprove(predicate, amountToSend);
         chainManager.depositFor(address(bridgeEscrow), address(_asset), abi.encodePacked(amountToSend));

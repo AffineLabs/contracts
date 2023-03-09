@@ -489,7 +489,7 @@
     "name": "debtEscrow",
     "outputs": [
       {
-        "internalType": "contract ILockedWithdrawalEscrow",
+        "internalType": "contract LockedWithdrawalEscrow",
         "name": "",
         "type": "address"
       }
@@ -843,6 +843,19 @@
       }
     ],
     "name": "setBridgeEscrow",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract LockedWithdrawalEscrow",
+        "name": "_debtEscrow",
+        "type": "address"
+      }
+    ],
+    "name": "setDebtEscrow",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

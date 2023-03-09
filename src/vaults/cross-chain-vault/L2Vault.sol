@@ -509,7 +509,9 @@ contract L2Vault is
     /// @dev Send/receive assets from L1
     function _l1L2Rebalance(bool invest, uint256 amount) internal {
         if (invest) {
-            _liquidate(amount);
+            (, uint256 debtCreated) = _liquidate(amount);
+            debtEscrow.registerWithdrawalRequest(address(this), debtCreated);
+
             uint256 amountToSend = Math.min(_asset.balanceOf(address(this)), amount);
             _transferToL1(amountToSend);
         } else {

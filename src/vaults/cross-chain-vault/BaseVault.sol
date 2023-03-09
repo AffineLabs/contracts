@@ -17,6 +17,7 @@ import {VaultV2Storage} from "src/vaults/VaultV2Storage.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
 
 import {DivestType, DivestResponse} from "src/libs/DivestType.sol";
+import {LockedWithdrawalEscrow} from "src/vaults/LockedWithdrawalEscrow.sol";
 
 /**
  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding
@@ -538,6 +539,10 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
         }
         // Update totalStrategyDebt
         totalStrategyDebt += assetsRequested - assetsLiquidated;
+    }
+
+    function setDebtEscrow(LockedWithdrawalEscrow _debtEscrow) external onlyGovernance {
+        debtEscrow = _debtEscrow;
     }
 
     /**

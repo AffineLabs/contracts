@@ -136,7 +136,7 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
             _transfer({from: owner, to: address(debtEscrow), amount: sharesToLock});
 
             // Register withdrawal request
-            debtEscrow.registerWithdrawalRequest(sharesToLock, _msgSender());
+            debtEscrow.registerWithdrawalRequest(_msgSender(), sharesToLock);
 
             // Reduce amount of shares that will be burned in this transaction
             shares -= sharesToLock;
@@ -279,7 +279,7 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
         // Let debtEscrow know that we have settled a debt
         _asset.transfer(address(debtEscrow), pendingDebt);
         pendingDebt = 0;
-        debtEscrow.resolveDebtAmount(sharesToBurn);
+        debtEscrow.resolveDebtShares(sharesToBurn);
     }
 
     /*//////////////////////////////////////////////////////////////

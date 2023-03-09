@@ -6,6 +6,7 @@ import {Test} from "forge-std/Test.sol";
 
 import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
 import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
 import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
 import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
 import {L2BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/L2BridgeEscrow.sol";
@@ -18,6 +19,7 @@ import {L1WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L1Wormhole
 import {L2WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L2WormholeRouter.sol";
 import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/EmergencyWithdrawalQueue.sol";
 import {Create3Deployer} from "./Create3Deployer.sol";
+import {LockedWithdrawalEscrow} from "src/vaults/LockedWithdrawalEscrow.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockL2Vault, MockL1Vault} from "./mocks/index.sol";
@@ -64,6 +66,10 @@ contract Deploy is Test {
             ),
             0
         );
+
+        LockedWithdrawalEscrow debtEscrow = new LockedWithdrawalEscrow(AffineVault(address(vault)), 24 hours);
+        vm.prank(governance);
+        vault.setDebtEscrow(debtEscrow);
     }
 
     function deployL1Vault() internal returns (MockL1Vault vault) {
@@ -84,6 +90,10 @@ contract Deploy is Test {
             manager, // chain manager
             0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf // predicate (eth mainnet)
         );
+
+        LockedWithdrawalEscrow debtEscrow = new LockedWithdrawalEscrow(AffineVault(address(vault)), 24 hours);
+        vm.prank(governance);
+        vault.setDebtEscrow(debtEscrow);
     }
 
     function deployTwoAssetBasket(ERC20 usdc) internal returns (TwoAssetBasket basket) {

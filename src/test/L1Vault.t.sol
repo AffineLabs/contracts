@@ -14,8 +14,9 @@ import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
 import {L1WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L1WormholeRouter.sol";
 import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
 import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/EmergencyWithdrawalQueue.sol";
-import {TestStrategy} from "./BaseVault.t.sol";
 import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
+
+import {TestStrategy, TestIlliquidStrategy} from "./mocks/index.sol";
 
 /// @notice Test L1 vault specific functionalities.
 contract L1VaultTest is TestPlus {
@@ -78,7 +79,7 @@ contract L1VaultTest is TestPlus {
         assertTrue(newStrategy1.balanceOfAsset() == 1);
     }
 
-    /// @notice Test that profit is locked over a `LOCK_INTERVAL`.
+    /// @notice Test that profit is 0.
     function testLockedProfit() public {
         changePrank(governance);
 
@@ -95,5 +96,18 @@ contract L1VaultTest is TestPlus {
         assertEq(vault.lockedProfit(), 0);
         assertEq(vault.maxLockedProfit(), 1000);
         assertEq(vault.vaultTVL(), 1000);
+    }
+
+    function testIssueOwnDebtShares() public {
+        TestIlliquidStrategy strat1 = new TestIlliquidStrategy(AffineVault(address(vault)));
+        vm.prank(governance);
+        vault.addStrategy(strat1, 10_000);
+
+        vm.prank(vault.wormholeRouter());
+        vault.processFundRequest(1e6);
+
+        assertEq(vault.totalStrategyDebt(), 1e6);
+        assertEq(strat1.debt(), 1e6);
+        assertEq(vault.debtEscrow().balanceOf(address(vault)), 1e6);
     }
 }
