@@ -37,8 +37,8 @@ contract BaseVaultLiquidate is BaseVault {
 }
 
 contract AffineVaultLiquidate is AffineVault {
-    function liquidate(uint256 amount) public returns (uint256, uint256) {
-        return _liquidate(amount);
+    function liquidate(uint256 amount) public {
+        _liquidate(amount);
     }
 
     function initialize(address _governance, ERC20 vaultAsset) external initializer {
@@ -247,6 +247,46 @@ abstract contract CommonVaultTestSuite is TestPlus {
 
         strat1.divest(1e18, DivestType.FORCED);
         assertEq(token.balanceOf(address(vault)), 1e18);
+    }
+
+    function testSimpleDebtCreation() public {
+        BaseStrategy strat1 = new TestIlliquidStrategy(AffineVault(address(vault)));
+        vault.addStrategy(strat1, 5000);
+
+        vault.liquidate(1e18);
+        assertEq(vault.totalStrategyDebt(), 1e18);
+        assertEq(strat1.debt(), 1e18);
+    }
+
+    function testComplexDebtCreation() public {
+        AffineVault _vault = AffineVault(address(vault));
+        BaseStrategy strat1 = new TestStrategy(_vault);
+        BaseStrategy strat2 = new TestIlliquidStrategy(_vault);
+        BaseStrategy strat3 = new TestIlliquidStrategy(_vault);
+
+        vault.addStrategy(strat1, 1000);
+        vault.addStrategy(strat2, 6000);
+        vault.addStrategy(strat3, 3000);
+
+        token.mint(address(strat1), 100);
+
+        vault.liquidate(200);
+        assertEq(vault.totalStrategyDebt(), 100);
+        assertEq(strat1.debt(), 0);
+        assertEq(strat2.debt(), 66 /* 100 * 6000/9000 */ );
+        assertEq(strat3.debt(), 100 - 66);
+    }
+
+    /// @notice We only issue debt if strategies fail to liquidate
+    function testOnlyIssueDebtIfStrategiesRefuseToLiquidate() public {
+        AffineVault _vault = AffineVault(address(vault));
+        BaseStrategy strat1 = new TestStrategy(_vault);
+
+        vault.addStrategy(strat1, 1000);
+
+        vault.liquidate(100);
+        assertEq(vault.totalStrategyDebt(), 0);
+        assertEq(strat1.debt(), 0);
     }
 }
 

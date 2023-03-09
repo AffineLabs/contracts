@@ -502,11 +502,9 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
             uint256 balance = _asset.balanceOf(address(this));
             if (balance >= assetsRequested) break;
 
-            uint256 assetsNeeded = Math.min(assetsRequested - balance, strategies[strategy].balance);
-
             // Withdraw `asset`
             (uint256 assetsFromStrat, DivestResponse response) =
-                _withdrawFromStrategy(strategy, assetsNeeded, DivestType.POSSIBLE);
+                _withdrawFromStrategy(strategy, assetsRequested - balance, DivestType.POSSIBLE);
             assetsLiquidated += assetsFromStrat;
 
             if (response == DivestResponse.DEBT) {
@@ -519,7 +517,8 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
 
         uint256 currAssets = _asset.balanceOf(address(this));
 
-        if (assetsRequested <= currAssets) {
+        // If we liquidated enough OR there are no strategies with debt, exit
+        if (assetsRequested <= currAssets || debtStrategyBps == 0) {
             return (assetsLiquidated, debtCreated);
         }
 

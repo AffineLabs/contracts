@@ -72,7 +72,7 @@ abstract contract BaseStrategy {
         token.safeTransfer(vault.governance(), token.balanceOf(address(this)));
     }
 
-    uint256 debt;
+    uint256 public debt;
 
     function increaseDebt(uint256 newDebt) external onlyVault {
         debt += newDebt;
