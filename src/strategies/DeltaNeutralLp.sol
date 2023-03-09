@@ -193,20 +193,23 @@ contract DeltaNeutralLp is AccessStrategy {
 
         lendingPool.deposit({asset: address(asset), amount: assetsToDeposit, onBehalfOf: address(this), referralCode: 0});
 
-        uint256 borrowAmount = _assetToBorrow(borrowPrice, assetsToDeposit).mulDivDown(3, 4);
-        if (borrowAmount > 0) {
+        uint256 desiredBorrowsInUni = _assetToBorrow(borrowPrice, assetsToDeposit).mulDivDown(3, 4);
+        if (desiredBorrowsInUni > 0) {
             lendingPool.borrow({
                 asset: address(borrow),
-                amount: borrowAmount,
+                amount: desiredBorrowsInUni,
                 interestRateMode: 2,
                 referralCode: 0,
                 onBehalfOf: address(this)
             });
         }
 
+        // pre LP assets - required for assets utilized in LP
+        uint256 preLpAssetAmount = asset.balanceOf(address(this));
+        uint256 preLpBorrowAmount = borrow.balanceOf(address(this));
+
         // Provide liquidity on sushiswap
-        uint256 desiredAssetsInUni = asset.balanceOf(address(this));
-        uint256 desiredBorrowsInUni = borrow.balanceOf(address(this));
+        uint256 desiredAssetsInUni = assets - assetsToDeposit;
 
         router.addLiquidity({
             tokenA: address(asset),
@@ -227,8 +230,8 @@ contract DeltaNeutralLp is AccessStrategy {
             assetCollateral: aToken.balanceOf(address(this)),
             borrows: debtToken.balanceOf(address(this)),
             borrowPrices: [borrowPrice, _sushiPriceOfBorrow()], // chainlink price and spot price of borrow
-            assetsToSushi: desiredAssetsInUni - asset.balanceOf(address(this)),
-            borrowsToSushi: desiredBorrowsInUni - borrow.balanceOf(address(this)),
+            assetsToSushi: preLpAssetAmount - asset.balanceOf(address(this)),
+            borrowsToSushi: preLpBorrowAmount - borrow.balanceOf(address(this)),
             timestamp: block.timestamp
         });
     }

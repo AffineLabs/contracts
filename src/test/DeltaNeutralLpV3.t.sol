@@ -108,6 +108,32 @@ contract DeltaNeutralV3Test is TestPlus {
     }
 
     /**
+     * @notice test start position with less assets than balance
+     */
+    function testStartPositionWithLessAmount() public {
+        uint256 reducedAssets = 100;
+        deal(address(asset), address(strategy), initStrategyBalance);
+
+        strategy.startPosition(initStrategyBalance - reducedAssets, tickLow, tickHigh, slippageBps);
+
+        // remaining balance should greater or equal to reducedAssets
+        assertGe(asset.balanceOf(address(strategy)), reducedAssets);
+    }
+
+    /**
+     * @notice Fuzz test start position with less assets than balance
+     */
+    function testStartPositionWithLessAmountFuzz(uint256 reducedAssets) public {
+        reducedAssets = reducedAssets % initStrategyBalance;
+        deal(address(asset), address(strategy), initStrategyBalance);
+
+        strategy.startPosition(initStrategyBalance - reducedAssets, tickLow, tickHigh, slippageBps);
+
+        // remaining balance should greater or equal to reducedAssets
+        assertGe(asset.balanceOf(address(strategy)), reducedAssets);
+    }
+
+    /**
      * @notice test start position with more assets than balance
      */
     function testStartInvalidPosition() public {

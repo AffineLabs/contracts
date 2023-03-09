@@ -176,18 +176,19 @@ contract DeltaNeutralLpV3 is AccessStrategy {
         uint256 borrowPrice = _getPrice();
         uint256 borrowsDeposited = _assetToBorrow(assetsToDeposit, borrowPrice);
 
+        uint256 desiredBorrowAmount = borrowsDeposited.mulDivDown(collateralToBorrowRatioBps, MAX_BPS);
+
         lendingPool.borrow({
             asset: address(borrow),
-            amount: borrowsDeposited.mulDivDown(collateralToBorrowRatioBps, MAX_BPS),
+            amount: desiredBorrowAmount,
             interestRateMode: 2,
             referralCode: 0,
             onBehalfOf: address(this)
         });
 
         // Provide liquidity on uniswap
-        (uint256 assetsToUni, uint256 borrowsToUni) = _addLiquidity(
-            assets - assetsToDeposit, borrow.balanceOf(address(this)), tickLow, tickHigh, slippageToleranceBps
-        );
+        (uint256 assetsToUni, uint256 borrowsToUni) =
+            _addLiquidity(assets - assetsToDeposit, desiredBorrowAmount, tickLow, tickHigh, slippageToleranceBps);
 
         emit PositionStart({
             position: currentPosition,

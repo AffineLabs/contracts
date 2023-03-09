@@ -106,6 +106,35 @@ contract L1DeltaNeutralTest is TestPlus {
     }
 
     /**
+     * @notice test start position with less assets than balance
+     */
+    function testStartPositionWithLessAmountFuzz() public {
+        uint256 reducedAmount = 10_000;
+
+        deal(address(asset), address(strategy), startAssets);
+
+        vm.startPrank(vault.governance());
+        strategy.startPosition(startAssets - reducedAmount, IDEAL_SLIPPAGE_BPS);
+        // remaining balance should be greater or equal to the less amount
+        assertGe(asset.balanceOf(address(strategy)), reducedAmount);
+    }
+
+    /**
+     * @notice Fuzz test start position with less assets than balance
+     */
+    function testStartPositionWithLessAmountFuzz(uint256 reducedAmount) public {
+        // uint256 reducedAmount = 10_000;
+        reducedAmount = (reducedAmount % startAssets);
+
+        deal(address(asset), address(strategy), startAssets);
+
+        vm.startPrank(vault.governance());
+        strategy.startPosition(startAssets - reducedAmount, IDEAL_SLIPPAGE_BPS);
+        // remaining balance should be greater or equal to the less amount
+        assertGe(asset.balanceOf(address(strategy)), reducedAmount);
+    }
+
+    /**
      * @notice test start position with more assets than balance
      */
     function testStartInvalidPosition() public {
