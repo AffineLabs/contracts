@@ -462,7 +462,7 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable, VaultV2Stora
 
         uint256 currAssets = _asset.balanceOf(address(this));
 
-        // If we liquidated enough, OR there are no strategies with debt, exit
+        // If we liquidated enough OR there are no strategies with debt, exit
         if (assetsRequested <= currAssets || debtStrategyBps == 0) {
             return (assetsLiquidated, debtCreated);
         }
@@ -516,7 +516,7 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable, VaultV2Stora
             uint256 idealStrategyTVL = (tvl * strategies[strategy].tvlBps) / MAX_BPS;
             uint256 currStrategyTVL = strategy.totalLockedValue();
             if (idealStrategyTVL < currStrategyTVL) {
-                _withdrawFromStrategy(strategy, currStrategyTVL - idealStrategyTVL, DivestType.POSSIBLE);
+                _withdrawFromStrategy(strategy, currStrategyTVL - idealStrategyTVL, DivestType.FORCED);
             }
             if (idealStrategyTVL > currStrategyTVL) {
                 amountsToInvest[i] = idealStrategyTVL - currStrategyTVL;
