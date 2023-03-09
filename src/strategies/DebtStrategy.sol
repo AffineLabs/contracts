@@ -16,11 +16,6 @@ contract DebtStrategy is AccessStrategy {
 
     constructor(AffineVault _vault, address[] memory strategists) AccessStrategy(_vault, strategists) {}
 
-    /**
-     * @notice collect the funds from the investments
-     * @param amount amount needs to be withdraw
-     * @return amount withdrawn
-     */
     function divest(uint256 amount) external override onlyVault returns (uint256) {
         // withdraw funds
         uint256 divestedAmount = _divest(amount);
