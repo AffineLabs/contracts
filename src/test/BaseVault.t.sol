@@ -16,8 +16,8 @@ import {BaseVault, DivestType} from "src/vaults/cross-chain-vault/BaseVault.sol"
 import {AffineVault} from "src/vaults/AffineVault.sol";
 
 contract BaseVaultLiquidate is BaseVault {
-    function liquidate(uint256 amount) public returns (uint256) {
-        return _liquidate(amount);
+    function liquidate(uint256 amount) public {
+        _liquidate(amount);
     }
 
     // We override this function and remove the "onlyInitializing" modifier so
@@ -37,7 +37,7 @@ contract BaseVaultLiquidate is BaseVault {
 }
 
 contract AffineVaultLiquidate is AffineVault {
-    function liquidate(uint256 amount) public returns (uint256) {
+    function liquidate(uint256 amount) public returns (uint256, uint256) {
         return _liquidate(amount);
     }
 

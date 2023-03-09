@@ -9,7 +9,7 @@ import {
     ILendingPoolAddressesProviderRegistry, ILendingPoolAddressesProvider, ILendingPool
 } from "src/interfaces/aave.sol";
 
-import {AffineVault} from "src/vaults/AffineVault.sol";
+import {AffineVault, DivestResponse} from "src/vaults/AffineVault.sol";
 import {BaseStrategy} from "./BaseStrategy.sol";
 import {DivestType} from "src/libs/DivestType.sol";
 
@@ -42,7 +42,7 @@ contract L2AAVEStrategy is BaseStrategy {
     /*//////////////////////////////////////////////////////////////
                                DIVESTMENT
     //////////////////////////////////////////////////////////////*/
-    function _divest(uint256 assets, DivestType /* divestType*/ ) internal override returns (uint256) {
+    function _divest(uint256 assets, DivestType /* divestType*/ ) internal override returns (uint256, DivestResponse) {
         // Withdraw only the needed amounts from the lending pool
         uint256 currAssets = balanceOfAsset();
         uint256 assetsReq = currAssets >= assets ? 0 : assets - currAssets;
@@ -55,7 +55,7 @@ contract L2AAVEStrategy is BaseStrategy {
 
         uint256 amountToSend = Math.min(assets, balanceOfAsset());
         asset.safeTransfer(address(vault), amountToSend);
-        return amountToSend;
+        return (amountToSend, DivestResponse.LIQUID);
     }
 
     /*//////////////////////////////////////////////////////////////

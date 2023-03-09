@@ -266,7 +266,8 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
         Strategy strategy = Strategy(msg.sender);
         require(strategies[strategy].isActive, "Vault: not an active strategy");
 
-        pendingDebt += _withdrawFromStrategy(strategy, assets, DivestType.FORCED);
+        (uint256 amountWithdrawn,) = _withdrawFromStrategy(strategy, assets, DivestType.FORCED);
+        pendingDebt += amountWithdrawn;
     }
 
     function clearLockedShares() external onlyRole(HARVESTER) {

@@ -13,7 +13,7 @@ import {ILendingPool} from "src/interfaces/aave.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 import {IUniPositionValue} from "src/interfaces/IUniPositionValue.sol";
 
-import {AffineVault} from "src/vaults/AffineVault.sol";
+import {AffineVault, DivestResponse} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "./AccessStrategy.sol";
 import {SlippageUtils} from "src/libs/SlippageUtils.sol";
 import {DivestType} from "src/libs/DivestType.sol";
@@ -82,14 +82,14 @@ contract DeltaNeutralLpV3 is AccessStrategy {
 
     /// @dev This strategy should be put at the end of the WQ so that we rarely divest from it. Divestment
     /// ideally occurs when the strategy does not have an open position
-    function _divest(uint256 amount, DivestType /* divestType*/ ) internal override returns (uint256) {
+    function _divest(uint256 amount, DivestType /* divestType*/ ) internal override returns (uint256, DivestResponse) {
         // Totally unwind the position
         if (!canStartNewPos) _endPosition(500);
 
         uint256 amountToSend = Math.min(amount, balanceOfAsset());
         asset.safeTransfer(address(vault), amountToSend);
         // Return the given amount
-        return amountToSend;
+        return (amountToSend, DivestResponse.LIQUID);
     }
 
     /*//////////////////////////////////////////////////////////////

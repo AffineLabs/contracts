@@ -11,7 +11,7 @@ import {AffineGovernable} from "src/utils/AffineGovernable.sol";
 import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
 import {VaultV2Storage} from "src/vaults/VaultV2Storage.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
-import {DivestType} from "src/libs/DivestType.sol";
+import {DivestType, DivestResponse} from "src/libs/DivestType.sol";
 
 /**
  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding
@@ -283,14 +283,14 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable, VaultV2Stora
      * @dev This is a "best effort" withdrawal. It could potentially withdraw nothing.
      * @param strategy The strategy to withdraw from.
      * @param assets  The amount of underlying tokens to withdraw.
-     * @return The amount of assets actually received.
+     * @return amountWithdrawn divestResponse
      */
     function _withdrawFromStrategy(Strategy strategy, uint256 assets, DivestType divestType)
         internal
-        returns (uint256)
+        returns (uint256 amountWithdrawn, DivestResponse divestResponse)
     {
         // Withdraw from the strategy
-        uint256 amountWithdrawn = _divest(strategy, assets, divestType);
+        (amountWithdrawn, divestResponse) = _divest(strategy, assets, divestType);
 
         // Without this the next harvest would count the withdrawal as a loss.
         // We update the balance to the current tvl because a withdrawal can reduce the tvl by more than the amount
@@ -303,15 +303,17 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable, VaultV2Stora
         // If we haven't harvested in a long time, newStratTvl could be bigger than oldStratTvl
         totalStrategyHoldings -= oldStratTVL > newStratTvl ? oldStratTVL - newStratTvl : 0;
         emit StrategyWithdrawal({strategy: strategy, assetsRequested: assets, assetsReceived: amountWithdrawn});
-        return amountWithdrawn;
     }
 
     /// @dev A small wrapper around divest(). We try-catch to make sure that a bad strategy does not pause withdrawals.
-    function _divest(Strategy strategy, uint256 assets, DivestType divestType) internal returns (uint256) {
-        try strategy.divest(assets, divestType) returns (uint256 amountDivested) {
-            return amountDivested;
+    function _divest(Strategy strategy, uint256 assets, DivestType divestType)
+        internal
+        returns (uint256, DivestResponse)
+    {
+        try strategy.divest(assets, divestType) returns (uint256 amountDivested, DivestResponse response) {
+            return (amountDivested, response);
         } catch {
-            return 0;
+            return (0, DivestResponse.ERROR);
         }
     }
 
@@ -429,33 +431,59 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable, VaultV2Stora
     event Liquidation(uint256 assetsRequested, uint256 assetsLiquidated);
 
     /**
-     * @notice Withdraw `amount` of underlying asset from strategies.
+     * @notice Attempt to withdraw of underlying asset from strategies.
      * @dev Always check the return value when using this function, we might not liquidate anything!
-     * @param amount The amount we want to liquidate
-     * @return The amount we actually liquidated
+     * @param assetsRequested The amount we want to liquidate
+     * @return assetsLiquidated debtCreated
      */
-    function _liquidate(uint256 amount) internal returns (uint256) {
-        uint256 amountLiquidated;
+    function _liquidate(uint256 assetsRequested) internal returns (uint256 assetsLiquidated, uint256 debtCreated) {
+        uint256 debtStrategyBps;
+        DivestResponse[MAX_STRATEGIES] memory responses;
+
         for (uint256 i = 0; i < MAX_STRATEGIES; i = uncheckedInc(i)) {
             Strategy strategy = withdrawalQueue[i];
-            if (address(strategy) == address(0)) {
-                break;
-            }
+            if (address(strategy) == address(0)) break;
 
             uint256 balance = _asset.balanceOf(address(this));
-            if (balance >= amount) {
-                break;
-            }
+            if (balance >= assetsRequested) break;
 
-            uint256 amountNeeded = amount - balance;
-            amountNeeded = Math.min(amountNeeded, strategies[strategy].balance);
+            uint256 assetsNeeded = Math.min(assetsRequested - balance, strategies[strategy].balance);
 
             // Withdraw `asset`
-            uint256 withdrawn = _withdrawFromStrategy(strategy, amountNeeded, DivestType.POSSIBLE);
-            amountLiquidated += withdrawn;
+            (uint256 assetsFromStrat, DivestResponse response) =
+                _withdrawFromStrategy(strategy, assetsNeeded, DivestType.POSSIBLE);
+            assetsLiquidated += assetsFromStrat;
+
+            if (response == DivestResponse.DEBT) {
+                debtStrategyBps += strategies[strategy].tvlBps;
+                responses[i] = DivestResponse.DEBT;
+            }
         }
-        emit Liquidation({assetsRequested: amount, assetsLiquidated: amountLiquidated});
-        return amountLiquidated;
+
+        emit Liquidation({assetsRequested: assetsRequested, assetsLiquidated: assetsLiquidated});
+
+        uint256 currAssets = _asset.balanceOf(address(this));
+
+        if (assetsRequested <= currAssets) {
+            return (assetsLiquidated, debtCreated);
+        }
+
+        // Issue debt to strategies which failed to liquidate. Debt is issued proportionally according to assigned tvl bps
+        uint256 debtToCreate = assetsRequested - currAssets;
+        debtCreated = debtToCreate;
+        for (uint256 i = 0; i < MAX_STRATEGIES; i = uncheckedInc(i)) {
+            Strategy strategy = withdrawalQueue[i];
+            if (address(strategy) == address(0)) break;
+            if (responses[i] != DivestResponse.DEBT) continue;
+
+            uint16 stratBps = strategies[strategy].tvlBps;
+            uint256 debt = (debtToCreate * stratBps) / debtStrategyBps;
+            debtToCreate -= debt;
+            debtStrategyBps -= stratBps;
+            strategy.increaseDebt(debt);
+        }
+        // Update totalStrategyDebt
+        totalStrategyDebt += assetsRequested - assetsLiquidated;
     }
 
     /**

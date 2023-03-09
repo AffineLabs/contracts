@@ -463,6 +463,11 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      },
+      {
+        "internalType": "enum DivestResponse",
+        "name": "",
+        "type": "uint8"
       }
     ],
     "stateMutability": "nonpayable",
@@ -540,6 +545,19 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "newDebt",
+        "type": "uint256"
+      }
+    ],
+    "name": "increaseDebt",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

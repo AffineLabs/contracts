@@ -5,3 +5,9 @@ enum DivestType {
     FORCED,
     POSSIBLE
 }
+
+enum DivestResponse {
+    LIQUID,
+    DEBT,
+    ERROR
+}

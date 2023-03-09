@@ -6,9 +6,8 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import {AffineVault} from "src/vaults/AffineVault.sol";
+import {AffineVault, DivestType, DivestResponse} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
-import {DivestType} from "src/libs/DivestType.sol";
 import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "src/interfaces/convex.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
@@ -100,12 +99,12 @@ contract ConvexStrategy is AccessStrategy {
     }
 
     /// @dev Divestment. Unstake from convex and convert curve lp tokens into `asset`.
-    function _divest(uint256 assets, DivestType /* divestType*/ ) internal override returns (uint256) {
+    function _divest(uint256 assets, DivestType /* divestType*/ ) internal override returns (uint256, DivestResponse) {
         _withdraw(assets);
 
         uint256 amountToSend = Math.min(asset.balanceOf(address(this)), assets);
         asset.safeTransfer(address(vault), amountToSend);
-        return amountToSend;
+        return (amountToSend, DivestResponse.LIQUID);
     }
 
     /*//////////////////////////////////////////////////////////////

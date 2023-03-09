@@ -10,7 +10,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ICToken} from "src/interfaces/compound/ICToken.sol";
 import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
 
-import {AffineVault} from "src/vaults/AffineVault.sol";
+import {AffineVault, DivestResponse} from "src/vaults/AffineVault.sol";
 import {BaseStrategy} from "./BaseStrategy.sol";
 import {DivestType} from "src/libs/DivestType.sol";
 
@@ -58,7 +58,7 @@ contract L1CompoundStrategy is BaseStrategy, AccessControl {
      * DIVESTMENT
      *
      */
-    function _divest(uint256 assets, DivestType /* divestType*/ ) internal override returns (uint256) {
+    function _divest(uint256 assets, DivestType /* divestType*/ ) internal override returns (uint256, DivestResponse) {
         uint256 currAssets = balanceOfAsset();
         uint256 assetsReq = currAssets >= assets ? 0 : assets - currAssets;
 
@@ -70,7 +70,7 @@ contract L1CompoundStrategy is BaseStrategy, AccessControl {
 
         uint256 amountToSend = Math.min(assets, balanceOfAsset());
         asset.safeTransfer(address(vault), amountToSend);
-        return amountToSend;
+        return (amountToSend, DivestResponse.LIQUID);
     }
 
     function claimRewards(uint256 minAssetsFromReward) external onlyRole(STRATEGIST) {
