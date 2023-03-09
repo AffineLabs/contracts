@@ -108,7 +108,7 @@ contract L1DeltaNeutralTest is TestPlus {
     /**
      * @notice test start position with less assets than balance
      */
-    function testStartPositionWithLessAmountFuzz() public {
+    function testStartPositionWithLessAmount() public {
         uint256 reducedAmount = 10_000;
 
         deal(address(asset), address(strategy), startAssets);
