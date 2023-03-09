@@ -556,6 +556,22 @@ contract L2Vault is
     }
 
     /*//////////////////////////////////////////////////////////////
+                           LOCKED WITHDRAWALS
+    //////////////////////////////////////////////////////////////*/
+
+    function clearLockedShares() external onlyRole(HARVESTER) {
+        // Given a certain amount of pendingDebt, settle the debt by burning the equivalent amount of locked shares
+        // and sending the pendingDebt to debtEscrow
+        uint256 sharesToBurn = _convertToShares(pendingDebt, Rounding.Up);
+        _burn(address(debtEscrow), sharesToBurn);
+
+        // Let debtEscrow know that we have settled a debt
+        _asset.transfer(address(debtEscrow), pendingDebt);
+        pendingDebt = 0;
+        debtEscrow.resolveDebtShares(sharesToBurn);
+    }
+
+    /*//////////////////////////////////////////////////////////////
                           DETAILED PRICE INFO
     //////////////////////////////////////////////////////////////*/
 

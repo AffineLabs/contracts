@@ -553,6 +553,13 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "redeemOwnDebtShares",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "contract BaseStrategy",
@@ -649,6 +656,19 @@
       }
     ],
     "name": "setWormholeRouter",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "assets",
+        "type": "uint256"
+      }
+    ],
+    "name": "settleStrategyDebt",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

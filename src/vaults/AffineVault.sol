@@ -490,6 +490,18 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable, VaultV2Stora
         debtEscrow = _debtEscrow;
     }
 
+    function settleStrategyDebt(uint256 assets) external {
+        Strategy strategy = Strategy(msg.sender);
+        require(strategies[strategy].isActive, "Vault: not an active strategy");
+
+        (uint256 amountWithdrawn,) = _withdrawFromStrategy(strategy, assets, DivestType.FORCED);
+        pendingDebt += amountWithdrawn;
+    }
+
+    function redeemOwnDebtShares() external onlyRole(HARVESTER) {
+        debtEscrow.redeem();
+    }
+
     /**
      * @notice Assess fees.
      * @dev This is called during harvest() to assess management fees.

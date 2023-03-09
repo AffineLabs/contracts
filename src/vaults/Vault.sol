@@ -262,14 +262,6 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
         _depositIntoStrategies(assets - pendingDebt);
     }
 
-    function settleStrategyDebt(uint256 assets) external {
-        Strategy strategy = Strategy(msg.sender);
-        require(strategies[strategy].isActive, "Vault: not an active strategy");
-
-        (uint256 amountWithdrawn,) = _withdrawFromStrategy(strategy, assets, DivestType.FORCED);
-        pendingDebt += amountWithdrawn;
-    }
-
     function clearLockedShares() external onlyRole(HARVESTER) {
         // Given a certain amount of pendingDebt, settle the debt by burning the equivalent amount of locked shares
         // and sending the pendingDebt to debtEscrow
