@@ -54,7 +54,7 @@ abstract contract BaseStrategy {
     /// @notice Withdraw vault's underlying asset from strategy.
     /// @param amount The amount to withdraw.
     /// @return The amount of `asset` divested from the strategy
-    function divest(uint256 amount) external onlyVault returns (uint256) {
+    function divest(uint256 amount) external virtual onlyVault returns (uint256) {
         return _divest(amount);
     }
 
