@@ -551,6 +551,7 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
 
         (uint256 amountWithdrawn,) = _withdrawFromStrategy(strategy, assets, DivestType.FORCED);
         pendingDebt += amountWithdrawn;
+        totalStrategyDebt -= amountWithdrawn;
     }
 
     function redeemOwnDebtShares() external onlyRole(HARVESTER) {

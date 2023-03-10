@@ -13,7 +13,9 @@ import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/BridgeEscrow.sol
 import {IWormhole} from "src/interfaces/IWormhole.sol";
 import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
 import {BaseVault, DivestType} from "src/vaults/cross-chain-vault/BaseVault.sol";
-import {AffineVault} from "src/vaults/AffineVault.sol";
+import {AffineVault, LockedWithdrawalEscrow} from "src/vaults/AffineVault.sol";
+
+import "forge-std/console.sol";
 
 contract BaseVaultLiquidate is BaseVault {
     function liquidate(uint256 amount) public {
@@ -288,6 +290,39 @@ abstract contract CommonVaultTestSuite is TestPlus {
         assertEq(vault.totalStrategyDebt(), 0);
         assertEq(strat1.debt(), 0);
     }
+
+    function testSettleStrategyDebt() public {
+        AffineVault _vault = AffineVault(address(vault));
+        BaseStrategy strat1 = new TestStrategy(_vault);
+
+        vault.addStrategy(strat1, 10_000);
+
+        vm.store(
+            address(vault),
+            bytes32(stdstore.target(address(vault)).sig("totalStrategyDebt()").find()),
+            bytes32(uint256(100))
+        );
+
+        token.mint(address(strat1), 100);
+
+        vm.prank(address(strat1));
+        vault.settleStrategyDebt(100);
+
+        assertEq(vault.totalStrategyDebt(), 0);
+        assertEq(token.balanceOf(address(strat1)), 0);
+    }
+
+    function testRedeemOwnShares() public {
+        LockedWithdrawalEscrow escrow = vault.debtEscrow();
+        // deal(address(escrow), address(vault), 100);
+        // assertEq(escrow.balanceOf(address(vault)), 100);
+
+        vm.mockCall(address(escrow), abi.encodeCall(LockedWithdrawalEscrow.redeem, ()), abi.encode(100));
+        vm.expectCall(address(escrow), abi.encodeCall(LockedWithdrawalEscrow.redeem, ()));
+
+        vault.redeemOwnDebtShares();
+        // assertEq(escrow.balanceOf(address(vault)), 0);
+    }
 }
 
 contract BaseVaultTest is CommonVaultTestSuite {
@@ -301,6 +336,9 @@ contract BaseVaultTest is CommonVaultTestSuite {
             address(0),
             BridgeEscrow(address(0))
         );
+
+        LockedWithdrawalEscrow escrow = new LockedWithdrawalEscrow(AffineVault(address(vault)), 24 hours);
+        vault.setDebtEscrow(escrow);
     }
 
     /// @notice Test updating bridge escrow contract. Only governance should be able to do it.
@@ -335,5 +373,8 @@ contract AffineVaultTest is CommonVaultTestSuite {
             token // token
         );
         vault = BaseVaultLiquidate(address(affineVault));
+
+        LockedWithdrawalEscrow escrow = new LockedWithdrawalEscrow(AffineVault(address(vault)), 24 hours);
+        vault.setDebtEscrow(escrow);
     }
 }

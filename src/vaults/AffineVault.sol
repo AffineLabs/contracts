@@ -496,6 +496,7 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable, VaultV2Stora
 
         (uint256 amountWithdrawn,) = _withdrawFromStrategy(strategy, assets, DivestType.FORCED);
         pendingDebt += amountWithdrawn;
+        totalStrategyDebt -= amountWithdrawn;
     }
 
     function redeemOwnDebtShares() external onlyRole(HARVESTER) {
