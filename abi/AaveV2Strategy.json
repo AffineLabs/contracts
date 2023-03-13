@@ -7,8 +7,8 @@
         "type": "address"
       },
       {
-        "internalType": "address",
-        "name": "_registry",
+        "internalType": "contract ILendingPool",
+        "name": "_lendingPool",
         "type": "address"
       }
     ],
