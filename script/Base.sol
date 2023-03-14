@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-import "forge-std/Script.sol";
-import "forge-std/StdJson.sol";
+import {Script, console} from "forge-std/Script.sol";
+import {stdJson} from "forge-std/StdJson.sol";
 
 abstract contract Base is Script {
     using stdJson for string;

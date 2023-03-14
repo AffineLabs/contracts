@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-import "forge-std/Script.sol";
+import {Script, console} from "forge-std/Script.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {AaveV2Strategy, ILendingPool} from "src/strategies/AaveV2Strategy.sol";
 
-/* solhint-disable reason-string */
+/* solhint-disable reason-string, no-console */
 
 contract Deploy is Script {
     function run() external {

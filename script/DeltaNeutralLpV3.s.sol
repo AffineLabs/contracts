@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-import "forge-std/Script.sol";
+import {Script, console} from "forge-std/Script.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
@@ -15,7 +15,7 @@ import {ILendingPoolAddressesProviderRegistry} from "src/interfaces/aave.sol";
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {DeltaNeutralLpV3, ILendingPool} from "src/strategies/DeltaNeutralLpV3.sol";
 
-/*  solhint-disable reason-string */
+/* solhint-disable reason-string, no-console */
 
 library SslpV3 {
     function deployPoly(AffineVault vault) internal returns (DeltaNeutralLpV3 strategy) {

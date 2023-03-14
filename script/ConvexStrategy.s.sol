@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-import "forge-std/Script.sol";
+import {Script, console} from "forge-std/Script.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 

@@ -3,14 +3,14 @@ pragma solidity 0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "forge-std/Script.sol";
+import {Script, console} from "forge-std/Script.sol";
 
 import {Base} from "./Base.sol";
 import {Vault} from "src/vaults/Vault.sol";
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {DeployLib} from "./ConvexStrategy.s.sol";
 
-/* solhint-disable reason-string */
+/* solhint-disable reason-string, no-console */
 
 contract Deploy is Script, Base {
     function deployStrategies() external {
