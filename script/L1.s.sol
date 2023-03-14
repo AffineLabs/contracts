@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-import "forge-std/Script.sol";
-import "forge-std/StdJson.sol";
+import {Script, console} from "forge-std/Script.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
@@ -24,9 +23,9 @@ import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 import {ILendingPoolAddressesProviderRegistry} from "src/interfaces/aave.sol";
 import {IMasterChef} from "src/interfaces/sushiswap/IMasterChef.sol";
 
-import {Base} from "./Base.sol";
+import {Base, stdJson} from "./Base.sol";
 
-/*  solhint-disable reason-string */
+/*  solhint-disable reason-string, no-console */
 contract Deploy is Script, Base {
     using stdJson for string;
 

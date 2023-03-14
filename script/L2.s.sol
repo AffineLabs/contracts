@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-import "forge-std/Script.sol";
+import {Script, console} from "forge-std/Script.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
@@ -30,7 +30,7 @@ import {DeltaNeutralLpV3} from "src/strategies/DeltaNeutralLpV3.sol";
 import {Base} from "./Base.sol";
 import {SslpV3} from "./DeltaNeutralLpV3.s.sol";
 
-/*  solhint-disable reason-string */
+/*  solhint-disable reason-string, no-console */
 contract Deploy is Script, Base {
     ICREATE3Factory create3;
 
