@@ -7,30 +7,40 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 
-import {Vault} from "src/vaults/Vault.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
 import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/BridgeEscrow.sol";
-import {L2AAVEStrategy} from "src/strategies/L2AAVEStrategy.sol";
+import {AaveV2Strategy, ILendingPool} from "src/strategies/AaveV2Strategy.sol";
 
 /// @notice Test AAVE strategy
 contract AAVEStratTest is TestPlus {
     using stdStorage for StdStorage;
 
-    Vault vault;
-    L2AAVEStrategy strategy;
-    // Mumbai USDC that AAVE takes in
-    ERC20 usdc = ERC20(0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e);
+    AffineVault vault;
+    AaveV2Strategy strategy;
+    ERC20 usdc;
+
+    function _usdc() internal virtual returns (address) {
+        return 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+    }
+
+    function _lendingPool() internal virtual returns (address) {
+        return 0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf;
+    }
+
+    function _fork() internal virtual {
+        forkPolygon();
+    }
 
     function setUp() public {
-        vm.createSelectFork("mumbai", 25_804_436);
-        vault = Vault(address(Deploy.deployL2Vault()));
+        _fork();
+        vault = AffineVault(address(Deploy.deployL2Vault()));
+        usdc = ERC20(_usdc());
         uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
-        bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
+        bytes32 tokenAddr = bytes32(uint256(uint160(_usdc())));
         vm.store(address(vault), bytes32(slot), tokenAddr);
 
-        strategy = new L2AAVEStrategy(
-            vault,
-            0xE6ef11C967898F9525D550014FDEdCFAB63536B5
-        );
+        strategy = new AaveV2Strategy(vault, ILendingPool(_lendingPool()));
+
         vm.prank(governance);
         vault.addStrategy(strategy, 5000);
     }
@@ -49,7 +59,6 @@ contract AAVEStratTest is TestPlus {
     function testStrategyMakesMoney() public {
         // Vault deposits half of its tvl into the strategy
         // Give us (this contract) 1 USDC. Deposit into vault.
-
         _depositIntoStrat(1e6);
 
         // Go 10 days into the future and make sure that the vault makes money
@@ -74,7 +83,7 @@ contract AAVEStratTest is TestPlus {
         // We only withdrew 2 - 1 == 1 aToken. We gave 1 usdc and 1 aToken to the vault
         assertEq(usdc.balanceOf(address(vault)), 2e6);
         assertEq(usdc.balanceOf(address(strategy)), 0);
-        assertEq(strategy.aToken().balanceOf(address(strategy)), 1e6);
+        assertApproxEqAbs(strategy.aToken().balanceOf(address(strategy)), 1e6, 1); // some truncation can happend with aTokens
     }
 
     /// @notice Test attempting to divest an amount more than the TVL results in divestment of the TVL amount.
@@ -118,5 +127,20 @@ contract AAVEStratTest is TestPlus {
         strategy.lendingPool().deposit(address(usdc), 2e6, address(strategy), 0);
 
         assertEq(strategy.totalLockedValue(), 3e6);
+    }
+}
+
+/// @notice Test AAVE strategy
+contract L1AAVEStratTest is AAVEStratTest {
+    function _fork() internal override {
+        forkEth();
+    }
+
+    function _usdc() internal override returns (address) {
+        return 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    }
+
+    function _lendingPool() internal override returns (address) {
+        return 0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9;
     }
 }
