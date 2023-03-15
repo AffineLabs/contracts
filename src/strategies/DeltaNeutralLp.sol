@@ -17,6 +17,26 @@ import {AccessStrategy} from "./AccessStrategy.sol";
 import {IMasterChef} from "src/interfaces/sushiswap/IMasterChef.sol";
 import {SlippageUtils} from "src/libs/SlippageUtils.sol";
 
+struct LenderInfo {
+    ILendingPool pool; // lending pool
+    ERC20 borrow; // borrowing asset
+    AggregatorV3Interface priceFeed; // borrow asset price feed
+}
+
+struct LpInfo {
+    IUniswapV2Router02 router; // lp router
+    IMasterChef masterChef; // gov pool
+    uint256 masterChefPid; // pool id
+    bool useMasterChefV2; // if we are using MasterChef v2
+    ERC20 sushiToken; // sushi token address, received as reward
+}
+
+struct LendingParam {
+    uint256 assetToDepositRatioBps; // asset to deposit for lending
+    uint256 collateralToBorrowRatioBps; // borrow ratio of collateral
+    uint256 maxPositionRatioBps; // new position ration of vault tvl
+}
+
 contract DeltaNeutralLp is AccessStrategy {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -24,35 +44,29 @@ contract DeltaNeutralLp is AccessStrategy {
 
     constructor(
         AffineVault _vault,
-        ILendingPool _lendingPool,
-        ERC20 _borrow,
-        AggregatorV3Interface _borrowFeed,
-        IUniswapV2Router02 _router,
-        IMasterChef _masterChef,
-        uint256 _masterChefPid,
-        bool _useMasterChefV2,
-        ERC20 _sushiToken,
+        LenderInfo memory lender,
+        LpInfo memory lpProvider,
         IUniswapV3Pool _pool,
         address[] memory strategists
     ) AccessStrategy(_vault, strategists) {
         canStartNewPos = true;
 
-        borrow = _borrow;
-        borrowFeed = _borrowFeed;
+        borrow = lender.borrow;
+        borrowFeed = lender.priceFeed;
 
-        router = _router;
-        abPair = ERC20(IUniswapV2Factory(_router.factory()).getPair(address(asset), address(borrow)));
+        router = lpProvider.router;
+        abPair = ERC20(IUniswapV2Factory(router.factory()).getPair(address(asset), address(borrow)));
 
         // Aave info
-        lendingPool = _lendingPool;
+        lendingPool = lender.pool;
         debtToken = ERC20(lendingPool.getReserveData(address(borrow)).variableDebtTokenAddress);
         aToken = ERC20(lendingPool.getReserveData(address(asset)).aTokenAddress);
 
         // Sushi info
-        masterChef = _masterChef;
-        masterChefPid = _masterChefPid;
-        sushiToken = _sushiToken;
-        useMasterChefV2 = _useMasterChefV2;
+        masterChef = lpProvider.masterChef;
+        masterChefPid = lpProvider.masterChefPid;
+        sushiToken = lpProvider.sushiToken;
+        useMasterChefV2 = lpProvider.useMasterChefV2;
 
         // Depositing/withdrawing/repaying debt from lendingPool
         asset.safeApprove(address(lendingPool), type(uint256).max);
@@ -60,9 +74,9 @@ contract DeltaNeutralLp is AccessStrategy {
         borrow.safeApprove(address(lendingPool), type(uint256).max);
 
         // To trade asset/borrow/sushi on uniV2
-        asset.safeApprove(address(_router), type(uint256).max);
-        borrow.safeApprove(address(_router), type(uint256).max);
-        sushiToken.safeApprove(address(_router), type(uint256).max);
+        asset.safeApprove(address(router), type(uint256).max);
+        borrow.safeApprove(address(router), type(uint256).max);
+        sushiToken.safeApprove(address(router), type(uint256).max);
 
         // To trade asset/borrow on uni v3
         poolFee = _pool.fee();
@@ -70,9 +84,9 @@ contract DeltaNeutralLp is AccessStrategy {
         borrow.safeApprove(address(v3Router), type(uint256).max);
 
         // To remove liquidity
-        abPair.safeApprove(address(_router), type(uint256).max);
+        abPair.safeApprove(address(router), type(uint256).max);
         // To stake lp tokens
-        abPair.safeApprove(address(_masterChef), type(uint256).max);
+        abPair.safeApprove(address(masterChef), type(uint256).max);
     }
 
     /// @notice Get price of WETH in USDC (borrowPrice) from chainlink. Has 8 decimals.

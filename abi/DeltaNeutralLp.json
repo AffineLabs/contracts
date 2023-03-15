@@ -7,44 +7,58 @@
         "type": "address"
       },
       {
-        "internalType": "contract ILendingPool",
-        "name": "_lendingPool",
-        "type": "address"
+        "components": [
+          {
+            "internalType": "contract ILendingPool",
+            "name": "pool",
+            "type": "address"
+          },
+          {
+            "internalType": "contract ERC20",
+            "name": "borrow",
+            "type": "address"
+          },
+          {
+            "internalType": "contract AggregatorV3Interface",
+            "name": "priceFeed",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct LenderInfo",
+        "name": "lender",
+        "type": "tuple"
       },
       {
-        "internalType": "contract ERC20",
-        "name": "_borrow",
-        "type": "address"
-      },
-      {
-        "internalType": "contract AggregatorV3Interface",
-        "name": "_borrowFeed",
-        "type": "address"
-      },
-      {
-        "internalType": "contract IUniswapV2Router02",
-        "name": "_router",
-        "type": "address"
-      },
-      {
-        "internalType": "contract IMasterChef",
-        "name": "_masterChef",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_masterChefPid",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bool",
-        "name": "_useMasterChefV2",
-        "type": "bool"
-      },
-      {
-        "internalType": "contract ERC20",
-        "name": "_sushiToken",
-        "type": "address"
+        "components": [
+          {
+            "internalType": "contract IUniswapV2Router02",
+            "name": "router",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IMasterChef",
+            "name": "masterChef",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "masterChefPid",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "useMasterChefV2",
+            "type": "bool"
+          },
+          {
+            "internalType": "contract ERC20",
+            "name": "sushiToken",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct LpInfo",
+        "name": "lpProvider",
+        "type": "tuple"
       },
       {
         "internalType": "contract IUniswapV3Pool",
