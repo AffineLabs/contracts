@@ -3,13 +3,17 @@ pragma solidity =0.8.16;
 
 import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
+import "forge-std/Components.sol";
+
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
+
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 import {Vault} from "src/vaults/Vault.sol";
-import {DeltaNeutralLp, ILendingPool} from "src/strategies/DeltaNeutralLp.sol";
+import {DeltaNeutralLp, ILendingPool, LendingParams} from "src/strategies/DeltaNeutralLp.sol";
 import {IMasterChef} from "src/interfaces/sushiswap/IMasterChef.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 
@@ -18,6 +22,7 @@ import {Sslp} from "script/DeltaNeutralLp.s.sol";
 /// @notice Test SSLP Strategy with Sushiswap in L1.
 contract L1DeltaNeutralTest is TestPlus {
     using stdStorage for StdStorage;
+    using FixedPointMathLib for uint256;
 
     Vault vault;
     DeltaNeutralLp strategy;
@@ -26,6 +31,7 @@ contract L1DeltaNeutralTest is TestPlus {
     ERC20 asset;
     ERC20 borrow;
     uint256 masterChefPid;
+    uint256 MAX_BPS = 10_000;
 
     uint256 public constant IDEAL_SLIPPAGE_BPS = 200;
 
@@ -43,6 +49,14 @@ contract L1DeltaNeutralTest is TestPlus {
 
     function _deployStrategy() internal virtual {
         strategy = Sslp.deployEth(vault);
+    }
+
+    function _deployStrategyWithCustomParams(LendingParams memory params)
+        internal
+        virtual
+        returns (DeltaNeutralLp strategy2)
+    {
+        strategy2 = Sslp.deployEthWithCustomLendingParam(vault, params);
     }
 
     function setUp() public {
@@ -219,6 +233,41 @@ contract L1DeltaNeutralTest is TestPlus {
             assertApproxEqRel(strategy.totalLockedValue(), assets, 0.01e18);
         }
     }
+
+    /// @notice testing with multiple strategy with custom value
+    /// @dev be careful about the collateral ratio, must be lower than liquidation ratio
+    function testCustomLendingParamsFuzz(uint256 collateralToBorrowRatioBps) public {
+        uint256 initialAssets = 1_000_000;
+
+        // testing in range of 30% to 60%
+        collateralToBorrowRatioBps = (collateralToBorrowRatioBps % 3000) + 3000;
+        uint256 assetToDepositRatioBps = MAX_BPS.mulDivDown(MAX_BPS, MAX_BPS + collateralToBorrowRatioBps);
+
+        DeltaNeutralLp strategy2 = _deployStrategyWithCustomParams(
+            LendingParams({
+                assetToDepositRatioBps: assetToDepositRatioBps,
+                collateralToBorrowRatioBps: collateralToBorrowRatioBps
+            })
+        );
+
+        // add strategy to vault
+        vm.startPrank(governance);
+        vault.addStrategy(strategy2, 5000);
+
+        deal(address(usdc), address(strategy2), initialAssets);
+
+        assertTrue(strategy2.canStartNewPos());
+
+        strategy2.startPosition(IDEAL_SLIPPAGE_BPS);
+
+        assertFalse(strategy2.canStartNewPos());
+
+        // should deposit amount
+        uint256 shouldDeposit = initialAssets.mulDivDown(assetToDepositRatioBps, MAX_BPS);
+
+        assertApproxEqAbs(strategy2.aToken().balanceOf(address(strategy2)), shouldDeposit, 1);
+        assertApproxEqRel(strategy2.totalLockedValue(), initialAssets, 0.01e18);
+    }
 }
 
 /// @notice Test SSLP Strategy with Sushiswap in L2.
@@ -239,5 +288,13 @@ contract L2DeltaNeutralTest is L1DeltaNeutralTest {
 
     function _deployStrategy() internal override {
         strategy = Sslp.deployPoly(vault);
+    }
+
+    function _deployStrategyWithCustomParams(LendingParams memory params)
+        internal
+        override
+        returns (DeltaNeutralLp strategy2)
+    {
+        strategy2 = Sslp.deployPolyWithCustomLendingParams(vault, params);
     }
 }
