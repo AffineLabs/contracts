@@ -69,6 +69,23 @@
         "internalType": "address[]",
         "name": "strategists",
         "type": "address[]"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "assetToDepositRatioBps",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "collateralToBorrowRatioBps",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct LendingParams",
+        "name": "params",
+        "type": "tuple"
       }
     ],
     "stateMutability": "nonpayable",
@@ -279,6 +296,19 @@
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_BPS",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",

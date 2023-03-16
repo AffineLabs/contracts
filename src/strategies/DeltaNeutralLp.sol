@@ -31,10 +31,9 @@ struct LpInfo {
     ERC20 sushiToken; // sushi token address, received as reward
 }
 
-struct LendingParam {
+struct LendingParams {
     uint256 assetToDepositRatioBps; // asset to deposit for lending
     uint256 collateralToBorrowRatioBps; // borrow ratio of collateral
-    uint256 maxPositionRatioBps; // new position ration of vault tvl
 }
 
 contract DeltaNeutralLp is AccessStrategy {
@@ -47,9 +46,12 @@ contract DeltaNeutralLp is AccessStrategy {
         LenderInfo memory lender,
         LpInfo memory lpProvider,
         IUniswapV3Pool _pool,
-        address[] memory strategists
+        address[] memory strategists,
+        LendingParams memory params
     ) AccessStrategy(_vault, strategists) {
         canStartNewPos = true;
+
+        lendingParams = params;
 
         borrow = lender.borrow;
         borrowFeed = lender.priceFeed;
@@ -154,6 +156,12 @@ contract DeltaNeutralLp is AccessStrategy {
     uint32 public currentPosition;
     bool public canStartNewPos;
 
+    ////////////////////
+    /// Lending params
+    ///////////////////
+    LendingParams lendingParams;
+    uint256 public constant MAX_BPS = 10_000;
+
     IMasterChef public immutable masterChef;
     uint256 public immutable masterChefPid;
     ERC20 public immutable sushiToken;
@@ -197,11 +205,13 @@ contract DeltaNeutralLp is AccessStrategy {
 
         // Deposit asset in aave. Then borrow at 75%
         // If x is amount we want to deposit into aave .75x = Total - x => 1.75x = Total => x = Total / 1.75 => Total * 4/7
-        uint256 assetsToDeposit = asset.balanceOf(address(this)).mulDivDown(4, 7);
+        uint256 assetsToDeposit =
+            asset.balanceOf(address(this)).mulDivDown(lendingParams.assetToDepositRatioBps, MAX_BPS);
 
         lendingPool.deposit({asset: address(asset), amount: assetsToDeposit, onBehalfOf: address(this), referralCode: 0});
 
-        uint256 borrowAmount = _assetToBorrow(borrowPrice, assetsToDeposit).mulDivDown(3, 4);
+        uint256 borrowAmount =
+            _assetToBorrow(borrowPrice, assetsToDeposit).mulDivDown(lendingParams.collateralToBorrowRatioBps, MAX_BPS);
         if (borrowAmount > 0) {
             lendingPool.borrow({
                 asset: address(borrow),

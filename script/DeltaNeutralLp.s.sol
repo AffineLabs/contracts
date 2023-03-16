@@ -9,7 +9,7 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {DeltaNeutralLp, ILendingPool} from "src/strategies/DeltaNeutralLp.sol";
-import {LenderInfo, LpInfo, LendingParam} from "src/strategies/DeltaNeutralLp.sol";
+import {LenderInfo, LpInfo, LendingParams} from "src/strategies/DeltaNeutralLp.sol";
 import {IMasterChef} from "src/interfaces/sushiswap/IMasterChef.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 
@@ -31,7 +31,11 @@ library Sslp {
             sushiToken: ERC20(0x0b3F868E0BE5597D5DB7fEB59E1CADBb0fdDa50a)
         }),
         IUniswapV3Pool(0x45dDa9cb7c25131DF268515131f647d726f50608),
-        _getStrategists()
+        _getStrategists(),
+        LendingParams({
+            assetToDepositRatioBps: 5714,
+            collateralToBorrowRatioBps: 7500
+        })
         );
     }
 
@@ -57,7 +61,11 @@ library Sslp {
             sushiToken: ERC20(0x6B3595068778DD592e39A122f4f5a5cF09C90fE2)
         }),
         IUniswapV3Pool(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640), // 5 bps pool (gets most volume)
-        _getStrategists()
+        _getStrategists(),
+        LendingParams({
+            assetToDepositRatioBps: 5714,
+            collateralToBorrowRatioBps: 7500
+        })
         );
     }
 }
