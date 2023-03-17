@@ -377,7 +377,7 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
     /// @notice The amount of profit *originally* locked after harvesting from a strategy
     uint128 public maxLockedProfit;
     /// @notice Amount of time in seconds that profit takes to fully unlock. See lockedProfit().
-    uint256 public constant LOCK_INTERVAL = 24 hours;
+    uint256 public constant LOCK_INTERVAL = 6 hours;
 
     /**
      * @notice Emitted after a successful harvest.
