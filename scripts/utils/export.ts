@@ -169,7 +169,7 @@ async function _polygonDefender(forking: boolean, testnet: boolean) {
 
   if (!testnet) {
     const aaveStratAddr = txs[9].contractAddress;
-    await addToAddressBookAndDefender(network, "PolygonAAVEStrategy", "L2AAVEStrategy", aaveStratAddr, [], false);
+    await addToAddressBookAndDefender(network, "PolygonAAVEStrategy", "AaveV2Strategy", aaveStratAddr, [], false);
   }
 }
 

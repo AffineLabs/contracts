@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-import "forge-std/Script.sol";
+import {Script, console} from "forge-std/Script.sol";
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Vault} from "src/vaults/Vault.sol";
+
+/* solhint-disable reason-string, no-console */
 
 library EthVaults {
     function deployEthWeth() internal returns (Vault) {

@@ -82,8 +82,8 @@ contract DeltaNeutralLp is AccessStrategy {
 
         // To trade asset/borrow on uni v3
         poolFee = _pool.fee();
-        asset.safeApprove(address(v3Router), type(uint256).max);
-        borrow.safeApprove(address(v3Router), type(uint256).max);
+        asset.safeApprove(address(V3ROUTER), type(uint256).max);
+        borrow.safeApprove(address(V3ROUTER), type(uint256).max);
 
         // To remove liquidity
         abPair.safeApprove(address(router), type(uint256).max);
@@ -187,7 +187,7 @@ contract DeltaNeutralLp is AccessStrategy {
     bool public immutable useMasterChefV2;
 
     IUniswapV2Router02 public immutable router;
-    ISwapRouter public constant v3Router = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
+    ISwapRouter public constant V3ROUTER = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
     /// @notice The pool's fee. We need this to identify the pool.
     uint24 public immutable poolFee;
     /// @notice The address of the Uniswap Lp token (the asset-borrow pair)
@@ -382,7 +382,7 @@ contract DeltaNeutralLp is AccessStrategy {
                 sqrtPriceLimitX96: 0
             });
 
-            tradeAmounts[0] = v3Router.exactOutputSingle(params);
+            tradeAmounts[0] = V3ROUTER.exactOutputSingle(params);
             tradeAmounts[1] = borrowToBuy;
         }
         if (borrowToSell > 0) {
@@ -397,7 +397,7 @@ contract DeltaNeutralLp is AccessStrategy {
                 sqrtPriceLimitX96: 0
             });
             tradeAmounts[0] = borrowToSell;
-            tradeAmounts[1] = v3Router.exactInputSingle(params);
+            tradeAmounts[1] = V3ROUTER.exactInputSingle(params);
         }
     }
 
