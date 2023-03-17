@@ -63,7 +63,7 @@ library Sslp {
         );
     }
 
-    function _getStrategists() internal view returns (address[] memory strategists) {
+    function _getStrategists() internal pure returns (address[] memory strategists) {
         strategists = new address[](1);
         strategists[0] = 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d;
     }
@@ -93,6 +93,7 @@ library Sslp {
         );
     }
 
+    /// @dev WETH/USDC on sushiswap
     function deployEthWithCustomLendingParam(AffineVault vault, LendingParams memory params)
         internal
         returns (DeltaNeutralLp strategy)
@@ -114,6 +115,56 @@ library Sslp {
             IUniswapV3Pool(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640), // 5 bps pool (gets most volume)
             _getStrategists(),
             params
+        );
+    }
+
+    /// @dev WETH earn basket on sushiswap (eth mainnet)
+    function deployEthWeth(AffineVault vault) internal returns (DeltaNeutralLp strategy) {
+        strategy = new DeltaNeutralLp(
+        vault,
+        LenderInfo({
+            pool: ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9),
+            borrow: ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48), // usdc
+            priceFeed: AggregatorV3Interface(0x986b5E1e1755e3C2440e960477f25201B0a8bbD4) // USDC / ETH
+        }),
+        LpInfo({
+            router: IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F),
+            masterChef: IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd), // MasterChef
+            masterChefPid: 1, // Masterchef PID for WETH/USDC
+            useMasterChefV2: false, // use MasterChefV2 interface
+            sushiToken: ERC20(0x6B3595068778DD592e39A122f4f5a5cF09C90fE2)
+        }),
+        IUniswapV3Pool(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640), // 5 bps pool (gets most volume)
+        _getStrategists(),
+        LendingParams({
+            assetToDepositRatioBps: 5714,
+            collateralToBorrowRatioBps: 7500
+        })
+        );
+    }
+
+    /// @dev WETH earn basket on sushiswap (eth mainnet) with custom params
+    function deployEthWethWithCustomParams(AffineVault vault, LendingParams memory params)
+        internal
+        returns (DeltaNeutralLp strategy)
+    {
+        strategy = new DeltaNeutralLp(
+        vault,
+        LenderInfo({
+            pool: ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9),
+            borrow: ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48), // usdc
+            priceFeed: AggregatorV3Interface(0x986b5E1e1755e3C2440e960477f25201B0a8bbD4) // USDC / ETH
+        }),
+        LpInfo({
+            router: IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F),
+            masterChef: IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd), // MasterChef
+            masterChefPid: 1, // Masterchef PID for WETH/USDC
+            useMasterChefV2: false, // use MasterChefV2 interface
+            sushiToken: ERC20(0x6B3595068778DD592e39A122f4f5a5cF09C90fE2)
+        }),
+        IUniswapV3Pool(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640), // 5 bps pool (gets most volume)
+        _getStrategists(),
+        params
         );
     }
 }

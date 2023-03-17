@@ -26,12 +26,12 @@ contract L1DeltaNeutralTest is TestPlus {
 
     Vault vault;
     DeltaNeutralLp strategy;
-    ERC20 usdc;
-    ERC20 abPair;
     ERC20 asset;
+    ERC20 abPair;
     ERC20 borrow;
     uint256 masterChefPid;
     uint256 MAX_BPS = 10_000;
+    uint256 startAssets;
 
     uint256 public constant IDEAL_SLIPPAGE_BPS = 200;
 
@@ -43,8 +43,8 @@ contract L1DeltaNeutralTest is TestPlus {
         vault = Vault(address(deployL1Vault()));
     }
 
-    function _usdc() internal virtual returns (address) {
-        return 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    function _asset() internal pure virtual returns (address) {
+        return 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48; //usdc
     }
 
     function _deployStrategy() internal virtual {
@@ -63,9 +63,9 @@ contract L1DeltaNeutralTest is TestPlus {
         _fork();
         _deployVault();
 
-        usdc = ERC20(_usdc());
+        asset = ERC20(_asset());
         uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
-        bytes32 tokenAddr = bytes32(uint256(uint160(address(usdc))));
+        bytes32 tokenAddr = bytes32(uint256(uint160(address(asset))));
         vm.store(address(vault), bytes32(slot), tokenAddr);
 
         _deployStrategy();
@@ -74,14 +74,13 @@ contract L1DeltaNeutralTest is TestPlus {
         vault.addStrategy(strategy, 5000);
 
         abPair = strategy.abPair();
-        asset = usdc;
         borrow = strategy.borrow();
+        startAssets = 1000 * (10 ** asset.decimals());
     }
 
     /// @notice Test only address with strategist role can open a position.
     function testOnlyAddressWithStrategistRoleCanStartPosition() public {
-        uint256 startAssets = 1000e6;
-        deal(address(usdc), address(strategy), startAssets);
+        deal(address(asset), address(strategy), startAssets);
         vm.startPrank(alice);
         vm.expectRevert(
             abi.encodePacked(
@@ -96,10 +95,10 @@ contract L1DeltaNeutralTest is TestPlus {
 
     /// @notice Test creation of position.
     function testCreatePosition() public {
-        uint256 startAssets = 1000e6;
-        deal(address(usdc), address(strategy), startAssets);
+        deal(address(asset), address(strategy), startAssets);
 
         vm.startPrank(vault.governance());
+
         strategy.startPosition(IDEAL_SLIPPAGE_BPS);
         assertFalse(strategy.canStartNewPos());
 
@@ -119,7 +118,7 @@ contract L1DeltaNeutralTest is TestPlus {
 
     /// @notice Test only address with strategist role can end a position.
     function testOnlyAddressWithStrategistRoleCanEndPosition() public {
-        deal(address(asset), address(strategy), 1000e6);
+        deal(address(asset), address(strategy), startAssets);
 
         vm.startPrank(vault.governance());
         strategy.startPosition(IDEAL_SLIPPAGE_BPS);
@@ -138,14 +137,14 @@ contract L1DeltaNeutralTest is TestPlus {
 
     /// @notice Test ending a position.
     function testEndPosition() public {
-        deal(address(asset), address(strategy), 1000e6);
+        deal(address(asset), address(strategy), startAssets);
 
         vm.startPrank(vault.governance());
         strategy.startPosition(IDEAL_SLIPPAGE_BPS);
         strategy.endPosition(IDEAL_SLIPPAGE_BPS);
 
         assertTrue(strategy.canStartNewPos());
-        assertApproxEqRel(asset.balanceOf(address(strategy)), 1000e6, 0.01e18);
+        assertApproxEqRel(asset.balanceOf(address(strategy)), startAssets, 0.01e18);
         assertEq(borrow.balanceOf(address(strategy)), 0);
         assertEq(abPair.balanceOf(address(strategy)), 0);
         assertEq(strategy.debtToken().balanceOf(address(strategy)), 0);
@@ -154,14 +153,14 @@ contract L1DeltaNeutralTest is TestPlus {
     /// @notice Test TVL calculation.
     function testTVL() public {
         assertEq(strategy.totalLockedValue(), 0);
-        deal(address(asset), address(strategy), 1000e6);
+        deal(address(asset), address(strategy), startAssets);
 
-        assertApproxEqRel(strategy.totalLockedValue(), 1000e6, 0.01e18);
+        assertApproxEqRel(strategy.totalLockedValue(), startAssets, 0.01e18);
 
         vm.prank(vault.governance());
         strategy.startPosition(IDEAL_SLIPPAGE_BPS);
 
-        assertApproxEqRel(strategy.totalLockedValue(), 1000e6, 0.01e18);
+        assertApproxEqRel(strategy.totalLockedValue(), startAssets, 0.01e18);
     }
 
     /// @notice Test vault can divest from this strategy.
@@ -172,7 +171,7 @@ contract L1DeltaNeutralTest is TestPlus {
         strategy.divest(1);
         assertEq(asset.balanceOf(address(vault)), 1);
 
-        deal(address(asset), address(strategy), 1000e6);
+        deal(address(asset), address(strategy), startAssets);
 
         vm.prank(vault.governance());
         strategy.startPosition(IDEAL_SLIPPAGE_BPS);
@@ -183,12 +182,12 @@ contract L1DeltaNeutralTest is TestPlus {
 
         assertTrue(strategy.canStartNewPos());
         assertEq(strategy.totalLockedValue(), 0);
-        assertApproxEqRel(asset.balanceOf(address(vault)), 1000e6, 0.01e18);
+        assertApproxEqRel(asset.balanceOf(address(vault)), startAssets, 0.01e18);
     }
 
     /// @notice Strategist can claim rewards.
     function testClaimAndSellSushi() public {
-        deal(address(asset), address(strategy), 1000e6);
+        deal(address(asset), address(strategy), startAssets);
 
         vm.prank(vault.governance());
         strategy.startPosition(IDEAL_SLIPPAGE_BPS);
@@ -217,28 +216,25 @@ contract L1DeltaNeutralTest is TestPlus {
         // Max borrowable WETH available in AAVE in this block is around 450k WETH or 730e6 USDC (ethereum).
         // Have to restrict debt size tro $20M since that's how there's available to borrow on polygon
         // Size of biggest position is debt * 4/3 * 7/4 = debt * 7/3
-        assets = bound(assets, 0, uint256(20e6 * 1e6) * 7 / 3);
+        // not going for whole range as for weth the pool is not that large.
+        assets = bound(assets, (10 ** (asset.decimals() - 1)) + 1, uint256(100 * startAssets));
 
-        if (assets > 1e5) {
-            assertEq(strategy.totalLockedValue(), 0);
+        assertEq(strategy.totalLockedValue(), 0);
 
-            deal(address(asset), address(strategy), assets);
-            assertApproxEqRel(strategy.totalLockedValue(), assets, 0.01e18);
+        deal(address(asset), address(strategy), assets);
+        assertApproxEqRel(strategy.totalLockedValue(), assets, 0.01e18);
 
-            vm.startPrank(vault.governance());
-            strategy.startPosition(IDEAL_SLIPPAGE_BPS);
-            assertApproxEqRel(strategy.totalLockedValue(), assets, 0.01e18);
+        vm.startPrank(vault.governance());
+        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
+        assertApproxEqRel(strategy.totalLockedValue(), assets, 0.01e18);
 
-            strategy.endPosition(IDEAL_SLIPPAGE_BPS);
-            assertApproxEqRel(strategy.totalLockedValue(), assets, 0.01e18);
-        }
+        strategy.endPosition(IDEAL_SLIPPAGE_BPS);
+        assertApproxEqRel(strategy.totalLockedValue(), assets, 0.01e18);
     }
 
     /// @notice testing with multiple strategy with custom value
     /// @dev be careful about the collateral ratio, must be lower than liquidation ratio
     function testCustomLendingParamsFuzz(uint256 collateralToBorrowRatioBps) public {
-        uint256 initialAssets = 1_000_000;
-
         // testing in range of 30% to 60%
         collateralToBorrowRatioBps = (collateralToBorrowRatioBps % 3000) + 3000;
         uint256 assetToDepositRatioBps = MAX_BPS.mulDivDown(MAX_BPS, MAX_BPS + collateralToBorrowRatioBps);
@@ -254,7 +250,7 @@ contract L1DeltaNeutralTest is TestPlus {
         vm.startPrank(governance);
         vault.addStrategy(strategy2, 5000);
 
-        deal(address(usdc), address(strategy2), initialAssets);
+        deal(address(asset), address(strategy2), startAssets);
 
         assertTrue(strategy2.canStartNewPos());
 
@@ -263,10 +259,40 @@ contract L1DeltaNeutralTest is TestPlus {
         assertFalse(strategy2.canStartNewPos());
 
         // should deposit amount
-        uint256 shouldDeposit = initialAssets.mulDivDown(assetToDepositRatioBps, MAX_BPS);
+        uint256 shouldDeposit = startAssets.mulDivDown(assetToDepositRatioBps, MAX_BPS);
 
         assertApproxEqAbs(strategy2.aToken().balanceOf(address(strategy2)), shouldDeposit, 1);
-        assertApproxEqRel(strategy2.totalLockedValue(), initialAssets, 0.01e18);
+        assertApproxEqRel(strategy2.totalLockedValue(), startAssets, 0.01e18);
+    }
+}
+
+/// @notice Test SSLP Strategy with Sushiswap in L1 with eth earn.
+contract L1WethDeltaNeutralTest is L1DeltaNeutralTest {
+    using stdStorage for StdStorage;
+
+    function _fork() internal override {
+        forkEth();
+    }
+
+    function _deployVault() internal override {
+        vault = Vault(address(deployL1Vault()));
+    }
+    // its weth
+
+    function _asset() internal pure override returns (address) {
+        return 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; //weth
+    }
+
+    function _deployStrategy() internal override {
+        strategy = Sslp.deployEthWeth(vault);
+    }
+
+    function _deployStrategyWithCustomParams(LendingParams memory params)
+        internal
+        override
+        returns (DeltaNeutralLp strategy2)
+    {
+        strategy2 = Sslp.deployEthWethWithCustomParams(vault, params);
     }
 }
 
@@ -282,8 +308,8 @@ contract L2DeltaNeutralTest is L1DeltaNeutralTest {
         vault = Vault(address(deployL2Vault()));
     }
 
-    function _usdc() internal override returns (address) {
-        return 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+    function _asset() internal pure override returns (address) {
+        return 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174; //usdc
     }
 
     function _deployStrategy() internal override {
