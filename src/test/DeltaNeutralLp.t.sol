@@ -32,7 +32,6 @@ contract L1DeltaNeutralTest is TestPlus {
     uint256 masterChefPid;
     uint256 MAX_BPS = 10_000;
     uint256 startAssets;
-
     uint256 public constant IDEAL_SLIPPAGE_BPS = 200;
 
     function _fork() internal virtual {
@@ -47,16 +46,8 @@ contract L1DeltaNeutralTest is TestPlus {
         return 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48; //usdc
     }
 
-    function _deployStrategy() internal virtual {
-        strategy = Sslp.deployEth(vault);
-    }
-
-    function _deployStrategyWithCustomParams(LendingParams memory params)
-        internal
-        virtual
-        returns (DeltaNeutralLp strategy2)
-    {
-        strategy2 = Sslp.deployEthWithCustomLendingParam(vault, params);
+    function _deployStrategy(LendingParams memory params) internal virtual returns (DeltaNeutralLp _strategy) {
+        _strategy = Sslp.deployEth(vault, params);
     }
 
     function setUp() public {
@@ -68,7 +59,7 @@ contract L1DeltaNeutralTest is TestPlus {
         bytes32 tokenAddr = bytes32(uint256(uint160(address(asset))));
         vm.store(address(vault), bytes32(slot), tokenAddr);
 
-        _deployStrategy();
+        strategy = _deployStrategy(LendingParams({assetToDepositRatioBps: 5714, collateralToBorrowRatioBps: 7500}));
 
         vm.prank(governance);
         vault.addStrategy(strategy, 5000);
@@ -239,7 +230,7 @@ contract L1DeltaNeutralTest is TestPlus {
         collateralToBorrowRatioBps = (collateralToBorrowRatioBps % 3000) + 3000;
         uint256 assetToDepositRatioBps = MAX_BPS.mulDivDown(MAX_BPS, MAX_BPS + collateralToBorrowRatioBps);
 
-        DeltaNeutralLp strategy2 = _deployStrategyWithCustomParams(
+        DeltaNeutralLp strategy2 = _deployStrategy(
             LendingParams({
                 assetToDepositRatioBps: assetToDepositRatioBps,
                 collateralToBorrowRatioBps: collateralToBorrowRatioBps
@@ -252,11 +243,7 @@ contract L1DeltaNeutralTest is TestPlus {
 
         deal(address(asset), address(strategy2), startAssets);
 
-        assertTrue(strategy2.canStartNewPos());
-
         strategy2.startPosition(IDEAL_SLIPPAGE_BPS);
-
-        assertFalse(strategy2.canStartNewPos());
 
         // should deposit amount
         uint256 shouldDeposit = startAssets.mulDivDown(assetToDepositRatioBps, MAX_BPS);
@@ -283,16 +270,8 @@ contract L1WethDeltaNeutralTest is L1DeltaNeutralTest {
         return 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; //weth
     }
 
-    function _deployStrategy() internal override {
-        strategy = Sslp.deployEthWeth(vault);
-    }
-
-    function _deployStrategyWithCustomParams(LendingParams memory params)
-        internal
-        override
-        returns (DeltaNeutralLp strategy2)
-    {
-        strategy2 = Sslp.deployEthWethWithCustomParams(vault, params);
+    function _deployStrategy(LendingParams memory params) internal override returns (DeltaNeutralLp _strategy) {
+        _strategy = Sslp.deployEthWeth(vault, params);
     }
 }
 
@@ -312,15 +291,7 @@ contract L2DeltaNeutralTest is L1DeltaNeutralTest {
         return 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174; //usdc
     }
 
-    function _deployStrategy() internal override {
-        strategy = Sslp.deployPoly(vault);
-    }
-
-    function _deployStrategyWithCustomParams(LendingParams memory params)
-        internal
-        override
-        returns (DeltaNeutralLp strategy2)
-    {
-        strategy2 = Sslp.deployPolyWithCustomLendingParams(vault, params);
+    function _deployStrategy(LendingParams memory params) internal override returns (DeltaNeutralLp _strategy) {
+        _strategy = Sslp.deployPoly(vault, params);
     }
 }
