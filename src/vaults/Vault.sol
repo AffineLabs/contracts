@@ -35,8 +35,20 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
         return AffineVault.asset();
     }
 
+    /// @dev E.g. if the asset has 18 decimals, and initialSharesPerAsset is 1e8, then the vault has 26 decimals. And
+    /// "one" `asset` will be worth "one" share (where "one" means 10 ** token.decimals()).
     function decimals() public view virtual override(ERC20Upgradeable, IERC20MetadataUpgradeable) returns (uint8) {
-        return 18;
+        return _asset.decimals() + _initialShareDecimals();
+    }
+    /// @notice The amount of shares to mint per wei of `asset` at genesis.
+
+    function initialSharesPerAsset() public pure virtual returns (uint256) {
+        return 10 ** _initialShareDecimals();
+    }
+
+    /// @notice Each wei of `asset` at genesis is worth 10 ** (initialShareDecimals) shares.
+    function _initialShareDecimals() internal pure virtual returns (uint8) {
+        return 8;
     }
 
     /// @notice See {IERC4626-totalAssets}
@@ -159,13 +171,6 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
     function previewRedeem(uint256 shares) public view virtual override returns (uint256) {
         uint256 assets = _convertToAssets(shares, MathUpgradeable.Rounding.Down);
         return assets - _getWithdrawalFee(assets);
-    }
-
-    function initialSharesPerAsset() public pure virtual returns (uint256) {
-        // E.g. for USDC, we want the initial price of a share to be $100.
-        // For an initial price of 1 USDC / share we would have 1e6 * 1e10 / 1 = 1e16 shares.
-        // This a 1:0.01 ratio of assets:shares if this vault has 18 decimals
-        return 1e10;
     }
 
     function _convertToShares(uint256 assets, MathUpgradeable.Rounding rounding)
