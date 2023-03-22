@@ -51,7 +51,8 @@ contract DeltaNeutralLp is AccessStrategy {
     ) AccessStrategy(_vault, strategists) {
         canStartNewPos = true;
 
-        lendingParams = params;
+        assetToDepositRatioBps = params.assetToDepositRatioBps;
+        collateralToBorrowRatioBps = params.collateralToBorrowRatioBps;
 
         borrow = lender.borrow;
         borrowFeed = lender.priceFeed;
@@ -89,9 +90,17 @@ contract DeltaNeutralLp is AccessStrategy {
         abPair.safeApprove(address(router), type(uint256).max);
         // To stake lp tokens
         abPair.safeApprove(address(masterChef), type(uint256).max);
+
+        // decimal adjusting params
+        decimalAdjustSign = asset.decimals() >= borrow.decimals() + borrowFeed.decimals() ? true : false;
+        decimalAdjust = decimalAdjustSign
+            ? asset.decimals() - borrowFeed.decimals() - borrow.decimals()
+            : borrow.decimals() + borrowFeed.decimals() - asset.decimals();
     }
 
-    /// @notice Get price borrowing asset price in vault assets
+    /**
+     * @dev Get price of borrow denominated in asset from chainlink
+     */
     function _chainlinkPriceOfBorrow() internal view returns (uint256 borrowPrice) {
         (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = borrowFeed.latestRoundData();
         require(price > 0, "DNLP: price <= 0");
@@ -101,9 +110,7 @@ contract DeltaNeutralLp is AccessStrategy {
     }
 
     /**
-     * @notice Get price of WETH in USDC (borrowPrice) from Sushiswap. Has 6 decimals.
-     * @dev return the price of the borrowed token in asset unit.
-     * @dev returned value will be in same decimals as asset.
+     * @dev Get price of borrow denominated in asset from sushiswap
      */
     function _sushiPriceOfBorrow() internal view returns (uint256 borrowPrice) {
         address[] memory path = new address[](2);
@@ -116,28 +123,27 @@ contract DeltaNeutralLp is AccessStrategy {
     }
 
     /**
-     * @notice Convert `borrow` (e.g. WETH) to `asset` (e.g. USDC). Has 6 decimals.
+     * @dev Convert borrows to assets
      * @dev return value will be in same decimals as asset
      */
     function _borrowToAsset(uint256 borrowChainlinkPrice, uint256 amountB) internal view returns (uint256 assets) {
-        if ((borrowFeed.decimals() + borrow.decimals()) > asset.decimals()) {
-            assets = borrowChainlinkPrice.mulDivDown(
-                amountB, (10 ** ((borrowFeed.decimals() + borrow.decimals()) - asset.decimals()))
-            );
+        if (decimalAdjustSign) {
+            assets = amountB * borrowChainlinkPrice * (10 ** decimalAdjust);
         } else {
-            assets = borrowChainlinkPrice * amountB
-                * (10 ** (asset.decimals() - (borrowFeed.decimals() + borrow.decimals())));
+            assets = amountB.mulDivDown(borrowChainlinkPrice, 10 ** decimalAdjust);
         }
     }
 
-    /// @notice Convert `asset` (e.g. USDC) to `borrow` (e.g. WETH). Has 18 decimals.
+    /**
+     * @dev Convert assets to borrows
+     * @dev return value will be in same decimals as borrow
+     */
     function _assetToBorrow(uint256 borrowChainlinkPrice, uint256 amountA) internal view returns (uint256 borrows) {
-        if (asset.decimals() > borrowFeed.decimals()) {
-            borrowChainlinkPrice = borrowChainlinkPrice * (10 ** (asset.decimals() - borrowFeed.decimals()));
+        if (decimalAdjustSign) {
+            borrows = amountA.mulDivDown(1, borrowChainlinkPrice * (10 ** decimalAdjust));
         } else {
-            amountA = amountA * (10 ** (borrowFeed.decimals() - asset.decimals()));
+            borrows = amountA.mulDivDown(10 ** decimalAdjust, borrowChainlinkPrice);
         }
-        borrows = amountA.mulDivDown((10 ** (borrow.decimals())), borrowChainlinkPrice);
     }
 
     /// @notice Get underlying assets (USDC, WETH) amounts from sushiswap lp token amount
@@ -175,10 +181,23 @@ contract DeltaNeutralLp is AccessStrategy {
     uint32 public currentPosition;
     bool public canStartNewPos;
 
-    ////////////////////
-    /// Lending params
-    ///////////////////
-    LendingParams lendingParams;
+    /**
+     * @notice abs(asset.decimals() - borrow.decimals() - borrowFeed.decimals()). Used when converting between
+     * asset/borrow amounts
+     */
+    uint256 public immutable decimalAdjust;
+
+    /// @notice true if asset.decimals() - borrow.decimals() - borrowFeed.decimals() is >= 0. false otherwise.
+    bool public immutable decimalAdjustSign;
+
+    /*//////////////////////////////////////////////////////////////
+                             LENDING PARAMS
+    //////////////////////////////////////////////////////////////*/
+    /// @notice What fraction of asset to deposit into aave in bps
+    uint256 public immutable assetToDepositRatioBps;
+    /// @notice What fraction of collateral to borrow from aave in bps
+    uint256 public immutable collateralToBorrowRatioBps;
+
     uint256 public constant MAX_BPS = 10_000;
 
     IMasterChef public immutable masterChef;
@@ -224,13 +243,12 @@ contract DeltaNeutralLp is AccessStrategy {
 
         // Deposit asset in aave. Then borrow at 75%
         // If x is amount we want to deposit into aave .75x = Total - x => 1.75x = Total => x = Total / 1.75 => Total * 4/7
-        uint256 assetsToDeposit =
-            asset.balanceOf(address(this)).mulDivDown(lendingParams.assetToDepositRatioBps, MAX_BPS);
+        uint256 assetsToDeposit = asset.balanceOf(address(this)).mulDivDown(assetToDepositRatioBps, MAX_BPS);
 
         lendingPool.deposit({asset: address(asset), amount: assetsToDeposit, onBehalfOf: address(this), referralCode: 0});
 
         uint256 borrowAmount =
-            _assetToBorrow(borrowPrice, assetsToDeposit).mulDivDown(lendingParams.collateralToBorrowRatioBps, MAX_BPS);
+            _assetToBorrow(borrowPrice, assetsToDeposit).mulDivDown(collateralToBorrowRatioBps, MAX_BPS);
 
         if (borrowAmount > 0) {
             lendingPool.borrow({

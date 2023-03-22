@@ -184,4 +184,10 @@ contract Deploy is Script {
         _start();
         Sslp.deployEth(AffineVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9));
     }
+
+    function runEthWethSushi() external {
+        _start();
+        DeltaNeutralLp strategy = Sslp.deployEthWeth(AffineVault(0x87964c5a8F2b13e04b86B4D12e0EeA13Ff144DC3));
+        console.log(address(strategy));
+    }
 }
