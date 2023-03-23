@@ -333,7 +333,7 @@ contract CommonVaultTest is TestPlus {
     function testDetailedPrice() public {
         // This function should work even if there is nothing in the vault
         Vault.Number memory price = vault.detailedPrice();
-        assertEq(price.num, 100 * 10 ** uint256(asset.decimals()));
+        assertEq(price.num, 10 ** uint256(asset.decimals()));
 
         asset.mint(address(vault), 2e18);
 
