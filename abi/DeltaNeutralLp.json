@@ -22,10 +22,20 @@
             "internalType": "contract AggregatorV3Interface",
             "name": "priceFeed",
             "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "assetToDepositRatioBps",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "collateralToBorrowRatioBps",
+            "type": "uint256"
           }
         ],
-        "internalType": "struct LenderInfo",
-        "name": "lender",
+        "internalType": "struct LendingInfo",
+        "name": "lendingInfo",
         "type": "tuple"
       },
       {
@@ -69,23 +79,6 @@
         "internalType": "address[]",
         "name": "strategists",
         "type": "address[]"
-      },
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "assetToDepositRatioBps",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "collateralToBorrowRatioBps",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct LendingParams",
-        "name": "params",
-        "type": "tuple"
       }
     ],
     "stateMutability": "nonpayable",

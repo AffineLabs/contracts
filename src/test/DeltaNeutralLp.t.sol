@@ -13,7 +13,7 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 import {Vault} from "src/vaults/Vault.sol";
-import {DeltaNeutralLp, ILendingPool, LendingParams} from "src/strategies/DeltaNeutralLp.sol";
+import {DeltaNeutralLp, ILendingPool} from "src/strategies/DeltaNeutralLp.sol";
 import {IMasterChef} from "src/interfaces/sushiswap/IMasterChef.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 
@@ -47,8 +47,12 @@ contract L1DeltaNeutralTest is TestPlus {
         return 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48; //usdc
     }
 
-    function _deployStrategy(LendingParams memory params) internal virtual returns (DeltaNeutralLp _strategy) {
-        _strategy = Sslp.deployEth(vault, params);
+    function _deployStrategy(uint256 assetToDepositRatioBps, uint256 collateralToBorrowRatioBps)
+        internal
+        virtual
+        returns (DeltaNeutralLp _strategy)
+    {
+        _strategy = Sslp.deployEth(vault, assetToDepositRatioBps, collateralToBorrowRatioBps);
     }
 
     function setUp() public {
@@ -60,7 +64,7 @@ contract L1DeltaNeutralTest is TestPlus {
         bytes32 tokenAddr = bytes32(uint256(uint160(address(asset))));
         vm.store(address(vault), bytes32(slot), tokenAddr);
 
-        strategy = _deployStrategy(LendingParams({assetToDepositRatioBps: 5714, collateralToBorrowRatioBps: 7500}));
+        strategy = _deployStrategy(5714, 7500);
 
         vm.prank(governance);
         vault.addStrategy(strategy, 5000);
@@ -270,12 +274,7 @@ contract L1DeltaNeutralTest is TestPlus {
         collateralToBorrowRatioBps = (collateralToBorrowRatioBps % 3000) + 3000;
         uint256 assetToDepositRatioBps = MAX_BPS.mulDivDown(MAX_BPS, MAX_BPS + collateralToBorrowRatioBps);
 
-        DeltaNeutralLp strategy2 = _deployStrategy(
-            LendingParams({
-                assetToDepositRatioBps: assetToDepositRatioBps,
-                collateralToBorrowRatioBps: collateralToBorrowRatioBps
-            })
-        );
+        DeltaNeutralLp strategy2 = _deployStrategy(assetToDepositRatioBps, collateralToBorrowRatioBps);
 
         // add strategy to vault
         vm.startPrank(governance);
@@ -369,8 +368,12 @@ contract L1WethDeltaNeutralTest is L1DeltaNeutralTest {
         return 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; //weth
     }
 
-    function _deployStrategy(LendingParams memory params) internal override returns (DeltaNeutralLp _strategy) {
-        _strategy = Sslp.deployEthWeth(vault, params);
+    function _deployStrategy(uint256 assetToDepositRatioBps, uint256 collateralToBorrowRatioBps)
+        internal
+        override
+        returns (DeltaNeutralLp _strategy)
+    {
+        _strategy = Sslp.deployEthWeth(vault, assetToDepositRatioBps, collateralToBorrowRatioBps);
     }
 }
 
@@ -390,7 +393,11 @@ contract L2DeltaNeutralTest is L1DeltaNeutralTest {
         return 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174; //usdc
     }
 
-    function _deployStrategy(LendingParams memory params) internal override returns (DeltaNeutralLp _strategy) {
-        _strategy = Sslp.deployPoly(vault, params);
+    function _deployStrategy(uint256 assetToDepositRatioBps, uint256 collateralToBorrowRatioBps)
+        internal
+        override
+        returns (DeltaNeutralLp _strategy)
+    {
+        _strategy = Sslp.deployPoly(vault, assetToDepositRatioBps, collateralToBorrowRatioBps);
     }
 }

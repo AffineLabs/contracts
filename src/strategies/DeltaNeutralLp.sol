@@ -17,12 +17,6 @@ import {AccessStrategy} from "./AccessStrategy.sol";
 import {IMasterChef} from "src/interfaces/sushiswap/IMasterChef.sol";
 import {SlippageUtils} from "src/libs/SlippageUtils.sol";
 
-struct LenderInfo {
-    ILendingPool pool; // lending pool
-    ERC20 borrow; // borrowing asset
-    AggregatorV3Interface priceFeed; // borrow asset price feed
-}
-
 struct LpInfo {
     IUniswapV2Router02 router; // lp router
     IMasterChef masterChef; // gov pool
@@ -31,7 +25,10 @@ struct LpInfo {
     ERC20 sushiToken; // sushi token address, received as reward
 }
 
-struct LendingParams {
+struct LendingInfo {
+    ILendingPool pool; // lending pool
+    ERC20 borrow; // borrowing asset
+    AggregatorV3Interface priceFeed; // borrow asset price feed
     uint256 assetToDepositRatioBps; // asset to deposit for lending
     uint256 collateralToBorrowRatioBps; // borrow ratio of collateral
 }
@@ -43,25 +40,24 @@ contract DeltaNeutralLp is AccessStrategy {
 
     constructor(
         AffineVault _vault,
-        LenderInfo memory lender,
+        LendingInfo memory lendingInfo,
         LpInfo memory lpProvider,
         IUniswapV3Pool _pool,
-        address[] memory strategists,
-        LendingParams memory params
+        address[] memory strategists
     ) AccessStrategy(_vault, strategists) {
         canStartNewPos = true;
 
-        assetToDepositRatioBps = params.assetToDepositRatioBps;
-        collateralToBorrowRatioBps = params.collateralToBorrowRatioBps;
+        assetToDepositRatioBps = lendingInfo.assetToDepositRatioBps;
+        collateralToBorrowRatioBps = lendingInfo.collateralToBorrowRatioBps;
 
-        borrow = lender.borrow;
-        borrowFeed = lender.priceFeed;
+        borrow = lendingInfo.borrow;
+        borrowFeed = lendingInfo.priceFeed;
 
         router = lpProvider.router;
         abPair = ERC20(IUniswapV2Factory(router.factory()).getPair(address(asset), address(borrow)));
 
         // Aave info
-        lendingPool = lender.pool;
+        lendingPool = lendingInfo.pool;
         debtToken = ERC20(lendingPool.getReserveData(address(borrow)).variableDebtTokenAddress);
         aToken = ERC20(lendingPool.getReserveData(address(asset)).aTokenAddress);
 
