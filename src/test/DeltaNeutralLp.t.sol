@@ -291,6 +291,65 @@ contract L1DeltaNeutralTest is TestPlus {
         assertApproxEqAbs(strategy2.aToken().balanceOf(address(strategy2)), shouldDeposit, 1);
         assertApproxEqRel(strategy2.totalLockedValue(), startAssets, 0.01e18);
     }
+
+    function testPositionEvents() public {
+        deal(address(asset), address(strategy), startAssets);
+
+        vm.startPrank(vault.governance());
+        // record events
+        vm.recordLogs();
+
+        strategy.startPosition(startAssets, IDEAL_SLIPPAGE_BPS);
+
+        strategy.endPosition(IDEAL_SLIPPAGE_BPS);
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        uint256 assetsToSushi;
+        uint256 borrowsToSushi;
+        uint256 assetsFromSushi;
+        uint256 borrowsFromSushi;
+
+        bytes32 startEventSig = keccak256("PositionStart(uint32,uint256,uint256,uint256[2],uint256,uint256,uint256)");
+        bytes32 endEventSig = keccak256(
+            "PositionEnd(uint32,uint256,uint256,uint256,uint256[2],bool,uint256,uint256,uint256,uint256,uint256)"
+        );
+        bool foundStartEvent;
+        bool foundEndEvent;
+        for (uint256 i = 0; i < entries.length; i++) {
+            if (startEventSig == entries[i].topics[0]) {
+                foundStartEvent = true;
+                (assetsToSushi, borrowsToSushi) = decodeStartPositionEvent(entries[i].data);
+            } else if (endEventSig == entries[i].topics[0]) {
+                foundEndEvent = true;
+                (assetsFromSushi, borrowsFromSushi) = decodeEndPositionEvent(entries[i].data);
+            }
+        }
+        // should get both event
+        assertTrue(foundStartEvent);
+        assertTrue(foundEndEvent);
+
+        // values should be in range
+        // a is approximately equal to b with delta in percentage, where 1e18 is 100%.
+        assertApproxEqRel(assetsToSushi, assetsFromSushi, 0.001e18);
+        assertApproxEqRel(borrowsToSushi, borrowsFromSushi, 0.001e18);
+    }
+
+    function decodeStartPositionEvent(bytes memory data)
+        internal
+        returns (uint256 assetsToSushi, uint256 borrowsToSushi)
+    {
+        (,,, assetsToSushi, borrowsToSushi,) =
+            abi.decode(data, (uint256, uint256, uint256[2], uint256, uint256, uint256));
+    }
+
+    function decodeEndPositionEvent(bytes memory data)
+        internal
+        returns (uint256 assetsFromSushi, uint256 borrowsFromSushi)
+    {
+        (assetsFromSushi, borrowsFromSushi,,,,,,,,) =
+            abi.decode(data, (uint256, uint256, uint256, uint256[2], bool, uint256, uint256, uint256, uint256, uint256));
+    }
 }
 
 /// @notice Test SSLP Strategy with Sushiswap in L1 with eth earn.

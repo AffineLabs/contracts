@@ -83,6 +83,7 @@ contract DeltaNeutralLp is AccessStrategy {
 
         // To trade asset/borrow on uni v3
         poolFee = _pool.fee();
+
         asset.safeApprove(address(V3ROUTER), type(uint256).max);
         borrow.safeApprove(address(V3ROUTER), type(uint256).max);
 
@@ -339,7 +340,7 @@ contract DeltaNeutralLp is AccessStrategy {
         // a = usdc, b = weth
         uint256 abPairBalance = abPair.balanceOf(address(this));
         (uint256 underlyingAssets, uint256 underlyingBorrows) = _getSushiLpUnderlyingAmounts(abPairBalance);
-        (uint256 amount0, uint256 amount1) = router.removeLiquidity({
+        (uint256 assetsFromSushi, uint256 borrowsFromSushi) = router.removeLiquidity({
             tokenA: address(asset),
             tokenB: address(borrow),
             liquidity: abPairBalance,
@@ -348,7 +349,7 @@ contract DeltaNeutralLp is AccessStrategy {
             to: address(this),
             deadline: block.timestamp
         });
-        (uint256 assetsFromSushi, uint256 borrowsFromSushi) = _changeFormat(amount0, amount1);
+        // (uint256 assetsFromSushi, uint256 borrowsFromSushi) = _maybeFlip(amount0, amount1);
 
         // Buy enough borrow to pay back debt
         uint256 debt = debtToken.balanceOf(address(this));
@@ -426,12 +427,6 @@ contract DeltaNeutralLp is AccessStrategy {
             tradeAmounts[0] = borrowToSell;
             tradeAmounts[1] = V3ROUTER.exactInputSingle(params);
         }
-    }
-
-    function _changeFormat(uint256 assets, uint256 borrows) internal view returns (uint256, uint256) {
-        // If asset is not token 0 then flip
-        if (address(asset) > address(borrow)) return (borrows, assets);
-        return (assets, borrows);
     }
 
     function _stake() internal {
