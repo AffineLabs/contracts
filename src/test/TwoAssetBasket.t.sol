@@ -14,6 +14,7 @@ import {Dollar} from "src/libs/DollarMath.sol";
 import {TwoAssetBasket} from "src/vaults/TwoAssetBasket.sol";
 import {Router} from "src/vaults/cross-chain-vault/router/Router.sol";
 import {IERC4626} from "src/interfaces/IERC4626.sol";
+import {IWETH} from "src/interfaces/IWETH.sol";
 
 /// @notice Test two asset basket functionalities.
 contract BtcEthBasketTest is TestPlus {
@@ -27,7 +28,7 @@ contract BtcEthBasketTest is TestPlus {
         forkPolygon();
 
         basket = Deploy.deployTwoAssetBasket(usdc);
-        router = new Router("Alp", 0x52c8e413Ed9E961565D8D1de67e805E81b26C01b);
+        router = new Router("Alp", 0x52c8e413Ed9E961565D8D1de67e805E81b26C01b, IWETH(address(0)));
         btc = basket.btc();
         weth = basket.weth();
     }

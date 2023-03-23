@@ -29,6 +29,7 @@ import {DeltaNeutralLpV3} from "src/strategies/DeltaNeutralLpV3.sol";
 
 import {Base} from "./Base.sol";
 import {SslpV3} from "./DeltaNeutralLpV3.s.sol";
+import {IWETH} from "src/interfaces/IWETH.sol";
 
 /*  solhint-disable reason-string, no-console */
 contract Deploy is Script, Base {
@@ -155,7 +156,7 @@ contract Deploy is Script, Base {
         require(queue.vault() == vault);
 
         // Deploy Router
-        Router router4626 = new Router("affine-router-v1", address(forwarder));
+        Router router4626 = new Router("affine-router-v1", address(forwarder), IWETH(address(0)));
         require(router4626.trustedForwarder() == address(forwarder));
 
         // Deploy TwoAssetBasket
