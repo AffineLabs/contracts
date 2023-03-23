@@ -32,6 +32,7 @@ contract L1DeltaNeutralTest is TestPlus {
     uint256 masterChefPid;
     uint256 MAX_BPS = 10_000;
     uint256 startAssets;
+    uint256 unusedAssets;
     uint256 public constant IDEAL_SLIPPAGE_BPS = 200;
 
     function _fork() internal virtual {
@@ -67,6 +68,7 @@ contract L1DeltaNeutralTest is TestPlus {
         abPair = strategy.abPair();
         borrow = strategy.borrow();
         startAssets = 1000 * (10 ** asset.decimals());
+        unusedAssets = 10 ** asset.decimals();
     }
 
     /// @notice Test only address with strategist role can open a position.
@@ -81,7 +83,7 @@ contract L1DeltaNeutralTest is TestPlus {
                 Strings.toHexString(uint256(strategy.STRATEGIST_ROLE()), 32)
             )
         );
-        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
+        strategy.startPosition(startAssets, IDEAL_SLIPPAGE_BPS);
     }
 
     /// @notice Test creation of position.
@@ -90,7 +92,7 @@ contract L1DeltaNeutralTest is TestPlus {
 
         vm.startPrank(vault.governance());
 
-        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
+        strategy.startPosition(startAssets, IDEAL_SLIPPAGE_BPS);
         assertFalse(strategy.canStartNewPos());
 
         // I have the right amount of aUSDC
@@ -107,12 +109,50 @@ contract L1DeltaNeutralTest is TestPlus {
         assertApproxEqRel(assetsLP, assetsInAAve * 2, 0.01e18);
     }
 
+    /**
+     * @notice test start position with less assets than balance
+     */
+    function testStartPositionWithLessAmount() public {
+        deal(address(asset), address(strategy), startAssets);
+
+        vm.startPrank(vault.governance());
+        strategy.startPosition(startAssets - unusedAssets, IDEAL_SLIPPAGE_BPS);
+        // remaining balance should be greater or equal to the less amount
+        assertGe(asset.balanceOf(address(strategy)), unusedAssets);
+    }
+
+    /**
+     * @notice Fuzz test start position with less assets than balance
+     */
+    function testStartPositionWithLessAmountFuzz(uint256 _unusedAssets) public {
+        _unusedAssets = (_unusedAssets % startAssets);
+
+        deal(address(asset), address(strategy), startAssets);
+
+        vm.startPrank(vault.governance());
+        strategy.startPosition(startAssets - _unusedAssets, IDEAL_SLIPPAGE_BPS);
+        // remaining balance should be greater or equal to the less amount
+        assertGe(asset.balanceOf(address(strategy)), _unusedAssets);
+    }
+
+    /**
+     * @notice test start position with more assets than balance
+     */
+    function testStartInvalidPosition() public {
+        deal(address(asset), address(strategy), startAssets);
+
+        // call should revert
+        vm.startPrank(vault.governance());
+        vm.expectRevert("DNLP: insufficient assets");
+        strategy.startPosition(startAssets + 1, IDEAL_SLIPPAGE_BPS);
+    }
+
     /// @notice Test only address with strategist role can end a position.
     function testOnlyAddressWithStrategistRoleCanEndPosition() public {
         deal(address(asset), address(strategy), startAssets);
 
         vm.startPrank(vault.governance());
-        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
+        strategy.startPosition(startAssets, IDEAL_SLIPPAGE_BPS);
 
         changePrank(alice);
         vm.expectRevert(
@@ -131,7 +171,7 @@ contract L1DeltaNeutralTest is TestPlus {
         deal(address(asset), address(strategy), startAssets);
 
         vm.startPrank(vault.governance());
-        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
+        strategy.startPosition(startAssets, IDEAL_SLIPPAGE_BPS);
         strategy.endPosition(IDEAL_SLIPPAGE_BPS);
 
         assertTrue(strategy.canStartNewPos());
@@ -149,7 +189,7 @@ contract L1DeltaNeutralTest is TestPlus {
         assertApproxEqRel(strategy.totalLockedValue(), startAssets, 0.01e18);
 
         vm.prank(vault.governance());
-        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
+        strategy.startPosition(startAssets, IDEAL_SLIPPAGE_BPS);
 
         assertApproxEqRel(strategy.totalLockedValue(), startAssets, 0.01e18);
     }
@@ -165,7 +205,7 @@ contract L1DeltaNeutralTest is TestPlus {
         deal(address(asset), address(strategy), startAssets);
 
         vm.prank(vault.governance());
-        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
+        strategy.startPosition(startAssets, IDEAL_SLIPPAGE_BPS);
 
         // We unwind position if there is a one
         vm.prank(address(vault));
@@ -181,7 +221,7 @@ contract L1DeltaNeutralTest is TestPlus {
         deal(address(asset), address(strategy), startAssets);
 
         vm.prank(vault.governance());
-        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
+        strategy.startPosition(startAssets, IDEAL_SLIPPAGE_BPS);
 
         // The staked lp tokens gain will accumulate some sushi
         vm.roll(block.number + 1000);
@@ -216,7 +256,7 @@ contract L1DeltaNeutralTest is TestPlus {
         assertApproxEqRel(strategy.totalLockedValue(), assets, 0.01e18);
 
         vm.startPrank(vault.governance());
-        strategy.startPosition(IDEAL_SLIPPAGE_BPS);
+        strategy.startPosition(assets, IDEAL_SLIPPAGE_BPS);
         assertApproxEqRel(strategy.totalLockedValue(), assets, 0.01e18);
 
         strategy.endPosition(IDEAL_SLIPPAGE_BPS);
@@ -243,7 +283,7 @@ contract L1DeltaNeutralTest is TestPlus {
 
         deal(address(asset), address(strategy2), startAssets);
 
-        strategy2.startPosition(IDEAL_SLIPPAGE_BPS);
+        strategy2.startPosition(startAssets, IDEAL_SLIPPAGE_BPS);
 
         // should deposit amount
         uint256 shouldDeposit = startAssets.mulDivDown(assetToDepositRatioBps, MAX_BPS);

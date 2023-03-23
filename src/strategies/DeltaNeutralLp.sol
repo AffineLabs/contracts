@@ -232,10 +232,16 @@ contract DeltaNeutralLp is AccessStrategy {
         uint256 borrowsToSushi,
         uint256 timestamp
     );
+    /**
+     * @notice start a new position
+     * @param  assets asset amount to start position
+     * @param slippageToleranceBps slippage tolerance for liquidity pool
+     */
 
-    function startPosition(uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
+    function startPosition(uint256 assets, uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
         // Set position metadata
         require(canStartNewPos, "DNLP: position is active");
+        require(assets <= asset.balanceOf(address(this)), "DNLP: insufficient assets");
         currentPosition += 1;
         canStartNewPos = false;
 
@@ -243,34 +249,37 @@ contract DeltaNeutralLp is AccessStrategy {
 
         // Deposit asset in aave. Then borrow at 75%
         // If x is amount we want to deposit into aave .75x = Total - x => 1.75x = Total => x = Total / 1.75 => Total * 4/7
-        uint256 assetsToDeposit = asset.balanceOf(address(this)).mulDivDown(assetToDepositRatioBps, MAX_BPS);
+        uint256 assetsToDeposit = assets.mulDivDown(assetToDepositRatioBps, MAX_BPS);
 
         lendingPool.deposit({asset: address(asset), amount: assetsToDeposit, onBehalfOf: address(this), referralCode: 0});
 
-        uint256 borrowAmount =
+        uint256 desiredBorrowsInSushi =
             _assetToBorrow(borrowPrice, assetsToDeposit).mulDivDown(collateralToBorrowRatioBps, MAX_BPS);
 
-        if (borrowAmount > 0) {
+        if (desiredBorrowsInSushi > 0) {
             lendingPool.borrow({
                 asset: address(borrow),
-                amount: borrowAmount,
+                amount: desiredBorrowsInSushi,
                 interestRateMode: 2,
                 referralCode: 0,
                 onBehalfOf: address(this)
             });
         }
 
+        // pre LP assets - required for assets utilized in LP
+        uint256 preLpAssets = asset.balanceOf(address(this));
+        uint256 preLpBorrows = borrow.balanceOf(address(this));
+
         // Provide liquidity on sushiswap
-        uint256 desiredAssetsInUni = asset.balanceOf(address(this));
-        uint256 desiredBorrowsInUni = borrow.balanceOf(address(this));
+        uint256 desiredAssetsInSushi = assets - assetsToDeposit;
 
         router.addLiquidity({
             tokenA: address(asset),
             tokenB: address(borrow),
-            amountADesired: desiredAssetsInUni,
-            amountBDesired: desiredBorrowsInUni,
-            amountAMin: desiredAssetsInUni.slippageDown(slippageToleranceBps),
-            amountBMin: desiredBorrowsInUni.slippageDown(slippageToleranceBps),
+            amountADesired: desiredAssetsInSushi,
+            amountBDesired: desiredBorrowsInSushi,
+            amountAMin: desiredAssetsInSushi.slippageDown(slippageToleranceBps),
+            amountBMin: desiredBorrowsInSushi.slippageDown(slippageToleranceBps),
             to: address(this),
             deadline: block.timestamp
         });
@@ -282,8 +291,8 @@ contract DeltaNeutralLp is AccessStrategy {
             assetCollateral: aToken.balanceOf(address(this)),
             borrows: debtToken.balanceOf(address(this)),
             borrowPrices: [borrowPrice, _sushiPriceOfBorrow()], // chainlink price and spot price of borrow
-            assetsToSushi: desiredAssetsInUni - asset.balanceOf(address(this)),
-            borrowsToSushi: desiredBorrowsInUni - borrow.balanceOf(address(this)),
+            assetsToSushi: preLpAssets - asset.balanceOf(address(this)),
+            borrowsToSushi: preLpBorrows - borrow.balanceOf(address(this)),
             timestamp: block.timestamp
         });
     }

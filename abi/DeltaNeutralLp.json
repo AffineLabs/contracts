@@ -720,6 +720,11 @@
     "inputs": [
       {
         "internalType": "uint256",
+        "name": "assets",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
         "name": "slippageToleranceBps",
         "type": "uint256"
       }
