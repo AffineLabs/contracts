@@ -5,6 +5,7 @@ import {Script, console} from "forge-std/Script.sol";
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Vault} from "src/vaults/Vault.sol";
+import {Router, IWETH} from "src/vaults/cross-chain-vault/router/Router.sol";
 
 import {Base} from "./Base.sol";
 
@@ -32,7 +33,6 @@ contract Deploy is Script, Base {
     }
 
     function runEthWeth() external {
-        _start();
         bool testnet = vm.envBool("TEST");
         console.log("test: ", testnet ? 1 : 0);
         bytes memory configBytes = _getConfigJson({mainnet: !testnet, layer1: true});
@@ -42,9 +42,23 @@ contract Deploy is Script, Base {
         address weth = config.weth;
         console.log("weth: %s", weth);
 
+        _start();
         Vault vault = EthVaults.deployEthWeth(governance, weth);
         console.log("Eth denominated vault addr:", address(vault));
         Vault.Number memory price = vault.detailedPrice();
         console.log("price: %s", price.num);
+    }
+
+    function routerDeploy() external {
+        bool testnet = vm.envBool("TEST");
+        bytes memory configBytes = _getConfigJson({mainnet: !testnet, layer1: true});
+        Base.L1Config memory config = abi.decode(configBytes, (Base.L1Config));
+
+        address weth = config.weth;
+        console.log("weth: %s", weth);
+
+        _start();
+        Router router = new Router("affine-router-v2", address(0), IWETH(weth));
+        console.log("router weth: %s", address(router.weth()));
     }
 }
