@@ -33,9 +33,9 @@ library Sslp {
             masterChef: IMasterChef(0x0769fd68dFb93167989C6f7254cd0D766Fb2841F), // MasterChef
             masterChefPid: 1, // Masterchef PID
             useMasterChefV2: true, // use MasterChefV2 interface
-            sushiToken: ERC20(0x0b3F868E0BE5597D5DB7fEB59E1CADBb0fdDa50a)
+            sushiToken: ERC20(0x0b3F868E0BE5597D5DB7fEB59E1CADBb0fdDa50a),
+            pool: IUniswapV3Pool(0x45dDa9cb7c25131DF268515131f647d726f50608)
         }),
-        IUniswapV3Pool(0x45dDa9cb7c25131DF268515131f647d726f50608),
         _getStrategists()
         );
     }
@@ -64,9 +64,9 @@ library Sslp {
             masterChef: IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd), // MasterChef
             masterChefPid: 1, // Masterchef PID for WETH/USDC
             useMasterChefV2: false, // use MasterChefV2 interface
-            sushiToken: ERC20(0x6B3595068778DD592e39A122f4f5a5cF09C90fE2)
+            sushiToken: ERC20(0x6B3595068778DD592e39A122f4f5a5cF09C90fE2),
+            pool: IUniswapV3Pool(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640) // 5 bps pool (gets most volume)
         }),
-        IUniswapV3Pool(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640), // 5 bps pool (gets most volume)
         _getStrategists()
         );
     }
@@ -90,9 +90,9 @@ library Sslp {
             masterChef: IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd), // MasterChef
             masterChefPid: 1, // Masterchef PID for WETH/USDC
             useMasterChefV2: false, // use MasterChefV2 interface
-            sushiToken: ERC20(0x6B3595068778DD592e39A122f4f5a5cF09C90fE2)
+            sushiToken: ERC20(0x6B3595068778DD592e39A122f4f5a5cF09C90fE2),
+            pool: IUniswapV3Pool(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640) // 5 bps pool (gets most volume)
         }),
-        IUniswapV3Pool(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640), // 5 bps pool (gets most volume)
         _getStrategists()
         );
     }

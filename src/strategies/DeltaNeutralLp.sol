@@ -23,6 +23,7 @@ struct LpInfo {
     uint256 masterChefPid; // pool id
     bool useMasterChefV2; // if we are using MasterChef v2
     ERC20 sushiToken; // sushi token address, received as reward
+    IUniswapV3Pool pool;
 }
 
 struct LendingInfo {
@@ -38,13 +39,9 @@ contract DeltaNeutralLp is AccessStrategy {
     using FixedPointMathLib for uint256;
     using SlippageUtils for uint256;
 
-    constructor(
-        AffineVault _vault,
-        LendingInfo memory lendingInfo,
-        LpInfo memory lpProvider,
-        IUniswapV3Pool _pool,
-        address[] memory strategists
-    ) AccessStrategy(_vault, strategists) {
+    constructor(AffineVault _vault, LendingInfo memory lendingInfo, LpInfo memory lpInfo, address[] memory strategists)
+        AccessStrategy(_vault, strategists)
+    {
         canStartNewPos = true;
 
         assetToDepositRatioBps = lendingInfo.assetToDepositRatioBps;
@@ -53,7 +50,7 @@ contract DeltaNeutralLp is AccessStrategy {
         borrow = lendingInfo.borrow;
         borrowFeed = lendingInfo.priceFeed;
 
-        router = lpProvider.router;
+        router = lpInfo.router;
         abPair = ERC20(IUniswapV2Factory(router.factory()).getPair(address(asset), address(borrow)));
 
         // Aave info
@@ -62,10 +59,10 @@ contract DeltaNeutralLp is AccessStrategy {
         aToken = ERC20(lendingPool.getReserveData(address(asset)).aTokenAddress);
 
         // Sushi info
-        masterChef = lpProvider.masterChef;
-        masterChefPid = lpProvider.masterChefPid;
-        sushiToken = lpProvider.sushiToken;
-        useMasterChefV2 = lpProvider.useMasterChefV2;
+        masterChef = lpInfo.masterChef;
+        masterChefPid = lpInfo.masterChefPid;
+        sushiToken = lpInfo.sushiToken;
+        useMasterChefV2 = lpInfo.useMasterChefV2;
 
         // Depositing/withdrawing/repaying debt from lendingPool
         asset.safeApprove(address(lendingPool), type(uint256).max);
@@ -78,7 +75,7 @@ contract DeltaNeutralLp is AccessStrategy {
         sushiToken.safeApprove(address(router), type(uint256).max);
 
         // To trade asset/borrow on uni v3
-        poolFee = _pool.fee();
+        poolFee = lpInfo.pool.fee();
 
         asset.safeApprove(address(V3ROUTER), type(uint256).max);
         borrow.safeApprove(address(V3ROUTER), type(uint256).max);

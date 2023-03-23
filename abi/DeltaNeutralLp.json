@@ -64,16 +64,16 @@
             "internalType": "contract ERC20",
             "name": "sushiToken",
             "type": "address"
+          },
+          {
+            "internalType": "contract IUniswapV3Pool",
+            "name": "pool",
+            "type": "address"
           }
         ],
         "internalType": "struct LpInfo",
-        "name": "lpProvider",
+        "name": "lpInfo",
         "type": "tuple"
-      },
-      {
-        "internalType": "contract IUniswapV3Pool",
-        "name": "_pool",
-        "type": "address"
       },
       {
         "internalType": "address[]",
