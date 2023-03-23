@@ -16,8 +16,12 @@ import {ERC4626Router} from "src/vaults/cross-chain-vault/router/ERC4626Router.s
 import {IERC4626} from "src/interfaces/IERC4626.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 
+import {IWETH} from "src/interfaces/IWETH.sol";
+import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
+import {Router} from "src/vaults/cross-chain-vault/router/Router.sol";
+
 /// @notice Test functionalities of the router contract.
-contract RouterTest is TestPlus {
+contract L2RouterTest is TestPlus {
     using stdStorage for StdStorage;
 
     ERC20 token = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
@@ -37,7 +41,7 @@ contract RouterTest is TestPlus {
 
     /// @notice Test that the router contract can handle multiple deposits.
     function testMultipleDeposits() public {
-        address user = 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045;
+        address user = alice;
         deal(address(token), user, 10e6);
         bytes[] memory data = new bytes[](2);
         data[0] = abi.encodeWithSelector(router.depositToVault.selector, IERC4626(address(basket)), user, 1e6, 0);
@@ -49,5 +53,36 @@ contract RouterTest is TestPlus {
         router.multicall(data);
         assert(vault.balanceOf(user) > 0);
         assert(basket.balanceOf(user) > 0);
+    }
+}
+
+/// @notice Test functionalities of the router contract.
+contract L1RouterTest is TestPlus {
+    using stdStorage for StdStorage;
+
+    L2Vault vault;
+    Router router;
+    IWETH weth = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+
+    function setUp() public {
+        forkEth();
+        vault = Deploy.deployL2Vault();
+        router = new Router("", address(0), weth);
+        uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
+        bytes32 tokenAddr = bytes32(uint256(uint160(address(weth))));
+        vm.store(address(vault), bytes32(slot), tokenAddr);
+    }
+
+    function testDepositEth() public {
+        vm.deal(alice, 1 ether);
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeCall(router.depositNative, ());
+        data[1] = abi.encodeWithSelector(router.deposit.selector, IERC4626(address(vault)), alice, 1 ether, 0);
+
+        vm.startPrank(alice);
+        router.approve(ERC20(address(weth)), address(vault), 1 ether);
+        router.multicall{value: 1 ether}(data);
+        assert(vault.balanceOf(alice) > 0);
     }
 }
