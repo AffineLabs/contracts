@@ -155,7 +155,7 @@ contract ConvexStratTest is TestPlus {
 
         strategy.sellRewards(0, 0);
         uint256 crvUsdc = usdc.balanceOf(address(strategy));
-        assertApproxEqRel(crvUsdc, 10.3e6, 0.05e18);
+        assertApproxEqRel(crvUsdc, 10.3e6, 0.1e18);
 
         // CVX is about $5.92 as of block 16520958
         deal(address(strategy.CVX()), address(strategy), 10e18);

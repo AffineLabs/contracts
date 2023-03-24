@@ -13,7 +13,7 @@ contract TestPlus is Test, Deploy {
     address bob = makeAddr("bob");
     address charlie = makeAddr("charlie");
 
-    uint256 constant ETH_FORK_BLOCK = 16_566_573;
+    uint256 constant ETH_FORK_BLOCK = 16_897_451;
     uint256 constant POLYGON_FORK_BLOCK = 38_961_333;
 
     function forkEth() internal {
