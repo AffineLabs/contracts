@@ -9,8 +9,6 @@ contract ERC4626Router is ERC4626RouterBase {
 
     constructor(string memory name) {}
 
-    // For the below, no approval needed, assumes vault is already max approved
-
     function depositToVault(IERC4626 vault, address to, uint256 amount, uint256 minSharesOut)
         external
         payable
@@ -37,7 +35,6 @@ contract ERC4626Router is ERC4626RouterBase {
         payable
         returns (uint256 sharesOut)
     {
-        // amount out passes through so only one slippage check is needed
         uint256 amount = redeem(fromVault, address(this), shares, 0);
         return deposit(toVault, to, amount, minSharesOut);
     }

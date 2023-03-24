@@ -5,24 +5,19 @@ import {Script, console} from "forge-std/Script.sol";
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Vault} from "src/vaults/Vault.sol";
+import {Router, IWETH} from "src/vaults/cross-chain-vault/router/Router.sol";
+
+import {Base} from "./Base.sol";
 
 /* solhint-disable reason-string, no-console */
 
 library EthVaults {
-    function deployEthWeth() internal returns (Vault) {
+    function deployEthWeth(address governance, address weth) internal returns (Vault) {
         // Deploy implementation
         Vault impl = new Vault();
 
         // Initialize proxy with correct data
-        bytes memory initData = abi.encodeCall(
-            Vault.initialize,
-            (
-                0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e, /* governance */
-                0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, /* weth */
-                "wETH Earn Eth",
-                "wEthEarnEth"
-            )
-        );
+        bytes memory initData = abi.encodeCall(Vault.initialize, (governance, weth, "WETH Earn Eth", "wethEarnEth"));
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
 
         // Check that values were set correctly.
@@ -31,14 +26,39 @@ library EthVaults {
     }
 }
 
-contract Deploy is Script {
+contract Deploy is Script, Base {
     function _start() internal {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
     }
 
     function runEthWeth() external {
+        bool testnet = vm.envBool("TEST");
+        console.log("test: ", testnet ? 1 : 0);
+        bytes memory configBytes = _getConfigJson({mainnet: !testnet, layer1: true});
+        Base.L1Config memory config = abi.decode(configBytes, (Base.L1Config));
+
+        address governance = config.governance;
+        address weth = config.weth;
+        console.log("weth: %s", weth);
+
         _start();
-        console.log("Eth denominated vault addr:", address(EthVaults.deployEthWeth()));
+        Vault vault = EthVaults.deployEthWeth(governance, weth);
+        console.log("Eth denominated vault addr:", address(vault));
+        Vault.Number memory price = vault.detailedPrice();
+        console.log("price: %s", price.num);
+    }
+
+    function routerDeploy() external {
+        bool testnet = vm.envBool("TEST");
+        bytes memory configBytes = _getConfigJson({mainnet: !testnet, layer1: true});
+        Base.L1Config memory config = abi.decode(configBytes, (Base.L1Config));
+
+        address weth = config.weth;
+        console.log("weth: %s", weth);
+
+        _start();
+        Router router = new Router("affine-router-v2", address(0), IWETH(weth));
+        console.log("router weth: %s", address(router.weth()));
     }
 }

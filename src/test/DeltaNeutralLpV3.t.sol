@@ -252,7 +252,7 @@ contract DeltaNeutralV3EthWethTest is DeltaNeutralV3Test {
     function _setAsset() internal virtual override {}
 
     function _deployVault() internal override {
-        vault = EthVaults.deployEthWeth();
+        vault = EthVaults.deployEthWeth(governance, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     }
 
     function _deployStrategy() internal override {

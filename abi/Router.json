@@ -10,6 +10,11 @@
         "internalType": "address",
         "name": "forwarder",
         "type": "address"
+      },
+      {
+        "internalType": "contract IWETH",
+        "name": "_weth",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -118,6 +123,13 @@
         "type": "uint256"
       }
     ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "depositNative",
+    "outputs": [],
     "stateMutability": "payable",
     "type": "function"
   },
@@ -350,6 +362,19 @@
         "internalType": "string",
         "name": "",
         "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "weth",
+    "outputs": [
+      {
+        "internalType": "contract IWETH",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
