@@ -342,7 +342,6 @@ contract DeltaNeutralLp is AccessStrategy {
             to: address(this),
             deadline: block.timestamp
         });
-        // (uint256 assetsFromSushi, uint256 borrowsFromSushi) = _maybeFlip(amount0, amount1);
 
         // Buy enough borrow to pay back debt
         uint256 debt = debtToken.balanceOf(address(this));
