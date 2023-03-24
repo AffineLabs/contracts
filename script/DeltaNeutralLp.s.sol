@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-import {Script, console} from "forge-std/Script.sol";
+import {Script} from "forge-std/Script.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
@@ -116,8 +116,6 @@ contract Deploy is Script {
 
     function runEthWethSushi() external {
         _start();
-        DeltaNeutralLp strategy =
-            Sslp.deployEthWeth(AffineVault(0x87964c5a8F2b13e04b86B4D12e0EeA13Ff144DC3), 5714, 7500);
-        console.log(address(strategy));
+        Sslp.deployEthWeth(AffineVault(0x87964c5a8F2b13e04b86B4D12e0EeA13Ff144DC3), 5714, 7500);
     }
 }
