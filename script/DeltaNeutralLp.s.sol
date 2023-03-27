@@ -116,6 +116,6 @@ contract Deploy is Script {
 
     function runEthWethSushi() external {
         _start();
-        Sslp.deployEthWeth(AffineVault(0x87964c5a8F2b13e04b86B4D12e0EeA13Ff144DC3), 5714, 7500);
+        Sslp.deployEthWeth(AffineVault(0x5185fe072f9eE947bF017C7854470e11C2cFb32a), 5714, 7500);
     }
 }

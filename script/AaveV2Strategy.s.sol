@@ -17,4 +17,14 @@ contract Deploy is Script {
         AaveV2Strategy strategy = new AaveV2Strategy(vault, ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9));
         require(strategy.vault() == vault);
     }
+
+    function runEthEarn() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+
+        AffineVault vault = AffineVault(0x5185fe072f9eE947bF017C7854470e11C2cFb32a);
+        AaveV2Strategy strategy = new AaveV2Strategy(vault, ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9));
+        require(strategy.vault() == vault);
+        console.log("asset: ", address(strategy.asset()));
+    }
 }
