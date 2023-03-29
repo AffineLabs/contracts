@@ -4,10 +4,11 @@ pragma solidity =0.8.16;
 import {Vault, MathUpgradeable, Math, SafeTransferLib, ERC20} from "src/vaults/Vault.sol";
 import {IWETH} from "src/interfaces/IWETH.sol";
 
-/// @notice The same as Vault, but raw ether ONLY raw ether can be withdrawn.
+/// @notice The same as Vault, but ONLY raw ether can be withdrawn.
 contract EthVault is Vault {
     using SafeTransferLib for ERC20;
 
+    /// @dev We need this to receive ETH when calling WETH.withdraw()
     receive() external payable {}
 
     function weth() public pure virtual returns (IWETH) {
