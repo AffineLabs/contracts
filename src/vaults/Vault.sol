@@ -159,7 +159,6 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
      * @dev See {IERC4262-previewWithdraw}.
      */
     function previewWithdraw(uint256 assetsToUser) public view virtual override returns (uint256) {
-        // assets * ((1 - feeBps) / 1e4) = assetsToUser
         // assets * ((1e4 - feeBps) / 1e4) = assetsToUser
         uint256 assets = assetsToUser.mulDiv(MAX_BPS, MAX_BPS - withdrawalFee, MathUpgradeable.Rounding.Up);
         return _convertToShares(assets, MathUpgradeable.Rounding.Up);
