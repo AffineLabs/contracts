@@ -150,19 +150,18 @@ contract ConvexStratTest is TestPlus {
 
     /// @notice Make sure that we get the correct amount of assets when selling rewards
     function testRewardsAreNearSpotPrice() public {
-        // CRV is about $1.03 as of block 16520958
-        deal(address(strategy.CRV()), address(strategy), 10e18);
+        // CRV is about $0.92 as of current forked block
+        deal(address(strategy.CRV()), address(strategy), 1000e18);
 
         strategy.sellRewards(0, 0);
         uint256 crvUsdc = usdc.balanceOf(address(strategy));
-        assertApproxEqRel(crvUsdc, 10.3e6, 0.1e18);
+        assertApproxEqRel(crvUsdc, 920e6, 0.05e18);
 
-        // CVX is about $5.92 as of block 16520958
-        deal(address(strategy.CVX()), address(strategy), 10e18);
+        // CVX is about $5.3 as of block 16520958
+        deal(address(strategy.CVX()), address(strategy), 1000e18);
         strategy.sellRewards(0, 0);
         uint256 cvxUsdc = usdc.balanceOf(address(strategy)) - crvUsdc;
-        // The pool has a tvl of about $700k, but we still see significant slippage
-        assertApproxEqRel(cvxUsdc, 59.2e6, 0.3e18);
+        assertApproxEqRel(cvxUsdc, 5300e6, 0.05e18);
     }
 
     /// @notice Fuzz test of tvl function.
