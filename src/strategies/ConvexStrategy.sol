@@ -224,12 +224,13 @@ contract ConvexStrategy is AccessStrategy {
     function _sellRewards(uint256 minAssetsFromCrv, uint256 minAssetsFromCvx) internal {
         // Sell CRV rewards if we have at least MIN_REWARD_AMOUNT tokens
         uint256 crvBal = CRV.balanceOf(address(this));
-        uint24 fee = 10_000;
+        uint24 bps100 = 10_000;
+        uint24 bps5 = 500;
         if (crvBal > MIN_REWARD_AMOUNT) {
             ISwapRouter.ExactInputSingleParams memory paramsCrv = ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(CRV),
                 tokenOut: address(asset),
-                fee: fee,
+                fee: bps100,
                 recipient: address(this),
                 deadline: block.timestamp,
                 amountIn: crvBal,
@@ -243,7 +244,7 @@ contract ConvexStrategy is AccessStrategy {
         uint256 cvxBal = CVX.balanceOf(address(this));
         if (cvxBal > MIN_REWARD_AMOUNT) {
             ISwapRouter.ExactInputParams memory paramsCvx = ISwapRouter.ExactInputParams({
-                path: abi.encodePacked(address(CVX), fee, address(WETH), fee, address(asset)),
+                path: abi.encodePacked(address(CVX), bps100, address(WETH), bps5, address(asset)),
                 recipient: address(this),
                 deadline: block.timestamp,
                 amountIn: cvxBal,
