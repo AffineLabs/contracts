@@ -7,6 +7,8 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
+import {Multicallable} from "solady/src/utils/Multicallable.sol";
+
 import {AffineGovernable} from "src/utils/AffineGovernable.sol";
 import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
@@ -16,7 +18,7 @@ import {uncheckedInc} from "src/libs/Unchecked.sol";
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
  * strategy liquidation.
  */
-contract AffineVault is AffineGovernable, AccessControlUpgradeable {
+contract AffineVault is AffineGovernable, AccessControlUpgradeable, Multicallable {
     using SafeTransferLib for ERC20;
 
     /*//////////////////////////////////////////////////////////////

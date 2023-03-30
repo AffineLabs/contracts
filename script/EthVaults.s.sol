@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 import {Script, console} from "forge-std/Script.sol";
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {EthVault} from "src/vaults/EthVault.sol";
 import {Vault} from "src/vaults/Vault.sol";
 import {Router, IWETH} from "src/vaults/cross-chain-vault/router/Router.sol";
 
@@ -12,16 +13,18 @@ import {Base} from "./Base.sol";
 /* solhint-disable reason-string, no-console */
 
 library EthVaults {
-    function deployEthWeth(address governance, address weth) internal returns (Vault) {
+    function deployEthWeth(address governance, address weth) internal returns (EthVault) {
         // Deploy implementation
-        Vault impl = new Vault();
+        EthVault impl = new EthVault();
 
         // Initialize proxy with correct data
-        bytes memory initData = abi.encodeCall(Vault.initialize, (governance, weth, "WETH Earn Eth", "wethEarnEth"));
+        bytes memory initData = abi.encodeCall(Vault.initialize, (governance, weth, "ETH Earn Eth", "ethEarnEth"));
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
 
         // Check that values were set correctly.
-        Vault vault = Vault(address(proxy));
+        EthVault vault = EthVault(payable(address(proxy)));
+        require(vault.governance() == governance);
+        require(address(vault.asset()) == weth);
         return vault;
     }
 }
@@ -43,9 +46,9 @@ contract Deploy is Script, Base {
         console.log("weth: %s", weth);
 
         _start();
-        Vault vault = EthVaults.deployEthWeth(governance, weth);
+        EthVault vault = EthVaults.deployEthWeth(governance, weth);
         console.log("Eth denominated vault addr:", address(vault));
-        Vault.Number memory price = vault.detailedPrice();
+        EthVault.Number memory price = vault.detailedPrice();
         console.log("price: %s", price.num);
     }
 
