@@ -5,169 +5,105 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
-import {AffineVault} from "src/vaults/AffineVault.sol";
+import {Vault} from "src/vaults/Vault.sol";
 
-contract LockedWithdrawalEscrow is ERC20 {
+contract LockedWithdrawalEscrow {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
+
+    // Epoch counter
+    uint256 public currentEpoch;
 
     // token paid to user
     ERC20 public immutable asset;
 
-    // Last withdrawal request time map
-    mapping(address => uint256) public requestTimes;
-
-    // amount of pending debt token share to resolve
-    uint256 public pendingDebtShares;
-
-    // Max locked withdrawal time, user can withdraw funds after sla
-    uint256 public immutable sla;
-
     // Vault this escrow attached to
-    AffineVault public immutable vault;
+    Vault public immutable vault;
 
-    constructor(AffineVault _vault, uint256 _sla) ERC20("DebtToken", "DT", 18) {
+    // map each user with
+    mapping(uint256 => mapping(address => uint256)) public userDebtShare;
+
+    // map price for each epoch
+    mapping(uint256 => uint256) epochPrice;
+
+    // last resolved time
+    uint256 public lastResolvedUTCTime;
+
+    constructor(Vault _vault) {
         asset = ERC20(_vault.asset());
         vault = _vault;
-        sla = _sla;
     }
 
     modifier onlyVault() {
         require(msg.sender == address(vault), "LWE: must be vault");
         _;
     }
+    // register user withdrawal request as debt
 
-    /**
-     * @notice User register to withdraw earn token
-     * @param user user address
-     * @param debtShares amount of debt token share for the withdrawal request
-     * @dev user withdrawal request will be locked until the SLA time is over.
-     * @dev debtShares = token_to_withdraw * price of token
-     * @dev user will get the share of debtShare after selling earn token
-     */
-    function registerWithdrawalRequest(address user, uint256 debtShares) external onlyVault {
-        _mint(user, debtShares);
-        requestTimes[user] = block.timestamp;
-        pendingDebtShares += debtShares;
+    function registerWithdrawalRequest(address user, uint256 shares) external onlyVault {
+        // lock user share
+        vault.transferFrom(user, address(this), shares);
+        userDebtShare[currentEpoch][user] += shares;
     }
 
-    /**
-     * @notice Resolve the pending debt token after closing a position
-     * @param resolvedAmount amount resolved after pay token to this contract.
-     * @dev This will increase the amount of assets and total supply of debt token in the pool
-     * @dev More user will be allowed to withdraw funds
-     * @dev the resolved amount is the ratio of locked e-earn token and minimum e earn token available to burn in vault.
-     * @dev resolvedAmount = pendingDebtToken * min(vault_available_e_earn_to_burn, locked_e_earn) / locked_e_earn
-     */
-    function resolveDebtShares(uint256 resolvedAmount) external onlyVault {
-        // check if we are resolving more than pending share
-        pendingDebtShares -= resolvedAmount;
+    // dummy function to work with, replaced by vault modification PR
+    function availableToWithdraw(uint256 shares) internal returns (bool) {
+        return shares > 0;
     }
 
-    /**
-     * @notice calculate the total resolved debt share
-     * @return total resolved debt share
-     */
-    function getResolvedShares() internal view returns (uint256) {
-        // total share is total token supply  - not resolved debt token
-        return totalSupply - pendingDebtShares;
-    }
-
-    /**
-     * @notice checks if current time is before sla or not
-     * @return true if calls are made by user before sla period
-     */
-    function beforeSLA(address user) internal view returns (bool) {
-        // total share is total token supply  - not resolved debt token
-        return block.timestamp < requestTimes[user] + sla;
-    }
-
-    /**
-     * @notice Release all the available funds of the user.
-     * @return tokenShare amount of asset user gets
-     * @dev required to have enough share in debt token, As we don't have cancellation policy.
-     * @dev user will get the full amount proportion of debtShare
-     */
-    function redeem() external returns (uint256) {
-        // check for sla
-        require(!beforeSLA(msg.sender), "LWE: before SLA time");
-
-        uint256 resolvedShares = getResolvedShares();
-
-        // debt token share
-        uint256 userShares = balanceOf[msg.sender];
-
-        // check if the user share is resolved
-        require(userShares <= resolvedShares, "LWE: Unresolved debts");
-
-        // total token supply for payment
-        uint256 totalAssets = asset.balanceOf(address(this));
-
-        // amount of asset to pay to user
-        uint256 assetsToUser = totalAssets.mulDivDown(userShares, resolvedShares);
-
-        // transfer the amount.
-        asset.safeTransfer(msg.sender, assetsToUser);
-        // burn the user token.
-        _burn(msg.sender, userShares);
-
-        return assetsToUser;
-    }
-
-    ///////////////////////////////////////
-    ///         ERC-20 OVERRIDE
-    /// overriding transfer and transferFrom
-    /// to make debt token non-transferable
-    ///////////////////////////////////////
-
-    /**
-     * @dev Token is non transferable
-     */
-    function transfer(address to, uint256 amount) public override returns (bool) {}
-    function transferFrom(address from, address to, uint256 amount) public override returns (bool) {}
-
-    ///////////////////////////////////////
-    // View for the user / font-end
-    //////////////////////////////////////
-
-    /**
-     * @notice check if user can withdraw funds now.
-     * @return true or false if user can withdraw the funds or not
-     */
-    function canWithdraw(address user) public view returns (bool) {
-        if (beforeSLA(user)) {
-            return false;
+    // this will swap the shares with vault and receive assets
+    function resolveDebtShares() external onlyVault {
+        uint256 shares = vault.balanceOf(address(this));
+        uint256 preAssets = asset.balanceOf(address(this));
+        // check for availability of
+        if (!availableToWithdraw(shares)) {
+            return;
         }
+        // redeem the shares
+        vault.redeem(vault.balanceOf(address(this)), address(this), address(this));
 
-        uint256 resolvedShares = getResolvedShares();
+        uint256 postAssets = asset.balanceOf(address(this));
 
-        if (resolvedShares < balanceOf[user]) {
-            return false;
-        }
-
-        return true;
+        epochPrice[currentEpoch] = (postAssets - preAssets).mulDivDown(1, shares);
+        // move to next epoch
+        currentEpoch++;
     }
 
-    /**
-     * @notice return the amount of share user can withdraw
-     * @return returns withdrawable asset amount
-     */
-    function withdrawableAmount(address user) public view returns (uint256) {
-        if (!canWithdraw(user)) {
+    function redeem(address user, uint256 epoch) external returns (uint256) {
+        // Should be resolved epoch
+        require(epoch <= currentEpoch, "LWE: epoch not resolved.");
+
+        // total assets for user
+        uint256 assets = epochPrice[epoch] * userDebtShare[epoch][user];
+
+        // check for asset balance
+        require(assets <= asset.balanceOf(address(this)), "LWE: Not enough asset.");
+
+        // reset the user debt share
+        userDebtShare[epoch][user] = 0;
+
+        // transfer asset to user
+        asset.transfer(user, assets);
+        return assets;
+    }
+
+    function canWithdraw(uint256 epoch) public view returns (bool) {
+        return epoch <= currentEpoch;
+    }
+
+    // return withdrawable assets for a user
+    function withdrawableAssets(address user, uint256 epoch) public view returns (uint256) {
+        if (!canWithdraw(epoch)) {
             return 0;
         }
+        return epochPrice[epoch] * userDebtShare[epoch][user];
+    }
 
-        uint256 resolvedShares = getResolvedShares();
-
-        // total token supply for payment
-        uint256 totalAssets = asset.balanceOf(address(this));
-
-        // debt token share
-        uint256 userShares = balanceOf[user];
-
-        // amount of token to pay to user
-        uint256 assetsToUser = totalAssets.mulDivDown(userShares, resolvedShares);
-
-        return assetsToUser;
+    // return withdrawable assets for a user
+    function withdrawableShares(address user, uint256 epoch) public view returns (uint256) {
+        if (!canWithdraw(epoch)) {
+            return 0;
+        }
+        return userDebtShare[epoch][user];
     }
 }
