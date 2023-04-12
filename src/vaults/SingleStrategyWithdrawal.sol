@@ -35,49 +35,82 @@ contract SingleStrategyWithdrawalEscrow {
     }
 
     modifier onlyVault() {
-        require(msg.sender == address(vault), "LWE: must be vault");
+        require(msg.sender == address(vault), "SSWE: must be vault");
         _;
     }
-    // register user withdrawal request as debt
+
+    /**
+     * @notice Withdrawal Request event
+     * @param user user address
+     * @param epoch epoch of the request
+     * @param shares withdrawal vault shares
+     * @dev will makes things easy to search for each user withdrawal requests
+     */
+    event WithdrawalRequest(address indexed user, uint256 epoch, uint256 shares);
+
+    /**
+     * @notice Register withdrawal request as debt
+     * @param user user address
+     * @param shares amount of vault shares user requested to withdraw
+     */
 
     function registerWithdrawalRequest(address user, uint256 shares) external onlyVault {
         // lock user share
         vault.transferFrom(user, address(this), shares);
+        // register shares of the user
         userDebtShare[currentEpoch][user] += shares;
+
+        emit WithdrawalRequest(user, currentEpoch, shares);
     }
 
-    // dummy function to work with, replaced by vault modification PR
+    /**
+     * @dev this will be a function in vault to check if vault has enough assets to swap locked shares.
+     * @dev will be removed after vault implement this.
+     */
     function availableToWithdraw(uint256 shares) internal returns (bool) {
         return shares > 0;
     }
 
-    // this will swap the shares with vault and receive assets
+    /**
+     * @notice resolve the locked shares for current epoch
+     * @dev This function will be triggered after closing a position
+     * @dev will check for available shares to burn
+     * @dev after resolving vault will send the assets to escrow and burn the share
+     */
     function resolveDebtShares() external onlyVault {
         uint256 shares = vault.balanceOf(address(this));
         uint256 preAssets = asset.balanceOf(address(this));
-        // check for availability of
+        // check for availability of vault withdrawable shares
         if (!availableToWithdraw(shares)) {
             return;
         }
-        // redeem the shares
+        // redeem vault share and receive assets
         vault.redeem(vault.balanceOf(address(this)), address(this), address(this));
 
+        // assets after swapping the vault shares
         uint256 postAssets = asset.balanceOf(address(this));
 
         epochPrice[currentEpoch] = (postAssets - preAssets).mulDivDown(1, shares);
         // move to next epoch
         currentEpoch++;
+        lastResolvedUTCTime = block.timestamp;
     }
 
+    /**
+     * @notice Redeem withdrawal request
+     * @param user address
+     * @param epoch withdrawal request epoch
+     * @return received assets
+     */
     function redeem(address user, uint256 epoch) external returns (uint256) {
-        // Should be resolved epoch
-        require(epoch <= currentEpoch, "LWE: epoch not resolved.");
+        // Should be a resolved epoch
+        require(canWithdraw(epoch), "SSWE: epoch not resolved.");
 
         // total assets for user
         uint256 assets = epochPrice[epoch] * userDebtShare[epoch][user];
 
         // check for asset balance
-        require(assets <= asset.balanceOf(address(this)), "LWE: Not enough asset.");
+        require(assets <= asset.balanceOf(address(this)), "SSWE: Not enough asset.");
 
         // reset the user debt share
         userDebtShare[epoch][user] = 0;
@@ -87,11 +120,21 @@ contract SingleStrategyWithdrawalEscrow {
         return assets;
     }
 
+    /**
+     * @notice Check if an epoch is resolved or not
+     * @param epoch epoch number
+     * @return true if epoch is resolved
+     */
     function canWithdraw(uint256 epoch) public view returns (bool) {
         return epoch <= currentEpoch;
     }
 
-    // return withdrawable assets for a user
+    /**
+     * @notice Get withdrawable assets of a user
+     * @param user user address
+     * @param epoch requests epoch
+     * @return amount of assets user will receive
+     */
     function withdrawableAssets(address user, uint256 epoch) public view returns (uint256) {
         if (!canWithdraw(epoch)) {
             return 0;
@@ -99,7 +142,12 @@ contract SingleStrategyWithdrawalEscrow {
         return epochPrice[epoch] * userDebtShare[epoch][user];
     }
 
-    // return withdrawable assets for a user
+    /**
+     * @notice Get withdrawable shares of a user
+     * @param user user address
+     * @param epoch requests epoch
+     * @return amount of shares to withdraw
+     */
     function withdrawableShares(address user, uint256 epoch) public view returns (uint256) {
         if (!canWithdraw(epoch)) {
             return 0;
