@@ -7,7 +7,7 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
 import {Vault} from "src/vaults/Vault.sol";
 
-contract LockedWithdrawalEscrow {
+contract SingleStrategyWithdrawalEscrow {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
