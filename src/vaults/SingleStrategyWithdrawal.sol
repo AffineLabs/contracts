@@ -23,8 +23,10 @@ contract SingleStrategyWithdrawalEscrow {
     // map each user with
     mapping(uint256 => mapping(address => uint256)) public userDebtShare;
 
-    // map price for each epoch
-    mapping(uint256 => uint256) epochPrice;
+    // map per epoch debt share
+    mapping(uint256 => uint256) public epochDebt;
+    // per epoch assets
+    mapping(uint256 => uint256) public epochAsset;
 
     // last resolved time
     uint256 public lastResolvedUTCTime;
@@ -55,10 +57,12 @@ contract SingleStrategyWithdrawalEscrow {
      */
 
     function registerWithdrawalRequest(address user, uint256 shares) external onlyVault {
-        // lock user share
-        vault.transferFrom(user, address(this), shares);
+        //@ lock user share need to be done from vault, otherwise need approval from user
+        // vault.transferFrom(user, address(this), shares);
         // register shares of the user
         userDebtShare[currentEpoch][user] += shares;
+
+        epochDebt[currentEpoch] += shares;
 
         emit WithdrawalRequest(user, currentEpoch, shares);
     }
@@ -90,7 +94,7 @@ contract SingleStrategyWithdrawalEscrow {
         // assets after swapping the vault shares
         uint256 postAssets = asset.balanceOf(address(this));
 
-        epochPrice[currentEpoch] = (postAssets - preAssets).mulDivDown(1, shares);
+        epochAsset[currentEpoch] = postAssets - preAssets;
         // move to next epoch
         currentEpoch++;
         lastResolvedUTCTime = block.timestamp;
@@ -107,7 +111,7 @@ contract SingleStrategyWithdrawalEscrow {
         require(canWithdraw(epoch), "SSWE: epoch not resolved.");
 
         // total assets for user
-        uint256 assets = epochPrice[epoch] * userDebtShare[epoch][user];
+        uint256 assets = epochAsset[epoch].mulDivDown(userDebtShare[epoch][user], epochDebt[epoch]);
 
         // check for asset balance
         require(assets <= asset.balanceOf(address(this)), "SSWE: Not enough asset.");
@@ -128,18 +132,18 @@ contract SingleStrategyWithdrawalEscrow {
     function canWithdraw(uint256 epoch) public view returns (bool) {
         return epoch <= currentEpoch;
     }
-
     /**
      * @notice Get withdrawable assets of a user
      * @param user user address
      * @param epoch requests epoch
      * @return amount of assets user will receive
      */
+
     function withdrawableAssets(address user, uint256 epoch) public view returns (uint256) {
         if (!canWithdraw(epoch)) {
             return 0;
         }
-        return epochPrice[epoch] * userDebtShare[epoch][user];
+        return epochAsset[epoch].mulDivDown(userDebtShare[epoch][user], epochDebt[epoch]);
     }
 
     /**
