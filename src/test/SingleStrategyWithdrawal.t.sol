@@ -7,7 +7,6 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {TestPlus} from "src/test/TestPlus.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
 import {Vault} from "src/vaults/Vault.sol";
 import {SingleStrategyWithdrawalEscrow} from "src/vaults/SingleStrategyWithdrawal.sol";
 
