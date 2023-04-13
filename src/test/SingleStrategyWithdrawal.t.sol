@@ -48,10 +48,6 @@ contract SingleStrategyWithdrawalTest is TestPlus {
         aliceShares = vault.balanceOf(alice);
         bobShares = vault.balanceOf(bob);
 
-        console.log("vault tvl", initialTVL);
-        console.log("alice shares", aliceShares);
-        console.log("bob shares", aliceShares);
-
         initialWithdrawAmount = aliceShares / 10;
 
         vm.stopPrank();
@@ -74,6 +70,13 @@ contract SingleStrategyWithdrawalTest is TestPlus {
         //check map for current epoch
         assertEq(withdrawalEscrow.userDebtShare(withdrawalEscrow.currentEpoch(), alice), initialWithdrawAmount);
         assertEq(withdrawalEscrow.epochDebt(withdrawalEscrow.currentEpoch()), initialWithdrawAmount);
+    }
+
+    /// @notice test register failure as assets not locked
+    function testFailRegisterDebtNotLockedShares() public {
+        vm.startPrank(address(vault));
+        // register debt for alice
+        withdrawalEscrow.registerWithdrawalRequest(alice, initialWithdrawAmount);
     }
 
     /// @notice test resolving debt for a single epoch
