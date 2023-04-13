@@ -60,6 +60,10 @@ contract SingleStrategyWithdrawalTest is TestPlus {
     function testRegisterDebt() public {
         vm.startPrank(address(vault));
         // register debt for alice
+        // send assets to vault before register
+        deal(address(vault), address(withdrawalEscrow), initialWithdrawAmount);
+        deal(address(vault), alice, aliceShares - initialWithdrawAmount);
+
         withdrawalEscrow.registerWithdrawalRequest(alice, initialWithdrawAmount);
 
         //check map for current epoch
@@ -69,12 +73,13 @@ contract SingleStrategyWithdrawalTest is TestPlus {
 
     function testResolveDebt() public {
         vm.startPrank(address(vault));
-        // register debt for alice
-        withdrawalEscrow.registerWithdrawalRequest(alice, initialWithdrawAmount);
 
         // manually transfer assets from alice to escrow
         deal(address(vault), alice, aliceShares - initialWithdrawAmount);
         deal(address(vault), address(withdrawalEscrow), initialWithdrawAmount);
+
+        // register debt for alice
+        withdrawalEscrow.registerWithdrawalRequest(alice, initialWithdrawAmount);
 
         withdrawalEscrow.resolveDebtShares();
 
@@ -88,12 +93,13 @@ contract SingleStrategyWithdrawalTest is TestPlus {
 
     function testRedeem() public {
         vm.startPrank(address(vault));
-        // register debt for alice
-        withdrawalEscrow.registerWithdrawalRequest(alice, initialWithdrawAmount);
 
         // manually transfer assets from alice to escrow
         deal(address(vault), alice, aliceShares - initialWithdrawAmount);
         deal(address(vault), address(withdrawalEscrow), initialWithdrawAmount);
+
+        // register debt for alice
+        withdrawalEscrow.registerWithdrawalRequest(alice, initialWithdrawAmount);
 
         withdrawalEscrow.resolveDebtShares();
 
@@ -117,15 +123,18 @@ contract SingleStrategyWithdrawalTest is TestPlus {
     function testMultipleWithdrawal() public {
         vm.startPrank(address(vault));
 
+        // send the shares to escrow before registering debt
+        deal(address(vault), address(withdrawalEscrow), initialWithdrawAmount);
         withdrawalEscrow.registerWithdrawalRequest(alice, initialWithdrawAmount);
+
         // bob withdraw double of alice
+        // send the shares of bob to escrow before registering debt
+        deal(address(vault), address(withdrawalEscrow), 3 * initialWithdrawAmount);
         withdrawalEscrow.registerWithdrawalRequest(bob, 2 * initialWithdrawAmount);
 
         // manually set the amount for vault and withdrawal escrow
         deal(address(vault), alice, aliceShares - initialWithdrawAmount);
         deal(address(vault), bob, bobShares - 2 * initialWithdrawAmount);
-
-        deal(address(vault), address(withdrawalEscrow), 3 * initialWithdrawAmount);
 
         // resolve debt shares for the escrow
 

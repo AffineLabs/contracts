@@ -60,6 +60,10 @@ contract SingleStrategyWithdrawalEscrow {
         //@ lock user share need to be done from vault, otherwise need approval from user
         // vault.transferFrom(user, address(this), shares);
         // register shares of the user
+
+        // check if vault already sent the shares to escrow to lock
+        require((vault.balanceOf(address(this)) - epochDebt[currentEpoch]) == shares, "SSWE: missing shares in escrow.");
+
         userDebtShare[currentEpoch][user] += shares;
 
         epochDebt[currentEpoch] += shares;
