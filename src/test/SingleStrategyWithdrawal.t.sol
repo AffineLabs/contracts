@@ -57,6 +57,11 @@ contract SingleStrategyWithdrawalTest is TestPlus {
         vm.stopPrank();
     }
 
+    /**
+     * @notice Test debt registering
+     *  @dev vault needs to lock the shares first before registering debt.
+     *  @dev otherwise registering will be failed.
+     */
     function testRegisterDebt() public {
         vm.startPrank(address(vault));
         // register debt for alice
@@ -71,6 +76,7 @@ contract SingleStrategyWithdrawalTest is TestPlus {
         assertEq(withdrawalEscrow.epochDebt(withdrawalEscrow.currentEpoch()), initialWithdrawAmount);
     }
 
+    /// @notice test resolving debt for a single epoch
     function testResolveDebt() public {
         vm.startPrank(address(vault));
 
@@ -91,6 +97,7 @@ contract SingleStrategyWithdrawalTest is TestPlus {
         assertEq(vault.totalSupply(), aliceShares + bobShares - initialWithdrawAmount);
     }
 
+    /// @notice test redeem assets for a single user
     function testRedeem() public {
         vm.startPrank(address(vault));
 
@@ -120,6 +127,7 @@ contract SingleStrategyWithdrawalTest is TestPlus {
         assertEq(asset.balanceOf(alice), escrowAssets);
     }
 
+    /// @notice test multiple user withdrawal from escrow.
     function testMultipleWithdrawal() public {
         vm.startPrank(address(vault));
 
