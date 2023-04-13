@@ -113,4 +113,48 @@ contract SingleStrategyWithdrawalTest is TestPlus {
         assertEq(asset.balanceOf(address(withdrawalEscrow)), 0);
         assertEq(asset.balanceOf(alice), escrowAssets);
     }
+
+    function testMultipleWithdrawal() public {
+        vm.startPrank(address(vault));
+
+        withdrawalEscrow.registerWithdrawalRequest(alice, initialWithdrawAmount);
+        // bob withdraw double of alice
+        withdrawalEscrow.registerWithdrawalRequest(bob, 2 * initialWithdrawAmount);
+
+        // manually set the amount for vault and withdrawal escrow
+        deal(address(vault), alice, aliceShares - initialWithdrawAmount);
+        deal(address(vault), bob, bobShares - 2 * initialWithdrawAmount);
+
+        deal(address(vault), address(withdrawalEscrow), 3 * initialWithdrawAmount);
+
+        // resolve debt shares for the escrow
+
+        withdrawalEscrow.resolveDebtShares();
+
+        uint256 escrowAssets = asset.balanceOf(address(withdrawalEscrow));
+
+        // check for assets and shares
+        // for alice
+        assertEq(withdrawalEscrow.withdrawableShares(alice, 0), initialWithdrawAmount);
+        assertEq(withdrawalEscrow.withdrawableAssets(alice, 0), escrowAssets / 3);
+
+        // for bob
+        assertEq(withdrawalEscrow.withdrawableShares(bob, 0), 2 * initialWithdrawAmount);
+        assertEq(withdrawalEscrow.withdrawableAssets(bob, 0), (2 * escrowAssets) / 3);
+
+        withdrawalEscrow.redeem(alice, 0);
+        withdrawalEscrow.redeem(bob, 0);
+
+        // all the shares of escrow should be resolved
+        assertEq(vault.balanceOf(address(withdrawalEscrow)), 0);
+        assertEq(vault.totalSupply(), aliceShares + bobShares - 3 * initialWithdrawAmount);
+
+        // assets received by alice and bob
+
+        assertEq(asset.balanceOf(alice), escrowAssets / 3);
+        assertEq(asset.balanceOf(bob), (2 * escrowAssets) / 3);
+
+        // assets of the escrow should be zero
+        assertEq(asset.balanceOf(address(withdrawalEscrow)), 0);
+    }
 }
