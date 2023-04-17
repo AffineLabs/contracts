@@ -8,9 +8,9 @@ import {TestPlus} from "src/test/TestPlus.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 
 import {Vault} from "src/vaults/Vault.sol";
-import {SingleStrategyWithdrawalEscrow} from "src/vaults/SingleStrategyWithdrawal.sol";
+import {SingleStrategyWithdrawalEscrow} from "src/vaults/SingleStrategyWithdrawalEscrow.sol";
 
-contract SingleStrategyWithdrawalTest is TestPlus {
+contract SingleStrategyWithdrawalEscrowTest is TestPlus {
     Vault vault;
     MockERC20 asset;
     SingleStrategyWithdrawalEscrow withdrawalEscrow;
@@ -66,9 +66,10 @@ contract SingleStrategyWithdrawalTest is TestPlus {
 
         withdrawalEscrow.registerWithdrawalRequest(alice, initialWithdrawAmount);
 
+        (uint256 recordedShares,) = withdrawalEscrow.epochInfo(withdrawalEscrow.currentEpoch());
         //check map for current epoch
         assertEq(withdrawalEscrow.userDebtShare(withdrawalEscrow.currentEpoch(), alice), initialWithdrawAmount);
-        assertEq(withdrawalEscrow.epochDebt(withdrawalEscrow.currentEpoch()), initialWithdrawAmount);
+        assertEq(recordedShares, initialWithdrawAmount);
     }
 
     /// @notice test register failure as assets not locked

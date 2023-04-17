@@ -7,6 +7,11 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
 import {Vault} from "src/vaults/Vault.sol";
 
+struct EpochInfo {
+    uint256 shares;
+    uint256 assets;
+}
+
 contract SingleStrategyWithdrawalEscrow {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -20,13 +25,11 @@ contract SingleStrategyWithdrawalEscrow {
     // Vault this escrow attached to
     Vault public immutable vault;
 
-    // map each user with
+    // per epoch per user debt shares
     mapping(uint256 => mapping(address => uint256)) public userDebtShare;
 
     // map per epoch debt share
-    mapping(uint256 => uint256) public epochDebt;
-    // per epoch assets
-    mapping(uint256 => uint256) public epochAsset;
+    mapping(uint256 => EpochInfo) public epochInfo;
 
     // last resolved time
     uint256 public lastResolvedUTCTime;
@@ -62,11 +65,14 @@ contract SingleStrategyWithdrawalEscrow {
         // register shares of the user
 
         // check if vault already sent the shares to escrow to lock
-        require((vault.balanceOf(address(this)) - epochDebt[currentEpoch]) == shares, "SSWE: missing shares in escrow.");
+        require(
+            (vault.balanceOf(address(this)) - epochInfo[currentEpoch].shares) == shares,
+            "SSWE: missing shares in escrow."
+        );
 
         userDebtShare[currentEpoch][user] += shares;
 
-        epochDebt[currentEpoch] += shares;
+        epochInfo[currentEpoch].shares += shares;
 
         emit WithdrawalRequest(user, currentEpoch, shares);
     }
@@ -98,27 +104,34 @@ contract SingleStrategyWithdrawalEscrow {
         // assets after swapping the vault shares
         uint256 postAssets = asset.balanceOf(address(this));
 
-        epochAsset[currentEpoch] = postAssets - preAssets;
+        epochInfo[currentEpoch].assets = postAssets - preAssets;
         // move to next epoch
         currentEpoch++;
         lastResolvedUTCTime = block.timestamp;
     }
+    /**
+     * @notice Convert epoch shares to assets
+     * @param user address
+     * @param epoch withdrawal request epoch
+     * @return converted assets
+     */
 
+    function _epochSharesToAssets(address user, uint256 epoch) internal view returns (uint256) {
+        return epochInfo[epoch].assets.mulDivDown(userDebtShare[epoch][user], epochInfo[epoch].shares);
+    }
     /**
      * @notice Redeem withdrawal request
      * @param user address
      * @param epoch withdrawal request epoch
      * @return received assets
      */
+
     function redeem(address user, uint256 epoch) external returns (uint256) {
         // Should be a resolved epoch
         require(canWithdraw(epoch), "SSWE: epoch not resolved.");
 
         // total assets for user
-        uint256 assets = epochAsset[epoch].mulDivDown(userDebtShare[epoch][user], epochDebt[epoch]);
-
-        // check for asset balance
-        require(assets <= asset.balanceOf(address(this)), "SSWE: Not enough asset.");
+        uint256 assets = _epochSharesToAssets(user, epoch);
 
         // reset the user debt share
         userDebtShare[epoch][user] = 0;
@@ -147,7 +160,7 @@ contract SingleStrategyWithdrawalEscrow {
         if (!canWithdraw(epoch)) {
             return 0;
         }
-        return epochAsset[epoch].mulDivDown(userDebtShare[epoch][user], epochDebt[epoch]);
+        return _epochSharesToAssets(user, epoch);
     }
 
     /**
