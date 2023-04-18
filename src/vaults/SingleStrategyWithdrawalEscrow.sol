@@ -175,4 +175,13 @@ contract SingleStrategyWithdrawalEscrow {
         }
         return userDebtShare[epoch][user];
     }
+
+    function getAssets(address user, uint256[] calldata epochs) public view returns (uint256) {
+        uint256 assets;
+
+        for (uint256 i = 0; i < epochs.length; i++) {
+            assets += withdrawableAssets(user, epochs[i]);
+        }
+        return assets;
+    }
 }
