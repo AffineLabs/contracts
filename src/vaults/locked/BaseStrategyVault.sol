@@ -16,7 +16,7 @@ import {uncheckedInc} from "src/libs/Unchecked.sol";
 /**
  * @notice A single-strategy vault.
  */
-contract AffineVault is AffineGovernable, AccessControlUpgradeable, Multicallable {
+contract BaseStrategyVault is AffineGovernable, AccessControlUpgradeable, Multicallable {
     using SafeTransferLib for ERC20;
 
     /*//////////////////////////////////////////////////////////////
@@ -45,6 +45,7 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable, Multicallabl
         _grantRole(HARVESTER, governance);
 
         lastHarvest = uint128(block.timestamp);
+        epochEnded = true;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -63,15 +64,19 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable, Multicallabl
     /// @notice The total amount of underlying assets held in strategies at the time of the last harvest.
     uint256 public strategyTVL;
 
-    uint256 epoch;
+    uint248 public epoch;
+    bool public epochEnded;
+    address public debtEscrow;
 
     function beginEpoch() external virtual {
         require(msg.sender == address(strategy), "BSV: only strategy");
         epoch += 1;
+        epochEnded = false;
     }
 
     function endEpoch() external virtual {
         require(msg.sender == address(strategy), "BSV: only strategy");
+        epochEnded = true;
         _updateTVL();
     }
 
