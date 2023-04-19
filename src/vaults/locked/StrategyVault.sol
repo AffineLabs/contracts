@@ -17,7 +17,7 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {BaseStrategyVault} from "src/vaults/locked/BaseStrategyVault.sol";
 import {DetailedShare} from "src/utils/Detailed.sol";
 
-contract Vault is BaseStrategyVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare {
+contract StrategyVault is BaseStrategyVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare {
     using SafeTransferLib for ERC20;
     using MathUpgradeable for uint256;
 

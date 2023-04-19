@@ -7,11 +7,11 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {TestPlus} from "src/test/TestPlus.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 
-import {Vault} from "src/vaults/Vault.sol";
+import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 import {WithdrawalEscrow} from "src/vaults/locked/WithdrawalEscrow.sol";
 
 contract WithdrawalEscrowTest is TestPlus {
-    Vault vault;
+    StrategyVault vault;
     MockERC20 asset;
     WithdrawalEscrow withdrawalEscrow;
 
@@ -26,7 +26,7 @@ contract WithdrawalEscrowTest is TestPlus {
     function setUp() public {
         initialAssets = 1_000_000_000_000;
         asset = new MockERC20("Mock", "MT", 6);
-        vault = new Vault();
+        vault = new StrategyVault();
         vault.initialize(governance, address(asset), "Test Vault", "TV");
         withdrawalEscrow = new WithdrawalEscrow(vault);
 
@@ -66,29 +66,26 @@ contract WithdrawalEscrowTest is TestPlus {
 
         withdrawalEscrow.registerWithdrawalRequest(alice, initialWithdrawAmount);
 
-        (uint256 recordedShares,) = withdrawalEscrow.epochInfo(withdrawalEscrow.currentEpoch());
+        uint256 epoch = vault.epoch();
+        (uint256 recordedShares,) = withdrawalEscrow.epochInfo(epoch);
         //check map for current epoch
-        assertEq(withdrawalEscrow.userDebtShare(withdrawalEscrow.currentEpoch(), alice), initialWithdrawAmount);
+        assertEq(withdrawalEscrow.userDebtShare(epoch, alice), initialWithdrawAmount);
         assertEq(recordedShares, initialWithdrawAmount);
     }
 
     /// @notice test resolving debt for a single epoch
     function testResolveDebt() public {
-        vm.startPrank(address(vault));
-
-        // manually transfer assets from alice to escrow
+        // manually transfer vault shares from alice to escrow
         deal(address(vault), alice, aliceShares - initialWithdrawAmount);
         deal(address(vault), address(withdrawalEscrow), initialWithdrawAmount);
 
         // register debt for alice
+        vm.startPrank(address(vault));
         withdrawalEscrow.registerWithdrawalRequest(alice, initialWithdrawAmount);
-
         withdrawalEscrow.resolveDebtShares();
 
         assertEq(vault.balanceOf(address(withdrawalEscrow)), 0);
         assertEq(asset.balanceOf(address(withdrawalEscrow)), initialAssets / 10);
-        // change in current epoch
-        assertEq(withdrawalEscrow.currentEpoch(), 1);
         // total supply should drop by withdrawal amount
         assertEq(vault.totalSupply(), aliceShares + bobShares - initialWithdrawAmount);
     }

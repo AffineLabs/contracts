@@ -4,19 +4,16 @@ pragma solidity =0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
-import {Vault} from "src/vaults/Vault.sol";
+import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 
 contract WithdrawalEscrow {
     using FixedPointMathLib for uint256;
-
-    // Epoch counter
-    uint256 public currentEpoch;
 
     // token paid to user
     ERC20 public immutable asset;
 
     // Vault this escrow attached to
-    Vault public immutable vault;
+    StrategyVault public immutable vault;
 
     // per epoch per user debt shares
     mapping(uint256 => mapping(address => uint256)) public userDebtShare;
@@ -29,10 +26,7 @@ contract WithdrawalEscrow {
 
     mapping(uint256 => EpochInfo) public epochInfo;
 
-    // last resolved time
-    uint256 public lastResolvedUTCTime;
-
-    constructor(Vault _vault) {
+    constructor(StrategyVault _vault) {
         asset = ERC20(_vault.asset());
         vault = _vault;
     }
@@ -62,19 +56,12 @@ contract WithdrawalEscrow {
         // vault.transferFrom(user, address(this), shares);
         // register shares of the user
 
+        uint256 currentEpoch = vault.epoch();
         userDebtShare[currentEpoch][user] += shares;
 
         epochInfo[currentEpoch].shares += shares;
 
         emit WithdrawalRequest(user, currentEpoch, shares);
-    }
-
-    /**
-     * @dev this will be a function in vault to check if vault has enough assets to swap locked shares.
-     * @dev will be removed after vault implement this.
-     */
-    function availableToWithdraw(uint256 shares) internal returns (bool) {
-        return shares > 0;
     }
 
     /**
@@ -84,22 +71,12 @@ contract WithdrawalEscrow {
      * @dev after resolving vault will send the assets to escrow and burn the share
      */
     function resolveDebtShares() external onlyVault {
-        uint256 shares = vault.balanceOf(address(this));
-        uint256 preAssets = asset.balanceOf(address(this));
-        // check for availability of vault withdrawable shares
-        if (!availableToWithdraw(shares)) {
-            return;
-        }
-        // redeem vault share and receive assets
-        vault.redeem({shares: vault.balanceOf(address(this)), receiver: address(this), owner: address(this)});
+        // redeem vault shares and receive assets
+        uint256 assets =
+            vault.redeem({shares: vault.balanceOf(address(this)), receiver: address(this), owner: address(this)});
 
-        // assets after swapping the vault shares
-        uint256 postAssets = asset.balanceOf(address(this));
-
-        epochInfo[currentEpoch].assets = postAssets - preAssets;
-        // move to next epoch
-        currentEpoch++;
-        lastResolvedUTCTime = block.timestamp;
+        uint256 currentEpoch = vault.epoch();
+        epochInfo[currentEpoch].assets = assets;
     }
     /**
      * @notice Convert epoch shares to assets
@@ -109,7 +86,9 @@ contract WithdrawalEscrow {
      */
 
     function _epochSharesToAssets(address user, uint256 epoch) internal view returns (uint256) {
-        return epochInfo[epoch].assets.mulDivDown(userDebtShare[epoch][user], epochInfo[epoch].shares);
+        uint256 userShares = userDebtShare[epoch][user];
+        EpochInfo memory data = epochInfo[epoch];
+        return (data.assets * userShares) / data.shares;
     }
     /**
      * @notice Redeem withdrawal request
@@ -139,7 +118,8 @@ contract WithdrawalEscrow {
      * @return true if epoch is resolved
      */
     function canWithdraw(uint256 epoch) public view returns (bool) {
-        return epoch <= currentEpoch;
+        uint256 currentEpoch = vault.epoch();
+        return epoch < currentEpoch || epoch == currentEpoch && vault.epochEnded();
     }
     /**
      * @notice Get withdrawable assets of a user
@@ -168,9 +148,7 @@ contract WithdrawalEscrow {
         return userDebtShare[epoch][user];
     }
 
-    function getAssets(address user, uint256[] calldata epochs) public view returns (uint256) {
-        uint256 assets;
-
+    function getAssets(address user, uint256[] calldata epochs) public view returns (uint256 assets) {
         for (uint256 i = 0; i < epochs.length; i++) {
             assets += withdrawableAssets(user, epochs[i]);
         }
