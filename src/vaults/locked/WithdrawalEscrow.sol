@@ -2,13 +2,9 @@
 pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
-
 import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 
 contract WithdrawalEscrow {
-    using FixedPointMathLib for uint256;
-
     // token paid to user
     ERC20 public immutable asset;
 

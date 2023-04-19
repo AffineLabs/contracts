@@ -65,6 +65,11 @@ contract BaseStrategyVault is AffineGovernable, AccessControlUpgradeable, Multic
     /// @notice The total amount of underlying assets held in strategies at the time of the last harvest.
     uint256 public strategyTVL;
 
+    function setStrategy(Strategy newStrategy) external virtual {
+        require(msg.sender == governance, "BSV: only governance");
+        strategy = newStrategy;
+    }
+
     uint248 public epoch;
     bool public epochEnded;
     WithdrawalEscrow public debtEscrow;
