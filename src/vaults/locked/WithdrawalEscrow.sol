@@ -2,18 +2,11 @@
 pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
 import {Vault} from "src/vaults/Vault.sol";
 
-struct EpochInfo {
-    uint256 shares;
-    uint256 assets;
-}
-
-contract SingleStrategyWithdrawalEscrow {
-    using SafeTransferLib for ERC20;
+contract WithdrawalEscrow {
     using FixedPointMathLib for uint256;
 
     // Epoch counter
@@ -28,7 +21,12 @@ contract SingleStrategyWithdrawalEscrow {
     // per epoch per user debt shares
     mapping(uint256 => mapping(address => uint256)) public userDebtShare;
 
+    struct EpochInfo {
+        uint256 shares;
+        uint256 assets;
+    }
     // map per epoch debt share
+
     mapping(uint256 => EpochInfo) public epochInfo;
 
     // last resolved time
@@ -64,12 +62,6 @@ contract SingleStrategyWithdrawalEscrow {
         // vault.transferFrom(user, address(this), shares);
         // register shares of the user
 
-        // check if vault already sent the shares to escrow to lock
-        require(
-            (vault.balanceOf(address(this)) - epochInfo[currentEpoch].shares) == shares,
-            "SSWE: missing shares in escrow."
-        );
-
         userDebtShare[currentEpoch][user] += shares;
 
         epochInfo[currentEpoch].shares += shares;
@@ -99,7 +91,7 @@ contract SingleStrategyWithdrawalEscrow {
             return;
         }
         // redeem vault share and receive assets
-        vault.redeem(vault.balanceOf(address(this)), address(this), address(this));
+        vault.redeem({shares: vault.balanceOf(address(this)), receiver: address(this), owner: address(this)});
 
         // assets after swapping the vault shares
         uint256 postAssets = asset.balanceOf(address(this));

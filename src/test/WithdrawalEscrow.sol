@@ -8,12 +8,12 @@ import {TestPlus} from "src/test/TestPlus.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 
 import {Vault} from "src/vaults/Vault.sol";
-import {SingleStrategyWithdrawalEscrow} from "src/vaults/SingleStrategyWithdrawalEscrow.sol";
+import {WithdrawalEscrow} from "src/vaults/locked/WithdrawalEscrow.sol";
 
-contract SingleStrategyWithdrawalEscrowTest is TestPlus {
+contract WithdrawalEscrowTest is TestPlus {
     Vault vault;
     MockERC20 asset;
-    SingleStrategyWithdrawalEscrow withdrawalEscrow;
+    WithdrawalEscrow withdrawalEscrow;
 
     // initial user assets
     uint256 initialAssets;
@@ -28,7 +28,7 @@ contract SingleStrategyWithdrawalEscrowTest is TestPlus {
         asset = new MockERC20("Mock", "MT", 6);
         vault = new Vault();
         vault.initialize(governance, address(asset), "Test Vault", "TV");
-        withdrawalEscrow = new SingleStrategyWithdrawalEscrow(vault);
+        withdrawalEscrow = new WithdrawalEscrow(vault);
 
         // assign assets to alice & bob
         asset.mint(alice, initialAssets);
@@ -70,13 +70,6 @@ contract SingleStrategyWithdrawalEscrowTest is TestPlus {
         //check map for current epoch
         assertEq(withdrawalEscrow.userDebtShare(withdrawalEscrow.currentEpoch(), alice), initialWithdrawAmount);
         assertEq(recordedShares, initialWithdrawAmount);
-    }
-
-    /// @notice test register failure as assets not locked
-    function testFailRegisterDebtNotLockedShares() public {
-        vm.startPrank(address(vault));
-        // register debt for alice
-        withdrawalEscrow.registerWithdrawalRequest(alice, initialWithdrawAmount);
     }
 
     /// @notice test resolving debt for a single epoch

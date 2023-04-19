@@ -139,8 +139,8 @@ contract Vault is BaseStrategyVault, ERC4626Upgradeable, PausableUpgradeable, De
     {
         // If vault is illiquid, lock shares
         if (!epochEnded) {
-            _transfer({from: owner, to: debtEscrow, amount: shares});
-            // TODO: actually register the request on the escrow here
+            _transfer({from: owner, to: address(debtEscrow), amount: shares});
+            debtEscrow.registerWithdrawalRequest(owner, shares);
             emit DebtRegistration(caller, receiver, owner, shares);
             return;
         }
@@ -258,6 +258,21 @@ contract Vault is BaseStrategyVault, ERC4626Upgradeable, PausableUpgradeable, De
     function depositIntoStrategies(uint256 amount) external whenNotPaused onlyRole(HARVESTER) {
         // Deposit entire balance of `_asset` into strategies
         _depositIntoStrategy(amount);
+    }
+
+    function endEpoch() external virtual override {
+        require(msg.sender == address(strategy), "BSV: only strategy");
+        epochEnded = true;
+        _updateTVL();
+
+        // Transfer assets from strategy to escrow to resolve all pending withdrawals
+        uint256 lockedShares = balanceOf(address(debtEscrow));
+        uint256 assets = _convertToAssets(lockedShares, MathUpgradeable.Rounding.Down);
+        if (assets == 0) return;
+        _asset.safeTransferFrom({from: address(strategy), to: address(this), amount: assets});
+
+        // Tell escrow that the funds are ready to be withdrawn. The escrow will redeem the shares.
+        debtEscrow.resolveDebtShares();
     }
 
     /*//////////////////////////////////////////////////////////////

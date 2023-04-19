@@ -11,6 +11,7 @@ import {Multicallable} from "solady/src/utils/Multicallable.sol";
 
 import {AffineGovernable} from "src/utils/AffineGovernable.sol";
 import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
+import {WithdrawalEscrow} from "./WithdrawalEscrow.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
 
 /**
@@ -66,7 +67,7 @@ contract BaseStrategyVault is AffineGovernable, AccessControlUpgradeable, Multic
 
     uint248 public epoch;
     bool public epochEnded;
-    address public debtEscrow;
+    WithdrawalEscrow public debtEscrow;
 
     function beginEpoch() external virtual {
         require(msg.sender == address(strategy), "BSV: only strategy");
