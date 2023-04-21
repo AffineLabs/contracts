@@ -6,6 +6,7 @@ import {Script, console} from "forge-std/Script.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
+import {WithdrawalEscrow} from "src/vaults/locked/WithdrawalEscrow.sol";
 import {MockEpochStrategy} from "src/testnet/MockEpochStrategy.sol";
 
 /* solhint-disable reason-string, no-console */
@@ -35,5 +36,11 @@ contract Deploy is Script {
         // Add strategy to vault
         sVault.setStrategy(strategy);
         require(sVault.strategy() == strategy);
+
+        // Deploy Escrow
+        WithdrawalEscrow escrow = new WithdrawalEscrow(sVault);
+        require(escrow.vault() == sVault);
+        sVault.setEscrow(escrow);
+        require(sVault.debtEscrow() == escrow);
     }
 }
