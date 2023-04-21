@@ -232,7 +232,11 @@ contract DeltaNeutralLp is AccessStrategy {
      * @param slippageToleranceBps slippage tolerance for liquidity pool
      */
 
-    function startPosition(uint256 assets, uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
+    function startPosition(uint256 assets, uint256 slippageToleranceBps) external virtual onlyRole(STRATEGIST_ROLE) {
+        _startPosition(assets, slippageToleranceBps);
+    }
+
+    function _startPosition(uint256 assets, uint256 slippageToleranceBps) internal {
         // Set position metadata
         require(canStartNewPos, "DNLP: position is active");
         require(assets <= asset.balanceOf(address(this)), "DNLP: insufficient assets");
@@ -316,7 +320,7 @@ contract DeltaNeutralLp is AccessStrategy {
         uint256 timestamp
     );
 
-    function endPosition(uint256 slippageToleranceBps) external onlyRole(STRATEGIST_ROLE) {
+    function endPosition(uint256 slippageToleranceBps) external virtual onlyRole(STRATEGIST_ROLE) {
         _endPosition(slippageToleranceBps);
     }
 
