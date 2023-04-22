@@ -434,6 +434,19 @@
   {
     "inputs": [
       {
+        "internalType": "contract WithdrawalEscrow",
+        "name": "escrow",
+        "type": "address"
+      }
+    ],
+    "name": "setDebtEscrow",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "contract BaseStrategy",
         "name": "newStrategy",
         "type": "address"

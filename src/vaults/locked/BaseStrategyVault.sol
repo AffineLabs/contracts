@@ -74,6 +74,11 @@ contract BaseStrategyVault is AffineGovernable, AccessControlUpgradeable, Multic
     bool public epochEnded;
     WithdrawalEscrow public debtEscrow;
 
+    function setDebtEscrow(WithdrawalEscrow escrow) external virtual {
+        require(msg.sender == governance, "BSV: only governance");
+        debtEscrow = escrow;
+    }
+
     function beginEpoch() external virtual {
         require(msg.sender == address(strategy), "BSV: only strategy");
         epoch += 1;
