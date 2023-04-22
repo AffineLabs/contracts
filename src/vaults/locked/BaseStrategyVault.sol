@@ -72,6 +72,7 @@ contract BaseStrategyVault is AffineGovernable, AccessControlUpgradeable, Multic
 
     uint248 public epoch;
     bool public epochEnded;
+    uint256 epochStartTime;
     WithdrawalEscrow public debtEscrow;
 
     function setDebtEscrow(WithdrawalEscrow escrow) external virtual {
@@ -83,6 +84,7 @@ contract BaseStrategyVault is AffineGovernable, AccessControlUpgradeable, Multic
         require(msg.sender == address(strategy), "BSV: only strategy");
         epoch += 1;
         epochEnded = false;
+        epochStartTime = block.timestamp;
     }
 
     function endEpoch() external virtual {
