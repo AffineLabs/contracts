@@ -67,8 +67,10 @@ library SSV {
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
 
         StrategyVault sVault = StrategyVault(address(proxy));
+
+        console.log("Vault addr:", address(sVault));
         require(sVault.hasRole(sVault.DEFAULT_ADMIN_ROLE(), deployer));
-        require(sVault.asset() == 0xb465fBFE1678fF41CD3D749D54d2ee2CfABE06F3);
+        require(sVault.asset() == _getEthMainNetUSDCAddr());
 
         SSVDeltaNeutralLp strategy = deployEthSSVSushiUSDCStrategy(sVault, 5714, 7500);
 
@@ -81,6 +83,8 @@ library SSV {
 
         // set escrow
         sVault.setDebtEscrow(escrow);
+        console.log("Strategy addr:", address(strategy));
+        console.log("Escrow addr:", address(escrow));
     }
 }
 
@@ -98,6 +102,7 @@ contract Deploy is Script {
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
 
         StrategyVault sVault = StrategyVault(address(proxy));
+
         require(sVault.hasRole(sVault.DEFAULT_ADMIN_ROLE(), deployer));
         require(sVault.asset() == 0xb465fBFE1678fF41CD3D749D54d2ee2CfABE06F3);
 
@@ -114,7 +119,7 @@ contract Deploy is Script {
     function runMainNet() external {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
-
+        console.log("Deployer addr", deployer);
         SSV.deployEthSSVSushiUSDC(deployer);
     }
 }
