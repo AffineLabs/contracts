@@ -72,7 +72,7 @@ contract BaseStrategyVault is AffineGovernable, AccessControlUpgradeable, Multic
 
     uint248 public epoch;
     bool public epochEnded;
-    uint256 epochStartTime;
+    uint256 public epochStartTime;
     WithdrawalEscrow public debtEscrow;
 
     function setDebtEscrow(WithdrawalEscrow escrow) external virtual {
