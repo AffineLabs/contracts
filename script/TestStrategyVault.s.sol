@@ -43,4 +43,16 @@ contract Deploy is Script {
         sVault.setEscrow(escrow);
         require(sVault.debtEscrow() == escrow);
     }
+
+    function lock() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+
+        StrategyVault sVault = StrategyVault(0x3E84ac8696CB58A9044ff67F8cf2Da2a81e39Cf9);
+        // MockEpochStrategy strategy = MockEpochStrategy(address(sVault.strategy()));
+
+        console.log("Current epoch: ", sVault.epoch());
+        console.log("Epoch ended at %s", sVault.epochEnded());
+        // strategy.beginEpoch();
+    }
 }
