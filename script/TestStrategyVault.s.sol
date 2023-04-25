@@ -19,6 +19,9 @@ import {ILendingPool} from "src/strategies/DeltaNeutralLp.sol";
 import {IMasterChef} from "src/interfaces/sushiswap/IMasterChef.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 
+import {WithdrawalEscrow} from "src/vaults/locked/WithdrawalEscrow.sol";
+import {MockEpochStrategy} from "src/testnet/MockEpochStrategy.sol";
+
 /* solhint-disable reason-string, no-console */
 
 library SSV {
@@ -88,12 +91,42 @@ library SSV {
     }
 }
 
-import {WithdrawalEscrow} from "src/vaults/locked/WithdrawalEscrow.sol";
-import {MockEpochStrategy} from "src/testnet/MockEpochStrategy.sol";
-
-/* solhint-disable reason-string, no-console */
-
 contract Deploy is Script {
+    function _getStrategists() internal pure returns (address[] memory strategists) {
+        strategists = new address[](1);
+        strategists[0] = 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d;
+    }
+
+    function mainnet() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+
+        // Deploy vault
+        StrategyVault impl = new StrategyVault();
+        // Initialize proxy with correct data
+        bytes memory initData = abi.encodeCall(
+            StrategyVault.initialize,
+            (
+                0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e,
+                0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,
+                "Affine High Yield LP - USDC-wETH",
+                "affineSushiUsdcWeth"
+            )
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+
+        StrategyVault sVault = StrategyVault(address(proxy));
+        require(sVault.hasRole(sVault.DEFAULT_ADMIN_ROLE(), 0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e));
+        require(sVault.asset() == 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+
+        // Deploy strategy
+        SSV.deployEthSSVSushiUSDCStrategy(sVault, 5714, 7500);
+
+        // Deploy Escrow
+        WithdrawalEscrow escrow = new WithdrawalEscrow(sVault);
+        require(escrow.vault() == sVault);
+    }
+
     function run() external {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
