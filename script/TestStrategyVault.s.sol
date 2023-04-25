@@ -88,6 +88,11 @@ library SSV {
     }
 }
 
+import {WithdrawalEscrow} from "src/vaults/locked/WithdrawalEscrow.sol";
+import {MockEpochStrategy} from "src/testnet/MockEpochStrategy.sol";
+
+/* solhint-disable reason-string, no-console */
+
 contract Deploy is Script {
     function run() external {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
@@ -114,6 +119,12 @@ contract Deploy is Script {
         // Add strategy to vault
         sVault.setStrategy(strategy);
         require(sVault.strategy() == strategy);
+
+        // Deploy Escrow
+        WithdrawalEscrow escrow = new WithdrawalEscrow(sVault);
+        require(escrow.vault() == sVault);
+        sVault.setDebtEscrow(escrow);
+        require(sVault.debtEscrow() == escrow);
     }
 
     function runMainNet() external {
@@ -121,5 +132,57 @@ contract Deploy is Script {
         vm.startBroadcast(deployer);
         console.log("Deployer addr", deployer);
         SSV.deployEthSSVSushiUSDC(deployer);
+    }
+
+    function deployStrategy() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+
+        StrategyVault sVault = StrategyVault(0x3E84ac8696CB58A9044ff67F8cf2Da2a81e39Cf9);
+
+        // Deploy strategy
+        address[] memory strategists = new address[](1);
+        strategists[0] = deployer;
+        MockEpochStrategy strategy = new MockEpochStrategy(sVault, strategists);
+
+        // Add strategy to vault
+        sVault.setStrategy(strategy);
+        require(sVault.strategy() == strategy);
+    }
+
+    function mint() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+
+        StrategyVault sVault = StrategyVault(0x3E84ac8696CB58A9044ff67F8cf2Da2a81e39Cf9);
+        MockEpochStrategy strategy = MockEpochStrategy(address(sVault.strategy()));
+
+        console.log("strategy: %s", address(strategy));
+
+        strategy.mint(100);
+    }
+
+    function lock() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+
+        StrategyVault sVault = StrategyVault(0x3E84ac8696CB58A9044ff67F8cf2Da2a81e39Cf9);
+        MockEpochStrategy strategy = MockEpochStrategy(address(sVault.strategy()));
+
+        console.log("Current epoch: ", sVault.epoch());
+        console.log("Epoch ended: %s", sVault.epochEnded());
+        strategy.beginEpoch();
+    }
+
+    function unlock() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+
+        StrategyVault sVault = StrategyVault(0x3E84ac8696CB58A9044ff67F8cf2Da2a81e39Cf9);
+        MockEpochStrategy strategy = MockEpochStrategy(address(sVault.strategy()));
+
+        console.log("Current epoch: ", sVault.epoch());
+        console.log("Epoch ended: %s", sVault.epochEnded());
+        strategy.endEpoch();
     }
 }

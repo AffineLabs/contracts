@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {MockERC20} from "./MockERC20.sol";
 import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
 import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
@@ -14,10 +15,7 @@ contract MockEpochStrategy is AccessStrategy {
         AccessStrategy(AffineVault(address(_vault)), strategists)
     {
         sVault = StrategyVault(address(_vault));
-    }
-
-    function mint(uint256 amount) external onlyRole(STRATEGIST_ROLE) {
-        MockERC20(address(asset)).mint(address(this), amount);
+        ERC20(sVault.asset()).approve(address(_vault), type(uint256).max);
     }
 
     function beginEpoch() external onlyRole(STRATEGIST_ROLE) {
@@ -27,6 +25,10 @@ contract MockEpochStrategy is AccessStrategy {
     function endEpoch() external onlyRole(STRATEGIST_ROLE) {
         MockERC20(address(asset)).mint(address(this), 10 ** asset.decimals());
         sVault.endEpoch();
+    }
+
+    function mint(uint256 amount) external onlyRole(STRATEGIST_ROLE) {
+        MockERC20(address(asset)).mint(address(this), amount * 10 ** asset.decimals());
     }
 
     function totalLockedValue() external view override returns (uint256) {
