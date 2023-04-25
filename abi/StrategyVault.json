@@ -737,6 +737,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "epochStartTime",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -1248,7 +1261,7 @@
         "type": "address"
       }
     ],
-    "name": "setEscrow",
+    "name": "setDebtEscrow",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
