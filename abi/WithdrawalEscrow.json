@@ -2,7 +2,7 @@
   {
     "inputs": [
       {
-        "internalType": "contract StrategyVault",
+        "internalType": "contract BaseStrategyVault",
         "name": "_vault",
         "type": "address"
       }
@@ -193,7 +193,7 @@
     "name": "vault",
     "outputs": [
       {
-        "internalType": "contract StrategyVault",
+        "internalType": "contract BaseStrategyVault",
         "name": "",
         "type": "address"
       }
