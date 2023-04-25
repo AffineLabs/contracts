@@ -133,6 +133,7 @@ contract StrategyVault is BaseStrategyVault, ERC4626Upgradeable, PausableUpgrade
         require(assets > 0, "Vault: deposit limit reached");
         _mint(receiver, shares);
         _asset.safeTransferFrom(caller, address(this), assets);
+        _depositIntoStrategy(assets);
         emit Deposit(caller, receiver, assets, shares);
     }
 
@@ -257,17 +258,9 @@ contract StrategyVault is BaseStrategyVault, ERC4626Upgradeable, PausableUpgrade
     /*//////////////////////////////////////////////////////////////
                            CAPITAL MANAGEMENT
     //////////////////////////////////////////////////////////////*/
-    /**
-     * @notice Deposit idle assets into strategies.
-     */
-
-    function depositIntoStrategies(uint256 amount) external whenNotPaused onlyRole(HARVESTER) {
-        // Deposit entire balance of `_asset` into strategies
-        _depositIntoStrategy(amount);
-    }
 
     function endEpoch() external virtual override {
-        require(msg.sender == address(strategy), "BSV: only strategy");
+        require(msg.sender == address(strategy), "SV: only strategy");
         epochEnded = true;
         _updateTVL();
 

@@ -29,25 +29,6 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "assetsRequested",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "assetsLiquidated",
-        "type": "uint256"
-      }
-    ],
-    "name": "Liquidation",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
         "indexed": true,
         "internalType": "bytes32",
         "name": "role",

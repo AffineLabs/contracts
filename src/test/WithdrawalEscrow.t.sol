@@ -9,6 +9,8 @@ import {MockERC20} from "./mocks/MockERC20.sol";
 
 import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 import {WithdrawalEscrow} from "src/vaults/locked/WithdrawalEscrow.sol";
+import {AffineVault} from "src/vaults/AffineVault.sol";
+import {TestStrategy} from "./mocks/TestStrategy.sol";
 
 contract WithdrawalEscrowTest is TestPlus {
     StrategyVault vault;
@@ -28,6 +30,12 @@ contract WithdrawalEscrowTest is TestPlus {
         asset = new MockERC20("Mock", "MT", 6);
         vault = new StrategyVault();
         vault.initialize(governance, address(asset), "Test Vault", "TV");
+        TestStrategy strategy = new TestStrategy(AffineVault(address(vault)));
+        vm.startPrank(governance);
+        vault.setStrategy(strategy);
+        vault.setTvlCap(type(uint256).max);
+        vault.grantRole(vault.HARVESTER(), address(this));
+        vm.stopPrank();
         withdrawalEscrow = new WithdrawalEscrow(vault);
 
         // assign assets to alice & bob
