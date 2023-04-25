@@ -24,7 +24,7 @@ contract WithdrawalEscrowTest is TestPlus {
     uint256 initialWithdrawAmount;
 
     function setUp() public {
-        initialAssets = 1_000_000_000_000;
+        initialAssets = 100e6;
         asset = new MockERC20("Mock", "MT", 6);
         vault = new StrategyVault();
         vault.initialize(governance, address(asset), "Test Vault", "TV");
