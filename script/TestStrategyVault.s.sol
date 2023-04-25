@@ -44,15 +44,55 @@ contract Deploy is Script {
         require(sVault.debtEscrow() == escrow);
     }
 
+    function deployStrategy() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+
+        StrategyVault sVault = StrategyVault(0x3E84ac8696CB58A9044ff67F8cf2Da2a81e39Cf9);
+
+        // Deploy strategy
+        address[] memory strategists = new address[](1);
+        strategists[0] = deployer;
+        MockEpochStrategy strategy = new MockEpochStrategy(sVault, strategists);
+
+        // Add strategy to vault
+        sVault.setStrategy(strategy);
+        require(sVault.strategy() == strategy);
+    }
+
+    function mint() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+
+        StrategyVault sVault = StrategyVault(0x3E84ac8696CB58A9044ff67F8cf2Da2a81e39Cf9);
+        MockEpochStrategy strategy = MockEpochStrategy(address(sVault.strategy()));
+
+        console.log("strategy: %s", address(strategy));
+
+        strategy.mint(100);
+    }
+
     function lock() external {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
 
         StrategyVault sVault = StrategyVault(0x3E84ac8696CB58A9044ff67F8cf2Da2a81e39Cf9);
-        // MockEpochStrategy strategy = MockEpochStrategy(address(sVault.strategy()));
+        MockEpochStrategy strategy = MockEpochStrategy(address(sVault.strategy()));
 
         console.log("Current epoch: ", sVault.epoch());
-        console.log("Epoch ended at %s", sVault.epochEnded());
-        // strategy.beginEpoch();
+        console.log("Epoch ended: %s", sVault.epochEnded());
+        strategy.beginEpoch();
+    }
+
+    function unlock() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+
+        StrategyVault sVault = StrategyVault(0x3E84ac8696CB58A9044ff67F8cf2Da2a81e39Cf9);
+        MockEpochStrategy strategy = MockEpochStrategy(address(sVault.strategy()));
+
+        console.log("Current epoch: ", sVault.epoch());
+        console.log("Epoch ended: %s", sVault.epochEnded());
+        strategy.endEpoch();
     }
 }
