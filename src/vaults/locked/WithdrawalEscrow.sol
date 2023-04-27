@@ -2,14 +2,16 @@
 pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
+import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
+
+import {BaseStrategyVault} from "src/vaults/locked/BaseStrategyVault.sol";
 
 contract WithdrawalEscrow {
     // token paid to user
     ERC20 public immutable asset;
 
     // Vault this escrow attached to
-    StrategyVault public immutable vault;
+    BaseStrategyVault public immutable vault;
 
     // per epoch per user debt shares
     mapping(uint256 => mapping(address => uint256)) public userDebtShare;
@@ -22,7 +24,7 @@ contract WithdrawalEscrow {
 
     mapping(uint256 => EpochInfo) public epochInfo;
 
-    constructor(StrategyVault _vault) {
+    constructor(BaseStrategyVault _vault) {
         asset = ERC20(_vault.asset());
         vault = _vault;
     }
@@ -48,8 +50,6 @@ contract WithdrawalEscrow {
      */
 
     function registerWithdrawalRequest(address user, uint256 shares) external onlyVault {
-        //@ lock user share need to be done from vault, otherwise need approval from user
-        // vault.transferFrom(user, address(this), shares);
         // register shares of the user
 
         uint256 currentEpoch = vault.epoch();
@@ -68,8 +68,10 @@ contract WithdrawalEscrow {
      */
     function resolveDebtShares() external onlyVault {
         // redeem vault shares and receive assets
+
+        ERC4626Upgradeable _vault = ERC4626Upgradeable(address(vault));
         uint256 assets =
-            vault.redeem({shares: vault.balanceOf(address(this)), receiver: address(this), owner: address(this)});
+            _vault.redeem({shares: _vault.balanceOf(address(this)), receiver: address(this), owner: address(this)});
 
         uint256 currentEpoch = vault.epoch();
         epochInfo[currentEpoch].assets = assets;

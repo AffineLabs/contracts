@@ -16,6 +16,7 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
 import {BaseStrategyVault} from "src/vaults/locked/BaseStrategyVault.sol";
 import {DetailedShare} from "src/utils/Detailed.sol";
+import {uncheckedInc} from "src/libs/Unchecked.sol";
 
 contract StrategyVault is BaseStrategyVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare {
     using SafeTransferLib for ERC20;
@@ -29,6 +30,7 @@ contract StrategyVault is BaseStrategyVault, ERC4626Upgradeable, PausableUpgrade
         __ERC20_init(_name, _symbol);
         __ERC4626_init(IERC20MetadataUpgradeable(vaultAsset));
         _grantRole(GUARDIAN_ROLE, governance);
+        tvlCap = 10_000 * 10 ** _asset.decimals();
     }
 
     function asset() public view override(BaseStrategyVault, ERC4626Upgradeable) returns (address) {
@@ -125,8 +127,13 @@ contract StrategyVault is BaseStrategyVault, ERC4626Upgradeable, PausableUpgrade
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
         require(shares > 0, "Vault: zero shares");
+        uint256 tvl = totalAssets();
+        uint256 allowedAssets = tvl >= tvlCap ? 0 : tvlCap - tvl;
+        assets = Math.min(allowedAssets, assets);
+        require(assets > 0, "Vault: deposit limit reached");
         _mint(receiver, shares);
         _asset.safeTransferFrom(caller, address(this), assets);
+        _depositIntoStrategy(assets);
         emit Deposit(caller, receiver, assets, shares);
     }
 
@@ -251,17 +258,9 @@ contract StrategyVault is BaseStrategyVault, ERC4626Upgradeable, PausableUpgrade
     /*//////////////////////////////////////////////////////////////
                            CAPITAL MANAGEMENT
     //////////////////////////////////////////////////////////////*/
-    /**
-     * @notice Deposit idle assets into strategies.
-     */
-
-    function depositIntoStrategies(uint256 amount) external whenNotPaused onlyRole(HARVESTER) {
-        // Deposit entire balance of `_asset` into strategies
-        _depositIntoStrategy(amount);
-    }
 
     function endEpoch() external virtual override {
-        require(msg.sender == address(strategy), "BSV: only strategy");
+        require(msg.sender == address(strategy), "SV: only strategy");
         epochEnded = true;
         _updateTVL();
 
@@ -275,19 +274,16 @@ contract StrategyVault is BaseStrategyVault, ERC4626Upgradeable, PausableUpgrade
         debtEscrow.resolveDebtShares();
     }
 
-    /**
-     * TEMP STUFF
-     *
-     */
-    uint256 assetLimit;
+    /// @notice Temporary tvl cap
+    uint256 tvlCap;
 
-    function setAssetLimit(uint256 _assetLimit) external onlyGovernance {
-        assetLimit = _assetLimit;
+    function setTvlCap(uint256 _tvlCap) external onlyGovernance {
+        tvlCap = _tvlCap;
     }
 
     function tearDown(address[] calldata users) external onlyGovernance {
         uint256 length = users.length;
-        for (uint256 i = 0; i < length;) {
+        for (uint256 i = 0; i < length; i = uncheckedInc(i)) {
             address user = users[i];
             uint256 shares = balanceOf(user);
             uint256 assets = convertToAssets(shares);
@@ -295,11 +291,6 @@ contract StrategyVault is BaseStrategyVault, ERC4626Upgradeable, PausableUpgrade
 
             _burn(user, shares);
             _asset.safeTransfer(user, amountToSend);
-
-            // Assuming that all of our tvl is on L2
-            unchecked {
-                ++i;
-            }
         }
     }
 

@@ -173,28 +173,17 @@ contract BaseStrategyVault is AffineGovernable, AccessControlUpgradeable, Multic
 
     /**
      * @notice Emitted after a successful harvest.
-     * @param user The authorized user who triggered the harvest.
+     * @param user The user who triggered the harvest.
      */
     event Harvest(address indexed user);
 
     function _updateTVL() internal {
-        // Get the Vault's current total strategy holdings.
-        uint256 oldstrategyTVL = strategyTVL;
-
-        // Used to store the new total strategy holdings after harvesting.
-        uint256 newstrategyTVL = oldstrategyTVL;
-
-        // Used to store the total profit accrued by the strategies.
-        uint256 totalProfitAccrued;
-
         // Get the strategy's previous and current balance.
         uint256 prevBalance = strategyTVL;
         uint256 currentBalance = strategy.totalLockedValue();
 
-        // Increase/decrease newstrategyTVL based on the profit/loss registered.
-        // We cannot wrap the subtraction in parenthesis as it would underflow if the strategy had a loss.
-        newstrategyTVL = newstrategyTVL + currentBalance - prevBalance;
-
+        // Calculate profit made
+        uint256 totalProfitAccrued;
         unchecked {
             // Update the total profit accrued while counting losses as zero profit.
             // Cannot overflow as we already increased total holdings without reverting.
@@ -207,7 +196,7 @@ contract BaseStrategyVault is AffineGovernable, AccessControlUpgradeable, Multic
         maxLockedProfit = uint128(lockedProfit() + totalProfitAccrued);
 
         // Set strategy holdings to our new total.
-        strategyTVL = newstrategyTVL;
+        strategyTVL = currentBalance;
     }
 
     /**
@@ -216,11 +205,11 @@ contract BaseStrategyVault is AffineGovernable, AccessControlUpgradeable, Multic
      */
     function harvest() external onlyRole(HARVESTER) {
         // Profit must not be unlocking
-        require(block.timestamp >= lastHarvest + LOCK_INTERVAL, "BV: profit unlocking");
+        require(block.timestamp >= lastHarvest + LOCK_INTERVAL, "BSV: profit unlocking");
 
         _updateTVL();
 
-        // Assess fees (using old lastHarvest) and update the last harvest timestamp.
+        // Assess fees (using old `lastHarvest`) and update the last harvest timestamp.
         _assessFees();
         lastHarvest = uint128(block.timestamp);
 
@@ -250,35 +239,21 @@ contract BaseStrategyVault is AffineGovernable, AccessControlUpgradeable, Multic
     }
 
     /**
-     * @notice Emitted when the vault must make a certain amount of assets available
-     * @dev We liquidate during cross chain rebalancing or withdrawals.
-     * @param assetsRequested The amount we wanted to make available for withdrawal.
-     * @param assetsLiquidated The amount we actually liquidated.
-     */
-    event Liquidation(uint256 assetsRequested, uint256 assetsLiquidated);
-
-    /**
      * @notice Withdraw `amount` of underlying asset from strategies.
      * @dev Always check the return value when using this function, we might not liquidate anything!
      * @param amount The amount we want to liquidate
-     * @return The amount we actually liquidated
+     * @return amountLiquidated The amount we actually liquidated
      */
-    function _liquidate(uint256 amount) internal returns (uint256) {
-        uint256 amountLiquidated;
-
+    function _liquidate(uint256 amount) internal returns (uint256 amountLiquidated) {
         uint256 balance = _asset.balanceOf(address(this));
         if (balance >= amount) {
             return 0;
         }
 
         uint256 amountNeeded = amount - balance;
-        amountNeeded = Math.min(amountNeeded, strategyTVL);
 
-        // Force withdraw of token from strategy
-        uint256 withdrawn = _withdrawFromStrategy(amountNeeded);
-        amountLiquidated += withdrawn;
-        emit Liquidation({assetsRequested: amount, assetsLiquidated: amountLiquidated});
-        return amountLiquidated;
+        // Force withdraw of `asset` from strategy
+        amountLiquidated = _withdrawFromStrategy(amountNeeded);
     }
 
     /**
