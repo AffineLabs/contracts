@@ -5,6 +5,7 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import "forge-std/console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
@@ -44,6 +45,30 @@ contract SVaultTest is TestPlus {
         vault.grantRole(vault.HARVESTER(), address(this));
         vault.grantRole(vault.GUARDIAN_ROLE(), address(this));
         vm.stopPrank();
+    }
+
+    event Upgraded(address indexed implementation);
+
+    function testCanUpgrade() public {
+        // Deploy vault
+        StrategyVault impl = new StrategyVault();
+        // Initialize proxy with correct data
+        bytes memory initData = abi.encodeCall(
+            StrategyVault.initialize,
+            (governance, address(asset), "Affine High Yield LP - USDC-wETH", "affineSushiUsdcWeth")
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        StrategyVault sVault = StrategyVault(address(proxy));
+
+        StrategyVault impl2 = new StrategyVault();
+
+        vm.expectRevert("Only Governance.");
+        sVault.upgradeTo(address(impl2));
+
+        vm.prank(governance);
+        vm.expectEmit(true, false, false, false);
+        emit Upgraded(address(impl2));
+        sVault.upgradeTo(address(impl2));
     }
 
     function testStrategyGetsAllDeposits() public {

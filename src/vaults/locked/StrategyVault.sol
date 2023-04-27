@@ -8,6 +8,7 @@ import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {MathUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
@@ -18,7 +19,7 @@ import {BaseStrategyVault} from "src/vaults/locked/BaseStrategyVault.sol";
 import {DetailedShare} from "src/utils/Detailed.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
 
-contract StrategyVault is BaseStrategyVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare {
+contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare {
     using SafeTransferLib for ERC20;
     using MathUpgradeable for uint256;
 
@@ -32,6 +33,8 @@ contract StrategyVault is BaseStrategyVault, ERC4626Upgradeable, PausableUpgrade
         _grantRole(GUARDIAN_ROLE, governance);
         tvlCap = 10_000 * 10 ** _asset.decimals();
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
     function asset() public view override(BaseStrategyVault, ERC4626Upgradeable) returns (address) {
         return BaseStrategyVault.asset();
