@@ -40,8 +40,8 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
     function decimals() public view virtual override(ERC20Upgradeable, IERC20MetadataUpgradeable) returns (uint8) {
         return _asset.decimals() + _initialShareDecimals();
     }
-    /// @notice The amount of shares to mint per wei of `asset` at genesis.
 
+    /// @notice The amount of shares to mint per wei of `asset` at genesis.
     function initialSharesPerAsset() public pure virtual returns (uint256) {
         return 10 ** _initialShareDecimals();
     }

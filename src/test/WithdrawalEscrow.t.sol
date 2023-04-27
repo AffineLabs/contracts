@@ -16,6 +16,7 @@ contract WithdrawalEscrowTest is TestPlus {
     StrategyVault vault;
     MockERC20 asset;
     WithdrawalEscrow withdrawalEscrow;
+    TestStrategy strategy;
 
     // initial user assets
     uint256 initialAssets;
@@ -30,7 +31,7 @@ contract WithdrawalEscrowTest is TestPlus {
         asset = new MockERC20("Mock", "MT", 6);
         vault = new StrategyVault();
         vault.initialize(governance, address(asset), "Test Vault", "TV");
-        TestStrategy strategy = new TestStrategy(AffineVault(address(vault)));
+        strategy = new TestStrategy(AffineVault(address(vault)));
         vm.startPrank(governance);
         vault.setStrategy(strategy);
         vault.setTvlCap(type(uint256).max);
@@ -174,5 +175,14 @@ contract WithdrawalEscrowTest is TestPlus {
 
         // assets of the escrow should be zero
         assertEq(asset.balanceOf(address(withdrawalEscrow)), 0);
+    }
+
+    ///@notice Ending the epoch should still work even if know withdrawal requests are made
+    function testEmptyEpoch() public {
+        vm.prank(address(strategy));
+        vault.beginEpoch();
+
+        vm.prank(address(strategy));
+        vault.endEpoch();
     }
 }
