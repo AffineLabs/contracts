@@ -2,11 +2,15 @@
 pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 
 import {BaseStrategyVault} from "src/vaults/locked/BaseStrategyVault.sol";
 
 contract WithdrawalEscrow {
+    using SafeTransferLib for ERC20;
+
     /// @notice The vault asset.
     ERC20 public immutable asset;
 
@@ -86,12 +90,13 @@ contract WithdrawalEscrow {
 
         // total assets for user
         uint256 assets = _epochSharesToAssets(user, epoch);
+        require(assets > 0, "WE: no assets to redeem");
 
         // reset the user debt share
         userDebtShare[epoch][user] = 0;
 
-        // transfer asset to user
-        asset.transfer(user, assets);
+        // Transfer asset to user
+        asset.safeTransfer(user, assets);
         return assets;
     }
 
