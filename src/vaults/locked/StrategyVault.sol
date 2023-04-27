@@ -152,7 +152,7 @@ contract StrategyVault is BaseStrategyVault, ERC4626Upgradeable, PausableUpgrade
             return;
         }
 
-        _liquidate(assets);
+        _withdrawFromStrategy(assets);
 
         // Slippage during liquidation means we might get less than `assets` amount of `_asset`
         assets = Math.min(_asset.balanceOf(address(this)), assets);
@@ -268,10 +268,11 @@ contract StrategyVault is BaseStrategyVault, ERC4626Upgradeable, PausableUpgrade
         uint256 lockedShares = balanceOf(address(debtEscrow));
         uint256 assets = _convertToAssets(lockedShares, MathUpgradeable.Rounding.Down);
         if (assets == 0) return;
-        _asset.safeTransferFrom({from: address(strategy), to: address(this), amount: assets});
+        _withdrawFromStrategy(assets);
 
         // Tell escrow that the funds are ready to be withdrawn. The escrow will redeem the shares.
         debtEscrow.resolveDebtShares();
+        emit EndEpoch(epoch);
     }
 
     /// @notice Temporary tvl cap

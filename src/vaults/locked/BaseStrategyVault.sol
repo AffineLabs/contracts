@@ -78,17 +78,23 @@ contract BaseStrategyVault is AffineGovernable, AccessControlUpgradeable, Multic
         debtEscrow = escrow;
     }
 
+    event BeginEpoch(uint256 epoch);
+
     function beginEpoch() external virtual {
         require(msg.sender == address(strategy), "BSV: only strategy");
         epoch += 1;
         epochEnded = false;
         epochStartTime = block.timestamp;
+        emit BeginEpoch(epoch);
     }
+
+    event EndEpoch(uint256 epoch);
 
     function endEpoch() external virtual {
         require(msg.sender == address(strategy), "BSV: only strategy");
         epochEnded = true;
         _updateTVL();
+        emit EndEpoch(epoch);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -197,22 +203,10 @@ contract BaseStrategyVault is AffineGovernable, AccessControlUpgradeable, Multic
 
         // Set strategy holdings to our new total.
         strategyTVL = currentBalance;
-    }
-
-    /**
-     * @notice Harvest a set of trusted strategies.
-     * @dev Will always revert if profit from last harvest has not finished unlocking.
-     */
-    function harvest() external onlyRole(HARVESTER) {
-        // Profit must not be unlocking
-        require(block.timestamp >= lastHarvest + LOCK_INTERVAL, "BSV: profit unlocking");
-
-        _updateTVL();
 
         // Assess fees (using old `lastHarvest`) and update the last harvest timestamp.
         _assessFees();
         lastHarvest = uint128(block.timestamp);
-
         emit Harvest(msg.sender);
     }
 
@@ -236,24 +230,6 @@ contract BaseStrategyVault is AffineGovernable, AccessControlUpgradeable, Multic
     /// @notice The total amount of the underlying asset the vault has.
     function vaultTVL() public view returns (uint256) {
         return _asset.balanceOf(address(this)) + strategyTVL;
-    }
-
-    /**
-     * @notice Withdraw `amount` of underlying asset from strategies.
-     * @dev Always check the return value when using this function, we might not liquidate anything!
-     * @param amount The amount we want to liquidate
-     * @return amountLiquidated The amount we actually liquidated
-     */
-    function _liquidate(uint256 amount) internal returns (uint256 amountLiquidated) {
-        uint256 balance = _asset.balanceOf(address(this));
-        if (balance >= amount) {
-            return 0;
-        }
-
-        uint256 amountNeeded = amount - balance;
-
-        // Force withdraw of `asset` from strategy
-        amountLiquidated = _withdrawFromStrategy(amountNeeded);
     }
 
     /**
