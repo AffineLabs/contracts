@@ -7,21 +7,21 @@ import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC2
 import {BaseStrategyVault} from "src/vaults/locked/BaseStrategyVault.sol";
 
 contract WithdrawalEscrow {
-    // token paid to user
+    /// @notice The vault asset.
     ERC20 public immutable asset;
 
-    // Vault this escrow attached to
+    /// @notice The vault this escrow attached to.
     BaseStrategyVault public immutable vault;
 
     // per epoch per user debt shares
     mapping(uint256 => mapping(address => uint256)) public userDebtShare;
 
     struct EpochInfo {
-        uint256 shares;
-        uint256 assets;
+        uint128 shares;
+        uint128 assets;
     }
-    // map per epoch debt share
 
+    // map per epoch debt share
     mapping(uint256 => EpochInfo) public epochInfo;
 
     constructor(BaseStrategyVault _vault) {
@@ -30,7 +30,7 @@ contract WithdrawalEscrow {
     }
 
     modifier onlyVault() {
-        require(msg.sender == address(vault), "SSWE: must be vault");
+        require(msg.sender == address(vault), "WE: must be vault");
         _;
     }
 
@@ -54,8 +54,7 @@ contract WithdrawalEscrow {
 
         uint256 currentEpoch = vault.epoch();
         userDebtShare[currentEpoch][user] += shares;
-
-        epochInfo[currentEpoch].shares += shares;
+        epochInfo[currentEpoch].shares += uint128(shares);
 
         emit WithdrawalRequest(user, currentEpoch, shares);
     }
@@ -67,37 +66,23 @@ contract WithdrawalEscrow {
      * @dev after resolving vault will send the assets to escrow and burn the share
      */
     function resolveDebtShares() external onlyVault {
-        // redeem vault shares and receive assets
-
         ERC4626Upgradeable _vault = ERC4626Upgradeable(address(vault));
         uint256 assets =
             _vault.redeem({shares: _vault.balanceOf(address(this)), receiver: address(this), owner: address(this)});
 
         uint256 currentEpoch = vault.epoch();
-        epochInfo[currentEpoch].assets = assets;
+        epochInfo[currentEpoch].assets = uint128(assets);
     }
-    /**
-     * @notice Convert epoch shares to assets
-     * @param user address
-     * @param epoch withdrawal request epoch
-     * @return converted assets
-     */
 
-    function _epochSharesToAssets(address user, uint256 epoch) internal view returns (uint256) {
-        uint256 userShares = userDebtShare[epoch][user];
-        EpochInfo memory data = epochInfo[epoch];
-        return (data.assets * userShares) / data.shares;
-    }
     /**
      * @notice Redeem withdrawal request
      * @param user address
      * @param epoch withdrawal request epoch
      * @return received assets
      */
-
     function redeem(address user, uint256 epoch) external returns (uint256) {
         // Should be a resolved epoch
-        require(canWithdraw(epoch), "SSWE: epoch not resolved.");
+        require(canWithdraw(epoch), "WE: epoch not resolved.");
 
         // total assets for user
         uint256 assets = _epochSharesToAssets(user, epoch);
@@ -111,9 +96,21 @@ contract WithdrawalEscrow {
     }
 
     /**
-     * @notice Check if an epoch is resolved or not
-     * @param epoch epoch number
-     * @return true if epoch is resolved
+     * @notice Convert epoch shares to assets
+     * @param user User address
+     * @param epoch withdrawal request epoch
+     * @return converted assets
+     */
+    function _epochSharesToAssets(address user, uint256 epoch) internal view returns (uint256) {
+        uint256 userShares = userDebtShare[epoch][user];
+        EpochInfo memory data = epochInfo[epoch];
+        return (userShares * data.assets) / data.shares;
+    }
+
+    /**
+     * @notice Check if an epoch is completed or not
+     * @param epoch Epoch number
+     * @return True if epoch is completed
      */
     function canWithdraw(uint256 epoch) public view returns (bool) {
         uint256 currentEpoch = vault.epoch();
@@ -121,9 +118,9 @@ contract WithdrawalEscrow {
     }
     /**
      * @notice Get withdrawable assets of a user
-     * @param user user address
-     * @param epoch requests epoch
-     * @return amount of assets user will receive
+     * @param user User address
+     * @param epoch The vault epoch
+     * @return Amount of assets user will receive
      */
 
     function withdrawableAssets(address user, uint256 epoch) public view returns (uint256) {
