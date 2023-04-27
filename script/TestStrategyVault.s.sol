@@ -30,7 +30,7 @@ library SSV {
         strategists[0] = 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d;
     }
 
-    function _getEthMainNetUSDCAddr() internal returns (address) {
+    function _getEthMainNetUSDCAddr() internal pure returns (address) {
         return 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     }
 
@@ -61,7 +61,7 @@ library SSV {
         );
     }
 
-    function deployEthSSVSushiUSDC(address deployer) internal returns (StrategyVault vault) {
+    function deployEthSSVSushiUSDC(address deployer) internal returns (StrategyVault sVault) {
         // Deploy vault
         StrategyVault impl = new StrategyVault();
         // Initialize proxy with correct data
@@ -69,7 +69,7 @@ library SSV {
             abi.encodeCall(StrategyVault.initialize, (deployer, _getEthMainNetUSDCAddr(), "SSV", "SSV"));
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
 
-        StrategyVault sVault = StrategyVault(address(proxy));
+        sVault = StrategyVault(address(proxy));
 
         console.log("Vault addr:", address(sVault));
         require(sVault.hasRole(sVault.DEFAULT_ADMIN_ROLE(), deployer));
@@ -91,18 +91,19 @@ library SSV {
     }
 }
 
-contract Deploy is Script {
-    function _getStrategists() internal pure returns (address[] memory strategists) {
-        strategists = new address[](1);
-        strategists[0] = 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d;
+contract UsdcVault is StrategyVault {
+    function _initialShareDecimals() internal pure override returns (uint8) {
+        return 10;
     }
+}
 
+contract Deploy is Script {
     function mainnet() external {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
 
         // Deploy vault
-        StrategyVault impl = new StrategyVault();
+        StrategyVault impl = new UsdcVault();
         // Initialize proxy with correct data
         bytes memory initData = abi.encodeCall(
             StrategyVault.initialize,
@@ -118,6 +119,9 @@ contract Deploy is Script {
         StrategyVault sVault = StrategyVault(address(proxy));
         require(sVault.hasRole(sVault.DEFAULT_ADMIN_ROLE(), 0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e));
         require(sVault.asset() == 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+
+        // Price must be 100 usdc
+        require(sVault.detailedPrice().num == 100e6, "Price should be 100e6");
 
         // Deploy strategy
         SSV.deployEthSSVSushiUSDCStrategy(sVault, 5714, 7500);

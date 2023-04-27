@@ -78,14 +78,14 @@
     "name": "epochInfo",
     "outputs": [
       {
-        "internalType": "uint256",
+        "internalType": "uint128",
         "name": "shares",
-        "type": "uint256"
+        "type": "uint128"
       },
       {
-        "internalType": "uint256",
+        "internalType": "uint128",
         "name": "assets",
-        "type": "uint256"
+        "type": "uint128"
       }
     ],
     "stateMutability": "view",
