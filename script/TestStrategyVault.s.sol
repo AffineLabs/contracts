@@ -92,11 +92,6 @@ library SSV {
 }
 
 contract Deploy is Script {
-    function _getStrategists() internal pure returns (address[] memory strategists) {
-        strategists = new address[](1);
-        strategists[0] = 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d;
-    }
-
     function mainnet() external {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
