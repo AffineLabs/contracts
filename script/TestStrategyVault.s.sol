@@ -30,7 +30,7 @@ library SSV {
         strategists[0] = 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d;
     }
 
-    function _getEthMainNetUSDCAddr() internal returns (address) {
+    function _getEthMainNetUSDCAddr() internal pure returns (address) {
         return 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     }
 
@@ -61,7 +61,7 @@ library SSV {
         );
     }
 
-    function deployEthSSVSushiUSDC(address deployer) internal returns (StrategyVault vault) {
+    function deployEthSSVSushiUSDC(address deployer) internal returns (StrategyVault sVault) {
         // Deploy vault
         StrategyVault impl = new StrategyVault();
         // Initialize proxy with correct data
@@ -69,7 +69,7 @@ library SSV {
             abi.encodeCall(StrategyVault.initialize, (deployer, _getEthMainNetUSDCAddr(), "SSV", "SSV"));
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
 
-        StrategyVault sVault = StrategyVault(address(proxy));
+        sVault = StrategyVault(address(proxy));
 
         console.log("Vault addr:", address(sVault));
         require(sVault.hasRole(sVault.DEFAULT_ADMIN_ROLE(), deployer));
