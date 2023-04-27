@@ -45,7 +45,7 @@ contract StrategyVault is BaseStrategyVault, ERC4626Upgradeable, PausableUpgrade
     /// @notice The amount of shares to mint per wei of `asset` at genesis.
 
     function initialSharesPerAsset() public pure virtual returns (uint256) {
-        return 10 ** _initialShareDecimals();
+        return 1e8;
     }
 
     /// @notice Each wei of `asset` at genesis is worth 10 ** (initialShareDecimals) shares.
