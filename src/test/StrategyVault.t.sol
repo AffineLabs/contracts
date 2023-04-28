@@ -3,15 +3,19 @@ pragma solidity 0.8.16;
 
 import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
+import "forge-std/console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {MockERC20} from "./mocks/MockERC20.sol";
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
-import {TestStrategy} from "./mocks/TestStrategy.sol";
 import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
-
+import {WithdrawalEscrow} from "src/vaults/locked/WithdrawalEscrow.sol";
 import {Vault} from "src/vaults/Vault.sol";
+
+import {TestStrategy} from "./mocks/TestStrategy.sol";
+import {MockERC20} from "./mocks/MockERC20.sol";
+import {MockEpochStrategy} from "src/testnet/MockEpochStrategy.sol";
 
 // TODO: merge with CommonVaultTest
 import {CommonVaultTest} from "./Vault.t.sol";
@@ -21,7 +25,7 @@ contract SVaultTest is TestPlus {
 
     StrategyVault vault;
     MockERC20 asset;
-    TestStrategy strategy;
+    MockEpochStrategy strategy;
 
     function setUp() public {
         asset = new MockERC20("Mock", "MT", 6);
@@ -29,12 +33,42 @@ contract SVaultTest is TestPlus {
         vault = new StrategyVault();
         vault.initialize(governance, address(asset), "USD Earn", "usdEarn");
 
-        strategy = new TestStrategy(AffineVault(address(vault)));
+        WithdrawalEscrow escrow = new WithdrawalEscrow(vault);
+
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+        strategy = new MockEpochStrategy(vault, strategists);
         vm.startPrank(governance);
         vault.setStrategy(strategy);
+        vault.setDebtEscrow(escrow);
         vault.setTvlCap(type(uint256).max);
         vault.grantRole(vault.HARVESTER(), address(this));
+        vault.grantRole(vault.GUARDIAN_ROLE(), address(this));
         vm.stopPrank();
+    }
+
+    event Upgraded(address indexed implementation);
+
+    function testCanUpgrade() public {
+        // Deploy vault
+        StrategyVault impl = new StrategyVault();
+        // Initialize proxy with correct data
+        bytes memory initData = abi.encodeCall(
+            StrategyVault.initialize,
+            (governance, address(asset), "Affine High Yield LP - USDC-wETH", "affineSushiUsdcWeth")
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        StrategyVault sVault = StrategyVault(address(proxy));
+
+        StrategyVault impl2 = new StrategyVault();
+
+        vm.expectRevert("Only Governance.");
+        sVault.upgradeTo(address(impl2));
+
+        vm.prank(governance);
+        vm.expectEmit(true, false, false, false);
+        emit Upgraded(address(impl2));
+        sVault.upgradeTo(address(impl2));
     }
 
     function testStrategyGetsAllDeposits() public {
@@ -63,6 +97,23 @@ contract SVaultTest is TestPlus {
         vm.expectRevert("Vault: deposit limit reached");
         vault.deposit(200, address(this));
         assertEq(asset.balanceOf(address(this)), 1000);
+    }
+
+    /// @notice Test
+    function testLockedProfitAfterEpoch() public {
+        // Begin epoch
+        strategy.beginEpoch();
+
+        // Mint gain and endEpoch
+        strategy.endEpoch();
+
+        // All gains are locked
+        assertEq(vault.lockedProfit(), 1e6);
+
+        // Half of gains unlock after half of lock interval passes
+        vm.warp(block.timestamp + vault.LOCK_INTERVAL() / 2);
+        assertEq(vault.lockedProfit(), 1e6 / 2);
+        assertEq(vault.totalAssets(), 1e6 / 2);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -177,7 +228,7 @@ contract SVaultTest is TestPlus {
         assertEq(vault.totalSupply(), 1e18);
 
         // Add this contract as a strategy
-        changePrank(governance);
+        vm.prank(governance);
         vault.setManagementFee(200);
 
         // call to balanceOfAsset in harvest() will return 1e18
@@ -188,12 +239,14 @@ contract SVaultTest is TestPlus {
         // Call harvest to update lastHarvest, note that no shares are minted here because
         // (block.timestamp - lastHarvest) = LOCK_INTERVAL + 1 =  3 hours + 1 second
         // and feeBps gets truncated to zero
-        vault.harvest();
+        strategy.beginEpoch();
+        strategy.endEpoch();
 
         vm.warp(block.timestamp + 365 days / 2);
 
         // Call harvest to trigger fee assessment
-        vault.harvest();
+        strategy.beginEpoch();
+        strategy.endEpoch();
 
         // Check that fees were assesed in the correct amounts => Management fees are sent to governance address
         // 1/2 of 2% of the vault's supply should be minted to governance
@@ -210,7 +263,8 @@ contract SVaultTest is TestPlus {
         asset.mint(address(myStrat), 1e18);
         asset.approve(address(vault), type(uint256).max);
 
-        vault.harvest();
+        vm.prank(address(strategy));
+        vault.endEpoch();
 
         assertEq(vault.lockedProfit(), 1e18);
         assertEq(vault.totalAssets(), 0);
@@ -232,7 +286,8 @@ contract SVaultTest is TestPlus {
         BaseStrategy myStrat = strategy;
         asset.mint(address(myStrat), 1);
         vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
-        vault.harvest();
+        vm.prank(address(strategy));
+        vault.endEpoch();
 
         assertEq(vault.totalAssets(), 999);
         vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
@@ -246,12 +301,13 @@ contract SVaultTest is TestPlus {
 
         uint256 amountAsset = 1e18;
 
-        changePrank(alice);
+        vm.startPrank(alice);
         asset.mint(alice, amountAsset);
         asset.approve(address(vault), type(uint256).max);
         vault.deposit(amountAsset, alice);
 
         vault.redeem(vault.balanceOf(alice), alice, alice);
+        vm.stopPrank();
         assertEq(vault.balanceOf(alice), 0);
 
         // User gets the original amount with 50bps deducted
@@ -289,7 +345,9 @@ contract SVaultTest is TestPlus {
         vault.unpause();
 
         vm.stopPrank();
-        testDepositWithdraw(1e18);
+        asset.mint(address(this), 1e18);
+        asset.approve(address(vault), 1e18);
+        vault.deposit(1e18, address(this));
 
         // Only the HARVESTER address can call pause or unpause
         string memory errString = string(

@@ -34,4 +34,10 @@ contract MockEpochStrategy is AccessStrategy {
     function totalLockedValue() external view override returns (uint256) {
         return asset.balanceOf(address(this));
     }
+
+    function _divest(uint256 amount) internal virtual override returns (uint256) {
+        uint256 amountToSend = amount > balanceOfAsset() ? balanceOfAsset() : amount;
+        asset.transfer(address(vault), amountToSend);
+        return amountToSend;
+    }
 }

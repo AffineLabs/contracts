@@ -131,6 +131,15 @@ contract Deploy is Script {
         require(escrow.vault() == sVault);
     }
 
+    function deployEscrow() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+        StrategyVault sVault = StrategyVault(0x61A18EE9d6d51F838c7e50dFD750629Fd141E944);
+        // Deploy Escrow
+        WithdrawalEscrow escrow = new WithdrawalEscrow(sVault);
+        require(escrow.vault() == sVault);
+    }
+
     function run() external {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);

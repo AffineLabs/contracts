@@ -65,20 +65,27 @@ contract SSVDeltaNeutralLpTest is TestPlus {
         assertEq(vault.epochEnded(), false);
     }
 
-    // TODO: activate this test after fixing the vault end epoch
-    // function testClosePosition() public {
-    //     // assign assets to the strategy
-    //     deal(address(asset), address(strategy), initialStrategyAssets);
-    //     // assign shares to the escrow
-    //     deal(address(vault), address(escrow), initialStrategyAssets * vault.initialSharesPerAsset());
+    function testClosePosition() public {
+        // assign assets to the strategy
+        deal(address(asset), address(this), initialStrategyAssets);
 
-    //     vm.startPrank(governance);
-    //     strategy.startPosition(initialStrategyAssets, IDEAL_SLIPPAGE_BPS);
-    //     strategy.endPosition(IDEAL_SLIPPAGE_BPS);
+        asset.approve(address(vault), initialStrategyAssets);
+        vault.deposit(initialStrategyAssets, address(this));
 
-    //     assertTrue(vault.epochEnded());
-    //     // strategy shares should be zero
-    //     assertEq(asset.balanceOf(address(strategy)), 0);
-    //     assertEq(vault.balanceOf(address(escrow)), 0);
-    // }
+        vm.startPrank(governance);
+        strategy.startPosition(initialStrategyAssets, IDEAL_SLIPPAGE_BPS);
+
+        vault.redeem(vault.balanceOf(address(this)), address(this), address(this));
+
+        strategy.endPosition(IDEAL_SLIPPAGE_BPS);
+
+        console.log("escrow shares at end: ", vault.balanceOf(address(escrow)));
+
+        assertTrue(vault.epochEnded());
+        // strategy shares should be zero
+        assertEq(asset.balanceOf(address(strategy)), 0);
+        assertEq(vault.balanceOf(address(escrow)), 0);
+
+        assertApproxEqRel(asset.balanceOf(address(escrow)), initialStrategyAssets, 0.05e18);
+    }
 }
