@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {IERC20MetadataUpgradeable} from
     "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
@@ -17,7 +18,7 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {DetailedShare} from "src/utils/Detailed.sol";
 
-contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare {
+contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare {
     using SafeTransferLib for ERC20;
     using MathUpgradeable for uint256;
 
@@ -30,6 +31,8 @@ contract Vault is AffineVault, ERC4626Upgradeable, PausableUpgradeable, Detailed
         __ERC4626_init(IERC20MetadataUpgradeable(vaultAsset));
         _grantRole(GUARDIAN_ROLE, governance);
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
     function asset() public view override(AffineVault, ERC4626Upgradeable) returns (address) {
         return AffineVault.asset();

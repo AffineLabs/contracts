@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {Vault} from "src/vaults/Vault.sol";
 
@@ -24,6 +25,28 @@ contract CommonVaultTest is TestPlus {
 
         vault = new Vault();
         vault.initialize(governance, address(asset), "USD Earn", "usdEarn");
+    }
+
+    event Upgraded(address indexed implementation);
+
+    function testCanUpgrade() public {
+        // Deploy vault
+        Vault impl = new Vault();
+
+        // Initialize proxy with correct data
+        bytes memory initData = abi.encodeCall(Vault.initialize, (governance, address(asset), "name", "symbol"));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        Vault _vault = Vault(address(proxy));
+
+        Vault impl2 = new Vault();
+
+        vm.expectRevert("Only Governance.");
+        _vault.upgradeTo(address(impl2));
+
+        vm.prank(governance);
+        vm.expectEmit(true, false, false, false);
+        emit Upgraded(address(impl2));
+        _vault.upgradeTo(address(impl2));
     }
 
     /// @notice Test vault initialization.
