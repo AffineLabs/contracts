@@ -26,11 +26,11 @@ contract ConvexStratTest is TestPlus {
     ERC20 crv;
     ERC20 cvx;
 
-    function _deployStrategy() internal virtual {
+    function _deployStrategy() internal virtual returns (ConvexStrategy strat) {
         address[] memory strategists = new address[](1);
         strategists[0] = address(this);
 
-        strategy = new ConvexStrategy(
+        strat = new ConvexStrategy(
             {_vault: vault, 
             _assetIndex: 1,
             _isMetaPool: false, 
@@ -52,7 +52,7 @@ contract ConvexStratTest is TestPlus {
             bytes32(uint256(uint160(address(usdc))))
         );
 
-        _deployStrategy();
+        strategy = _deployStrategy();
 
         // To be able to call functions restricted to strategist role.
         vm.startPrank(vault.governance());
@@ -150,19 +150,18 @@ contract ConvexStratTest is TestPlus {
 
     /// @notice Make sure that we get the correct amount of assets when selling rewards
     function testRewardsAreNearSpotPrice() public {
-        // CRV is about $1.03 as of block 16520958
-        deal(address(strategy.CRV()), address(strategy), 10e18);
+        // CRV is about $0.92 as of current forked block
+        deal(address(strategy.CRV()), address(strategy), 1000e18);
 
         strategy.sellRewards(0, 0);
         uint256 crvUsdc = usdc.balanceOf(address(strategy));
-        assertApproxEqRel(crvUsdc, 10.3e6, 0.05e18);
+        assertApproxEqRel(crvUsdc, 920e6, 0.05e18);
 
-        // CVX is about $5.92 as of block 16520958
-        deal(address(strategy.CVX()), address(strategy), 10e18);
+        // CVX is about $5.3 as of block 16520958
+        deal(address(strategy.CVX()), address(strategy), 1000e18);
         strategy.sellRewards(0, 0);
         uint256 cvxUsdc = usdc.balanceOf(address(strategy)) - crvUsdc;
-        // The pool has a tvl of about $700k, but we still see significant slippage
-        assertApproxEqRel(cvxUsdc, 59.2e6, 0.3e18);
+        assertApproxEqRel(cvxUsdc, 5300e6, 0.05e18);
     }
 
     /// @notice Fuzz test of tvl function.
@@ -182,19 +181,30 @@ contract ConvexStratTest is TestPlus {
         deal(address(crv), address(strategy), 1e18);
         deal(address(cvx), address(strategy), 1e18);
 
-        vm.prank(vault.governance());
-        strategy.sendAllTokens(address(this));
+        assertEq(strategy.curveLpToken().balanceOf(address(strategy)), 1e18);
+        // return;
 
+        ConvexStrategy newStrat = _deployStrategy();
+        // To be able to call functions restricted to strategist role.
+        vm.startPrank(vault.governance());
+        strategy.sendAllTokens(address(newStrat));
+
+        // Old strategy has no assets
         assertEq(strategy.curveLpToken().balanceOf(address(strategy)), 0);
-        assertEq(strategy.curveLpToken().balanceOf(address(this)), 2e18);
         assertEq(strategy.cvxRewarder().balanceOf(address(strategy)), 0);
-        assertEq(strategy.cvxRewarder().balanceOf(address(this)), 0);
         assertEq(usdc.balanceOf(address(strategy)), 0);
-        assertEq(usdc.balanceOf(address(this)), 1e6);
         assertEq(crv.balanceOf(address(strategy)), 0);
-        assertTrue(crv.balanceOf(address(this)) >= 1e18); // You get some dust when withdrawing in same block
         assertEq(cvx.balanceOf(address(strategy)), 0);
-        assertTrue(cvx.balanceOf(address(this)) >= 1e18);
+
+        // New strategy has all assets
+        assertEq(strategy.curveLpToken().balanceOf(address(newStrat)), 2e18);
+        assertEq(usdc.balanceOf(address(newStrat)), 1e6);
+        assertTrue(crv.balanceOf(address(newStrat)) >= 1e18); // You get some dust when withdrawing in same block
+        assertTrue(cvx.balanceOf(address(newStrat)) >= 1e18);
+
+        // We can deposit crv lp tokens in convex and get cvx lp tokens
+        newStrat.depositIntoConvex();
+        assertEq(strategy.cvxRewarder().balanceOf(address(newStrat)), 2e18);
     }
 }
 
@@ -213,7 +223,7 @@ contract ConvexStratMIMTest is ConvexStratTest {
         }
     }
 
-    function _deployStrategy() internal override {
-        strategy = DeployLib.deployMim3Crv(vault);
+    function _deployStrategy() internal override returns (ConvexStrategy strat) {
+        strat = DeployLib.deployMim3Crv(vault);
     }
 }

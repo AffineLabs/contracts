@@ -10,6 +10,8 @@ import {ConvexStrategy} from "src/strategies/ConvexStrategy.sol";
 import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
 import {IConvexBooster, IConvexRewards} from "src/interfaces/convex.sol";
 
+/* solhint-disable reason-string, no-console */
+
 library DeployLib {
     function deployMim3Crv(AffineVault vault) internal returns (ConvexStrategy strategy) {
         strategy = new ConvexStrategy(
@@ -38,5 +40,11 @@ contract Deploy is Script {
     function runMim3Crv() external {
         _start();
         DeployLib.deployMim3Crv(AffineVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9));
+    }
+
+    function usdEarnEth() external {
+        _start();
+        ConvexStrategy strat = DeployLib.deployMim3Crv(AffineVault(0x78Bb94Feab383ccEd39766a7d6CF31dED177Ad0c));
+        console.log("vault: ", address(strat.vault()));
     }
 }

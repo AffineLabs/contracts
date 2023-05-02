@@ -78,10 +78,10 @@ contract ConvexStrategy is AccessStrategy {
     /// @notice Convex booster. Used for depositing curve lp tokens.
     IConvexBooster public constant CVX_BOOSTER = IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
 
-    /// @notice Deposit `assets` and receive at least `minLpTokens` of CRV lp tokens.
+    /// @notice Deposit `assets` and receive at least `minLpTokens` of CRV lp tokens. Also stake lp tokens in Convex.
     function deposit(uint256 assets, uint256 minLpTokens) external onlyRole(STRATEGIST_ROLE) {
         _depositIntoCurve(assets, minLpTokens);
-        CVX_BOOSTER.depositAll(convexPid, true);
+        _depositIntoConvex();
     }
 
     /// @dev Deposits into curve using metapool if necessary.
@@ -96,6 +96,20 @@ contract ConvexStrategy is AccessStrategy {
             depositAmounts[uint256(uint128(assetIndex))] = assets;
             curvePool.add_liquidity({depositAmounts: depositAmounts, minMintAmount: minLpTokens});
         }
+    }
+
+    function _depositIntoConvex() internal {
+        CVX_BOOSTER.depositAll(convexPid, true);
+    }
+
+    /// @notice Deposit assets into curve without staking in convex.
+    function depositIntoCurve(uint256 assets, uint256 minLpTokens) external onlyRole(STRATEGIST_ROLE) {
+        _depositIntoCurve(assets, minLpTokens);
+    }
+
+    /// @notice Deposit curve lp tokens into convex.
+    function depositIntoConvex() external onlyRole(STRATEGIST_ROLE) {
+        _depositIntoConvex();
     }
 
     /// @dev Divestment. Unstake from convex and convert curve lp tokens into `asset`.
@@ -170,6 +184,21 @@ contract ConvexStrategy is AccessStrategy {
         }
     }
 
+    function _withdrawFromConvex(uint256 numLpTokens) internal {
+        cvxRewarder.withdrawAndUnwrap({amount: numLpTokens, claim: true});
+    }
+
+    function withdrawFromCurve(uint256 maxLpTokensToBurn, uint256 minAssetsReceived)
+        external
+        onlyRole(STRATEGIST_ROLE)
+    {
+        _withdrawFromCurve(maxLpTokensToBurn, minAssetsReceived);
+    }
+
+    function withdrawFromConvex(uint256 numLpTokens) external onlyRole(STRATEGIST_ROLE) {
+        _withdrawFromConvex(numLpTokens);
+    }
+
     /// @dev Convert between different decimal representations
     function _giveDecimals(uint256 number, uint256 inDecimals, uint256 outDecimals) internal pure returns (uint256) {
         if (inDecimals > outDecimals) {
@@ -179,14 +208,6 @@ contract ConvexStrategy is AccessStrategy {
             number = number * (10 ** (outDecimals - inDecimals));
         }
         return number;
-    }
-
-    function withdrawFromConvex(uint256 numLpTokens) external onlyRole(STRATEGIST_ROLE) {
-        _withdrawFromConvex(numLpTokens);
-    }
-
-    function _withdrawFromConvex(uint256 numLpTokens) internal {
-        cvxRewarder.withdrawAndUnwrap({amount: numLpTokens, claim: true});
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -224,11 +245,13 @@ contract ConvexStrategy is AccessStrategy {
     function _sellRewards(uint256 minAssetsFromCrv, uint256 minAssetsFromCvx) internal {
         // Sell CRV rewards if we have at least MIN_REWARD_AMOUNT tokens
         uint256 crvBal = CRV.balanceOf(address(this));
+        uint24 bps100 = 10_000;
+        uint24 bps5 = 500;
         if (crvBal > MIN_REWARD_AMOUNT) {
             ISwapRouter.ExactInputSingleParams memory paramsCrv = ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(CRV),
                 tokenOut: address(asset),
-                fee: 10_000,
+                fee: bps100,
                 recipient: address(this),
                 deadline: block.timestamp,
                 amountIn: crvBal,
@@ -241,17 +264,14 @@ contract ConvexStrategy is AccessStrategy {
         // Sell CVX rewards
         uint256 cvxBal = CVX.balanceOf(address(this));
         if (cvxBal > MIN_REWARD_AMOUNT) {
-            ISwapRouter.ExactInputSingleParams memory paramsCvx = ISwapRouter.ExactInputSingleParams({
-                tokenIn: address(CVX),
-                tokenOut: address(asset),
-                fee: 10_000,
+            ISwapRouter.ExactInputParams memory paramsCvx = ISwapRouter.ExactInputParams({
+                path: abi.encodePacked(address(CVX), bps100, address(WETH), bps5, address(asset)),
                 recipient: address(this),
                 deadline: block.timestamp,
                 amountIn: cvxBal,
-                amountOutMinimum: minAssetsFromCvx,
-                sqrtPriceLimitX96: 0
+                amountOutMinimum: minAssetsFromCvx
             });
-            ROUTER.exactInputSingle(paramsCvx);
+            ROUTER.exactInput(paramsCvx);
         }
     }
 
