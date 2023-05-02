@@ -18,6 +18,7 @@ import {L1WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L1Wormhole
 import {L2WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L2WormholeRouter.sol";
 import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/EmergencyWithdrawalQueue.sol";
 import {Create3Deployer} from "./Create3Deployer.sol";
+import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockL2Vault, MockL1Vault} from "./mocks/index.sol";
@@ -104,5 +105,10 @@ contract Deploy is Test {
                 AggregatorV3Interface(0xF9680D99D6C9589e2a93a78A04A279e509205945)
             ]
         );
+    }
+
+    function deployEthSSV(ERC20 asset) internal returns (StrategyVault vault) {
+        vault = new StrategyVault();
+        vault.initialize(governance, address(asset), "Single Strategy Vault", "ETH_SSV_USDC");
     }
 }
