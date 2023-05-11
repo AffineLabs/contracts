@@ -21,7 +21,7 @@ import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 
 import {WithdrawalEscrow} from "src/vaults/locked/WithdrawalEscrow.sol";
 import {MockEpochStrategy} from "src/testnet/MockEpochStrategy.sol";
-
+import {DummyEpochStrategy} from "src/testnet/DummyEpochStrategy.sol";
 /* solhint-disable reason-string, no-console */
 
 library SSV {
@@ -171,6 +171,74 @@ contract Deploy is Script {
         require(escrow.vault() == sVault);
         sVault.setDebtEscrow(escrow);
         require(sVault.debtEscrow() == escrow);
+    }
+
+    function runTestV2() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+
+        // Deploy vault
+        StrategyVault impl = new UsdcVault();
+        // Initialize proxy with correct data
+        bytes memory initData = abi.encodeCall(
+            StrategyVault.initialize,
+            (
+                0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e,
+                0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,
+                "Affine High Yield LP",
+                "affineDegen"
+            )
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+
+        StrategyVault sVault = StrategyVault(address(proxy));
+        require(sVault.hasRole(sVault.DEFAULT_ADMIN_ROLE(), 0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e));
+        require(sVault.asset() == 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+
+        // Price must be 100 usdc
+        require(sVault.detailedPrice().num == 100e6, "Price should be 100e6");
+
+        // Deploy strategy
+        address[] memory strategists = new address[](1);
+        strategists[0] = 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d;
+        DummyEpochStrategy strategy = new DummyEpochStrategy(sVault, strategists);
+
+        require(address(strategy.vault()) == address(sVault));
+        require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
+    }
+
+    function runTestV2Test() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+
+        // Deploy vault
+        StrategyVault impl = new UsdcVault();
+        // Initialize proxy with correct data
+        bytes memory initData = abi.encodeCall(
+            StrategyVault.initialize,
+            (
+                0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e,
+                0xb465fBFE1678fF41CD3D749D54d2ee2CfABE06F3,
+                "Affine High Yield LP",
+                "affineDegen"
+            )
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+
+        StrategyVault sVault = StrategyVault(address(proxy));
+        require(sVault.hasRole(sVault.DEFAULT_ADMIN_ROLE(), 0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e));
+        require(sVault.asset() == 0xb465fBFE1678fF41CD3D749D54d2ee2CfABE06F3);
+
+        // Price must be 100 usdc
+        require(sVault.detailedPrice().num == 100e6, "Price should be 100e6");
+
+        // Deploy strategy
+        address[] memory strategists = new address[](1);
+        strategists[0] = 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d;
+        DummyEpochStrategy strategy = new DummyEpochStrategy(sVault, strategists);
+
+        require(address(strategy.vault()) == address(sVault));
+        require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
     }
 
     function runMainNet() external {
