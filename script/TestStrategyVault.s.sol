@@ -211,22 +211,19 @@ contract Deploy is Script {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
 
+        address gov = deployer;
+
         // Deploy vault
         StrategyVault impl = new UsdcVault();
         // Initialize proxy with correct data
         bytes memory initData = abi.encodeCall(
             StrategyVault.initialize,
-            (
-                0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e,
-                0xb465fBFE1678fF41CD3D749D54d2ee2CfABE06F3,
-                "Affine High Yield LP",
-                "affineDegen"
-            )
+            (gov, 0xb465fBFE1678fF41CD3D749D54d2ee2CfABE06F3, "Affine High Yield LP", "affineDegen")
         );
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
 
         StrategyVault sVault = StrategyVault(address(proxy));
-        require(sVault.hasRole(sVault.DEFAULT_ADMIN_ROLE(), 0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e));
+        require(sVault.hasRole(sVault.DEFAULT_ADMIN_ROLE(), gov));
         require(sVault.asset() == 0xb465fBFE1678fF41CD3D749D54d2ee2CfABE06F3);
 
         // Price must be 100 usdc
@@ -239,6 +236,13 @@ contract Deploy is Script {
 
         require(address(strategy.vault()) == address(sVault));
         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
+
+        sVault.setStrategy(strategy);
+        // Deploy Escrow
+        WithdrawalEscrow escrow = new WithdrawalEscrow(sVault);
+        require(escrow.vault() == sVault);
+        sVault.setDebtEscrow(escrow);
+        require(sVault.debtEscrow() == escrow);
     }
 
     function runMainNet() external {
