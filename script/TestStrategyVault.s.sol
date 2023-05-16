@@ -207,7 +207,7 @@ contract Deploy is Script {
         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
     }
 
-    function runTestV2Test() external {
+    function runExpV2Test() external {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
 
@@ -243,6 +243,44 @@ contract Deploy is Script {
         require(escrow.vault() == sVault);
         sVault.setDebtEscrow(escrow);
         require(sVault.debtEscrow() == escrow);
+    }
+
+    function runExpV2Main() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+
+        address gov = 0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e;
+        address asset = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+
+        // Deploy vault
+        StrategyVault impl = new UsdcVault();
+        // Initialize proxy with correct data
+        bytes memory initData =
+            abi.encodeCall(StrategyVault.initialize, (gov, asset, "Affine High Yield LP", "affineDegen"));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+
+        StrategyVault sVault = StrategyVault(address(proxy));
+        require(sVault.hasRole(sVault.DEFAULT_ADMIN_ROLE(), gov));
+        require(sVault.asset() == asset);
+
+        // Price must be 100 usdc
+        require(sVault.detailedPrice().num == 100e6, "Price should be 100e6");
+
+        // Deploy strategy
+        address[] memory strategists = new address[](1);
+        strategists[0] = 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d;
+        DummyEpochStrategy strategy = new DummyEpochStrategy(sVault, strategists);
+
+        require(address(strategy.vault()) == address(sVault));
+        require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
+        // sVault.setStrategy(strategy);
+
+        // Deploy Escrow
+        WithdrawalEscrow escrow = new WithdrawalEscrow(sVault);
+        require(escrow.vault() == sVault);
+
+        // sVault.setDebtEscrow(escrow);
+        // require(sVault.debtEscrow() == escrow);
     }
 
     function runMainNet() external {
