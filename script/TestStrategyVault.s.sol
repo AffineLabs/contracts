@@ -283,6 +283,44 @@ contract Deploy is Script {
         // require(sVault.debtEscrow() == escrow);
     }
 
+    function runExpV2Poly() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+
+        address gov = 0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0;
+        address asset = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+
+        // Deploy vault
+        StrategyVault impl = new UsdcVault();
+        // Initialize proxy with correct data
+        bytes memory initData =
+            abi.encodeCall(StrategyVault.initialize, (gov, asset, "Affine High Yield LP", "affineDegen"));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+
+        StrategyVault sVault = StrategyVault(address(proxy));
+        require(sVault.hasRole(sVault.DEFAULT_ADMIN_ROLE(), gov));
+        require(sVault.asset() == asset);
+
+        // Price must be 100 usdc
+        require(sVault.detailedPrice().num == 100e6, "Price should be 100e6");
+
+        // Deploy strategy
+        address[] memory strategists = new address[](1);
+        strategists[0] = 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d;
+        DummyEpochStrategy strategy = new DummyEpochStrategy(sVault, strategists);
+
+        require(address(strategy.vault()) == address(sVault));
+        require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));
+        // sVault.setStrategy(strategy);
+
+        // Deploy Escrow
+        WithdrawalEscrow escrow = new WithdrawalEscrow(sVault);
+        require(escrow.vault() == sVault);
+
+        // sVault.setDebtEscrow(escrow);
+        // require(sVault.debtEscrow() == escrow);
+    }
+
     function runMainNet() external {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
