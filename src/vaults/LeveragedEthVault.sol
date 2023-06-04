@@ -4,7 +4,7 @@ pragma solidity =0.8.16;
 import {AffineBadges} from "src/nfts/AffineBadges.sol";
 import {Vault} from "src/vaults/Vault.sol";
 
-contract LeveragedStakingVault is Vault {
+contract LeveragedEthVault is Vault {
     address public nftContractAddress;
     bool public nftMintingEnabled = false;
 
@@ -30,7 +30,6 @@ contract LeveragedStakingVault is Vault {
                 nftContract.mint(receiver, 1, 1, "");
             }
         }
-
         return shares;
     }
 }
