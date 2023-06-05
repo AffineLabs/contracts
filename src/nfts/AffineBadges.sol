@@ -3,23 +3,23 @@ pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract AffineBadges is ERC1155, Ownable, ERC1155Supply {
+contract AffineBadges is ERC1155, AccessControl, ERC1155Supply {
     mapping(uint256 => bool) public mintAllowed;
-    mapping(address => bool) public isMinter;
     mapping(uint256 => uint256) public maxSupply;
     mapping(uint256 => uint256) public maxMint;
     mapping(uint256 => uint256) public currentSupply;
     mapping(address => mapping(uint256 => uint256)) public mintCount;
     bool public mintActive;
-
     string public name = "Affine Badges";
     string public symbol = "ABADGE";
 
-    modifier mintable(uint256 id, address minter) {
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
+
+    modifier mintable(uint256 id) {
         require(mintAllowed[id], "AffineBadges: Minting not allowed for given ID.");
-        require(isMinter[minter], "AffineBadges: Minting not allowed for given address.");
         require(mintActive, "AffineBadges: Minting paused.");
         _;
     }
@@ -28,36 +28,40 @@ contract AffineBadges is ERC1155, Ownable, ERC1155Supply {
         // Dev: Initial setup for first token
         mintAllowed[1] = true;
         maxMint[1] = 1;
-        maxSupply[1] = 100;
+        maxSupply[1] = 225;
+        _grantRole(OWNER_ROLE, _msgSender());
     }
 
-    function setMaxMint(uint256 _maxMint, uint256 id) public onlyOwner {
+    function setMaxMint(uint256 _maxMint, uint256 id) public onlyRole(OWNER_ROLE) {
         maxMint[id] = _maxMint;
     }
 
-    function setURI(string memory newuri) public onlyOwner {
+    function setURI(string memory newuri) public onlyRole(OWNER_ROLE) {
         _setURI(newuri);
     }
 
-    function setMaxSupply(uint256 id, uint256 supply) public onlyOwner {
+    function setMaxSupply(uint256 id, uint256 supply) public onlyRole(OWNER_ROLE) {
         maxSupply[id] = supply;
     }
 
-    function setIsMinter(address account, bool canMint) public onlyOwner {
-        require(isMinter[account] != canMint, "AffineBadges: Desired state is already set.");
-        isMinter[account] = canMint;
+    function setCanMint(address account) public onlyRole(OWNER_ROLE) {
+        _grantRole(MINTER_ROLE, account);
     }
 
-    function setMintActive(bool _mintActive) public onlyOwner {
+    function setMintActive(bool _mintActive) public onlyRole(OWNER_ROLE) {
         require(_mintActive != mintActive, "AffineBadges: Desired state is already set.");
         mintActive = _mintActive;
     }
 
-    function setMintAllowed(uint256 id, bool _mintAllowed) public onlyOwner {
+    function setMintAllowed(uint256 id, bool _mintAllowed) public onlyRole(OWNER_ROLE) {
         mintAllowed[id] = _mintAllowed;
     }
 
-    function mint(address account, uint256 id, uint256 amount, bytes memory data) public mintable(id, _msgSender()) {
+    function mint(address account, uint256 id, uint256 amount, bytes memory data)
+        public
+        mintable(id)
+        onlyRole(MINTER_ROLE)
+    {
         uint256 minted = mintCount[account][id];
         require(currentSupply[id] + amount <= maxSupply[id], "AffineBadges: Mint exceeds max supply.");
         require(minted + amount <= maxMint[id], "AffineBadges: Mint exceeds max per wallet.");
@@ -67,6 +71,10 @@ contract AffineBadges is ERC1155, Ownable, ERC1155Supply {
     }
 
     // The following functions are overrides required by Solidity.
+
+    function supportsInterface(bytes4 interfaceId) public view override(ERC1155, AccessControl) returns (bool) {
+        return super.supportsInterface(interfaceId);
+    }
 
     function _beforeTokenTransfer(
         address operator,
