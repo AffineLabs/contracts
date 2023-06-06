@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
+/* solhint-disable reason-string, no-console */
+
 import {Script, console} from "forge-std/Script.sol";
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
+import {EthVault} from "src/vaults/EthVault.sol";
+import {Vault} from "src/vaults/Vault.sol";
 import {MockEpochStrategy} from "src/testnet/MockEpochStrategy.sol";
+import {Base} from "./Base.sol";
 
 library EthLeverage {
     function _getStrategists() internal pure returns (address[] memory strategists) {
@@ -27,38 +31,45 @@ library EthLeverage {
         return 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     }
 
-    function deployEthStrategyVault() internal returns (StrategyVault vault) {
-        StrategyVault _vault = new StrategyVault();
+    function deployEthVault(address governance) internal returns (EthVault vault) {
+        EthVault _vault = new EthVault();
         // Initialize proxy with correct data
         bytes memory initData = abi.encodeCall(
-            StrategyVault.initialize,
+            Vault.initialize,
             (
-                _getTestStrategists()[0], // TODO: check before deploy in mainnet
+                governance, // TODO: check before deploy in mainnet
                 _getEthMainNetWEthAddr(), // WETH
-                "Affine Eth Leverage",
-                "AffineEthLev"
+                "Affine Staked Eth Leverage",
+                "AffineStEthLev"
             )
         );
 
         ERC1967Proxy proxy = new ERC1967Proxy(address(_vault), initData);
 
-        vault = StrategyVault(address(proxy));
-    }
-
-    function deployMockStrategy(StrategyVault vault) internal returns (MockEpochStrategy strategy) {
-        strategy = new MockEpochStrategy(vault, _getStrategists());
+        vault = EthVault(payable(address(proxy)));
     }
 }
 
-contract Deploy is Script {
-    function run() external {
+contract Deploy is Script, Base {
+    function _start() internal {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
+        console.log("deployer address %s", deployer);
+    }
 
-        StrategyVault vault = EthLeverage.deployEthStrategyVault();
+    function run() external {
+        bool testnet = vm.envBool("TEST");
+        console.log("test: ", testnet ? 1 : 0);
+        bytes memory configBytes = _getConfigJson({mainnet: !testnet, layer1: true});
+        Base.L1Config memory config = abi.decode(configBytes, (Base.L1Config));
 
-        MockEpochStrategy strategy = EthLeverage.deployMockStrategy(vault);
+        address governance = config.governance;
 
-        vault.setStrategy(strategy);
+        console.log("governance %s", governance);
+        _start();
+
+        EthVault vault = EthLeverage.deployEthVault(governance);
+
+        console.log("vault address %s", address(vault));
     }
 }
