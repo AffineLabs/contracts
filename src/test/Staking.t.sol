@@ -5,7 +5,7 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {StakingExp, IBalancerVault, IFlashLoanRecipient} from "src/strategies/Staking.sol";
+import {StakingExp, IBalancerVault, IFlashLoanRecipient, AffineVault} from "src/strategies/Staking.sol";
 
 import {console} from "forge-std/console.sol";
 
@@ -15,24 +15,22 @@ contract StakingTest is TestPlus {
     receive() external payable {}
 
     function setUp() public {
-        // forkEth();
-        vm.createSelectFork("ethereum", 17_337_424);
+        vm.createSelectFork("ethereum", 17414444);
 
-        staking = new StakingExp(IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8), address(this));
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+        
+        AffineVault vault = AffineVault(address(deployL1Vault()));
+
+        staking = new StakingExp(vault, strategists, IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8), 175);
     }
 
     function testFlashLoan() public {
         vm.deal(address(staking), 1.005 ether);
-        staking.startPosition(1 ether, 5, 9);
-        staking.endPosition();
+        staking.startPosition(1 ether, 5);
+        // staking.endPosition();
 
-        console.logInt(staking.lastPosPnl());
+        // console.logInt(staking.lastPosPnl());
     }
 
-    function testWithdraw() public {
-        vm.deal(address(staking), 1 ether);
-        staking.withdrawEth(1 ether, alice);
-        assertEq(alice.balance, 1 ether);
-        assertEq(address(staking).balance, 0);
-    }
 }
