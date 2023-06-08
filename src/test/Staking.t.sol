@@ -26,8 +26,8 @@ contract StakingTest is TestPlus {
     }
 
     function testFlashLoan() public {
-        vm.deal(address(staking), 1.005 ether);
-        staking.startPosition(1 ether, 5);
+        vm.deal(address(staking), 100 ether);
+        staking.startPosition(30 ether, 5);
         // staking.endPosition();
 
         // console.logInt(staking.lastPosPnl());

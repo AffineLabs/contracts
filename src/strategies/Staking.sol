@@ -16,7 +16,7 @@ import {IBalancerVault} from "src/interfaces/balancer/IBalancerVault.sol";
 import {IWETH} from "src/interfaces/IWETH.sol";
 import {IStEth} from "src/interfaces/lido/IStEth.sol";
 import {ICurvePool} from "src/interfaces/curve.sol";
-import {ICdpManager, IVat, IMakerAdapter} from "src/interfaces/maker.sol";
+import {ICdpManager, IVat, IMakerAdapter, ICropper} from "src/interfaces/maker.sol";
 
 contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     using SafeTransferLib for ERC20;
@@ -39,7 +39,8 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
     ERC20 public constant DAI = ERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
     ICdpManager public constant MAKER = ICdpManager(0x5ef30b9986345249bc32d8928B7ee64DE9435E39);
-    IMakerAdapter public constant MAKER_ADAPTER = IMakerAdapter(0x82D8bfDB61404C796385f251654F6d7e92092b5D);
+    ICropper public constant CROPPER = ICropper(0x8377CD01a5834a6EaD3b7efb482f678f2092b77e);
+    address public constant CROP = 0x82D8bfDB61404C796385f251654F6d7e92092b5D;
     IMakerAdapter public constant joinDai = IMakerAdapter(0x9759A6Ac90977b93B58547b4A71c78317f391A28);
     IVat public constant VAT = IVat(0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B);
 
@@ -53,9 +54,17 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         balancer = _balancer;
         leverage = _leverage;
 
+
+        // Lido
         ERC20(address(LIDO)).safeApprove(address(CURVE), type(uint256).max);
+
+        // Curve lp and dai minting
         WETH.safeApprove(address(CURVE), type(uint256).max);
-        DAI.approve(address(MAKER_ADAPTER), type(uint256).max);
+        ERC20 lpToken = ERC20(CURVE.lp_token());
+        lpToken.safeApprove(address(CROPPER), type(uint256).max);
+
+        DAI.safeApprove(address(CROPPER), type(uint).max);
+
 
         aToken = ERC20(AAVE.getReserveData(address(WSTETH)).aTokenAddress);
         debtToken = ERC20(AAVE.getReserveData(address(WETH)).variableDebtTokenAddress);
@@ -174,13 +183,15 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         address urn = MAKER.urns(cdpId);
 
         // Lock eth in maker
-        MAKER_ADAPTER.join(urn, address(this), amountLp);
+        CROPPER.join(CROP, address(this), amountLp);
+        // Roughly 589_444 eth in pool and 539_973 lp tokens
         // Borrow at 58% collateral ratio
-        uint debt = amountLp.mulDivDown(1900 * 58, 100);
-        MAKER.frob(cdpId, int(amountLp), int(debt)); // TODO: use oracle prices and get 58% in Dai
+        uint amountEth = amountLp.mulDivDown(11, 10);
+        uint debt = amountEth.mulDivDown(58, 100) * 1850; // TODO: use oracle prices and get 58% in Dai
+        CROPPER.frob(ilk, address(this), address(this), address(this), int(amountLp), int(debt)); 
         
         // Transfer Dai from cdp to this contract
-        MAKER.move(cdpId, address(this), debt * 1e27); // need 45 decimals instead of 18
+        // CROPPER.move(address(this), urn, debt * 1e27); // need 45 decimals instead of 18
         VAT.hope(address(joinDai));
         joinDai.exit(address(this), debt);
     }
