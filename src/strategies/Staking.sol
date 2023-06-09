@@ -21,6 +21,8 @@ import {ICToken} from "src/interfaces/compound/ICToken.sol";
 import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
 
 
+import "forge-std/console.sol";
+
 contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -76,21 +78,19 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
     }
 
-    uint256 public lastPosSize;
-    int256 public lastPosPnl;
 
-    /// @dev Always begin with raw ETH, and 0 WETH
-    function startPosition(uint256 size, uint256 slippageBps) external onlyRole(STRATEGIST_ROLE) {
-        // Make sure balance is at least 1.005 * the intended deposit size
-        uint256 ethNeeded = size + size.mulDivUp(slippageBps * 10, 10_000);
-        require(ethNeeded <= address(this).balance, "Staking: insufficient balance");
-        // E.g. if we want to get leverage on 1 Eth, we need about 1.005 to account slippage in WETH -> wstETH trade
+    /// @notice Start a position with `size` principal, taking up to`maxPrincipal` from the user. 
+    function startPosition(uint256 size, uint256 maxPrincipal) external onlyRole(STRATEGIST_ROLE) {
+ 
+        require(maxPrincipal >= size, "Staking: max > size");
+        WETH.safeTransferFrom(msg.sender, address(this), maxPrincipal);
+        
+
+        // Prepare flash loan
         ERC20[] memory tokens = new ERC20[](1);
         tokens[0] = WETH;
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = size.mulDivUp(leverage, 100);
-        IWETH(address(WETH)).deposit{value: ethNeeded}();
-        lastPosSize = ethNeeded;
 
         balancer.flashLoan(IFlashLoanRecipient(address(this)), tokens, amounts, abi.encode(Loan.open, size));
     }
@@ -122,6 +122,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
         ERC20 borrow = tokens[0];
         uint256 amount = amounts[0];
+        console.log("Borrowed amount: ", amount);
 
         (Loan loanType, uint256 posSize) = abi.decode(userData, (Loan, uint256));
         if (loanType == Loan.close) {
@@ -142,14 +143,13 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         _openCdp(amountLp);
     
         // Payback loan
-        borrow.safeTransfer(address(vault), amount);
+        borrow.safeTransfer(address(balancer), amount);
     }
 
-    function _openCdp(uint amountLp) internal  {
+    function _openCdp(uint amountLp) internal {
         // cast --to-bytes32 $(cast --from-utf8 "CRVV1ETHSTETH-A")
         bytes32 ilk = 0x435256563145544853544554482d410000000000000000000000000000000000;
-        uint cdpId = MAKER.open(ilk, address(this));
-        address urn = MAKER.urns(cdpId);
+        MAKER.open(ilk, address(this));
 
         // Lock eth in maker
         CROPPER.join(CROP, address(this), amountLp);
@@ -163,13 +163,22 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         VAT.hope(address(joinDai));
         joinDai.exit(address(this), debt);
 
+        console.log("DAI borrowed: ", debt);
+
         // Deposit Dai in compound v2
         cDAI.mint({underlying: debt});
 
         // Borrow at 75%
-        uint borrowRes = cETH.borrow(debt.mulDivDown(75, 100 * 1870)); // TODO: Use ETH/DAI oracle
+        console.log("Eth bal before borrow: ", WETH.balanceOf(address(this)));
+        uint amountEthToBorrow = debt.mulDivDown(75, 100 * 1870); // TODO: Use ETH/DAI oracle
+        uint borrowRes = cETH.borrow(amountEthToBorrow); // TODO: Use ETH/DAI oracle
         require(borrowRes == 0, "Staking: borrow failed");
 
+        // Convert eth to weth
+        IWETH(address(WETH)).deposit{value: amountEthToBorrow}();
+
         // Pay back loan
+        console.log("End eth bal: ", WETH.balanceOf(address(this)));
+
     }
 }

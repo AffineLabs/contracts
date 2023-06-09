@@ -19,18 +19,20 @@ contract StakingTest is TestPlus {
 
         address[] memory strategists = new address[](1);
         strategists[0] = address(this);
-        
         AffineVault vault = AffineVault(address(deployL1Vault()));
 
         staking = new StakingExp(vault, strategists, IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8), 175);
     }
 
     function testFlashLoan() public {
-        vm.deal(address(staking), 100 ether);
-        staking.startPosition(30 ether, 5);
-        // staking.endPosition();
+        ERC20 weth = staking.WETH();
+        deal(address(weth), address(this), 100 ether);
+        weth.approve(address(staking), 100 ether);
+        staking.startPosition(30 ether, 30.3 ether);
 
-        // console.logInt(staking.lastPosPnl());
+        console.log("WETH balance: %s", weth.balanceOf(address(this)));
+        console.log("WETH staking balance: %s", weth.balanceOf(address(staking)));
+
     }
 
 }
