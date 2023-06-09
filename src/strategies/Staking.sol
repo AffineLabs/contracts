@@ -17,6 +17,9 @@ import {IWETH} from "src/interfaces/IWETH.sol";
 import {IStEth} from "src/interfaces/lido/IStEth.sol";
 import {ICurvePool} from "src/interfaces/curve.sol";
 import {ICdpManager, IVat, IMakerAdapter, ICropper} from "src/interfaces/maker.sol";
+import {ICToken} from "src/interfaces/compound/ICToken.sol";
+import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
+
 
 contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     using SafeTransferLib for ERC20;
@@ -26,16 +29,9 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     ISwapRouter public constant ROUTER = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
     // TODO: use IWETH
     ERC20 public constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    ERC20 public constant WSTETH = ERC20(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
     IStEth public constant LIDO = IStEth(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
     ICurvePool public constant CURVE = ICurvePool(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022);
     
-
-    /// @dev Aave deposit receipt token.
-    ERC20 public immutable aToken;
-    /// @dev Aave debt receipt token.
-    ERC20 public immutable debtToken;
-    IPool public constant AAVE = IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2);
 
     ERC20 public constant DAI = ERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
     ICdpManager public constant MAKER = ICdpManager(0x5ef30b9986345249bc32d8928B7ee64DE9435E39);
@@ -43,6 +39,11 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     address public constant CROP = 0x82D8bfDB61404C796385f251654F6d7e92092b5D;
     IMakerAdapter public constant joinDai = IMakerAdapter(0x9759A6Ac90977b93B58547b4A71c78317f391A28);
     IVat public constant VAT = IVat(0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B);
+
+    /// @notice cETH
+    ICToken public constant cETH = ICToken(0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5);
+    /// @notice cDAI
+    ICToken public constant cDAI = ICToken(0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643);
 
     /// @dev We need this to receive ETH when calling WETH.withdraw()
     receive() external payable {}
@@ -63,18 +64,16 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         ERC20 lpToken = ERC20(CURVE.lp_token());
         lpToken.safeApprove(address(CROPPER), type(uint256).max);
 
-        DAI.safeApprove(address(CROPPER), type(uint).max);
+        DAI.safeApprove(address(CROPPER), type(uint).max); // TODO: check if this is needed
 
+        // Compound deposits/borrow
+        DAI.safeApprove(address(cDAI), type(uint256).max);
+        address[] memory cTokens = new address[](1);
+        cTokens[0] = address(cDAI);
 
-        aToken = ERC20(AAVE.getReserveData(address(WSTETH)).aTokenAddress);
-        debtToken = ERC20(AAVE.getReserveData(address(WETH)).variableDebtTokenAddress);
+        uint256[] memory results = IComptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B).enterMarkets(cTokens);
+        require(results[0] == 0, "Staking: failed to enter market");
 
-        WETH.safeApprove(address(ROUTER), type(uint256).max);
-        WSTETH.safeApprove(address(ROUTER), type(uint256).max);
-
-        WSTETH.safeApprove(address(AAVE), type(uint256).max);
-        aToken.safeApprove(address(AAVE), type(uint256).max);
-        WETH.safeApprove(address(AAVE), type(uint256).max);
     }
 
     uint256 public lastPosSize;
@@ -102,45 +101,15 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     }
 
     function endPosition() external onlyRole(STRATEGIST_ROLE) {
-        // Take loan for amount of debt from aave
-        ERC20[] memory tokens = new ERC20[](1);
-        tokens[0] = WETH;
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = debtToken.balanceOf(address(this));
-        balancer.flashLoan(IFlashLoanRecipient(address(this)), tokens, amounts, abi.encode(Loan.close, uint256(0)));
+        // // Take loan for amount of debt from aave
+        // ERC20[] memory tokens = new ERC20[](1);
+        // tokens[0] = WETH;
+        // uint256[] memory amounts = new uint256[](1);
+        // amounts[0] = debtToken.balanceOf(address(this));
+        // balancer.flashLoan(IFlashLoanRecipient(address(this)), tokens, amounts, abi.encode(Loan.close, uint256(0)));
     }
 
     function _endPosition(uint256 amount) internal {
-        // Withdraw wstEth from aave
-
-        AAVE.repay({
-            asset: address(WETH),
-            amount: debtToken.balanceOf(address(this)),
-            interestRateMode: 2,
-            onBehalfOf: address(this)
-        });
-        AAVE.withdraw({asset: address(WSTETH), amount: aToken.balanceOf(address(this)), to: address(this)});
-
-        // Swap wstETH to WETH
-        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
-            tokenIn: address(WSTETH),
-            tokenOut: address(WETH),
-            fee: 500,
-            recipient: address(this),
-            deadline: block.timestamp,
-            amountIn: WSTETH.balanceOf(address(this)),
-            amountOutMinimum: 0, // TODO: slippage protection
-            sqrtPriceLimitX96: 0
-        });
-        ROUTER.exactInputSingle(params);
-
-        // Pay back flash loan using WETH
-        WETH.safeTransfer(address(balancer), amount);
-
-        lastPosPnl = int256(WETH.balanceOf(address(this))) - int256(lastPosSize);
-
-        // Unwrap all WETH
-        IWETH(address(WETH)).withdraw(WETH.balanceOf(address(this)));
     }
 
     function receiveFlashLoan(
@@ -169,7 +138,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         depositAmounts[1] = amount - want;
         uint amountLp = CURVE.add_liquidity(depositAmounts, 0); // TODO: slippage
 
-        // Borrow on oasis
+        // Open cdp
         _openCdp(amountLp);
     
         // Payback loan
@@ -191,8 +160,16 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         CROPPER.frob(ilk, address(this), address(this), address(this), int(amountLp), int(debt)); 
         
         // Transfer Dai from cdp to this contract
-        // CROPPER.move(address(this), urn, debt * 1e27); // need 45 decimals instead of 18
         VAT.hope(address(joinDai));
         joinDai.exit(address(this), debt);
+
+        // Deposit Dai in compound v2
+        cDAI.mint({underlying: debt});
+
+        // Borrow at 75%
+        uint borrowRes = cETH.borrow(debt.mulDivDown(75, 100 * 1870)); // TODO: Use ETH/DAI oracle
+        require(borrowRes == 0, "Staking: borrow failed");
+
+        // Pay back loan
     }
 }

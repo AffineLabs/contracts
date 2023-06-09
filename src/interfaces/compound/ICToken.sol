@@ -12,7 +12,7 @@ interface ICToken is IERC20 {
 
     function repayBorrow(uint256) external returns (uint256);
 
-    function mint(uint256) external payable returns (uint256);
+    function mint(uint256 underlying) external payable returns (uint256);
 
     function redeemUnderlying(uint256) external returns (uint256);
 
