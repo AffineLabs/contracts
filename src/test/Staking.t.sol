@@ -33,6 +33,9 @@ contract StakingTest is TestPlus {
         console.log("WETH balance: %s", weth.balanceOf(address(this)));
         console.log("WETH staking balance: %s", weth.balanceOf(address(staking)));
 
+        console.log("TVL: , %s", staking.totalLockedValue());
+
     }
+
 
 }

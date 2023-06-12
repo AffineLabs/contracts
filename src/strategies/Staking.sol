@@ -41,6 +41,8 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     address public constant CROP = 0x82D8bfDB61404C796385f251654F6d7e92092b5D;
     IMakerAdapter public constant joinDai = IMakerAdapter(0x9759A6Ac90977b93B58547b4A71c78317f391A28);
     IVat public constant VAT = IVat(0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B);
+    /// @dev cast --to-bytes32 $(cast --from-utf8 "CRVV1ETHSTETH-A");
+    bytes32 public ilk = 0x435256563145544853544554482d410000000000000000000000000000000000;
 
     /// @notice cETH
     ICToken public constant cETH = ICToken(0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5);
@@ -63,6 +65,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
         // Curve lp and dai minting
         WETH.safeApprove(address(CURVE), type(uint256).max);
+        ERC20(address(LIDO)).safeApprove(address(CURVE), type(uint256).max);
         ERC20 lpToken = ERC20(CURVE.lp_token());
         lpToken.safeApprove(address(CROPPER), type(uint256).max);
 
@@ -92,7 +95,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = size.mulDivUp(leverage, 100);
 
-        balancer.flashLoan(IFlashLoanRecipient(address(this)), tokens, amounts, abi.encode(Loan.open, size));
+        balancer.flashLoan(IFlashLoanRecipient(address(this)), tokens, amounts, abi.encode(Loan.open, size, msg.sender));
     }
 
     enum Loan {
@@ -101,12 +104,6 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     }
 
     function endPosition() external onlyRole(STRATEGIST_ROLE) {
-        // // Take loan for amount of debt from aave
-        // ERC20[] memory tokens = new ERC20[](1);
-        // tokens[0] = WETH;
-        // uint256[] memory amounts = new uint256[](1);
-        // amounts[0] = debtToken.balanceOf(address(this));
-        // balancer.flashLoan(IFlashLoanRecipient(address(this)), tokens, amounts, abi.encode(Loan.close, uint256(0)));
     }
 
     function _endPosition(uint256 amount) internal {
@@ -124,32 +121,35 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         uint256 amount = amounts[0];
         console.log("Borrowed amount: ", amount);
 
-        (Loan loanType, uint256 posSize) = abi.decode(userData, (Loan, uint256));
+        (Loan loanType, uint256 posSize, address user) = abi.decode(userData, (Loan, uint256, address));
         if (loanType == Loan.close) {
             return _endPosition(amount);
         }
 
         // Convert WETH to stEth
         uint want = amount / 2;
-        IWETH(address(WETH)).withdraw(want);
+        IWETH(address(WETH)).withdraw(amount);
         LIDO.submit{value: want}(address(this));
 
         // Deposit in curve
-        uint256[2] memory depositAmounts = [uint256(0), 0];
-        depositAmounts[1] = amount - want;
-        uint amountLp = CURVE.add_liquidity(depositAmounts, 0); // TODO: slippage
+        uint ethDeposit = amount - want;
+        uint256[2] memory depositAmounts = [ethDeposit, ERC20(address(LIDO)).balanceOf(address(this))];
+        uint amountLp = CURVE.add_liquidity{value: ethDeposit}(depositAmounts, 0); // TODO: slippage
 
         // Open cdp
         _openCdp(amountLp);
     
         // Payback loan
         borrow.safeTransfer(address(balancer), amount);
+
+        WETH.safeTransfer(user, WETH.balanceOf(address(this))); // Send leftover weth back to user
     }
 
+    uint public cdpId;
+    // uint public urn;
+
     function _openCdp(uint amountLp) internal {
-        // cast --to-bytes32 $(cast --from-utf8 "CRVV1ETHSTETH-A")
-        bytes32 ilk = 0x435256563145544853544554482d410000000000000000000000000000000000;
-        MAKER.open(ilk, address(this));
+        cdpId = MAKER.open(ilk, address(this));
 
         // Lock eth in maker
         CROPPER.join(CROP, address(this), amountLp);
@@ -179,6 +179,31 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
         // Pay back loan
         console.log("End eth bal: ", WETH.balanceOf(address(this)));
-
     }
+
+     function totalLockedValue() external override returns (uint256) {
+        // Maker collateral, Maker debt (dai)
+        // compound collateral (dai), compound debt (eth)
+
+        // TVL = Maker collateral + compound collateral - maker debt - compound debt
+        // When using cropper, you need to get urn address from cropper instead of cdp manager
+        address urn = CROPPER.proxy(address(this));
+
+        (uint curveLp, uint daiDebt) = VAT.urns(ilk, urn);
+
+        console.log("CdpId: %s,  Curve lp: %s,  Dai debt: %s", cdpId, curveLp, daiDebt);
+
+        // Using ETH denomination for everything
+
+        uint makerCollateral = CURVE.calc_withdraw_one_coin(curveLp, 0);
+
+        uint compoundCollateral = cDAI.balanceOfUnderlying(address(this));
+
+        uint ethDebt = cETH.borrowBalanceCurrent(address(this));
+
+        console.log("makerCollateral: %s, compoundCollateral: %s, daiDebt %s", makerCollateral, compoundCollateral / 1850, daiDebt / 1850);
+        console.log("ethDebt: ", ethDebt);
+    
+        return makerCollateral + (compoundCollateral / 1870) - (daiDebt / 1870) - ethDebt;
+     }
 }
