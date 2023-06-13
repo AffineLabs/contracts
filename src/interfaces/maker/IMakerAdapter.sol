@@ -7,6 +7,8 @@ interface ICropper {
     function join(address crop, address usr, uint256 val) external;
     function frob(bytes32 ilk, address u, address v, address w, int256 dink, int256 dart) external;
     function move(address u, address dst, uint256 rad) external;
+    function flux(address crop, address src, address dst, uint256 wad) external;
+    function exit(address crop, address usr, uint256 val) external;
     function proxy(address user) external returns (address urn);
 }
 interface IMakerAdapter {

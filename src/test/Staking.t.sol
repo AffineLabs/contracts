@@ -15,7 +15,7 @@ contract StakingTest is TestPlus {
     receive() external payable {}
 
     function setUp() public {
-        vm.createSelectFork("ethereum", 17414444);
+        vm.createSelectFork("ethereum", 17471592);
 
         address[] memory strategists = new address[](1);
         strategists[0] = address(this);
@@ -34,6 +34,12 @@ contract StakingTest is TestPlus {
         console.log("WETH staking balance: %s", weth.balanceOf(address(staking)));
 
         console.log("TVL: , %s", staking.totalLockedValue());
+
+        vm.warp(block.timestamp + 1 days);
+        vm.roll(block.number + 1);
+        staking.endPosition(1 ether);
+        console.log("WETH balance: %s", weth.balanceOf(address(this)));
+        console.log("WETH staking balance: %s", weth.balanceOf(address(staking)));
 
     }
 

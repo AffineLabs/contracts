@@ -75,40 +75,31 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         DAI.safeApprove(address(cDAI), type(uint256).max);
         address[] memory cTokens = new address[](1);
         cTokens[0] = address(cDAI);
+        // cTokens[1] = address(cETH);
 
         uint256[] memory results = IComptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B).enterMarkets(cTokens);
         require(results[0] == 0, "Staking: failed to enter market");
 
     }
 
-
     /// @notice Start a position with `size` principal, taking up to`maxPrincipal` from the user. 
     function startPosition(uint256 size, uint256 maxPrincipal) external onlyRole(STRATEGIST_ROLE) {
- 
         require(maxPrincipal >= size, "Staking: max > size");
         WETH.safeTransferFrom(msg.sender, address(this), maxPrincipal);
         
-
         // Prepare flash loan
         ERC20[] memory tokens = new ERC20[](1);
         tokens[0] = WETH;
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = size.mulDivUp(leverage, 100);
-
-        balancer.flashLoan(IFlashLoanRecipient(address(this)), tokens, amounts, abi.encode(Loan.open, size, msg.sender));
+        balancer.flashLoan({recipient: IFlashLoanRecipient(address(this)), tokens: tokens, amounts: amounts, userData: abi.encode(Loan.open)});
     }
 
     enum Loan {
         open,
         close
     }
-
-    function endPosition() external onlyRole(STRATEGIST_ROLE) {
-    }
-
-    function _endPosition(uint256 amount) internal {
-    }
-
+  
     function receiveFlashLoan(
         ERC20[] memory tokens,
         uint256[] memory amounts,
@@ -117,38 +108,44 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     ) external override {
         require(msg.sender == address(balancer), "Staking: only balancer");
 
-        ERC20 borrow = tokens[0];
-        uint256 amount = amounts[0];
-        console.log("Borrowed amount: ", amount);
+        uint256 ethBorrowed = amounts[0];
+        console.log("\n\nethBorrowed: %s", ethBorrowed);
+        (Loan l) = abi.decode(userData, (Loan));
 
-        (Loan loanType, uint256 posSize, address user) = abi.decode(userData, (Loan, uint256, address));
-        if (loanType == Loan.close) {
-            return _endPosition(amount);
+        if (l == Loan.close) {
+            _endPosition(ethBorrowed);
+        } else {
+            _openPosition(ethBorrowed);
         }
+        
+        // Payback loan
+        console.log("WETH balance before payback: %s", WETH.balanceOf(address(this)));
+        WETH.safeTransfer(address(balancer), ethBorrowed);
+        // We take slightly more from the user than they want to deposit (for slippage). If there's any left over send back to the user.
+        if (l == Loan.open) WETH.safeTransfer(address(vault), WETH.balanceOf(address(this)));
+    }
 
+    function _openPosition(uint ethBorrowed) internal {
         // Convert WETH to stEth
-        uint want = amount / 2;
-        IWETH(address(WETH)).withdraw(amount);
-        LIDO.submit{value: want}(address(this));
+        IWETH(address(WETH)).withdraw(ethBorrowed);
+        uint toStEth = ethBorrowed / 2;
+        LIDO.submit{value: toStEth}(address(this));
 
         // Deposit in curve
-        uint ethDeposit = amount - want;
+        uint ethDeposit = ethBorrowed - toStEth;
         uint256[2] memory depositAmounts = [ethDeposit, ERC20(address(LIDO)).balanceOf(address(this))];
         uint amountLp = CURVE.add_liquidity{value: ethDeposit}(depositAmounts, 0); // TODO: slippage
 
-        // Open cdp
-        _openCdp(amountLp);
-    
-        // Payback loan
-        borrow.safeTransfer(address(balancer), amount);
+        uint compoundDebtEth = _openCdp(amountLp);
 
-        WETH.safeTransfer(user, WETH.balanceOf(address(this))); // Send leftover weth back to user
+        // Convert eth to weth
+        IWETH(address(WETH)).deposit{value: compoundDebtEth}();
+        console.log("End eth bal: ", WETH.balanceOf(address(this)));
     }
 
     uint public cdpId;
-    // uint public urn;
 
-    function _openCdp(uint amountLp) internal {
+    function _openCdp(uint amountLp) internal returns (uint compoundDebtEth){
         cdpId = MAKER.open(ilk, address(this));
 
         // Lock eth in maker
@@ -170,18 +167,12 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
         // Borrow at 75%
         console.log("Eth bal before borrow: ", WETH.balanceOf(address(this)));
-        uint amountEthToBorrow = debt.mulDivDown(75, 100 * 1870); // TODO: Use ETH/DAI oracle
-        uint borrowRes = cETH.borrow(amountEthToBorrow); // TODO: Use ETH/DAI oracle
+        compoundDebtEth= debt.mulDivDown(75, 100 * 1870); // TODO: Use ETH/DAI oracle
+        uint borrowRes = cETH.borrow(compoundDebtEth); // TODO: Use ETH/DAI oracle
         require(borrowRes == 0, "Staking: borrow failed");
-
-        // Convert eth to weth
-        IWETH(address(WETH)).deposit{value: amountEthToBorrow}();
-
-        // Pay back loan
-        console.log("End eth bal: ", WETH.balanceOf(address(this)));
     }
 
-     function totalLockedValue() external override returns (uint256) {
+     function totalLockedValue() public override returns (uint256) {
         // Maker collateral, Maker debt (dai)
         // compound collateral (dai), compound debt (eth)
 
@@ -191,12 +182,10 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
         (uint curveLp, uint daiDebt) = VAT.urns(ilk, urn);
 
-        console.log("CdpId: %s,  Curve lp: %s,  Dai debt: %s", cdpId, curveLp, daiDebt);
+        console.log("CdpId: %s, Curve lp: %s,  Dai debt: %s", cdpId, curveLp, daiDebt);
 
         // Using ETH denomination for everything
-
         uint makerCollateral = CURVE.calc_withdraw_one_coin(curveLp, 0);
-
         uint compoundCollateral = cDAI.balanceOfUnderlying(address(this));
 
         uint ethDebt = cETH.borrowBalanceCurrent(address(this));
@@ -206,4 +195,59 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     
         return makerCollateral + (compoundCollateral / 1870) - (daiDebt / 1870) - ethDebt;
      }
+
+     function _divest(uint amount) internal override returns (uint256) {
+        uint ethDebt = cETH.borrowBalanceCurrent(address(this));
+        uint ethNeeded = ethDebt.mulDivDown(amount, totalLockedValue());
+
+        // Flashloan `ethNeeded` eth from balancer, _endPosition gets called
+        ERC20[] memory tokens = new ERC20[](1);
+        tokens[0] = WETH;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = ethNeeded;
+        balancer.flashLoan({recipient: IFlashLoanRecipient(address(this)), tokens: tokens, amounts: amounts, userData: abi.encode(Loan.close)});
+
+        // Unlocked collateral is equal to my current weth balance
+        // Send eth back to user
+        uint wethToSend = WETH.balanceOf(address(this));
+        WETH.safeTransfer(msg.sender, wethToSend);
+        return wethToSend;
+     }
+
+       function _endPosition(uint256 ethBorrowed) internal {
+        // Pay debt in compound
+        uint ethDebt = cETH.borrowBalanceCurrent(address(this));
+        IWETH(address(WETH)).withdraw(ethBorrowed);
+        console.log("about to repay. ethBorrowed: %s, ethDebt: %s", ethBorrowed, ethDebt);
+        console.log("bal", cDAI.balanceOfUnderlying(address(this)).mulDivDown(ethBorrowed, ethDebt));
+        console.log("balance of eth", address(this).balance);
+   
+        cETH.repayBorrow{value: ethBorrowed}();
+        console.log("want to redeem: , ", 1);
+        uint daiToRedeem = cDAI.balanceOfUnderlying(address(this)).mulDivDown(ethBorrowed, ethDebt);
+        uint res = cDAI.redeemUnderlying(daiToRedeem);
+        console.log("redeemed");
+        require(res == 0, "Staking: comp redeem error");
+
+    
+        // Get amount of lp tokens to withdraw from maker
+        ERC20 lpToken = ERC20(CURVE.lp_token());
+        uint curveLp = lpToken.balanceOf(address(this)).mulDivDown(ethBorrowed, ethDebt);
+
+        // Pay debt in maker
+        CROPPER.frob(ilk, address(this), address(this), address(this), -int(curveLp), -int(DAI.balanceOf(address(this))));
+
+        // Withdraw from maker
+        CROPPER.flux({crop: CROP, src: CROPPER.proxy(address(this)), dst: address(this), wad: curveLp});
+        CROPPER.exit(CROP, address(this), curveLp);
+        
+        // Convert from lp tokens => eth => weth
+        uint ethToSend = CURVE.remove_liquidity_one_coin(curveLp, 0, 0); // TODO: slippage protection
+        IWETH(address(WETH)).deposit{value: ethToSend}();
+    }
+
+    // TODO: remove this and startPosition
+    function endPosition(uint _amount) external onlyRole(STRATEGIST_ROLE) {
+        _divest(_amount);
+    }
 }
