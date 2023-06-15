@@ -180,7 +180,7 @@
     "name": "bAsset",
     "outputs": [
       {
-        "internalType": "contract ERC20Upgradeable",
+        "internalType": "contract IERC20",
         "name": "",
         "type": "address"
       }

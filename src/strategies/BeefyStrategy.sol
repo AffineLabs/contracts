@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
+// import "forge-std/console.sol";
+
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
 import {IBeefyVault} from "src/interfaces/Beefy.sol";
@@ -14,6 +19,7 @@ import {Vault} from "src/vaults/Vault.sol";
 
 contract BeefyStrategy is AccessStrategy {
     using FixedPointMathLib for uint256;
+    using SafeTransferLib for ERC20;
 
     // curve pool info
     int128 public immutable assetIndex;
@@ -23,7 +29,7 @@ contract BeefyStrategy is AccessStrategy {
     // beefy vault
     IBeefyVault public immutable beefy;
     // beefy asset pool
-    ERC20Upgradeable public immutable bAsset;
+    IERC20 public immutable bAsset;
 
     // const max bps
     uint256 public constant MAX_BPS = 10_000;
@@ -42,11 +48,20 @@ contract BeefyStrategy is AccessStrategy {
         zapper = _zapper;
         beefy = _beefy;
 
-        bAsset = ERC20Upgradeable(beefy.want());
+        // console.log("beefy vault %s", address(beefy));
+        // console.log("beefy want %s", address(beefy.want()));
+
+        bAsset = IERC20(beefy.want());
 
         require(address(bAsset) == address(curvePool), "BS: want asset mismatch");
 
-        // TODO: approval of taken for zapper, LpToken
+        bAsset.approve(address(beefy), type(uint256).max);
+        // asset.approve(address(curvePool), type(uint256).max);
+        asset.approve(address(zapper), type(uint256).max);
+        bAsset.approve(address(zapper), type(uint256).max);
+
+        // TODO: // set default slippage
+        defaultSlippageBps = 50;
     }
 
     function _afterInvest(uint256 assets) internal override {
@@ -87,6 +102,7 @@ contract BeefyStrategy is AccessStrategy {
 
         withdrawLPTokenFromBeefy(lpTokenToWithdraw);
 
+        // console.log("balance of curve pool assets ", curvePool.balanceOf(address(this)));
         // remove liquidity from curve
         removeLiquidityFromCurve(bAsset.balanceOf(address(this)), slippageBps);
 
@@ -98,8 +114,13 @@ contract BeefyStrategy is AccessStrategy {
         uint256 withdrawableAssets = zapper.calc_withdraw_one_coin(address(curvePool), amount, assetIndex);
 
         uint256 minAssets = withdrawableAssets.mulDivDown(MAX_BPS - slippageBps, MAX_BPS);
-
-        zapper.remove_liquidity_one_coin(address(curvePool), bAsset.balanceOf(address(this)), assetIndex, minAssets);
+        // console.log(
+        //     "withdrawable %s, min assets %s, diff in assets %s",
+        //     withdrawableAssets,
+        //     minAssets,
+        //     withdrawableAssets - minAssets
+        // );
+        zapper.remove_liquidity_one_coin(address(curvePool), amount, assetIndex, minAssets);
     }
 
     function withdrawLPTokenFromBeefy(uint256 lpTokenAmount) internal {
@@ -115,6 +136,11 @@ contract BeefyStrategy is AccessStrategy {
     function totalLockedValue() external view override returns (uint256) {
         uint256 lpTokenAmount =
             beefy.balanceOf(address(this)).mulWadDown(beefy.getPricePerFullShare()) + bAsset.balanceOf(address(this));
+
+        if (lpTokenAmount < 3) {
+            // @dev providing values less than 3 incurs evn crash, not returning zero zero
+            return asset.balanceOf(address(this));
+        }
         return zapper.calc_withdraw_one_coin(address(curvePool), lpTokenAmount, assetIndex)
             + asset.balanceOf(address(this));
     }
