@@ -9,6 +9,8 @@ import {Deploy} from "./Deploy.sol";
 
 import {Vault} from "src/vaults/Vault.sol";
 import {BeefyStrategy} from "src/strategies/BeefyStrategy.sol";
+
+import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
 import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
 
 import {IBeefyVault} from "src/interfaces/Beefy.sol";
@@ -20,6 +22,10 @@ import {console} from "forge-std/console.sol";
 contract TestBeefyStrategy is TestPlus {
     Vault vault;
     ERC20 usdc = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
+    ICurvePool pool = ICurvePool(0xa138341185a9D0429B0021A11FB717B225e13e1F);
+    I3CrvMetaPoolZap zapper = I3CrvMetaPoolZap(0x5ab5C56B9db92Ba45a0B46a207286cD83C15C939);
+    IBeefyVault beefy = IBeefyVault(0x2520D50bfD793D3C757900D81229422F70171969);
+
     BeefyStrategy strategy;
 
     uint256 initialAssets;
@@ -29,10 +35,10 @@ contract TestBeefyStrategy is TestPlus {
         strategists[0] = address(this);
         strategy = new BeefyStrategy(
             vault, 
-            ICurvePool(0xa138341185a9D0429B0021A11FB717B225e13e1F),
-            I3CrvMetaPoolZap(0x5ab5C56B9db92Ba45a0B46a207286cD83C15C939),
+            pool,
+            zapper,
             2, // assetIndex
-            IBeefyVault(0x2520D50bfD793D3C757900D81229422F70171969),
+            beefy,
             strategists
         );
     }
@@ -46,28 +52,26 @@ contract TestBeefyStrategy is TestPlus {
         // link strategy to vault.
         vm.prank(governance);
         vault.addStrategy(strategy, 10_000);
+        vm.prank(governance);
+        strategy.setDefaultSlippageBps(50);
     }
 
-    function testInit() public {
-        assertTrue(true);
-    }
-
-    function testTransferAssetsVaultToStrategy() public {
+    function testInvestIntoStrategy() public {
         deal(address(usdc), alice, initialAssets);
         vm.startPrank(alice);
 
-        usdc.approve(address(vault), type(uint256).max);
+        usdc.approve(address(strategy), type(uint256).max);
 
-        vault.deposit(initialAssets, alice);
+        strategy.invest(initialAssets);
 
-        changePrank(governance);
-        vault.depositIntoStrategies(usdc.balanceOf(address(vault)));
-
-        assertTrue(true);
-        vm.stopPrank();
+        // tvl should be in range of BPS
+        assertApproxEqRel(initialAssets, strategy.totalLockedValue(), 0.01e18);
+        // should use all usdc
+        assertEq(usdc.balanceOf(address(strategy)), 0);
+        assertEq(pool.balanceOf(address(strategy)), 0);
     }
 
-    function testDivestFull() public {
+    function testWithdrawFromStrategy() public {
         deal(address(usdc), alice, initialAssets);
         vm.startPrank(alice);
 
@@ -78,17 +82,9 @@ contract TestBeefyStrategy is TestPlus {
         changePrank(address(vault));
         strategy.divest(initialAssets);
 
-        console.log("strategy tvl %s", strategy.totalLockedValue());
-        console.log("usdc balance of strategy %s", usdc.balanceOf(address(strategy)));
-        console.log(
-            "beefy balance %s", IBeefyVault(0x2520D50bfD793D3C757900D81229422F70171969).balanceOf(address(strategy))
-        );
-        console.log(
-            "lp token balance %s", ICurvePool(0xa138341185a9D0429B0021A11FB717B225e13e1F).balanceOf(address(strategy))
-        );
-        console.log("alice usdc balance", usdc.balanceOf(alice));
-        assertTrue(true);
-        vm.stopPrank();
+        assertApproxEqRel(usdc.balanceOf(address(vault)), initialAssets, 0.01e18);
+
+        assertEq(strategy.totalLockedValue(), 0);
     }
 
     function testDivestHalf() public {
@@ -102,16 +98,37 @@ contract TestBeefyStrategy is TestPlus {
         changePrank(address(vault));
         strategy.divest(initialAssets / 2);
 
-        console.log("strategy tvl %s", strategy.totalLockedValue());
-        console.log("usdc balance of strategy %s", usdc.balanceOf(address(strategy)));
-        console.log(
-            "beefy balance %s", IBeefyVault(0x2520D50bfD793D3C757900D81229422F70171969).balanceOf(address(strategy))
-        );
-        console.log(
-            "lp token balance %s", ICurvePool(0xa138341185a9D0429B0021A11FB717B225e13e1F).balanceOf(address(strategy))
-        );
-        console.log("alice usdc balance", usdc.balanceOf(alice));
-        assertTrue(true);
-        vm.stopPrank();
+        // tvl should be in range of BPS
+        assertApproxEqRel(initialAssets / 2, strategy.totalLockedValue(), 0.01e18);
+
+        assertApproxEqRel(usdc.balanceOf(address(vault)), initialAssets / 2, 0.01e18);
+    }
+
+    function testDepositAndWithdrawFromVault() public {
+        deal(address(usdc), alice, initialAssets);
+        vm.startPrank(alice);
+        usdc.approve(address(vault), type(uint256).max);
+        vault.deposit(initialAssets, alice);
+
+        changePrank(governance);
+        vault.depositIntoStrategies(usdc.balanceOf(address(vault)));
+
+        assertEq(vault.vaultTVL(), initialAssets);
+        // update block timestamp to harvest
+
+        vm.warp(block.timestamp + 3 days);
+
+        // harvest
+        BaseStrategy[] memory strategies = new BaseStrategy[](1);
+        strategies[0] = strategy;
+        vault.harvest(strategies);
+
+        assertEq(vault.vaultTVL(), strategy.totalLockedValue());
+
+        changePrank(alice);
+        vault.withdraw(initialAssets / 2, alice, alice);
+
+        assertEq(usdc.balanceOf(alice), initialAssets / 2);
+        assertEq(vault.vaultTVL(), strategy.totalLockedValue());
     }
 }

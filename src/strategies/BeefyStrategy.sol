@@ -7,8 +7,7 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
 import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
 import {IBeefyVault} from "src/interfaces/Beefy.sol";
@@ -28,9 +27,6 @@ contract BeefyStrategy is AccessStrategy {
 
     // beefy vault
     IBeefyVault public immutable beefy;
-    // beefy asset pool
-    IERC20 public immutable bAsset;
-
     // const max bps
     uint256 public constant MAX_BPS = 10_000;
     uint256 public defaultSlippageBps;
@@ -48,20 +44,11 @@ contract BeefyStrategy is AccessStrategy {
         zapper = _zapper;
         beefy = _beefy;
 
-        // console.log("beefy vault %s", address(beefy));
-        // console.log("beefy want %s", address(beefy.want()));
+        require(address(beefy.want()) == address(curvePool), "BS: want asset mismatch");
 
-        bAsset = IERC20(beefy.want());
-
-        require(address(bAsset) == address(curvePool), "BS: want asset mismatch");
-
-        bAsset.approve(address(beefy), type(uint256).max);
-        // asset.approve(address(curvePool), type(uint256).max);
+        curvePool.approve(address(beefy), type(uint256).max);
         asset.approve(address(zapper), type(uint256).max);
-        bAsset.approve(address(zapper), type(uint256).max);
-
-        // TODO: // set default slippage
-        defaultSlippageBps = 50;
+        curvePool.approve(address(zapper), type(uint256).max);
     }
 
     function _afterInvest(uint256 assets) internal override {
@@ -84,43 +71,43 @@ contract BeefyStrategy is AccessStrategy {
     }
 
     function _divest(uint256 assets) internal override returns (uint256) {
-        return divestFromBeefy(assets, defaultSlippageBps);
+        uint256 amount = divestFromBeefy(assets, defaultSlippageBps);
+        uint256 amountToSend = Math.min(assets, amount);
+        asset.safeTransfer(address(vault), amountToSend);
+        return amountToSend;
     }
 
     function divestFromBeefy(uint256 assets, uint256 slippageBps) internal returns (uint256) {
         if (asset.balanceOf(address(this)) > assets) {
             return assets;
         }
+
         uint256 requiredAssets = assets - asset.balanceOf(address(this));
 
         uint256[4] memory amounts = [uint256(0), 0, 0, 0];
         amounts[uint256(uint128(assetIndex))] = requiredAssets;
 
-        uint256 lpToken = zapper.calc_token_amount(address(curvePool), amounts, false);
-
-        uint256 lpTokenToWithdraw = lpToken.mulDivDown(MAX_BPS, MAX_BPS - slippageBps);
+        uint256 requiredLpToken = zapper.calc_token_amount(address(curvePool), amounts, false);
+        // need to withdraw more due to slippage
+        uint256 lpTokenToWithdraw = requiredLpToken.mulDivDown(MAX_BPS, MAX_BPS - slippageBps);
 
         withdrawLPTokenFromBeefy(lpTokenToWithdraw);
 
-        // console.log("balance of curve pool assets ", curvePool.balanceOf(address(this)));
         // remove liquidity from curve
-        removeLiquidityFromCurve(bAsset.balanceOf(address(this)), slippageBps);
+        // @dev withdraw full amount, so that no curve token left idle.
+        removeLiquidityFromCurve(slippageBps);
 
         // only withdrawing required assets
         return asset.balanceOf(address(this));
     }
 
-    function removeLiquidityFromCurve(uint256 amount, uint256 slippageBps) internal {
-        uint256 withdrawableAssets = zapper.calc_withdraw_one_coin(address(curvePool), amount, assetIndex);
+    function removeLiquidityFromCurve(uint256 slippageBps) internal {
+        uint256 withdrawableAssets =
+            zapper.calc_withdraw_one_coin(address(curvePool), curvePool.balanceOf(address(this)), assetIndex);
 
         uint256 minAssets = withdrawableAssets.mulDivDown(MAX_BPS - slippageBps, MAX_BPS);
-        // console.log(
-        //     "withdrawable %s, min assets %s, diff in assets %s",
-        //     withdrawableAssets,
-        //     minAssets,
-        //     withdrawableAssets - minAssets
-        // );
-        zapper.remove_liquidity_one_coin(address(curvePool), amount, assetIndex, minAssets);
+
+        zapper.remove_liquidity_one_coin(address(curvePool), curvePool.balanceOf(address(this)), assetIndex, minAssets);
     }
 
     function withdrawLPTokenFromBeefy(uint256 lpTokenAmount) internal {
@@ -135,10 +122,11 @@ contract BeefyStrategy is AccessStrategy {
 
     function totalLockedValue() external view override returns (uint256) {
         uint256 lpTokenAmount =
-            beefy.balanceOf(address(this)).mulWadDown(beefy.getPricePerFullShare()) + bAsset.balanceOf(address(this));
+            beefy.balanceOf(address(this)).mulWadDown(beefy.getPricePerFullShare()) + curvePool.balanceOf(address(this));
 
         if (lpTokenAmount < 3) {
             // @dev providing values less than 3 incurs evn crash, not returning zero zero
+            // on a 18 decimal place 0,1,2 means nothing
             return asset.balanceOf(address(this));
         }
         return zapper.calc_withdraw_one_coin(address(curvePool), lpTokenAmount, assetIndex)
@@ -155,6 +143,6 @@ contract BeefyStrategy is AccessStrategy {
 
     function divestAssets(uint256 slippageBps) external onlyRole(STRATEGIST_ROLE) {
         beefy.withdrawAll();
-        removeLiquidityFromCurve(bAsset.balanceOf(address(this)), slippageBps);
+        removeLiquidityFromCurve(slippageBps);
     }
 }
