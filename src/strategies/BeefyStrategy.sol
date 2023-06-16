@@ -51,10 +51,21 @@ contract BeefyStrategy is AccessStrategy {
         curvePool.approve(address(zapper), type(uint256).max);
     }
 
+    /**
+     * @notice utilize the asset in the strategy
+     * @param assets total assets to invest
+     * @dev it will use default strategy slippage for curve
+     */
     function _afterInvest(uint256 assets) internal override {
         investIntoBeefy(assets, defaultSlippageBps);
     }
 
+    /**
+     * @notice invest the asset into beefy
+     * @param assets amount of asset
+     * @param slippageBps slippage for curve pool
+     * @dev when calling from vault, strategy uses default slippage
+     */
     function investIntoBeefy(uint256 assets, uint256 slippageBps) internal {
         uint256[4] memory amounts = [uint256(0), 0, 0, 0];
         amounts[uint256(uint128(assetIndex))] = assets;
@@ -70,6 +81,11 @@ contract BeefyStrategy is AccessStrategy {
         beefy.depositAll();
     }
 
+    /**
+     * @notice withdraw assets from beefy and liquidate lpToken to get asset
+     * @param assets amount of asset to withdraw
+     * @dev will transfer the assets to the vault
+     */
     function _divest(uint256 assets) internal override returns (uint256) {
         uint256 amount = divestFromBeefy(assets, defaultSlippageBps);
         uint256 amountToSend = Math.min(assets, amount);
@@ -77,6 +93,11 @@ contract BeefyStrategy is AccessStrategy {
         return amountToSend;
     }
 
+    /**
+     * @notice withdraw shares from beefy and convert it into assets
+     * @param assets amount of assets to withdraw
+     * @param slippageBps slippage for curve pool
+     */
     function divestFromBeefy(uint256 assets, uint256 slippageBps) internal returns (uint256) {
         if (asset.balanceOf(address(this)) > assets) {
             return assets;
@@ -101,6 +122,10 @@ contract BeefyStrategy is AccessStrategy {
         return asset.balanceOf(address(this));
     }
 
+    /**
+     * @notice convert curve lp token to asset
+     * @param slippageBps slippage
+     */
     function removeLiquidityFromCurve(uint256 slippageBps) internal {
         uint256 withdrawableAssets =
             zapper.calc_withdraw_one_coin(address(curvePool), curvePool.balanceOf(address(this)), assetIndex);
@@ -110,6 +135,10 @@ contract BeefyStrategy is AccessStrategy {
         zapper.remove_liquidity_one_coin(address(curvePool), curvePool.balanceOf(address(this)), assetIndex, minAssets);
     }
 
+    /**
+     * @notice withdraw token from beefy
+     * @param lpTokenAmount amount of token to withdraw
+     */
     function withdrawLPTokenFromBeefy(uint256 lpTokenAmount) internal {
         // shares to withdraw
         uint256 beefyShareToWithdraw = lpTokenAmount.divWadUp(beefy.getPricePerFullShare());
