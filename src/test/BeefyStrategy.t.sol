@@ -25,6 +25,7 @@ contract TestBeefyStrategy is TestPlus {
     ICurvePool pool = ICurvePool(0xa138341185a9D0429B0021A11FB717B225e13e1F);
     I3CrvMetaPoolZap zapper = I3CrvMetaPoolZap(0x5ab5C56B9db92Ba45a0B46a207286cD83C15C939);
     IBeefyVault beefy = IBeefyVault(0x2520D50bfD793D3C757900D81229422F70171969);
+    ERC20 curveLPToken = ERC20(0xa138341185a9D0429B0021A11FB717B225e13e1F);
 
     BeefyStrategy strategy;
 
@@ -68,7 +69,7 @@ contract TestBeefyStrategy is TestPlus {
         assertApproxEqRel(initialAssets, strategy.totalLockedValue(), 0.01e18);
         // should use all usdc
         assertEq(usdc.balanceOf(address(strategy)), 0);
-        assertEq(pool.balanceOf(address(strategy)), 0);
+        assertEq(curveLPToken.balanceOf(address(strategy)), 0);
     }
 
     function testWithdrawFromStrategy() public {
