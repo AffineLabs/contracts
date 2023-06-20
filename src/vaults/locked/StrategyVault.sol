@@ -298,6 +298,25 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
         }
     }
 
+    /**
+     * @notice withdraw assets from the strategy
+     * @param amount asset amount
+     * @dev only used by gov to pull all the assets from strategy to vault.
+     * @dev Will be used a utility  when replacing strategies
+     */
+    function withdrawFromStrategy(uint256 amount) external whenPaused onlyGovernance {
+        _withdrawFromStrategy(amount);
+    }
+
+    /**
+     * @notice invest assets in the strategy
+     * @param amount asset amount
+     * @dev Will be used a utility  when replacing strategies
+     */
+    function depositIntoStrategy(uint256 amount) external whenPaused onlyGovernance {
+        _depositIntoStrategy(amount);
+    }
+
     /*//////////////////////////////////////////////////////////////
                           DETAILED PRICE INFO
     //////////////////////////////////////////////////////////////*/

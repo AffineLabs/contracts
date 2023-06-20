@@ -2,12 +2,14 @@
 pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 
 import {Vault} from "src/vaults/Vault.sol";
+import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 import {BeefyStrategy} from "src/strategies/BeefyStrategy.sol";
 
 import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
@@ -31,7 +33,7 @@ contract TestBeefyStrategy is TestPlus {
 
     uint256 initialAssets;
 
-    function setupBeefyStrategy() public {
+    function setupBeefyStrategy() public virtual {
         address[] memory strategists = new address[](1);
         strategists[0] = address(this);
         strategy = new BeefyStrategy(
@@ -44,7 +46,7 @@ contract TestBeefyStrategy is TestPlus {
         );
     }
 
-    function setUp() public {
+    function setUp() public virtual {
         vm.createSelectFork("polygon");
         vault = vault = new Vault();
         vault.initialize(governance, address(usdc), "BeefyVault", "BeefyVault");
@@ -105,7 +107,7 @@ contract TestBeefyStrategy is TestPlus {
         assertApproxEqRel(usdc.balanceOf(address(vault)), initialAssets / 2, 0.01e18);
     }
 
-    function testDepositAndWithdrawFromVault() public {
+    function testDepositAndWithdrawFromVault() public virtual {
         deal(address(usdc), alice, initialAssets);
         vm.startPrank(alice);
         usdc.approve(address(vault), type(uint256).max);
@@ -131,5 +133,130 @@ contract TestBeefyStrategy is TestPlus {
 
         assertEq(usdc.balanceOf(alice), initialAssets / 2);
         assertEq(vault.vaultTVL(), strategy.totalLockedValue());
+    }
+}
+
+contract TestBeefyWithStrategyVault is TestBeefyStrategy {
+    function setupBeefyStrategy() public override {
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+        strategy = new BeefyStrategy(
+            vault, 
+            pool,
+            zapper,
+            2, // assetIndex
+            beefy,
+            strategists
+        );
+    }
+
+    function setUp() public override {
+        vm.createSelectFork("polygon");
+        StrategyVault sVault = new StrategyVault();
+
+        bytes memory initData =
+            abi.encodeCall(StrategyVault.initialize, (governance, address(usdc), "BeefyVault", "BeefyVault"));
+
+        vm.prank(governance);
+        ERC1967Proxy proxy = new ERC1967Proxy(address(sVault), initData);
+
+        vault = Vault(address(proxy));
+
+        setupBeefyStrategy();
+        initialAssets = 10_000 * (10 ** usdc.decimals());
+        // // link strategy to vault.
+        vm.prank(governance);
+        StrategyVault(address(vault)).setStrategy(strategy);
+        vm.prank(governance);
+        strategy.setDefaultSlippageBps(50);
+    }
+    /// @dev override this as strategy directly sends assets to strategy
+
+    function testDepositAndWithdrawFromVault() public override {
+        deal(address(usdc), alice, initialAssets);
+        vm.startPrank(alice);
+        usdc.approve(address(vault), type(uint256).max);
+        vault.deposit(initialAssets, alice);
+
+        assertEq(vault.vaultTVL(), initialAssets);
+
+        /// @dev update tvl
+        /// @dev only strategy can end epoch
+        changePrank(address(strategy));
+        StrategyVault(address(vault)).endEpoch();
+
+        assertEq(vault.vaultTVL(), strategy.totalLockedValue());
+
+        changePrank(alice);
+        vault.withdraw(initialAssets / 2, alice, alice);
+
+        assertEq(usdc.balanceOf(alice), initialAssets / 2);
+        assertEq(vault.vaultTVL(), strategy.totalLockedValue());
+    }
+
+    function testVaultUpgradeAndSwapStrategy() public {
+        deal(address(usdc), alice, initialAssets);
+        vm.startPrank(alice);
+        usdc.approve(address(vault), type(uint256).max);
+        vault.deposit(initialAssets, alice);
+
+        assertEq(vault.vaultTVL(), initialAssets);
+
+        /// @dev update tvl
+        /// @dev only strategy can end epoch
+        changePrank(address(strategy));
+        StrategyVault(address(vault)).endEpoch();
+
+        assertEq(vault.vaultTVL(), strategy.totalLockedValue());
+
+        // change prank to gov update vault
+
+        changePrank(governance);
+        vault.pause();
+
+        StrategyVault(address(vault)).withdrawFromStrategy(vault.vaultTVL());
+
+        // strategy tvl should be zero
+        assertEq(strategy.totalLockedValue(), 0);
+        assertEq(usdc.balanceOf(address(vault)), vault.vaultTVL());
+        assertEq(usdc.balanceOf(address(strategy)), 0);
+        uint256 oldTVL = vault.vaultTVL();
+        address oldStrategy = address(strategy);
+        // upgrade vault
+
+        StrategyVault sVault = new StrategyVault();
+        sVault.initialize(governance, address(usdc), "BeefyVault_v1", "BeefyVault_v1");
+
+        StrategyVault oldImp = StrategyVault(address(vault));
+        oldImp.upgradeTo(address(sVault));
+
+        // strategy tvl should be zero
+        assertEq(strategy.totalLockedValue(), 0);
+        assertEq(usdc.balanceOf(address(vault)), vault.vaultTVL());
+        assertEq(usdc.balanceOf(address(strategy)), 0);
+        assertEq(oldTVL, vault.vaultTVL());
+
+        // moving assets to strategy
+        setupBeefyStrategy();
+        StrategyVault(address(vault)).setStrategy(strategy);
+
+        changePrank(address(this));
+
+        strategy.setDefaultSlippageBps(500);
+
+        changePrank(governance);
+
+        StrategyVault(address(vault)).depositIntoStrategy(usdc.balanceOf(address(vault)));
+
+        assertEq(usdc.balanceOf(address(vault)), 0);
+
+        changePrank(address(strategy));
+        StrategyVault(address(vault)).endEpoch();
+
+        assertEq(vault.vaultTVL(), strategy.totalLockedValue());
+
+        assertTrue(address(strategy) != oldStrategy);
+        // usdc balance of strategy should be zero after invest
+        assertEq(usdc.balanceOf(address(strategy)), 0);
     }
 }
