@@ -103,8 +103,8 @@ contract BeefyStrategy is AccessStrategy {
      * @dev will transfer the assets to the vault
      */
     function _divest(uint256 assets) internal override returns (uint256) {
-        uint256 amount = _divestFromBeefy(assets, defaultSlippageBps);
-        uint256 amountToSend = Math.min(assets, amount);
+        _divestFromBeefy(assets, defaultSlippageBps);
+        uint256 amountToSend = Math.min(assets, asset.balanceOf(address(this)));
         asset.safeTransfer(address(vault), amountToSend);
         return amountToSend;
     }
@@ -114,9 +114,9 @@ contract BeefyStrategy is AccessStrategy {
      * @param assets amount of assets to withdraw
      * @param slippageBps slippage for curve pool
      */
-    function _divestFromBeefy(uint256 assets, uint256 slippageBps) internal returns (uint256) {
+    function _divestFromBeefy(uint256 assets, uint256 slippageBps) internal {
         if (asset.balanceOf(address(this)) >= assets) {
-            return assets;
+            return;
         }
 
         uint256 requiredAssets = assets - asset.balanceOf(address(this));
@@ -133,9 +133,6 @@ contract BeefyStrategy is AccessStrategy {
         // remove liquidity from curve
         // @dev withdraw full amount, so that no curve token left idle.
         _removeLiquidityFromCurve(slippageBps);
-
-        // only withdrawing required assets
-        return asset.balanceOf(address(this));
     }
 
     /**
