@@ -259,4 +259,34 @@ contract TestBeefyWithStrategyVault is TestBeefyStrategy {
         // usdc balance of strategy should be zero after invest
         assertEq(usdc.balanceOf(address(strategy)), 0);
     }
+
+    /// @dev this test is done to test out live vault and strategy update.
+    /// @dev may be discarded later
+    function testVaultAndStrategyUpgradeWithDeployedVault() public {
+        StrategyVault mainnetVault = StrategyVault(0x684D1dbd30c67Fe7fF6D502A04e0E7076b4b9D46);
+
+        StrategyVault newVault = new StrategyVault();
+
+        vm.startPrank(0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0); // gov
+        mainnetVault.upgradeTo(address(newVault));
+
+        BeefyStrategy vaultStrat = BeefyStrategy(address(mainnetVault.strategy()));
+        uint256 tvl = vaultStrat.totalLockedValue();
+        mainnetVault.pause();
+        mainnetVault.withdrawFromStrategy(vaultStrat.totalLockedValue());
+
+        assertEq(vaultStrat.totalLockedValue(), 0);
+        assertEq(mainnetVault.vaultTVL(), tvl);
+
+        vault = Vault(address(mainnetVault));
+
+        setupBeefyStrategy();
+
+        mainnetVault.setStrategy(strategy);
+        strategy.setDefaultSlippageBps(500);
+
+        mainnetVault.depositIntoStrategy(tvl);
+
+        assertApproxEqRel(strategy.totalLockedValue(), tvl, 0.01e18);
+    }
 }
