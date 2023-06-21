@@ -27,7 +27,10 @@ contract SVaultTest is TestPlus {
     MockERC20 asset;
     MockEpochStrategy strategy;
 
+    function forkNet() public virtual {}
+
     function setUp() public {
+        forkNet();
         asset = new MockERC20("Mock", "MT", 6);
 
         vault = new StrategyVault();
@@ -380,5 +383,111 @@ contract SVaultTest is TestPlus {
         // initial price is $100, but if we increase tvl the price increases
         Vault.Number memory price2 = vault.detailedPrice();
         assertTrue(price2.num > price.num);
+    }
+
+    function testCanUpgradeWithStrategySwap() public {
+        // Deploy vault
+        StrategyVault impl = new StrategyVault();
+        // Initialize proxy with correct data
+        bytes memory initData = abi.encodeCall(
+            StrategyVault.initialize,
+            (governance, address(asset), "Affine High Yield LP - USDC-wETH", "affineSushiUsdcWeth")
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        StrategyVault sVault = StrategyVault(address(proxy));
+
+        //add a dummy strategy
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+        MockEpochStrategy strategy1 = new MockEpochStrategy(sVault, strategists);
+        MockEpochStrategy strategy2 = new MockEpochStrategy(sVault, strategists);
+
+        vm.startPrank(governance);
+        sVault.setStrategy(strategy1);
+
+        // provide alice some assets
+        uint256 initialAssets = 1e10;
+        deal(address(sVault.asset()), alice, initialAssets);
+        changePrank(alice);
+        MockERC20(sVault.asset()).approve(address(sVault), initialAssets);
+        sVault.deposit(initialAssets, alice);
+
+        uint256 totalShares = sVault.totalSupply();
+        // check tvl of vault and strategy 1
+
+        assertEq(sVault.vaultTVL(), strategy1.totalLockedValue());
+        StrategyVault impl2 = new StrategyVault();
+
+        changePrank(governance);
+        sVault.upgradeTo(address(impl2));
+        sVault.pause();
+        sVault.withdrawFromStrategy(strategy1.totalLockedValue());
+
+        // check for strategy tvl to zero
+        assertEq(strategy1.totalLockedValue(), 0);
+        assertEq(sVault.vaultTVL(), initialAssets);
+
+        sVault.setStrategy(strategy2);
+
+        sVault.depositIntoStrategy(sVault.vaultTVL());
+
+        // check tvl
+
+        assertEq(sVault.vaultTVL(), strategy2.totalLockedValue());
+        assertEq(totalShares, sVault.totalSupply());
+        assertEq(strategy2.totalLockedValue(), initialAssets);
+    }
+}
+
+contract SVaultUpgradeLiveTest is SVaultTest {
+    function forkNet() public override {
+        // fork polygon to test live vault
+        vm.createSelectFork("polygon");
+    }
+
+    function testVaultAndStrategyUpgradeWithDeployedVault() public {
+        // deployed vault
+        StrategyVault mainnetVault = StrategyVault(0x684D1dbd30c67Fe7fF6D502A04e0E7076b4b9D46);
+
+        // new vault to upgrade
+        StrategyVault newVault = new StrategyVault();
+
+        // prank gov
+        vm.startPrank(0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0); // gov
+
+        // vault old strategy
+        MockEpochStrategy vaultStrategy = MockEpochStrategy(address(mainnetVault.strategy()));
+        uint256 tvl = vaultStrategy.totalLockedValue();
+        // check vault tvl
+        assertEq(mainnetVault.vaultTVL(), tvl);
+        // upgrade vault
+        mainnetVault.upgradeTo(address(newVault));
+
+        // pause vault to strategy upgrade
+        mainnetVault.pause();
+
+        // withdraw assets
+        mainnetVault.withdrawFromStrategy(vaultStrategy.totalLockedValue());
+
+        // check vault tvl should remain same, strategy tvl should be zero
+        assertEq(mainnetVault.vaultTVL(), tvl);
+        assertEq(vaultStrategy.totalLockedValue(), 0);
+
+        //add a dummy strategy
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+
+        MockEpochStrategy newStrategy = new MockEpochStrategy(mainnetVault, strategists);
+        // replace with new strategy
+        mainnetVault.setStrategy(newStrategy);
+        // redeposit into strategy
+        mainnetVault.depositIntoStrategy(mainnetVault.vaultTVL());
+
+        // check vault tvl
+        assertEq(mainnetVault.vaultTVL(), tvl);
+
+        // check new strategy tvl
+        assertEq(newStrategy.totalLockedValue(), tvl);
+        console.log("vault tvl %s", tvl);
     }
 }

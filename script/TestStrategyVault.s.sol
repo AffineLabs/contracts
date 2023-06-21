@@ -417,4 +417,13 @@ contract Deploy is Script {
         console.log("Epoch ended: %s", sVault.epochEnded());
         strategy.endEpoch();
     }
+
+    function deployStrategyVault() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+
+        StrategyVault sVault = new StrategyVault();
+        console.log("deployer %s", deployer);
+        console.log("Vault address %s", address(sVault));
+    }
 }
