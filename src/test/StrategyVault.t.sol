@@ -419,8 +419,10 @@ contract SVaultTest is TestPlus {
         StrategyVault impl2 = new StrategyVault();
 
         changePrank(governance);
-        sVault.upgradeTo(address(impl2));
         sVault.pause();
+
+        sVault.upgradeTo(address(impl2));
+
         sVault.withdrawFromStrategy(strategy1.totalLockedValue());
 
         // check for strategy tvl to zero
@@ -437,12 +439,119 @@ contract SVaultTest is TestPlus {
         assertEq(totalShares, sVault.totalSupply());
         assertEq(strategy2.totalLockedValue(), initialAssets);
     }
+
+    function testFailDepositWithoutStrategy() public {
+        // Deploy vault
+        StrategyVault impl = new StrategyVault();
+        // Initialize proxy with correct data
+        bytes memory initData = abi.encodeCall(
+            StrategyVault.initialize,
+            (governance, address(asset), "Affine High Yield LP - USDC-wETH", "affineSushiUsdcWeth")
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        StrategyVault sVault = StrategyVault(address(proxy));
+
+        uint256 initialAssets = 1000 * 10 ** asset.decimals();
+        deal(address(sVault.asset()), alice, initialAssets);
+        vm.startPrank(alice);
+
+        MockERC20(sVault.asset()).approve(address(sVault), initialAssets);
+
+        sVault.deposit(initialAssets, alice);
+    }
+
+    function testFailWithdrawWithEscrowTransfer() public {
+        // Deploy vault
+        StrategyVault impl = new StrategyVault();
+        // Initialize proxy with correct data
+        bytes memory initData = abi.encodeCall(
+            StrategyVault.initialize,
+            (governance, address(asset), "Affine High Yield LP - USDC-wETH", "affineSushiUsdcWeth")
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        StrategyVault sVault = StrategyVault(address(proxy));
+
+        //add a dummy strategy
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+        MockEpochStrategy strategy1 = new MockEpochStrategy(sVault, strategists);
+
+        vm.startPrank(governance);
+        sVault.setStrategy(strategy1);
+
+        uint256 initialAssets = 100_000 * (10 ** asset.decimals());
+        sVault.setTvlCap(10 * initialAssets);
+
+        console.log("initial assets %s deci %s", initialAssets, asset.decimals());
+        console.log("Debt escrow %s", address(sVault.debtEscrow()));
+
+        deal(address(asset), alice, initialAssets);
+
+        changePrank(alice);
+
+        MockERC20(sVault.asset()).approve(address(sVault), initialAssets);
+
+        sVault.deposit(initialAssets, alice);
+
+        sVault.transfer(address(sVault.debtEscrow()), 10 ** (sVault.decimals()));
+
+        changePrank(strategists[0]);
+
+        strategy1.endEpoch();
+    }
+
+    function testFailWithdrawWithNullEscrow() public {
+        // Deploy vault
+        StrategyVault impl = new StrategyVault();
+        // Initialize proxy with correct data
+        bytes memory initData = abi.encodeCall(
+            StrategyVault.initialize,
+            (governance, address(asset), "Affine High Yield LP - USDC-wETH", "affineSushiUsdcWeth")
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        StrategyVault sVault = StrategyVault(address(proxy));
+
+        //add a dummy strategy
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+        MockEpochStrategy strategy1 = new MockEpochStrategy(sVault, strategists);
+
+        vm.startPrank(governance);
+        sVault.setStrategy(strategy1);
+
+        uint256 initialAssets = 100_000 * (10 ** asset.decimals());
+        sVault.setTvlCap(10 * initialAssets);
+
+        console.log("initial assets %s deci %s", initialAssets, asset.decimals());
+        console.log("Debt escrow %s", address(sVault.debtEscrow()));
+
+        deal(address(asset), alice, initialAssets);
+
+        changePrank(alice);
+
+        MockERC20(sVault.asset()).approve(address(sVault), initialAssets);
+
+        sVault.deposit(initialAssets, alice);
+
+        changePrank(strategists[0]);
+
+        strategy1.beginEpoch();
+
+        changePrank(alice);
+
+        sVault.withdraw(initialAssets / 10, alice, alice);
+
+        changePrank(strategists[0]);
+
+        strategy1.endEpoch();
+    }
 }
 
 contract SVaultUpgradeLiveTest is SVaultTest {
     function forkNet() public override {
         // fork polygon to test live vault
-        vm.createSelectFork("polygon");
+        /// @dev used fixed block for faster test and caching
+        vm.createSelectFork("polygon", 44_212_000);
     }
 
     function testVaultAndStrategyUpgradeWithDeployedVault() public {
@@ -460,11 +569,11 @@ contract SVaultUpgradeLiveTest is SVaultTest {
         uint256 tvl = vaultStrategy.totalLockedValue();
         // check vault tvl
         assertEq(mainnetVault.vaultTVL(), tvl);
-        // upgrade vault
-        mainnetVault.upgradeTo(address(newVault));
 
         // pause vault to strategy upgrade
         mainnetVault.pause();
+        // upgrade vault
+        mainnetVault.upgradeTo(address(newVault));
 
         // withdraw assets
         mainnetVault.withdrawFromStrategy(vaultStrategy.totalLockedValue());
