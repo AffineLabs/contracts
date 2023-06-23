@@ -17,6 +17,8 @@ import {TestStrategy} from "./mocks/TestStrategy.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockEpochStrategy} from "src/testnet/MockEpochStrategy.sol";
 
+import {UsdcVault} from "src/vaults/custom/UsdcVault.sol";
+
 // TODO: merge with CommonVaultTest
 import {CommonVaultTest} from "./Vault.t.sol";
 
@@ -494,10 +496,6 @@ contract SVaultTest is TestPlus {
         sVault.deposit(initialAssets, alice);
 
         sVault.transfer(address(sVault.debtEscrow()), 10 ** (sVault.decimals()));
-
-        changePrank(strategists[0]);
-
-        strategy1.endEpoch();
     }
 
     function testFailWithdrawWithNullEscrow() public {
@@ -551,7 +549,7 @@ contract SVaultUpgradeLiveTest is SVaultTest {
     function forkNet() public override {
         // fork polygon to test live vault
         /// @dev used fixed block for faster test and caching
-        vm.createSelectFork("polygon", 44_212_000);
+        vm.createSelectFork("polygon", 44_247_460);
     }
 
     function testVaultAndStrategyUpgradeWithDeployedVault() public {
@@ -598,5 +596,34 @@ contract SVaultUpgradeLiveTest is SVaultTest {
         // check new strategy tvl
         assertEq(newStrategy.totalLockedValue(), tvl);
         console.log("vault tvl %s", tvl);
+    }
+
+    function testUsdcVaultUpgradeImpl() public {
+        UsdcVault mainnetVault = UsdcVault(0x684D1dbd30c67Fe7fF6D502A04e0E7076b4b9D46);
+
+        uint256 oldDecimals = mainnetVault.decimals();
+        uint256 oldPrice = mainnetVault.detailedPrice().num;
+
+        /// @dev due to faulty implementation upgrade decimal changes to 14
+        assertEq(oldDecimals, 14);
+        assertTrue(oldPrice < 100e6);
+
+        // new vault to upgrade
+        UsdcVault newVault = new UsdcVault();
+
+        // prank gov
+        vm.startPrank(0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0); // gov
+
+        // pause vault to strategy upgrade
+        mainnetVault.pause();
+        // upgrade vault
+        mainnetVault.upgradeTo(address(newVault));
+
+        uint256 newDecimals = mainnetVault.decimals();
+        uint256 newPrice = mainnetVault.detailedPrice().num;
+
+        assertEq(newDecimals, 16);
+        /// @dev original price of the vault was 100e6. We don't want it to change.
+        assertTrue(newPrice > 100e6);
     }
 }

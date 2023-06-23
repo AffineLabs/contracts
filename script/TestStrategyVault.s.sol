@@ -22,6 +22,8 @@ import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 import {WithdrawalEscrow} from "src/vaults/locked/WithdrawalEscrow.sol";
 import {MockEpochStrategy} from "src/testnet/MockEpochStrategy.sol";
 import {DummyEpochStrategy} from "src/testnet/DummyEpochStrategy.sol";
+import {UsdcVault} from "src/vaults/custom/UsdcVault.sol";
+
 /* solhint-disable reason-string, no-console */
 
 library SSV {
@@ -88,12 +90,6 @@ library SSV {
         sVault.setDebtEscrow(escrow);
         console.log("Strategy addr:", address(strategy));
         console.log("Escrow addr:", address(escrow));
-    }
-}
-
-contract UsdcVault is StrategyVault {
-    function _initialShareDecimals() internal pure override returns (uint8) {
-        return 10;
     }
 }
 
@@ -422,7 +418,7 @@ contract Deploy is Script {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
 
-        StrategyVault sVault = new StrategyVault();
+        UsdcVault sVault = new UsdcVault();
         console.log("deployer %s", deployer);
         console.log("Vault address %s", address(sVault));
     }
