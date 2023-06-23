@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 
-contract UsdcVault is StrategyVault {
+contract DegenVault is StrategyVault {
     function _initialShareDecimals() internal pure override returns (uint8) {
         return 10;
     }

@@ -17,7 +17,7 @@ import {TestStrategy} from "./mocks/TestStrategy.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockEpochStrategy} from "src/testnet/MockEpochStrategy.sol";
 
-import {UsdcVault} from "src/vaults/custom/UsdcVault.sol";
+import {DegenVault} from "src/vaults/custom/DegenVault.sol";
 
 // TODO: merge with CommonVaultTest
 import {CommonVaultTest} from "./Vault.t.sol";
@@ -599,17 +599,18 @@ contract SVaultUpgradeLiveTest is SVaultTest {
     }
 
     function testUsdcVaultUpgradeImpl() public {
-        UsdcVault mainnetVault = UsdcVault(0x684D1dbd30c67Fe7fF6D502A04e0E7076b4b9D46);
+        DegenVault mainnetVault = DegenVault(0x684D1dbd30c67Fe7fF6D502A04e0E7076b4b9D46);
 
         uint256 oldDecimals = mainnetVault.decimals();
         uint256 oldPrice = mainnetVault.detailedPrice().num;
-
+        uint256 oldTVL = mainnetVault.vaultTVL();
+        uint256 oldSupply = mainnetVault.totalSupply();
         /// @dev due to faulty implementation upgrade decimal changes to 14
         assertEq(oldDecimals, 14);
         assertTrue(oldPrice < 100e6);
 
         // new vault to upgrade
-        UsdcVault newVault = new UsdcVault();
+        DegenVault newVault = new DegenVault();
 
         // prank gov
         vm.startPrank(0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0); // gov
@@ -621,9 +622,14 @@ contract SVaultUpgradeLiveTest is SVaultTest {
 
         uint256 newDecimals = mainnetVault.decimals();
         uint256 newPrice = mainnetVault.detailedPrice().num;
+        uint256 newTVL = mainnetVault.vaultTVL();
+        uint256 newSupply = mainnetVault.totalSupply();
 
         assertEq(newDecimals, 16);
         /// @dev original price of the vault was 100e6. We don't want it to change.
         assertTrue(newPrice > 100e6);
+
+        assertEq(oldTVL, newTVL);
+        assertEq(oldSupply, newSupply);
     }
 }

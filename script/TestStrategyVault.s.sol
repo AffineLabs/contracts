@@ -22,7 +22,7 @@ import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 import {WithdrawalEscrow} from "src/vaults/locked/WithdrawalEscrow.sol";
 import {MockEpochStrategy} from "src/testnet/MockEpochStrategy.sol";
 import {DummyEpochStrategy} from "src/testnet/DummyEpochStrategy.sol";
-import {UsdcVault} from "src/vaults/custom/UsdcVault.sol";
+import {DegenVault} from "src/vaults/custom/DegenVault.sol";
 
 /* solhint-disable reason-string, no-console */
 
@@ -99,7 +99,7 @@ contract Deploy is Script {
         vm.startBroadcast(deployer);
 
         // Deploy vault
-        StrategyVault impl = new UsdcVault();
+        StrategyVault impl = new DegenVault();
         // Initialize proxy with correct data
         bytes memory initData = abi.encodeCall(
             StrategyVault.initialize,
@@ -174,7 +174,7 @@ contract Deploy is Script {
         vm.startBroadcast(deployer);
 
         // Deploy vault
-        StrategyVault impl = new UsdcVault();
+        StrategyVault impl = new DegenVault();
         // Initialize proxy with correct data
         bytes memory initData = abi.encodeCall(
             StrategyVault.initialize,
@@ -210,7 +210,7 @@ contract Deploy is Script {
         address gov = deployer;
 
         // Deploy vault
-        StrategyVault impl = new UsdcVault();
+        StrategyVault impl = new DegenVault();
         // Initialize proxy with correct data
         bytes memory initData = abi.encodeCall(
             StrategyVault.initialize,
@@ -249,7 +249,7 @@ contract Deploy is Script {
         address asset = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
         // Deploy vault
-        StrategyVault impl = new UsdcVault();
+        StrategyVault impl = new DegenVault();
         // Initialize proxy with correct data
         bytes memory initData =
             abi.encodeCall(StrategyVault.initialize, (gov, asset, "Affine High Yield LP", "affineDegen"));
@@ -287,7 +287,7 @@ contract Deploy is Script {
         address asset = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
 
         // Deploy vault
-        StrategyVault impl = new UsdcVault();
+        StrategyVault impl = new DegenVault();
         // Initialize proxy with correct data
         bytes memory initData =
             abi.encodeCall(StrategyVault.initialize, (gov, asset, "Affine High Yield LP", "affineDegen"));
@@ -325,7 +325,7 @@ contract Deploy is Script {
         address asset = 0x8f7116CA03AEB48547d0E2EdD3Faa73bfB232538;
 
         // Deploy vault
-        StrategyVault impl = new UsdcVault();
+        StrategyVault impl = new DegenVault();
         // Initialize proxy with correct data
         bytes memory initData =
             abi.encodeCall(StrategyVault.initialize, (gov, asset, "Affine High Yield LP", "affineDegen"));
@@ -414,11 +414,11 @@ contract Deploy is Script {
         strategy.endEpoch();
     }
 
-    function deployStrategyVault() external {
+    function deployNewPolygonDegenDegenVaultV2() external {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
 
-        UsdcVault sVault = new UsdcVault();
+        DegenVault sVault = new DegenVault();
         console.log("deployer %s", deployer);
         console.log("Vault address %s", address(sVault));
     }
