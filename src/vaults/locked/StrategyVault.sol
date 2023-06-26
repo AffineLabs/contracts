@@ -271,6 +271,7 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
         uint256 lockedShares = balanceOf(address(debtEscrow));
         uint256 assets = _convertToAssets(lockedShares, MathUpgradeable.Rounding.Down);
         if (assets == 0) return;
+
         _withdrawFromStrategy(assets);
 
         // Tell escrow that the funds are ready to be withdrawn. The escrow will redeem the shares.
@@ -279,7 +280,7 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
     }
 
     /// @notice Temporary tvl cap
-    uint256 tvlCap;
+    uint256 public tvlCap;
 
     function setTvlCap(uint256 _tvlCap) external onlyGovernance {
         tvlCap = _tvlCap;
