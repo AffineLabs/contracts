@@ -414,6 +414,11 @@ contract Deploy is Script {
         strategy.endEpoch();
     }
 
+    /**
+     * @dev deployment date: June 23, 23
+     * @dev purpose: Upgrade implementation of polygon degen vault
+     * @dev implementation add: 0x7EBD7e6ADe7Dcb3f12b53691e0cC285b06Fb4094
+     */
     function deployNewPolygonDegenDegenVaultV2() external {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
