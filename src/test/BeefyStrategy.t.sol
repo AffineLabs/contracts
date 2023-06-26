@@ -47,7 +47,7 @@ contract TestBeefyStrategy is TestPlus {
     }
 
     function setUp() public virtual {
-        vm.createSelectFork("polygon");
+        vm.createSelectFork("polygon", 44_367_000);
         vault = vault = new Vault();
         vault.initialize(governance, address(usdc), "BeefyVault", "BeefyVault");
         setupBeefyStrategy();
