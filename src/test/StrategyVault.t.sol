@@ -598,7 +598,7 @@ contract SVaultUpgradeLiveTest is SVaultTest {
         console.log("vault tvl %s", tvl);
     }
 
-    function testUsdcVaultUpgradeImpl() public {
+    function testDegenVaultUpgradeImpl() public {
         DegenVault mainnetVault = DegenVault(0x684D1dbd30c67Fe7fF6D502A04e0E7076b4b9D46);
 
         uint256 oldDecimals = mainnetVault.decimals();
