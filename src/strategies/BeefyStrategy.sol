@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-// import "forge-std/console.sol";
-
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
@@ -14,7 +12,7 @@ import {IBeefyVault} from "src/interfaces/Beefy.sol";
 
 import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
 
-import {Vault} from "src/vaults/Vault.sol";
+import {AffineVault} from "src/vaults/Vault.sol";
 
 contract BeefyStrategy is AccessStrategy {
     using FixedPointMathLib for uint256;
@@ -42,7 +40,7 @@ contract BeefyStrategy is AccessStrategy {
     uint256 constant MIN_LP_AMOUNT = 100;
 
     constructor(
-        Vault _vault,
+        AffineVault _vault,
         ICurvePool _pool,
         I3CrvMetaPoolZap _zapper,
         int128 _assetIndex,
