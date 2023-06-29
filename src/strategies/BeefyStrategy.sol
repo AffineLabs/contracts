@@ -66,15 +66,6 @@ contract BeefyStrategy is AccessStrategy {
     }
 
     /**
-     * @notice utilize the asset in the strategy
-     * @param assets total assets to invest
-     * @dev it will use default strategy slippage for curve
-     */
-    function _afterInvest(uint256 assets) internal override {
-        _investIntoBeefy(assets, defaultSlippageBps);
-    }
-
-    /**
      * @notice invest the asset into beefy
      * @param assets amount of asset
      * @param slippageBps slippage for curve pool
@@ -129,7 +120,7 @@ contract BeefyStrategy is AccessStrategy {
         _withdrawLPTokenFromBeefy(lpTokenToWithdraw);
 
         // remove liquidity from curve
-        // @dev withdraw full amount, so that no curve token left idle.
+        // withdraw full amount, so that no curve token left idle.
         _removeLiquidityFromCurve(slippageBps);
     }
 
@@ -167,8 +158,8 @@ contract BeefyStrategy is AccessStrategy {
             + curveLpToken.balanceOf(address(this));
 
         if (lpTokenAmount < MIN_LP_AMOUNT) {
-            /// @dev providing values less than 3 incurs evm crash, not returning zero asset
-            /// @dev in 18 decimal place 0,1,2 turns out to be zero in asset
+            /// providing values less than 3 incurs evm crash, not returning zero asset
+            /// in 18 decimal place 0,1,2 turns out to be zero in asset
             return asset.balanceOf(address(this));
         }
         return zapper.calc_withdraw_one_coin(address(curvePool), lpTokenAmount, assetIndex)
@@ -198,8 +189,12 @@ contract BeefyStrategy is AccessStrategy {
         defaultSlippageBps = slippageBps;
     }
 
-    function divestAssets(uint256 slippageBps) external onlyRole(STRATEGIST_ROLE) {
-        beefy.withdrawAll();
-        _removeLiquidityFromCurve(slippageBps);
+    function investAssets(uint256 amount, uint256 slippageBps) external onlyRole(STRATEGIST_ROLE) {
+        require(amount <= asset.balanceOf(address(this)), "BS: insufficient assets");
+        _investIntoBeefy(amount, slippageBps);
+    }
+
+    function divestAssets(uint256 amount, uint256 slippageBps) external onlyRole(STRATEGIST_ROLE) {
+        _divestFromBeefy(amount, slippageBps);
     }
 }

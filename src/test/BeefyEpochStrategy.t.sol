@@ -31,6 +31,7 @@ contract TestBeefyWithStrategyVault is TestPlus {
     BeefyEpochStrategy strategy;
 
     uint256 initialAssets;
+    uint256 defaultSlippageBps;
 
     function setupBeefyStrategy() public {
         address[] memory strategists = new address[](1);
@@ -63,9 +64,9 @@ contract TestBeefyWithStrategyVault is TestPlus {
         vm.prank(governance);
         StrategyVault(address(vault)).setStrategy(strategy);
         vm.prank(governance);
-        strategy.setDefaultSlippageBps(50);
+        defaultSlippageBps = 50;
+        strategy.setDefaultSlippageBps(defaultSlippageBps);
     }
-    /// @dev override this as strategy directly sends assets to strategy
 
     function testDepositAndWithdrawFromVault() public {
         deal(address(usdc), alice, initialAssets);
@@ -121,7 +122,7 @@ contract TestBeefyWithStrategyVault is TestPlus {
 
         changePrank(address(this));
 
-        strategy.setDefaultSlippageBps(500);
+        strategy.setDefaultSlippageBps(defaultSlippageBps);
 
         changePrank(governance);
 
@@ -138,6 +139,9 @@ contract TestBeefyWithStrategyVault is TestPlus {
 
         assertTrue(address(strategy) != oldStrategy);
         // usdc balance of strategy should be zero after invest
+
+        strategy.investAssets(usdc.balanceOf(address(strategy)), defaultSlippageBps);
+
         assertEq(usdc.balanceOf(address(strategy)), 0);
 
         changePrank(governance);
@@ -160,7 +164,7 @@ contract TestBeefyWithStrategyVault is TestPlus {
         uint256 tvl = vaultStrat.totalLockedValue();
         mainnetVault.pause();
 
-        /// @dev using strategy tvl to withdraw full assets
+        // using strategy tvl to withdraw full assets
         mainnetVault.withdrawFromStrategy(vaultStrat.totalLockedValue());
 
         assertEq(vaultStrat.totalLockedValue(), 0);
@@ -171,7 +175,7 @@ contract TestBeefyWithStrategyVault is TestPlus {
         setupBeefyStrategy();
 
         mainnetVault.setStrategy(strategy);
-        strategy.setDefaultSlippageBps(500);
+        strategy.setDefaultSlippageBps(defaultSlippageBps);
 
         mainnetVault.depositIntoStrategy(tvl);
 
