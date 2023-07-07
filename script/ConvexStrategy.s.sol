@@ -25,7 +25,7 @@ library DeployLib {
             });
     }
 
-    function _getStrategists() internal view returns (address[] memory strategists) {
+    function _getStrategists() internal pure returns (address[] memory strategists) {
         strategists = new address[](1);
         strategists[0] = 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d;
     }
