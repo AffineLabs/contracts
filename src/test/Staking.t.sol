@@ -32,6 +32,16 @@ contract StakingTest is TestPlus {
 
     }
 
+    function testClosePosition() public {
+        ERC20 weth = staking.WETH();
+        testOpenPosition();
+        vm.warp(block.timestamp + 1 days);
+        vm.roll(block.number + 1);
+        staking.endPosition(1 ether);
+        console.log("WETH balance: %s", weth.balanceOf(address(this)));
+        console.log("WETH staking balance: %s", weth.balanceOf(address(staking)));
+    }
+
     // function testFlashLoan() public {
     //     ERC20 weth = staking.WETH();
     //     deal(address(weth), address(this), 100 ether);

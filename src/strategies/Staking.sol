@@ -16,6 +16,7 @@ import {IFlashLoanRecipient} from "src/interfaces/balancer/IFlashLoanRecipient.s
 import {IBalancerVault} from "src/interfaces/balancer/IBalancerVault.sol";
 import {IWETH} from "src/interfaces/IWETH.sol";
 import {IWStEth} from "src/interfaces/lido/IWStEth.sol";
+import {ICurvePool} from "src/interfaces/curve/ICurvePool.sol";
 import {ICdpManager, IVat, IGemJoin, ICropper} from "src/interfaces/maker.sol";
 import {ICToken} from "src/interfaces/compound/ICToken.sol";
 import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
@@ -32,6 +33,8 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     // TODO: use IWETH
     ERC20 public constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     IWStEth public constant LIDO = IWStEth(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
+    ERC20 public constant STETH = ERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
+    ICurvePool public constant CURVE = ICurvePool(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022);
 
     ERC20 public constant DAI = ERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
     ICdpManager public constant MAKER = ICdpManager(0x5ef30b9986345249bc32d8928B7ee64DE9435E39);
@@ -57,7 +60,13 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         leverage = _leverage;
 
         // Dai minting
-        ERC20(address(LIDO)) .safeApprove(address(WSTETH_JOIN), type(uint256).max);
+        // Send wsteth to join contract
+        ERC20(address(LIDO)).safeApprove(address(WSTETH_JOIN), type(uint256).max);
+       
+
+        // Dai burning / debt payment
+        // Allow Dai join to take Dai from this contract
+        DAI.approve(address(joinDai), type(uint256).max);
 
         // Compound deposits/borrow
         DAI.safeApprove(address(cDAI), type(uint256).max);
@@ -66,6 +75,9 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
         uint256[] memory results = IComptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B).enterMarkets(cTokens);
         require(results[0] == 0, "Staking: failed to enter market");
+
+        // Trade stEth for Eth
+        STETH.safeApprove(address(CURVE), type(uint).max);
 
     }
 
@@ -208,23 +220,29 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         console.log("redeemed");
         require(res == 0, "Staking: comp redeem error");
 
-    
-        // Get amount of lp tokens to withdraw from maker
-        // (uint totalCurveLp,) = VAT.urns(ilk, CROPPER.proxy(address(this)));
-        // uint curveLp = totalCurveLp.mulDivDown(ethBorrowed, ethDebt);
-
         // Pay debt in maker
-        VAT.hope(address(0));
-        // CROPPER.frob(ilk, address(this), address(this), address(this), -int(curveLp), -int(DAI.balanceOf(address(this))));
 
-        // Withdraw from maker
-        // CROPPER.flux({crop: CROP, src: CROPPER.proxy(address(this)), dst: address(this), wad: curveLp});
-        // CROPPER.exit(CROP, address(this), curveLp);
-        
+        // Send the dai to urn
+        address urn = MAKER.urns(cdpId);
+        joinDai.join({usr: urn, wad: daiToRedeem});
+
+        // Pay debt. Collateral withdrawn proportional to debt paid
+        (uint wstEthCollat,)  = VAT.urns(ilk, urn);
+        uint wstEthToRedeem = wstEthCollat.mulDivDown(ethBorrowed, ethDebt);
+        MAKER.frob(cdpId, -int(wstEthToRedeem), -int(daiToRedeem));
+
+        // Withdraw wstEth from maker
+        MAKER.flux({cdp: cdpId, dst: address(this), wad: wstEthToRedeem});
+        WSTETH_JOIN.exit(address(this), wstEthToRedeem);
+
         // Convert from wrapped staked eth => stEth => eth => weth
-        // TODO: actually convert from stEth => eth => weth
-        LIDO.unwrap(0);
-        IWETH(address(WETH)).deposit{value: 0}();
+        LIDO.unwrap(wstEthToRedeem);
+
+        // Trade on stEth for ETH
+        CURVE.exchange({x: 1, y: 0 , dx: STETH.balanceOf(address(this)), min_dy: 0}); // TODO: slippage protection when withdrawing from curve
+
+        // Convert to weth
+        IWETH(address(WETH)).deposit{value: address(this).balance}();
     }
 
     // TODO: remove this and startPosition
