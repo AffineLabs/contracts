@@ -22,7 +22,7 @@ interface ICdpManager {
     function frob(uint256, int256, int256) external;
     function flux(uint256, address, uint256) external;
     function flux(bytes32, uint256, address, uint256) external;
-    function move(uint256, address, uint256) external;
+    function move(uint256 cdp, address dst, uint256 rad) external;
     function quit(uint256, address) external;
     function enter(address, uint256) external;
     function shift(uint256, uint256) external;

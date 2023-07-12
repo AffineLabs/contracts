@@ -4,6 +4,7 @@ pragma solidity =0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
@@ -14,9 +15,8 @@ import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
 import {IFlashLoanRecipient} from "src/interfaces/balancer/IFlashLoanRecipient.sol";
 import {IBalancerVault} from "src/interfaces/balancer/IBalancerVault.sol";
 import {IWETH} from "src/interfaces/IWETH.sol";
-import {IStEth} from "src/interfaces/lido/IStEth.sol";
-import {ICurvePool} from "src/interfaces/curve.sol";
-import {ICdpManager, IVat, IMakerAdapter, ICropper} from "src/interfaces/maker.sol";
+import {IWStEth} from "src/interfaces/lido/IWStEth.sol";
+import {ICdpManager, IVat, IGemJoin, ICropper} from "src/interfaces/maker.sol";
 import {ICToken} from "src/interfaces/compound/ICToken.sol";
 import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
 
@@ -31,18 +31,15 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     ISwapRouter public constant ROUTER = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
     // TODO: use IWETH
     ERC20 public constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    IStEth public constant LIDO = IStEth(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
-    ICurvePool public constant CURVE = ICurvePool(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022);
-    
+    IWStEth public constant LIDO = IWStEth(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
 
     ERC20 public constant DAI = ERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
     ICdpManager public constant MAKER = ICdpManager(0x5ef30b9986345249bc32d8928B7ee64DE9435E39);
-    ICropper public constant CROPPER = ICropper(0x8377CD01a5834a6EaD3b7efb482f678f2092b77e);
-    address public constant CROP = 0x82D8bfDB61404C796385f251654F6d7e92092b5D;
-    IMakerAdapter public constant joinDai = IMakerAdapter(0x9759A6Ac90977b93B58547b4A71c78317f391A28);
+    IGemJoin public constant WSTETH_JOIN = IGemJoin(0x10CD5fbe1b404B7E19Ef964B63939907bdaf42E2);
+    IGemJoin public constant joinDai = IGemJoin(0x9759A6Ac90977b93B58547b4A71c78317f391A28);
     IVat public constant VAT = IVat(0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B);
-    /// @dev cast --to-bytes32 $(cast --from-utf8 "CRVV1ETHSTETH-A");
-    bytes32 public ilk = 0x435256563145544853544554482d410000000000000000000000000000000000;
+    /// @dev cast --to-bytes32 $(cast --from-utf8 "WSTETH-A");
+    bytes32 public constant ilk = 0x5753544554482d41000000000000000000000000000000000000000000000000;
 
     /// @notice cETH
     ICToken public constant cETH = ICToken(0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5);
@@ -59,23 +56,13 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         balancer = _balancer;
         leverage = _leverage;
 
-
-        // Lido
-        ERC20(address(LIDO)).safeApprove(address(CURVE), type(uint256).max);
-
-        // Curve lp and dai minting
-        WETH.safeApprove(address(CURVE), type(uint256).max);
-        ERC20(address(LIDO)).safeApprove(address(CURVE), type(uint256).max);
-        ERC20 lpToken = ERC20(CURVE.lp_token());
-        lpToken.safeApprove(address(CROPPER), type(uint256).max);
-
-        DAI.safeApprove(address(CROPPER), type(uint).max); // TODO: check if this is needed
+        // Dai minting
+        ERC20(address(LIDO)) .safeApprove(address(WSTETH_JOIN), type(uint256).max);
 
         // Compound deposits/borrow
         DAI.safeApprove(address(cDAI), type(uint256).max);
         address[] memory cTokens = new address[](1);
         cTokens[0] = address(cDAI);
-        // cTokens[1] = address(cETH);
 
         uint256[] memory results = IComptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B).enterMarkets(cTokens);
         require(results[0] == 0, "Staking: failed to enter market");
@@ -128,35 +115,30 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     function _openPosition(uint ethBorrowed) internal {
         // Convert WETH to stEth
         IWETH(address(WETH)).withdraw(ethBorrowed);
-        uint toStEth = ethBorrowed / 2;
-        LIDO.submit{value: toStEth}(address(this));
+        Address.sendValue(payable(address(LIDO)), ethBorrowed);
 
-        // Deposit in curve
-        uint ethDeposit = ethBorrowed - toStEth;
-        uint256[2] memory depositAmounts = [ethDeposit, ERC20(address(LIDO)).balanceOf(address(this))];
-        uint amountLp = CURVE.add_liquidity{value: ethDeposit}(depositAmounts, 0); // TODO: slippage
+        uint compoundDebtEth = _openCdp(ERC20(address(LIDO)).balanceOf(address(this)));
 
-        uint compoundDebtEth = _openCdp(amountLp);
-
-        // Convert eth to weth
+        // Convert eth to weth in order to pay back balancer flash loan of weth
         IWETH(address(WETH)).deposit{value: compoundDebtEth}();
         console.log("End eth bal: ", WETH.balanceOf(address(this)));
     }
 
     uint public cdpId;
 
-    function _openCdp(uint amountLp) internal returns (uint compoundDebtEth){
+    function _openCdp(uint amountWStEth) internal returns (uint compoundDebtEth){
         cdpId = MAKER.open(ilk, address(this));
+        address urn = MAKER.urns(cdpId);
 
-        // Lock eth in maker
-        CROPPER.join(CROP, address(this), amountLp);
-        // Roughly 589_444 eth in pool and 539_973 lp tokens
-        // Borrow at 58% collateral ratio
-        uint amountEth = amountLp.mulDivDown(11, 10);
-        uint debt = amountEth.mulDivDown(58, 100) * 1850; // TODO: use oracle prices and get 58% in Dai
-        CROPPER.frob(ilk, address(this), address(this), address(this), int(amountLp), int(debt)); 
+        // Lock wsteth in maker
+        WSTETH_JOIN.join(urn, amountWStEth);
+
+        // Borrow at 58% collateral ratio. WSTETH is $2.1k.
+        uint debt = (amountWStEth * 2126).mulDivDown(58, 100); // TODO: use oracle prices and get 58% in Dai
+        MAKER.frob(cdpId, int(amountWStEth), int(debt)); 
         
         // Transfer Dai from cdp to this contract
+        MAKER.move({cdp: cdpId, dst: address(this), rad: debt * 1e27});
         VAT.hope(address(joinDai));
         joinDai.exit(address(this), debt);
 
@@ -178,19 +160,19 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
         // TVL = Maker collateral + compound collateral - maker debt - compound debt
         // When using cropper, you need to get urn address from cropper instead of cdp manager
-        address urn = CROPPER.proxy(address(this));
+        address urn = address(0);
 
         (uint curveLp, uint daiDebt) = VAT.urns(ilk, urn);
 
-        console.log("CdpId: %s, Curve lp: %s,  Dai debt: %s", cdpId, curveLp, daiDebt);
+        console.log("CdpId: %s, Curve lp: %s,  Dai debt: %s", cdpId, 0, daiDebt);
 
         // Using ETH denomination for everything
-        uint makerCollateral = CURVE.calc_withdraw_one_coin(curveLp, 0);
+        uint makerCollateral = 0;
         uint compoundCollateral = cDAI.balanceOfUnderlying(address(this));
 
         uint ethDebt = cETH.borrowBalanceCurrent(address(this));
 
-        console.log("makerCollateral: %s, compoundCollateral: %s, daiDebt %s", makerCollateral, compoundCollateral / 1850, daiDebt / 1850);
+        // console.log("makerCollateral: %s, compoundCollateral: %s, daiDebt %s", makerCollateral, compoundCollateral / 1850, daiDebt / 1850);
         console.log("ethDebt: ", ethDebt);
     
         return makerCollateral + (compoundCollateral / 1870) - (daiDebt / 1870) - ethDebt;
@@ -219,11 +201,8 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         uint ethDebt = cETH.borrowBalanceCurrent(address(this));
         IWETH(address(WETH)).withdraw(ethBorrowed);
         console.log("about to repay. ethBorrowed: %s, ethDebt: %s", ethBorrowed, ethDebt);
-        console.log("bal", cDAI.balanceOfUnderlying(address(this)).mulDivDown(ethBorrowed, ethDebt));
-        console.log("balance of eth", address(this).balance);
-   
+
         cETH.repayBorrow{value: ethBorrowed}();
-        console.log("want to redeem: , ", 1);
         uint daiToRedeem = cDAI.balanceOfUnderlying(address(this)).mulDivDown(ethBorrowed, ethDebt);
         uint res = cDAI.redeemUnderlying(daiToRedeem);
         console.log("redeemed");
@@ -231,19 +210,21 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
     
         // Get amount of lp tokens to withdraw from maker
-        ERC20 lpToken = ERC20(CURVE.lp_token());
-        uint curveLp = lpToken.balanceOf(address(this)).mulDivDown(ethBorrowed, ethDebt);
+        // (uint totalCurveLp,) = VAT.urns(ilk, CROPPER.proxy(address(this)));
+        // uint curveLp = totalCurveLp.mulDivDown(ethBorrowed, ethDebt);
 
         // Pay debt in maker
-        CROPPER.frob(ilk, address(this), address(this), address(this), -int(curveLp), -int(DAI.balanceOf(address(this))));
+        VAT.hope(address(0));
+        // CROPPER.frob(ilk, address(this), address(this), address(this), -int(curveLp), -int(DAI.balanceOf(address(this))));
 
         // Withdraw from maker
-        CROPPER.flux({crop: CROP, src: CROPPER.proxy(address(this)), dst: address(this), wad: curveLp});
-        CROPPER.exit(CROP, address(this), curveLp);
+        // CROPPER.flux({crop: CROP, src: CROPPER.proxy(address(this)), dst: address(this), wad: curveLp});
+        // CROPPER.exit(CROP, address(this), curveLp);
         
-        // Convert from lp tokens => eth => weth
-        uint ethToSend = CURVE.remove_liquidity_one_coin(curveLp, 0, 0); // TODO: slippage protection
-        IWETH(address(WETH)).deposit{value: ethToSend}();
+        // Convert from wrapped staked eth => stEth => eth => weth
+        // TODO: actually convert from stEth => eth => weth
+        LIDO.unwrap(0);
+        IWETH(address(WETH)).deposit{value: 0}();
     }
 
     // TODO: remove this and startPosition
