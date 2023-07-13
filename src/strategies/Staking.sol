@@ -146,7 +146,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         WSTETH_JOIN.join(urn, amountWStEth);
 
         // Borrow at 58% collateral ratio. WSTETH is $2.1k.
-        uint debt = (amountWStEth * 2126).mulDivDown(58, 100); // TODO: use oracle prices and get 58% in Dai
+        uint debt = (amountWStEth * 2239).mulDivDown(58, 100); // TODO: use oracle prices and get 58% in Dai
         MAKER.frob(cdpId, int(amountWStEth), int(debt)); 
         
         // Transfer Dai from cdp to this contract
@@ -161,7 +161,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
         // Borrow at 75%
         console.log("Eth bal before borrow: ", WETH.balanceOf(address(this)));
-        compoundDebtEth= debt.mulDivDown(75, 100 * 1870); // TODO: Use ETH/DAI oracle
+        compoundDebtEth= debt.mulDivDown(75, 100 * 1978); // TODO: Use ETH/DAI oracle
         uint borrowRes = cETH.borrow(compoundDebtEth); // TODO: Use ETH/DAI oracle
         require(borrowRes == 0, "Staking: borrow failed");
     }
@@ -169,25 +169,17 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
      function totalLockedValue() public override returns (uint256) {
         // Maker collateral, Maker debt (dai)
         // compound collateral (dai), compound debt (eth)
-
         // TVL = Maker collateral + compound collateral - maker debt - compound debt
-        // When using cropper, you need to get urn address from cropper instead of cdp manager
-        address urn = address(0);
-
-        (uint curveLp, uint daiDebt) = VAT.urns(ilk, urn);
-
-        console.log("CdpId: %s, Curve lp: %s,  Dai debt: %s", cdpId, 0, daiDebt);
+        address urn = MAKER.urns(cdpId);
+        (uint wstEthCollat, uint daiDebt)  = VAT.urns(ilk, urn);
 
         // Using ETH denomination for everything
-        uint makerCollateral = 0;
+       uint  makerCollateral = wstEthCollat.mulDivDown(113, 100); // TODO: use oracle prices for WSTETH/ETH, using 1.13: 1 eth:wstEth for now
         uint compoundCollateral = cDAI.balanceOfUnderlying(address(this));
 
         uint ethDebt = cETH.borrowBalanceCurrent(address(this));
 
-        // console.log("makerCollateral: %s, compoundCollateral: %s, daiDebt %s", makerCollateral, compoundCollateral / 1850, daiDebt / 1850);
-        console.log("ethDebt: ", ethDebt);
-    
-        return makerCollateral + (compoundCollateral / 1870) - (daiDebt / 1870) - ethDebt;
+        return makerCollateral + (compoundCollateral / 1978) - (daiDebt / 1978) - ethDebt;
      }
 
      function _divest(uint amount) internal override returns (uint256) {

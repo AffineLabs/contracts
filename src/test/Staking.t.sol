@@ -15,7 +15,7 @@ contract StakingTest is TestPlus {
     receive() external payable {}
 
     function setUp() public {
-        vm.createSelectFork("ethereum", 17673841);
+        vm.createSelectFork("ethereum",  17687253);
 
         address[] memory strategists = new address[](1);
         strategists[0] = address(this);
@@ -42,24 +42,10 @@ contract StakingTest is TestPlus {
         console.log("WETH staking balance: %s", weth.balanceOf(address(staking)));
     }
 
-    // function testFlashLoan() public {
-    //     ERC20 weth = staking.WETH();
-    //     deal(address(weth), address(this), 100 ether);
-    //     weth.approve(address(staking), 100 ether);
-    //     staking.startPosition(30 ether, 30.3 ether);
-
-    //     console.log("WETH balance: %s", weth.balanceOf(address(this)));
-    //     console.log("WETH staking balance: %s", weth.balanceOf(address(staking)));
-
-    //     console.log("TVL: , %s", staking.totalLockedValue());
-
-    //     vm.warp(block.timestamp + 1 days);
-    //     vm.roll(block.number + 1);
-    //     staking.endPosition(1 ether);
-    //     console.log("WETH balance: %s", weth.balanceOf(address(this)));
-    //     console.log("WETH staking balance: %s", weth.balanceOf(address(staking)));
-
-    // }
-
-
+    function testTotalLockedValue() public {
+        testOpenPosition();
+        uint tvl = staking.totalLockedValue();
+        console.log("TVL:  %s", tvl);
+        assertApproxEqRel(tvl, 30 ether, 0.02e18); // TODO: consider making this bound tighter than 2%
+    }
 }
