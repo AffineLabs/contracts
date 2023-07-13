@@ -21,8 +21,7 @@ polygon = "https://polygon-mainnet.g.alchemy.com/v2/${ALCHEMY_POLYGON_MAINNET_KE
 
 [profile.default.etherscan]
 ethereum = { key = "${ETHERSCAN_API_KEY}", chain = 1 }
-polygon = { key = "${POLYGONSCAN_API_KEY}", chain = 137 }
-
+polygon = { key = "${POLYGONSCAN_API_KEY}", chain = 137, url = "https://api.polygonscan.com/" }
 
 [profile.ci.fuzz]
 runs = 10000
