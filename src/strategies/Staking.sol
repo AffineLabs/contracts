@@ -241,4 +241,36 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     function endPosition(uint _amount) external onlyRole(STRATEGIST_ROLE) {
         _divest(_amount);
     }
+
+
+    /// @notice Borrow from maker and supply to compound or vice-versa.
+    /// @param amountEth Amount of eth to borrow from compound.
+    /// @param amountDai Amount of dai to borrow from maker.
+    function rebalance (uint amountEth, uint amountDai) external onlyRole(STRATEGIST_ROLE) {
+        // Eth price goes up => borrow more dai from maker and supply to compound
+        // Eth price goes down => borrow more eth from compound and supply to maker
+
+        if (amountEth > 0) {
+            // borrow
+            uint borrowRes = cETH.borrow(amountEth);
+            require(borrowRes == 0, "Staking: borrow failed");
+
+            // convert eth to wstEth
+            Address.sendValue(payable(address(LIDO)), address(this).balance);
+
+
+            // deposit in maker
+            uint amountWStEth = ERC20(address(LIDO)).balanceOf(address(this));
+            MAKER.frob(cdpId, int(amountWStEth), int(0)); 
+
+        }
+
+        if (amountDai > 0) {
+            // Borrow dai from maker
+            MAKER.frob(cdpId, int(0), int(amountDai));
+
+            // Deposit Dai in compound v2
+            cDAI.mint({underlying: amountDai});
+        }
+    }
 }
