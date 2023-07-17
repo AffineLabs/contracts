@@ -5,7 +5,7 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {StakingExp, IBalancerVault, IFlashLoanRecipient, AffineVault} from "src/strategies/Staking.sol";
+import {StakingExp, IBalancerVault, IFlashLoanRecipient, AffineVault, ICdpManager} from "src/strategies/Staking.sol";
 
 import {console} from "forge-std/console.sol";
 
@@ -47,5 +47,28 @@ contract StakingTest is TestPlus {
         uint tvl = staking.totalLockedValue();
         console.log("TVL:  %s", tvl);
         assertApproxEqRel(tvl, 30 ether, 0.02e18); // TODO: consider making this bound tighter than 2%
+    }
+
+    function testMakerCompDivergence() public {
+        testOpenPosition();
+
+        uint compDai = staking.cDAI().balanceOfUnderlying(address(staking));
+        uint makerDai = (compDai * 101)  / 100; // Maker debt is 1% higher than Compound collateral
+
+        ICdpManager maker = staking.MAKER();
+        address urn = maker.urns(staking.cdpId());
+        (uint wstCollat, ) = staking.VAT().urns(staking.ilk(), urn);
+        
+        vm.mockCall(
+        address(staking.VAT()),
+        abi.encodeCall(staking.VAT().urns, (staking.ilk(), urn)), 
+        abi.encode(wstCollat, makerDai)
+        );
+
+        // vm.warp(block.timestamp + 1 days);
+        // vm.roll(block.number + 1);
+        staking.endPosition(1 ether);
+
+        // TODO: this working, but add some asserts
     }
 }

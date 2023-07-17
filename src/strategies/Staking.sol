@@ -196,6 +196,9 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         (, uint makerDai)  = VAT.urns(ilk, MAKER.urns(cdpId));
         uint makerDaiToPay = makerDai.mulDivDown(amount, tvl);
 
+        console.log("compDaiToRedeem: ", compDaiToRedeem);
+        console.log("makerDaiToPay: ", makerDaiToPay);
+
         // Maker debt and comp collateral may diverge over time. Flashloan DAI if need to pay same percentage 
         // of maker debt as we pay of compound debt
         // stEth will be traded to DAI to pay back this flashloan, so we need to set a min amount to make sure the trade succeeds
