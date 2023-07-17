@@ -7,7 +7,6 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-
 import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
@@ -20,7 +19,6 @@ import {ICurvePool} from "src/interfaces/curve/ICurvePool.sol";
 import {ICdpManager, IVat, IGemJoin, ICropper} from "src/interfaces/maker.sol";
 import {ICToken} from "src/interfaces/compound/ICToken.sol";
 import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
-
 
 import "forge-std/console.sol";
 
@@ -107,23 +105,33 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     ) external override {
         require(msg.sender == address(balancer), "Staking: only balancer");
 
-        uint256 ethBorrowed = amounts[0];
-        console.log("\n\nethBorrowed: %s", ethBorrowed);
+        uint256 ethBorrowed;
+        uint daiBorrowed;
         (Loan l) = abi.decode(userData, (Loan));
 
         if (l == Loan.close) {
-            _endPosition(ethBorrowed);
+            // We only flashloan dai in certain cases during divestment
+            if (tokens.length == 2) {
+                daiBorrowed = amounts[0];
+                ethBorrowed = amounts[1];
+            } else {
+                ethBorrowed = amounts[0];
+            }
+            _endPosition(ethBorrowed, daiBorrowed);
         } else {
+            ethBorrowed = amounts[0];
             _openPosition(ethBorrowed);
         }
         
         // Payback loan
-        console.log("WETH balance before payback: %s", WETH.balanceOf(address(this)));
         WETH.safeTransfer(address(balancer), ethBorrowed);
         // We take slightly more from the user than they want to deposit (for slippage). If there's any left over send back to the user.
         if (l == Loan.open) WETH.safeTransfer(address(vault), WETH.balanceOf(address(this)));
-    }
 
+        // Repay Dai loan
+        if (daiBorrowed > 0) DAI.safeTransfer(address(balancer), daiBorrowed);
+    }
+ 
     function _openPosition(uint ethBorrowed) internal {
         // Convert WETH to stEth
         IWETH(address(WETH)).withdraw(ethBorrowed);
@@ -133,7 +141,6 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
         // Convert eth to weth in order to pay back balancer flash loan of weth
         IWETH(address(WETH)).deposit{value: compoundDebtEth}();
-        console.log("End eth bal: ", WETH.balanceOf(address(this)));
     }
 
     uint public cdpId;
@@ -154,13 +161,10 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         VAT.hope(address(joinDai));
         joinDai.exit(address(this), debt);
 
-        console.log("DAI borrowed: ", debt);
-
         // Deposit Dai in compound v2
         cDAI.mint({underlying: debt});
 
         // Borrow at 75%
-        console.log("Eth bal before borrow: ", WETH.balanceOf(address(this)));
         compoundDebtEth= debt.mulDivDown(75, 100 * 1978); // TODO: Use ETH/DAI oracle
         uint borrowRes = cETH.borrow(compoundDebtEth); // TODO: Use ETH/DAI oracle
         require(borrowRes == 0, "Staking: borrow failed");
@@ -183,14 +187,41 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
      }
 
      function _divest(uint amount) internal override returns (uint256) {
+        uint tvl = totalLockedValue();
         uint ethDebt = cETH.borrowBalanceCurrent(address(this));
-        uint ethNeeded = ethDebt.mulDivDown(amount, totalLockedValue());
+        uint ethNeeded = ethDebt.mulDivDown(amount, tvl);
+
+
+        uint compDaiToRedeem = (cDAI.balanceOfUnderlying(address(this)).mulDivDown(amount, tvl));
+        (, uint makerDai)  = VAT.urns(ilk, MAKER.urns(cdpId));
+        uint makerDaiToPay = makerDai.mulDivDown(amount, tvl);
+
+        // Maker debt and comp collateral may diverge over time. Flashloan DAI if need to pay same percentage 
+        // of maker debt as we pay of compound debt
+        // stEth will be traded to DAI to pay back this flashloan, so we need to set a min amount to make sure the trade succeeds
+        uint daiNeeded;
+        if (makerDaiToPay > compDaiToRedeem && makerDaiToPay - compDaiToRedeem > 0.01e18) {
+            daiNeeded = makerDaiToPay - compDaiToRedeem;
+        }
 
         // Flashloan `ethNeeded` eth from balancer, _endPosition gets called
-        ERC20[] memory tokens = new ERC20[](1);
-        tokens[0] = WETH;
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = ethNeeded;
+        uint arrSize = daiNeeded > 0 ? 2 : 1;
+        ERC20[] memory tokens = new ERC20[](arrSize);
+        if (daiNeeded > 0) {
+            tokens[0] = DAI;
+            tokens[1] = WETH;
+        } else {
+            tokens[0] = WETH;
+        }
+        uint256[] memory amounts = new uint256[](arrSize);
+        if (daiNeeded > 0) {
+            amounts[0] = daiNeeded;
+            amounts[1] = ethNeeded;
+        } else {
+            amounts[0] = ethNeeded;
+        }
+        console.log("daiNeeded", daiNeeded);
+
         balancer.flashLoan({recipient: IFlashLoanRecipient(address(this)), tokens: tokens, amounts: amounts, userData: abi.encode(Loan.close)});
 
         // Unlocked collateral is equal to my current weth balance
@@ -200,16 +231,14 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         return wethToSend;
      }
 
-       function _endPosition(uint256 ethBorrowed) internal {
+       function _endPosition(uint256 ethBorrowed, uint daiBorrowed) internal {
         // Pay debt in compound
         uint ethDebt = cETH.borrowBalanceCurrent(address(this));
         IWETH(address(WETH)).withdraw(ethBorrowed);
-        console.log("about to repay. ethBorrowed: %s, ethDebt: %s", ethBorrowed, ethDebt);
 
         cETH.repayBorrow{value: ethBorrowed}();
         uint daiToRedeem = cDAI.balanceOfUnderlying(address(this)).mulDivDown(ethBorrowed, ethDebt);
         uint res = cDAI.redeemUnderlying(daiToRedeem);
-        console.log("redeemed");
         require(res == 0, "Staking: comp redeem error");
 
         // Pay debt in maker
@@ -227,14 +256,32 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         MAKER.flux({cdp: cdpId, dst: address(this), wad: wstEthToRedeem});
         WSTETH_JOIN.exit(address(this), wstEthToRedeem);
 
-        // Convert from wrapped staked eth => stEth => eth => weth
+        // Convert from wrapped staked eth => stEth 
         LIDO.unwrap(wstEthToRedeem);
 
-        // Trade on stEth for ETH
+
+        // Convert stEth => eth to pay back flashloan and pay back user
+        // Trade on stEth for ETH (steth is at index 1)
         CURVE.exchange({x: 1, y: 0 , dx: STETH.balanceOf(address(this)), min_dy: 0}); // TODO: slippage protection when withdrawing from curve
 
-        // Convert to weth
+         // Convert to weth
         IWETH(address(WETH)).deposit{value: address(this).balance}();
+
+        // Convert weth => dai to pay back flashloan
+        if (daiBorrowed > 0) {
+             ISwapRouter.ExactInputSingleParams memory paramsCrv = ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(WETH),
+                tokenOut: address(DAI),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp,
+                amountIn: (daiBorrowed / 1978).mulDivUp(110, 100),
+                amountOutMinimum: daiBorrowed,
+                sqrtPriceLimitX96: 0
+            });
+        }
+        console.log("balance of dai after trade: ", DAI.balanceOf(address(this)));
+       
     }
 
     // TODO: remove this and startPosition
@@ -249,7 +296,6 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     function rebalance (uint amountEth, uint amountDai) external onlyRole(STRATEGIST_ROLE) {
         // Eth price goes up => borrow more dai from maker and supply to compound
         // Eth price goes down => borrow more eth from compound and supply to maker
-
         if (amountEth > 0) {
             // borrow
             uint borrowRes = cETH.borrow(amountEth);
