@@ -17,7 +17,6 @@ import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
 contract CompoundV3Strategy is AccessStrategy {
     using SafeTransferLib for ERC20;
 
-
     /// @notice Corresponding Compound token for `asset`(e.g. cUSDCV3 for USDC)
     IComet public immutable cToken;
     /// @notice Comet rewards contract. Used for claiming comp.
@@ -32,7 +31,15 @@ contract CompoundV3Strategy is AccessStrategy {
     /// @notice Uni router for swapping comp to `asset`
     IUniswapV2Router02 public immutable router;
 
-    constructor(AffineVault _vault, IComet _cToken, IRewards _rewards,  ERC20 _comp, address _weth, IUniswapV2Router02 _router,  address[] memory strategists)AccessStrategy(_vault, strategists) {
+    constructor(
+        AffineVault _vault,
+        IComet _cToken,
+        IRewards _rewards,
+        ERC20 _comp,
+        address _weth,
+        IUniswapV2Router02 _router,
+        address[] memory strategists
+    ) AccessStrategy(_vault, strategists) {
         cToken = _cToken;
         rewards = _rewards;
         comp = _comp;
@@ -70,15 +77,15 @@ contract CompoundV3Strategy is AccessStrategy {
         return amountToSend;
     }
 
-
     /*//////////////////////////////////////////////////////////////
                                 REWARDS
     //////////////////////////////////////////////////////////////*/
     function _claim() internal {
         rewards.claim({comet: address(cToken), src: address(this), shouldAccrue: true});
     }
-    function _sell(uint minAssetsFromRewards) internal {
-         uint256 compBalance = comp.balanceOf(address(this));
+
+    function _sell(uint256 minAssetsFromRewards) internal {
+        uint256 compBalance = comp.balanceOf(address(this));
 
         address[] memory path = new address[](3);
         path[0] = address(comp);
@@ -99,7 +106,7 @@ contract CompoundV3Strategy is AccessStrategy {
     /// @notice Claim comp rewards and sell them for `asset`
     function claimAndSellRewards(uint256 minAssetsFromReward) external onlyRole(STRATEGIST_ROLE) {
         _claim();
-       _sell(minAssetsFromReward);
+        _sell(minAssetsFromReward);
     }
 
     function claimRewards() external onlyRole(STRATEGIST_ROLE) {

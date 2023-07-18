@@ -3,6 +3,8 @@ pragma solidity =0.8.16;
 
 import {Test} from "forge-std/Test.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
+import {console} from "forge-std/console.sol";
 
 import {Deploy} from "./Deploy.sol";
 

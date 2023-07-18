@@ -29,7 +29,6 @@ contract Deploy is Script {
         address governance = 0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0;
         address weth = 0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619;
 
-
         // Deploy implementation
         Vault impl = new Vault();
 
