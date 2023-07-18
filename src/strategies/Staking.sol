@@ -19,6 +19,7 @@ import {ICurvePool} from "src/interfaces/curve/ICurvePool.sol";
 import {ICdpManager, IVat, IGemJoin, ICropper} from "src/interfaces/maker.sol";
 import {ICToken} from "src/interfaces/compound/ICToken.sol";
 import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
+import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 
 import "forge-std/console.sol";
 
@@ -46,6 +47,9 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     ICToken public constant cETH = ICToken(0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5);
     /// @notice cDAI
     ICToken public constant cDAI = ICToken(0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643);
+
+
+    AggregatorV3Interface public constant ethDaiFeed = AggregatorV3Interface(0x773616E4d11A78F511299002da57A0a94577F1f4);
 
     /// @dev We need this to receive ETH when calling WETH.withdraw()
     receive() external payable {}
@@ -152,8 +156,9 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         // Lock wsteth in maker
         WSTETH_JOIN.join(urn, amountWStEth);
 
-        // Borrow at 58% collateral ratio. WSTETH is $2.1k.
-        uint debt = (amountWStEth * 2239).mulDivDown(58, 100); // TODO: use oracle prices and get 58% in Dai
+        // Borrow at 58% collateral ratio
+        uint daiPrice = _getDaiPrice();
+        uint debt = _ethToDai(LIDO.getStETHByWstETH(amountWStEth), daiPrice).mulDivDown(58, 100);
         MAKER.frob(cdpId, int(amountWStEth), int(debt)); 
         
         // Transfer Dai from cdp to this contract
@@ -165,8 +170,8 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         cDAI.mint({underlying: debt});
 
         // Borrow at 75%
-        compoundDebtEth= debt.mulDivDown(75, 100 * 1978); // TODO: Use ETH/DAI oracle
-        uint borrowRes = cETH.borrow(compoundDebtEth); // TODO: Use ETH/DAI oracle
+        compoundDebtEth= _daiToEth(debt, daiPrice).mulDivDown(75, 100); 
+        uint borrowRes = cETH.borrow(compoundDebtEth);
         require(borrowRes == 0, "Staking: borrow failed");
     }
 
@@ -175,15 +180,37 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         // compound collateral (dai), compound debt (eth)
         // TVL = Maker collateral + compound collateral - maker debt - compound debt
         address urn = MAKER.urns(cdpId);
-        (uint wstEthCollat, uint daiDebt)  = VAT.urns(ilk, urn);
+        (uint wstEthCollat, uint rawMakerDebt) = VAT.urns(ilk, urn);
 
         // Using ETH denomination for everything
-       uint  makerCollateral = wstEthCollat.mulDivDown(113, 100); // TODO: use oracle prices for WSTETH/ETH, using 1.13: 1 eth:wstEth for now
-        uint compoundCollateral = cDAI.balanceOfUnderlying(address(this));
+        uint daiPrice = _getDaiPrice();
 
-        uint ethDebt = cETH.borrowBalanceCurrent(address(this));
+        uint makerCollateral = LIDO.getStETHByWstETH(wstEthCollat);
+        uint compoundCollateral = _daiToEth(cDAI.balanceOfUnderlying(address(this)), daiPrice);
 
-        return makerCollateral + (compoundCollateral / 1978) - (daiDebt / 1978) - ethDebt;
+        uint makerDebt = _daiToEth(rawMakerDebt, daiPrice);
+        uint compoundDebt = cETH.borrowBalanceCurrent(address(this));
+
+        return makerCollateral + compoundCollateral - makerDebt - compoundDebt;
+     }
+
+
+    function _getDaiPrice() internal returns (uint) {
+        (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = ethDaiFeed.latestRoundData();
+        require(price > 0, "Staking: price <= 0");
+        require(answeredInRound >= roundId, "Staking: stale data");
+        require(timestamp != 0, "staking: round not done");
+        return uint(price);
+    }
+
+     function _ethToDai(uint amountEth, uint price) internal returns (uint) {
+        // This is (eth * 1e18) / price. The price feed gives the eth/dai ratio, and we divide by price to get amount of dai.
+        // `divWad` is used because both both eth and the price feed have 18 decimals (the decimals are retained after division).
+        return amountEth.divWadDown(price);
+     }
+
+     function _daiToEth(uint amountDai, uint price) internal returns (uint) {
+        return amountDai.mulWadDown(price);
      }
 
      function _divest(uint amount) internal override returns (uint256) {
@@ -311,7 +338,6 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
             // deposit in maker
             uint amountWStEth = ERC20(address(LIDO)).balanceOf(address(this));
             MAKER.frob(cdpId, int(amountWStEth), int(0)); 
-
         }
 
         if (amountDai > 0) {
