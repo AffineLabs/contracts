@@ -57,8 +57,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     /// @notice The leverage factor of the position in %. e.g. 150 would be 1.5x leverage.
     uint256 public immutable leverage;
 
-    constructor(AffineVault _vault, address[] memory strategists, IBalancerVault _balancer, uint _leverage) AccessStrategy(_vault, strategists) {
-        balancer = _balancer;
+    constructor(uint _leverage, AffineVault _vault, address[] memory strategists ) AccessStrategy(_vault, strategists) {
         leverage = _leverage;
 
         // Dai minting
@@ -293,7 +292,8 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
         // Convert stEth => eth to pay back flashloan and pay back user
         // Trade on stEth for ETH (steth is at index 1)
-        CURVE.exchange({x: 1, y: 0 , dx: STETH.balanceOf(address(this)), min_dy: 0}); // TODO: slippage protection when withdrawing from curve
+        uint stEthToTrade = STETH.balanceOf(address(this));
+        CURVE.exchange({x: 1, y: 0 , dx: stEthToTrade, min_dy: stEthToTrade.mulDivDown(93, 100)});
 
          // Convert to weth
         IWETH(address(WETH)).deposit{value: address(this).balance}();
@@ -306,7 +306,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
                 fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp,
-                amountIn: _daitToEth(daiBorrowed).mulDivUp(110, 100),
+                amountIn: _daiToEth(daiBorrowed, _getDaiPrice()).mulDivUp(110, 100),
                 amountOutMinimum: daiBorrowed,
                 sqrtPriceLimitX96: 0
             });

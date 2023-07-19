@@ -21,7 +21,7 @@ contract StakingTest is TestPlus {
         strategists[0] = address(this);
         AffineVault vault = AffineVault(address(deployL1Vault()));
 
-        staking = new StakingExp(vault, strategists, IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8), 175);
+        staking = new StakingExp( 175, vault, strategists);
     }
 
     function testOpenPosition() public {
