@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-import {TestPlus} from "./TestPlus.sol";
+import {TestPlus, Vm} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
-import "forge-std/Components.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -299,7 +298,6 @@ contract L1DeltaNeutralTest is TestPlus {
         vm.recordLogs();
 
         strategy.startPosition(startAssets, IDEAL_SLIPPAGE_BPS);
-
         strategy.endPosition(IDEAL_SLIPPAGE_BPS);
 
         Vm.Log[] memory entries = vm.getRecordedLogs();

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
 import {Script, console} from "forge-std/Script.sol";
@@ -25,7 +24,8 @@ contract Deploy is Script {
         strategists[0] = 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d;
 
         AffineVault vault = AffineVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9);
-        CompoundV3Strategy strategy = new CompoundV3Strategy({_vault: vault, _cToken: IComet(cTokenAddr), _rewards: rewards,  _comp: comp, _weth: weth ,  _router: router ,  strategists: strategists });
+        CompoundV3Strategy strategy =
+        new CompoundV3Strategy({_vault: vault, _cToken: IComet(cTokenAddr), _rewards: rewards,  _comp: comp, _weth: weth ,  _router: router ,  strategists: strategists });
         require(strategy.vault() == vault);
     }
 }

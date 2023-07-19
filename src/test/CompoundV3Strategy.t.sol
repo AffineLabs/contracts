@@ -24,10 +24,10 @@ contract CompoundV3Test is TestPlus {
     IUniswapV2Router02 router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
     CompoundV3Strategy strategy;
 
-
     // constants
     uint256 oneUSDC = 1e6;
     uint256 halfUSDC = oneUSDC / 2;
+
     function setUp() public {
         forkEth();
         vault = Deploy.deployL1Vault();
@@ -42,7 +42,6 @@ contract CompoundV3Test is TestPlus {
         strategy = new CompoundV3Strategy(
            {_vault: AffineVault(address(vault)), _cToken: IComet(cTokenAddr), _rewards: rewards,  _comp: comp, _weth: weth ,  _router: router ,  strategists: strategists}
         );
-
     }
 
     function depositOneUSDCToVault() internal {
@@ -80,11 +79,8 @@ contract CompoundV3Test is TestPlus {
 
     /// @notice Test strategy makes money with reward tokens.
     function testStrategyMakesMoneyWithCOMPToken() public {
-
-
         depositOneUSDCToVault();
-        uint oldTvl = strategy.totalLockedValue();
-
+        uint256 oldTvl = strategy.totalLockedValue();
 
         deal(address(strategy.comp()), address(strategy), 2e18);
         strategy.claimAndSellRewards(0);
@@ -99,9 +95,7 @@ contract CompoundV3Test is TestPlus {
         uint256 curretActualbalanceOf = strategy.cToken().balanceOf(address(strategy));
         // Simulate increase in cUSDC price.
         vm.mockCall(
-            cTokenAddr,
-            abi.encodeWithSelector(IComet.balanceOf.selector),
-            abi.encode(curretActualbalanceOf * 2)
+            cTokenAddr, abi.encodeWithSelector(IComet.balanceOf.selector), abi.encode(curretActualbalanceOf * 2)
         );
         assertGt(strategy.totalLockedValue(), halfUSDC);
     }
@@ -114,9 +108,7 @@ contract CompoundV3Test is TestPlus {
         uint256 curretActualbalanceOf = strategy.cToken().balanceOf(address(strategy));
         // Simulate decrease in cUSDC price.
         vm.mockCall(
-            cTokenAddr,
-            abi.encodeWithSelector(IComet.balanceOf.selector),
-            abi.encode(curretActualbalanceOf / 2)
+            cTokenAddr, abi.encodeWithSelector(IComet.balanceOf.selector), abi.encode(curretActualbalanceOf / 2)
         );
         assertLt(strategy.totalLockedValue(), halfUSDC);
     }
