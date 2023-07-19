@@ -27,7 +27,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    IBalancerVault balancer;
+    IBalancerVault public constant balancer = IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
     ISwapRouter public constant ROUTER = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
     // TODO: use IWETH
     ERC20 public constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
@@ -235,6 +235,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         }
 
         // Flashloan `ethNeeded` eth from balancer, _endPosition gets called
+        // Note that balancer actually token addresses to be sorted, so dai must come before weth
         uint arrSize = daiNeeded > 0 ? 2 : 1;
         ERC20[] memory tokens = new ERC20[](arrSize);
         if (daiNeeded > 0) {
@@ -305,7 +306,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
                 fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp,
-                amountIn: (daiBorrowed / 1978).mulDivUp(110, 100),
+                amountIn: _daitToEth(daiBorrowed).mulDivUp(110, 100),
                 amountOutMinimum: daiBorrowed,
                 sqrtPriceLimitX96: 0
             });
