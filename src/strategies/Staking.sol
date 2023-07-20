@@ -63,7 +63,6 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         // Dai minting
         // Send wsteth to join contract
         ERC20(address(LIDO)).safeApprove(address(WSTETH_JOIN), type(uint256).max);
-       
 
         // Dai burning / debt payment
         // Allow Dai join to take Dai from this contract
@@ -81,8 +80,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         STETH.safeApprove(address(CURVE), type(uint).max);
     }
 
-    enum Loan {
-        open,
+    enum LoanType {
         invest,
         divest
     }
@@ -97,9 +95,9 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
         uint256 ethBorrowed;
         uint daiBorrowed;
-        (Loan l) = abi.decode(userData, (Loan));
+        (LoanType loan) = abi.decode(userData, (LoanType));
 
-        if (l == Loan.divest) {
+        if (loan == LoanType.divest) {
             // We only flashloan dai in certain cases during divestment
             if (tokens.length == 2) {
                 daiBorrowed = amounts[0];
@@ -108,7 +106,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
                 ethBorrowed = amounts[0];
             }
             _endPosition(ethBorrowed, daiBorrowed);
-        } else  if (l == Loan.invest){
+        } else  if (loan == LoanType.invest){
             ethBorrowed = amounts[0];
             _addToPosition(ethBorrowed);
         }
@@ -139,7 +137,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         tokens[0] = WETH;
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = size.mulDivUp(leverage, 100);
-        balancer.flashLoan({recipient: IFlashLoanRecipient(address(this)), tokens: tokens, amounts: amounts, userData: abi.encode(Loan.invest)});
+        balancer.flashLoan({recipient: IFlashLoanRecipient(address(this)), tokens: tokens, amounts: amounts, userData: abi.encode(LoanType.invest)});
     }
 
     function _addToPosition(uint ethBorrowed) internal {
@@ -247,7 +245,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
             amounts[0] = ethNeeded;
         }
 
-        balancer.flashLoan({recipient: IFlashLoanRecipient(address(this)), tokens: tokens, amounts: amounts, userData: abi.encode(Loan.divest)});
+        balancer.flashLoan({recipient: IFlashLoanRecipient(address(this)), tokens: tokens, amounts: amounts, userData: abi.encode(LoanType.divest)});
 
         // Unlocked collateral is equal to my current weth balance
         // Send eth back to user
@@ -327,7 +325,6 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
             // convert eth to wstEth
             Address.sendValue(payable(address(LIDO)), address(this).balance);
-
 
             // deposit in maker
             uint amountWStEth = ERC20(address(LIDO)).balanceOf(address(this));
