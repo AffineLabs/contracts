@@ -54,16 +54,16 @@ contract StakingTest is TestPlus {
     function testMakerCompDivergence() public {
         testOpenPosition();
 
-        uint compDai = staking.cDAI().balanceOfUnderlying(address(staking));
+        uint compDai = staking.CDAI().balanceOfUnderlying(address(staking));
         uint makerDai = (compDai * 101)  / 100; // Maker debt is 1% higher than Compound collateral
 
         ICdpManager maker = staking.MAKER();
         address urn = maker.urns(staking.cdpId());
-        (uint wstCollat, ) = staking.VAT().urns(staking.ilk(), urn);
+        (uint wstCollat, ) = staking.VAT().urns(staking.ILK(), urn);
         
         vm.mockCall(
         address(staking.VAT()),
-        abi.encodeCall(staking.VAT().urns, (staking.ilk(), urn)), 
+        abi.encodeCall(staking.VAT().urns, (staking.ILK(), urn)), 
         abi.encode(wstCollat, makerDai)
         );
 

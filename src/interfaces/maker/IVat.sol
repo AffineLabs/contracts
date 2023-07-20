@@ -3,6 +3,7 @@ pragma solidity =0.8.16;
 
 
 // https://github.com/makerdao/dss/blob/master/src/vat.sol
+/* solhint-disable func-name-mixedcase */
 interface IVat {
     function wards(address) external view returns (uint256);
     function rely(address) external;
