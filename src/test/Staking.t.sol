@@ -15,7 +15,7 @@ contract StakingTest is TestPlus {
     receive() external payable {}
 
     function setUp() public {
-        vm.createSelectFork("ethereum",  17687253);
+        vm.createSelectFork("ethereum", 17_687_253);
 
         address[] memory strategists = new address[](1);
         strategists[0] = address(this);
@@ -46,7 +46,7 @@ contract StakingTest is TestPlus {
 
     function testTotalLockedValue() public {
         testOpenPosition();
-        uint tvl = staking.totalLockedValue();
+        uint256 tvl = staking.totalLockedValue();
         console.log("TVL:  %s", tvl);
         assertApproxEqRel(tvl, 30 ether, 0.02e18); // TODO: consider making this bound tighter than 2%
     }
@@ -54,17 +54,17 @@ contract StakingTest is TestPlus {
     function testMakerCompDivergence() public {
         testOpenPosition();
 
-        uint compDai = staking.CDAI().balanceOfUnderlying(address(staking));
-        uint makerDai = (compDai * 101)  / 100; // Maker debt is 1% higher than Compound collateral
+        uint256 compDai = staking.CDAI().balanceOfUnderlying(address(staking));
+        uint256 makerDai = (compDai * 101) / 100; // Maker debt is 1% higher than Compound collateral
 
         ICdpManager maker = staking.MAKER();
         address urn = maker.urns(staking.cdpId());
-        (uint wstCollat, ) = staking.VAT().urns(staking.ILK(), urn);
-        
+        (uint256 wstCollat,) = staking.VAT().urns(staking.ILK(), urn);
+
         vm.mockCall(
-        address(staking.VAT()),
-        abi.encodeCall(staking.VAT().urns, (staking.ILK(), urn)), 
-        abi.encode(wstCollat, makerDai)
+            address(staking.VAT()),
+            abi.encodeCall(staking.VAT().urns, (staking.ILK(), urn)),
+            abi.encode(wstCollat, makerDai)
         );
 
         // vm.warp(block.timestamp + 1 days);

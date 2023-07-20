@@ -7,7 +7,7 @@ interface ICdpManager {
     function vat() external view returns (address);
     function cdpi() external view returns (uint256);
     function urns(uint256) external view returns (address);
-    function list(uint256) external view returns (uint256,uint256);
+    function list(uint256) external view returns (uint256, uint256);
     function owns(uint256) external view returns (address);
     function ilks(uint256) external view returns (bytes32);
     function first(address) external view returns (uint256);

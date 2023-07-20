@@ -21,7 +21,6 @@ import {ICToken} from "src/interfaces/compound/ICToken.sol";
 import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 
-
 contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -47,7 +46,8 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     /// @notice cDAI
     ICToken public constant CDAI = ICToken(0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643);
 
-    AggregatorV3Interface public constant ETH_DAI_FEED = AggregatorV3Interface(0x773616E4d11A78F511299002da57A0a94577F1f4);
+    AggregatorV3Interface public constant ETH_DAI_FEED =
+        AggregatorV3Interface(0x773616E4d11A78F511299002da57A0a94577F1f4);
 
     /// @dev We need this to receive ETH when calling WETH.withdraw()
     receive() external payable {}
@@ -55,7 +55,9 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     /// @notice The leverage factor of the position in %. e.g. 150 would be 1.5x leverage.
     uint256 public immutable leverage;
 
-    constructor(uint _leverage, AffineVault _vault, address[] memory strategists ) AccessStrategy(_vault, strategists) {
+    constructor(uint256 _leverage, AffineVault _vault, address[] memory strategists)
+        AccessStrategy(_vault, strategists)
+    {
         leverage = _leverage;
 
         // Dai minting
@@ -75,16 +77,16 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         require(results[0] == 0, "Staking: failed to enter market");
 
         // Trade stEth for Eth
-        STETH.safeApprove(address(CURVE), type(uint).max);
+        STETH.safeApprove(address(CURVE), type(uint256).max);
         // Trade weth for Dai
-        WETH.safeApprove(address(ROUTER), type(uint).max);
+        WETH.safeApprove(address(ROUTER), type(uint256).max);
     }
 
     enum LoanType {
         invest,
         divest
     }
-  
+
     function receiveFlashLoan(
         ERC20[] memory tokens,
         uint256[] memory amounts,
@@ -94,7 +96,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         require(msg.sender == address(BALANCER), "Staking: only balancer");
 
         uint256 ethBorrowed;
-        uint daiBorrowed;
+        uint256 daiBorrowed;
         (LoanType loan) = abi.decode(userData, (LoanType));
 
         if (loan == LoanType.divest) {
@@ -106,11 +108,11 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
                 ethBorrowed = amounts[0];
             }
             _endPosition(ethBorrowed, daiBorrowed);
-        } else  if (loan == LoanType.invest){
+        } else if (loan == LoanType.invest) {
             ethBorrowed = amounts[0];
             _addToPosition(ethBorrowed);
         }
-        
+
         // Payback Weth loan
         WETH.safeTransfer(address(BALANCER), ethBorrowed);
 
@@ -118,42 +120,47 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         if (daiBorrowed > 0) DAI.safeTransfer(address(BALANCER), daiBorrowed);
     }
 
-    uint public cdpId;
+    uint256 public cdpId;
 
-    function openPosition(uint size) external onlyRole(STRATEGIST_ROLE) {
+    function openPosition(uint256 size) external onlyRole(STRATEGIST_ROLE) {
         require(cdpId == 0, "Staking: position open");
         cdpId = MAKER.open(ILK, address(this));
 
         _investFlashLoan(size);
     }
 
-    function addToPosition(uint size) external onlyRole(STRATEGIST_ROLE) {
+    function addToPosition(uint256 size) external onlyRole(STRATEGIST_ROLE) {
         _investFlashLoan(size);
     }
 
-    function _investFlashLoan(uint size) internal {
-          ERC20[] memory tokens = new ERC20[](1);
+    function _investFlashLoan(uint256 size) internal {
+        ERC20[] memory tokens = new ERC20[](1);
         tokens[0] = WETH;
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = size.mulDivUp(leverage, 100);
-        BALANCER.flashLoan({recipient: IFlashLoanRecipient(address(this)), tokens: tokens, amounts: amounts, userData: abi.encode(LoanType.invest)});
+        BALANCER.flashLoan({
+            recipient: IFlashLoanRecipient(address(this)),
+            tokens: tokens,
+            amounts: amounts,
+            userData: abi.encode(LoanType.invest)
+        });
     }
 
-    function _addToPosition(uint ethBorrowed) internal {
+    function _addToPosition(uint256 ethBorrowed) internal {
         // Convert all eth in vault to wsteth
         IWETH(address(WETH)).withdraw(ethBorrowed);
         Address.sendValue(payable(address(LIDO)), ethBorrowed);
-        uint amountWStEth = ERC20(address(LIDO)).balanceOf(address(this));
+        uint256 amountWStEth = ERC20(address(LIDO)).balanceOf(address(this));
 
         // Lock wsteth in maker
         address urn = MAKER.urns(cdpId);
         WSTETH_JOIN.join(urn, amountWStEth);
 
         // Borrow at 58% collateral ratio
-        uint daiPrice = _getDaiPrice();
-        uint debt = _ethToDai(LIDO.getStETHByWstETH(amountWStEth), daiPrice).mulDivDown(58, 100);
-        MAKER.frob(cdpId, int(amountWStEth), int(debt)); 
-        
+        uint256 daiPrice = _getDaiPrice();
+        uint256 debt = _ethToDai(LIDO.getStETHByWstETH(amountWStEth), daiPrice).mulDivDown(58, 100);
+        MAKER.frob(cdpId, int256(amountWStEth), int256(debt));
+
         // Transfer Dai from cdp to this contract
         MAKER.move({cdp: cdpId, dst: address(this), rad: debt * 1e27});
         VAT.hope(address(JOIN_DAI));
@@ -163,72 +170,71 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         CDAI.mint({underlying: debt});
 
         // Borrow at 75%
-        uint compoundDebtEth = _daiToEth(debt, daiPrice).mulDivDown(75, 100); 
-        uint borrowRes = CETH.borrow(compoundDebtEth);
+        uint256 compoundDebtEth = _daiToEth(debt, daiPrice).mulDivDown(75, 100);
+        uint256 borrowRes = CETH.borrow(compoundDebtEth);
         require(borrowRes == 0, "Staking: borrow failed");
 
         // Convert eth to weth in order to pay back balancer flash loan of weth
         IWETH(address(WETH)).deposit{value: compoundDebtEth}();
     }
 
-     function totalLockedValue() public override returns (uint256) {
+    function totalLockedValue() public override returns (uint256) {
         // Maker collateral, Maker debt (dai)
         // compound collateral (dai), compound debt (eth)
         // TVL = Maker collateral + compound collateral - maker debt - compound debt
         address urn = MAKER.urns(cdpId);
-        (uint wstEthCollat, uint rawMakerDebt) = VAT.urns(ILK, urn);
+        (uint256 wstEthCollat, uint256 rawMakerDebt) = VAT.urns(ILK, urn);
 
         // Using ETH denomination for everything
-        uint daiPrice = _getDaiPrice();
+        uint256 daiPrice = _getDaiPrice();
 
-        uint makerCollateral = LIDO.getStETHByWstETH(wstEthCollat);
-        uint compoundCollateral = _daiToEth(CDAI.balanceOfUnderlying(address(this)), daiPrice);
+        uint256 makerCollateral = LIDO.getStETHByWstETH(wstEthCollat);
+        uint256 compoundCollateral = _daiToEth(CDAI.balanceOfUnderlying(address(this)), daiPrice);
 
-        uint makerDebt = _daiToEth(rawMakerDebt, daiPrice);
-        uint compoundDebt = CETH.borrowBalanceCurrent(address(this));
+        uint256 makerDebt = _daiToEth(rawMakerDebt, daiPrice);
+        uint256 compoundDebt = CETH.borrowBalanceCurrent(address(this));
 
         return makerCollateral + compoundCollateral - makerDebt - compoundDebt;
-     }
+    }
 
-
-    function _getDaiPrice() internal view returns (uint) {
+    function _getDaiPrice() internal view returns (uint256) {
         (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = ETH_DAI_FEED.latestRoundData();
         require(price > 0, "Staking: price <= 0");
         require(answeredInRound >= roundId, "Staking: stale data");
         require(timestamp != 0, "staking: round not done");
-        return uint(price);
+        return uint256(price);
     }
 
-     function _ethToDai(uint amountEth, uint price) internal pure returns (uint) {
+    function _ethToDai(uint256 amountEth, uint256 price) internal pure returns (uint256) {
         // This is (eth * 1e18) / price. The price feed gives the eth/dai ratio, and we divide by price to get amount of dai.
         // `divWad` is used because both both eth and the price feed have 18 decimals (the decimals are retained after division).
         return amountEth.divWadDown(price);
-     }
+    }
 
-     function _daiToEth(uint amountDai, uint price) internal pure returns (uint) {
+    function _daiToEth(uint256 amountDai, uint256 price) internal pure returns (uint256) {
         return amountDai.mulWadDown(price);
-     }
+    }
 
-     function _divest(uint amount) internal override returns (uint256) {
-        uint tvl = totalLockedValue();
-        uint ethDebt = CETH.borrowBalanceCurrent(address(this));
-        uint ethNeeded = ethDebt.mulDivDown(amount, tvl);
+    function _divest(uint256 amount) internal override returns (uint256) {
+        uint256 tvl = totalLockedValue();
+        uint256 ethDebt = CETH.borrowBalanceCurrent(address(this));
+        uint256 ethNeeded = ethDebt.mulDivDown(amount, tvl);
 
-        uint compDaiToRedeem = (CDAI.balanceOfUnderlying(address(this)).mulDivDown(amount, tvl));
-        (, uint makerDai)  = VAT.urns(ILK, MAKER.urns(cdpId));
-        uint makerDaiToPay = makerDai.mulDivDown(amount, tvl);
+        uint256 compDaiToRedeem = (CDAI.balanceOfUnderlying(address(this)).mulDivDown(amount, tvl));
+        (, uint256 makerDai) = VAT.urns(ILK, MAKER.urns(cdpId));
+        uint256 makerDaiToPay = makerDai.mulDivDown(amount, tvl);
 
-        // Maker debt and comp collateral may diverge over time. Flashloan DAI if need to pay same percentage 
+        // Maker debt and comp collateral may diverge over time. Flashloan DAI if need to pay same percentage
         // of maker debt as we pay of compound debt
         // stEth will be traded to DAI to pay back this flashloan, so we need to set a min amount to make sure the trade succeeds
-        uint daiNeeded;
+        uint256 daiNeeded;
         if (makerDaiToPay > compDaiToRedeem && makerDaiToPay - compDaiToRedeem > 0.01e18) {
             daiNeeded = makerDaiToPay - compDaiToRedeem;
         }
 
         // Flashloan `ethNeeded` eth from balancer, _endPosition gets called
         // Note that balancer actually token addresses to be sorted, so dai must come before weth
-        uint arrSize = daiNeeded > 0 ? 2 : 1;
+        uint256 arrSize = daiNeeded > 0 ? 2 : 1;
         ERC20[] memory tokens = new ERC20[](arrSize);
         if (daiNeeded > 0) {
             tokens[0] = DAI;
@@ -244,23 +250,28 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
             amounts[0] = ethNeeded;
         }
 
-        BALANCER.flashLoan({recipient: IFlashLoanRecipient(address(this)), tokens: tokens, amounts: amounts, userData: abi.encode(LoanType.divest)});
+        BALANCER.flashLoan({
+            recipient: IFlashLoanRecipient(address(this)),
+            tokens: tokens,
+            amounts: amounts,
+            userData: abi.encode(LoanType.divest)
+        });
 
         // Unlocked collateral is equal to my current weth balance
         // Send eth back to user
-        uint wethToSend = WETH.balanceOf(address(this));
+        uint256 wethToSend = WETH.balanceOf(address(this));
         WETH.safeTransfer(msg.sender, wethToSend);
         return wethToSend;
-     }
+    }
 
-       function _endPosition(uint256 ethBorrowed, uint daiBorrowed) internal {
+    function _endPosition(uint256 ethBorrowed, uint256 daiBorrowed) internal {
         // Pay debt in compound
-        uint ethDebt = CETH.borrowBalanceCurrent(address(this));
+        uint256 ethDebt = CETH.borrowBalanceCurrent(address(this));
         IWETH(address(WETH)).withdraw(ethBorrowed);
 
         CETH.repayBorrow{value: ethBorrowed}();
-        uint daiToRedeem = CDAI.balanceOfUnderlying(address(this)).mulDivDown(ethBorrowed, ethDebt);
-        uint res = CDAI.redeemUnderlying(daiToRedeem);
+        uint256 daiToRedeem = CDAI.balanceOfUnderlying(address(this)).mulDivDown(ethBorrowed, ethDebt);
+        uint256 res = CDAI.redeemUnderlying(daiToRedeem);
         require(res == 0, "Staking: comp redeem error");
 
         // Pay debt in maker
@@ -270,29 +281,28 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         JOIN_DAI.join({usr: urn, wad: daiToRedeem});
 
         // Pay debt. Collateral withdrawn proportional to debt paid
-        (uint wstEthCollat,)  = VAT.urns(ILK, urn);
-        uint wstEthToRedeem = wstEthCollat.mulDivDown(ethBorrowed, ethDebt);
-        MAKER.frob(cdpId, -int(wstEthToRedeem), -int(daiToRedeem));
+        (uint256 wstEthCollat,) = VAT.urns(ILK, urn);
+        uint256 wstEthToRedeem = wstEthCollat.mulDivDown(ethBorrowed, ethDebt);
+        MAKER.frob(cdpId, -int256(wstEthToRedeem), -int256(daiToRedeem));
 
         // Withdraw wstEth from maker
         MAKER.flux({cdp: cdpId, dst: address(this), wad: wstEthToRedeem});
         WSTETH_JOIN.exit(address(this), wstEthToRedeem);
 
-        // Convert from wrapped staked eth => stEth 
+        // Convert from wrapped staked eth => stEth
         LIDO.unwrap(wstEthToRedeem);
-
 
         // Convert stEth => eth to pay back flashloan and pay back user
         // Trade on stEth for ETH (steth is at index 1)
-        uint stEthToTrade = STETH.balanceOf(address(this));
-        CURVE.exchange({x: 1, y: 0 , dx: stEthToTrade, min_dy: stEthToTrade.mulDivDown(93, 100)});
+        uint256 stEthToTrade = STETH.balanceOf(address(this));
+        CURVE.exchange({x: 1, y: 0, dx: stEthToTrade, min_dy: stEthToTrade.mulDivDown(93, 100)});
 
-         // Convert to weth
+        // Convert to weth
         IWETH(address(WETH)).deposit{value: address(this).balance}();
 
         // Convert weth => dai to pay back flashloan
         if (daiBorrowed > 0) {
-             ISwapRouter.ExactInputSingleParams memory uniParams = ISwapRouter.ExactInputSingleParams({
+            ISwapRouter.ExactInputSingleParams memory uniParams = ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(WETH),
                 tokenOut: address(DAI),
                 fee: 500,
@@ -303,37 +313,36 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
                 sqrtPriceLimitX96: 0
             });
             ROUTER.exactInputSingle(uniParams);
-        }  
+        }
     }
 
     // TODO: remove this and startPosition
-    function endPosition(uint _amount) external onlyRole(STRATEGIST_ROLE) {
+    function endPosition(uint256 _amount) external onlyRole(STRATEGIST_ROLE) {
         _divest(_amount);
     }
-
 
     /// @notice Borrow from maker and supply to compound or vice-versa.
     /// @param amountEth Amount of eth to borrow from compound.
     /// @param amountDai Amount of dai to borrow from maker.
-    function rebalance (uint amountEth, uint amountDai) external onlyRole(STRATEGIST_ROLE) {
+    function rebalance(uint256 amountEth, uint256 amountDai) external onlyRole(STRATEGIST_ROLE) {
         // Eth price goes up => borrow more dai from maker and supply to compound
         // Eth price goes down => borrow more eth from compound and supply to maker
         if (amountEth > 0) {
             // borrow
-            uint borrowRes = CETH.borrow(amountEth);
+            uint256 borrowRes = CETH.borrow(amountEth);
             require(borrowRes == 0, "Staking: borrow failed");
 
             // convert eth to wstEth
             Address.sendValue(payable(address(LIDO)), address(this).balance);
 
             // deposit in maker
-            uint amountWStEth = ERC20(address(LIDO)).balanceOf(address(this));
-            MAKER.frob(cdpId, int(amountWStEth), int(0)); 
+            uint256 amountWStEth = ERC20(address(LIDO)).balanceOf(address(this));
+            MAKER.frob(cdpId, int256(amountWStEth), int256(0));
         }
 
         if (amountDai > 0) {
             // Borrow dai from maker
-            MAKER.frob(cdpId, int(0), int(amountDai));
+            MAKER.frob(cdpId, int256(0), int256(amountDai));
 
             // Deposit Dai in compound v2
             CDAI.mint({underlying: amountDai});

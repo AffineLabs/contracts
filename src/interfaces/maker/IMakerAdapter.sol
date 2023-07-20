@@ -11,10 +11,10 @@ interface ICropper {
     function exit(address crop, address usr, uint256 val) external;
     function proxy(address user) external returns (address urn);
 }
-interface IMakerAdapter {
 
-// See https://github.com/makerdao/dss-crop-join/blob/master/src/CropJoin.sol
-// at https://github.com/makerdao/dss-interfaces/blob/9bfd7afadd1f8c217ef05850b2555691786286cb/src/dss/DaiJoinAbstract.sol
-function join(address urn, address usr, uint256 val) external;
-function exit(address usr, uint256 val) external;
+interface IMakerAdapter {
+    // See https://github.com/makerdao/dss-crop-join/blob/master/src/CropJoin.sol
+    // at https://github.com/makerdao/dss-interfaces/blob/9bfd7afadd1f8c217ef05850b2555691786286cb/src/dss/DaiJoinAbstract.sol
+    function join(address urn, address usr, uint256 val) external;
+    function exit(address usr, uint256 val) external;
 }

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-
 // https://github.com/makerdao/dss/blob/master/src/vat.sol
 /* solhint-disable func-name-mixedcase */
 interface IVat {
