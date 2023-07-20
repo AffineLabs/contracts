@@ -29,14 +29,14 @@ contract StakingTest is TestPlus {
         deal(address(weth), address(staking), 30.3 ether);
     }
 
-    function testOpenPosition() public {
+    function testAddToPosition() public {
         _giveEther();
-        staking.openPosition(30 ether);
+        staking.addToPosition(30 ether);
     }
 
     function testClosePosition() public {
         ERC20 weth = staking.WETH();
-        testOpenPosition();
+        testAddToPosition();
         vm.warp(block.timestamp + 1 days);
         vm.roll(block.number + 1);
         staking.endPosition(1 ether);
@@ -45,14 +45,14 @@ contract StakingTest is TestPlus {
     }
 
     function testTotalLockedValue() public {
-        testOpenPosition();
+        testAddToPosition();
         uint256 tvl = staking.totalLockedValue();
         console.log("TVL:  %s", tvl);
         assertApproxEqRel(tvl, 30 ether, 0.02e18); // TODO: consider making this bound tighter than 2%
     }
 
     function testMakerCompDivergence() public {
-        testOpenPosition();
+        testAddToPosition();
 
         uint256 compDai = staking.CDAI().balanceOfUnderlying(address(staking));
         uint256 makerDai = (compDai * 101) / 100; // Maker debt is 1% higher than Compound collateral
@@ -77,8 +77,8 @@ contract StakingTest is TestPlus {
     function testMinDepositAmt() public {
         _giveEther();
         vm.expectRevert();
-        staking.openPosition(1 ether);
+        staking.addToPosition(1 ether);
 
-        staking.openPosition(7 ether);
+        staking.addToPosition(7 ether);
     }
 }

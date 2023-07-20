@@ -80,6 +80,10 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         STETH.safeApprove(address(CURVE), type(uint256).max);
         // Trade weth for Dai
         WETH.safeApprove(address(ROUTER), type(uint256).max);
+
+        // Open cdp and store some metadata
+        cdpId = MAKER.open(ILK, address(this));
+        urn = MAKER.urns(cdpId);
     }
 
     enum LoanType {
@@ -120,20 +124,10 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         if (daiBorrowed > 0) DAI.safeTransfer(address(BALANCER), daiBorrowed);
     }
 
-    uint256 public cdpId;
-
-    function openPosition(uint256 size) external onlyRole(STRATEGIST_ROLE) {
-        require(cdpId == 0, "Staking: position open");
-        cdpId = MAKER.open(ILK, address(this));
-
-        _investFlashLoan(size);
-    }
+    uint256 public immutable cdpId;
+    address public immutable urn;
 
     function addToPosition(uint256 size) external onlyRole(STRATEGIST_ROLE) {
-        _investFlashLoan(size);
-    }
-
-    function _investFlashLoan(uint256 size) internal {
         ERC20[] memory tokens = new ERC20[](1);
         tokens[0] = WETH;
         uint256[] memory amounts = new uint256[](1);
@@ -153,7 +147,6 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         uint256 amountWStEth = ERC20(address(LIDO)).balanceOf(address(this));
 
         // Lock wsteth in maker
-        address urn = MAKER.urns(cdpId);
         WSTETH_JOIN.join(urn, amountWStEth);
 
         // Borrow at 58% collateral ratio
@@ -182,7 +175,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         // Maker collateral, Maker debt (dai)
         // compound collateral (dai), compound debt (eth)
         // TVL = Maker collateral + compound collateral - maker debt - compound debt
-        address urn = MAKER.urns(cdpId);
+
         (uint256 wstEthCollat, uint256 rawMakerDebt) = VAT.urns(ILK, urn);
 
         // Using ETH denomination for everything
@@ -276,8 +269,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
         // Pay debt in maker
 
-        // Send the dai to urn
-        address urn = MAKER.urns(cdpId);
+        // Send dai to urn
         JOIN_DAI.join({usr: urn, wad: daiToRedeem});
 
         // Pay debt. Collateral withdrawn proportional to debt paid
