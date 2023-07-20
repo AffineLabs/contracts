@@ -21,15 +21,17 @@ contract StakingTest is TestPlus {
         strategists[0] = address(this);
         AffineVault vault = AffineVault(address(deployL1Vault()));
 
-        staking = new StakingExp( 175, vault, strategists);
+        staking = new StakingExp(175, vault, strategists);
+    }
+
+    function _giveEther() internal {
+        ERC20 weth = staking.WETH();
+        deal(address(weth), address(staking), 30.3 ether);
     }
 
     function testOpenPosition() public {
-        ERC20 weth = staking.WETH();
-        deal(address(weth), address(this), 100 ether);
-        weth.approve(address(staking), 100 ether);
-        staking.startPosition(30 ether, 30.3 ether);
-
+        _giveEther();
+        staking.openPosition(30 ether);
     }
 
     function testClosePosition() public {
@@ -70,5 +72,13 @@ contract StakingTest is TestPlus {
         staking.endPosition(1 ether);
 
         // TODO: this working, but add some asserts
+    }
+
+    function testMinDepositAmt() public {
+        _giveEther();
+        vm.expectRevert();
+        staking.openPosition(1 ether);
+
+        staking.openPosition(7 ether);
     }
 }
