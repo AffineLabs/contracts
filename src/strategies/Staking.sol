@@ -5,7 +5,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
 
@@ -24,36 +24,6 @@ import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
-
-    IBalancerVault public constant BALANCER = IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
-    ISwapRouter public constant ROUTER = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
-    // TODO: use IWETH
-    ERC20 public constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    IWStEth public constant LIDO = IWStEth(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
-    ERC20 public constant STETH = ERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
-    ICurvePool public constant CURVE = ICurvePool(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022);
-
-    ERC20 public constant DAI = ERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
-    ICdpManager public constant MAKER = ICdpManager(0x5ef30b9986345249bc32d8928B7ee64DE9435E39);
-    IGemJoin public constant WSTETH_JOIN = IGemJoin(0x10CD5fbe1b404B7E19Ef964B63939907bdaf42E2);
-    IGemJoin public constant JOIN_DAI = IGemJoin(0x9759A6Ac90977b93B58547b4A71c78317f391A28);
-    IVat public constant VAT = IVat(0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B);
-    /// @dev cast --to-bytes32 $(cast --from-utf8 "WSTETH-A");
-    bytes32 public constant ILK = 0x5753544554482d41000000000000000000000000000000000000000000000000;
-
-    /// @notice cETH
-    ICToken public constant CETH = ICToken(0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5);
-    /// @notice cDAI
-    ICToken public constant CDAI = ICToken(0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643);
-
-    AggregatorV3Interface public constant ETH_DAI_FEED =
-        AggregatorV3Interface(0x773616E4d11A78F511299002da57A0a94577F1f4);
-
-    /// @dev We need this to receive ETH when calling WETH.withdraw()
-    receive() external payable {}
-
-    /// @notice The leverage factor of the position in %. e.g. 150 would be 1.5x leverage.
-    uint256 public immutable leverage;
 
     constructor(uint256 _leverage, AffineVault _vault, address[] memory strategists)
         AccessStrategy(_vault, strategists)
@@ -79,12 +49,18 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         // Trade stEth for Eth
         STETH.safeApprove(address(CURVE), type(uint256).max);
         // Trade weth for Dai
-        WETH.safeApprove(address(ROUTER), type(uint256).max);
+        WETH.safeApprove(address(UNI_ROUTER), type(uint256).max);
 
         // Open cdp and store some metadata
         cdpId = MAKER.open(ILK, address(this));
         urn = MAKER.urns(cdpId);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                              FLASH LOANS
+    //////////////////////////////////////////////////////////////*/
+
+    IBalancerVault public constant BALANCER = IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
 
     enum LoanType {
         invest,
@@ -124,6 +100,13 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         if (daiBorrowed > 0) DAI.safeTransfer(address(BALANCER), daiBorrowed);
     }
 
+    /*//////////////////////////////////////////////////////////////
+                         INVESTMENT/DIVESTMENT
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice The leverage factor of the position in %. e.g. 150 would be 1.5x leverage.
+    uint256 public immutable leverage;
+
     uint256 public immutable cdpId;
     address public immutable urn;
 
@@ -143,8 +126,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     function _addToPosition(uint256 ethBorrowed) internal {
         // Convert all eth in vault to wsteth
         IWETH(address(WETH)).withdraw(ethBorrowed);
-        Address.sendValue(payable(address(LIDO)), ethBorrowed);
-        uint256 amountWStEth = ERC20(address(LIDO)).balanceOf(address(this));
+        uint256 amountWStEth = _ethToSteth();
 
         // Lock wsteth in maker
         WSTETH_JOIN.join(urn, amountWStEth);
@@ -171,41 +153,12 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         IWETH(address(WETH)).deposit{value: compoundDebtEth}();
     }
 
-    function totalLockedValue() public override returns (uint256) {
-        // Maker collateral, Maker debt (dai)
-        // compound collateral (dai), compound debt (eth)
-        // TVL = Maker collateral + compound collateral - maker debt - compound debt
+    /// @dev We need this to receive ETH when calling WETH.withdraw()
+    receive() external payable {}
 
-        (uint256 wstEthCollat, uint256 rawMakerDebt) = VAT.urns(ILK, urn);
-
-        // Using ETH denomination for everything
-        uint256 daiPrice = _getDaiPrice();
-
-        uint256 makerCollateral = LIDO.getStETHByWstETH(wstEthCollat);
-        uint256 compoundCollateral = _daiToEth(CDAI.balanceOfUnderlying(address(this)), daiPrice);
-
-        uint256 makerDebt = _daiToEth(rawMakerDebt, daiPrice);
-        uint256 compoundDebt = CETH.borrowBalanceCurrent(address(this));
-
-        return makerCollateral + compoundCollateral - makerDebt - compoundDebt;
-    }
-
-    function _getDaiPrice() internal view returns (uint256) {
-        (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = ETH_DAI_FEED.latestRoundData();
-        require(price > 0, "Staking: price <= 0");
-        require(answeredInRound >= roundId, "Staking: stale data");
-        require(timestamp != 0, "staking: round not done");
-        return uint256(price);
-    }
-
-    function _ethToDai(uint256 amountEth, uint256 price) internal pure returns (uint256) {
-        // This is (eth * 1e18) / price. The price feed gives the eth/dai ratio, and we divide by price to get amount of dai.
-        // `divWad` is used because both both eth and the price feed have 18 decimals (the decimals are retained after division).
-        return amountEth.divWadDown(price);
-    }
-
-    function _daiToEth(uint256 amountDai, uint256 price) internal pure returns (uint256) {
-        return amountDai.mulWadDown(price);
+    // TODO: remove this
+    function endPosition(uint256 _amount) external onlyRole(STRATEGIST_ROLE) {
+        _divest(_amount);
     }
 
     function _divest(uint256 amount) internal override returns (uint256) {
@@ -252,8 +205,8 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
         // Unlocked collateral is equal to my current weth balance
         // Send eth back to user
-        uint256 wethToSend = WETH.balanceOf(address(this));
-        WETH.safeTransfer(msg.sender, wethToSend);
+        uint256 wethToSend = Math.min(amount, asset.balanceOf(address(this)));
+        asset.safeTransfer(address(vault), wethToSend);
         return wethToSend;
     }
 
@@ -304,14 +257,13 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
                 amountOutMinimum: daiBorrowed,
                 sqrtPriceLimitX96: 0
             });
-            ROUTER.exactInputSingle(uniParams);
+            UNI_ROUTER.exactInputSingle(uniParams);
         }
     }
 
-    // TODO: remove this and startPosition
-    function endPosition(uint256 _amount) external onlyRole(STRATEGIST_ROLE) {
-        _divest(_amount);
-    }
+    /*//////////////////////////////////////////////////////////////
+                              REBALANCING
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Borrow from maker and supply to compound or vice-versa.
     /// @param amountEth Amount of eth to borrow from compound.
@@ -324,11 +276,8 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
             uint256 borrowRes = CETH.borrow(amountEth);
             require(borrowRes == 0, "Staking: borrow failed");
 
-            // convert eth to wstEth
-            Address.sendValue(payable(address(LIDO)), address(this).balance);
-
             // deposit in maker
-            uint256 amountWStEth = ERC20(address(LIDO)).balanceOf(address(this));
+            uint256 amountWStEth = _ethToSteth();
             MAKER.frob(cdpId, int256(amountWStEth), int256(0));
         }
 
@@ -340,4 +289,89 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
             CDAI.mint({underlying: amountDai});
         }
     }
+    /*//////////////////////////////////////////////////////////////
+                           ASSET CONVERSIONS
+    //////////////////////////////////////////////////////////////*/
+
+    function totalLockedValue() public override returns (uint256) {
+        // Maker collateral, Maker debt (dai)
+        // compound collateral (dai), compound debt (eth)
+        // TVL = Maker collateral + compound collateral - maker debt - compound debt
+
+        (uint256 wstEthCollat, uint256 rawMakerDebt) = VAT.urns(ILK, urn);
+
+        // Using ETH denomination for everything
+        uint256 daiPrice = _getDaiPrice();
+
+        uint256 makerCollateral = LIDO.getStETHByWstETH(wstEthCollat);
+        uint256 compoundCollateral = _daiToEth(CDAI.balanceOfUnderlying(address(this)), daiPrice);
+
+        uint256 makerDebt = _daiToEth(rawMakerDebt, daiPrice);
+        uint256 compoundDebt = CETH.borrowBalanceCurrent(address(this));
+
+        return makerCollateral + compoundCollateral - makerDebt - compoundDebt;
+    }
+
+    AggregatorV3Interface public constant ETH_DAI_FEED =
+        AggregatorV3Interface(0x773616E4d11A78F511299002da57A0a94577F1f4);
+
+    function _getDaiPrice() internal view returns (uint256) {
+        (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = ETH_DAI_FEED.latestRoundData();
+        require(price > 0, "Staking: price <= 0");
+        require(answeredInRound >= roundId, "Staking: stale data");
+        require(timestamp != 0, "staking: round not done");
+        return uint256(price);
+    }
+
+    function _ethToDai(uint256 amountEth, uint256 price) internal pure returns (uint256) {
+        // This is (eth * 1e18) / price. The price feed gives the eth/dai ratio, and we divide by price to get amount of dai.
+        // `divWad` is used because both both eth and the price feed have 18 decimals (the decimals are retained after division).
+        return amountEth.divWadDown(price);
+    }
+
+    function _daiToEth(uint256 amountDai, uint256 price) internal pure returns (uint256) {
+        return amountDai.mulWadDown(price);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                                  LIDO
+    //////////////////////////////////////////////////////////////*/
+
+    // TODO: use IWETH
+    ERC20 public constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    IWStEth public constant LIDO = IWStEth(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
+    ERC20 public constant STETH = ERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
+
+    function _ethToSteth() internal returns (uint256) {
+        Address.sendValue(payable(address(LIDO)), address(this).balance);
+        uint256 wstEthBal = ERC20(address(LIDO)).balanceOf(address(this));
+        return wstEthBal;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                                 MAKER
+    //////////////////////////////////////////////////////////////*/
+
+    ERC20 public constant DAI = ERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
+    ICdpManager public constant MAKER = ICdpManager(0x5ef30b9986345249bc32d8928B7ee64DE9435E39);
+    IGemJoin public constant WSTETH_JOIN = IGemJoin(0x10CD5fbe1b404B7E19Ef964B63939907bdaf42E2);
+    IGemJoin public constant JOIN_DAI = IGemJoin(0x9759A6Ac90977b93B58547b4A71c78317f391A28);
+    IVat public constant VAT = IVat(0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B);
+    /// @dev cast --to-bytes32 $(cast --from-utf8 "WSTETH-A");
+    bytes32 public constant ILK = 0x5753544554482d41000000000000000000000000000000000000000000000000;
+
+    /*//////////////////////////////////////////////////////////////
+                                COMPOUND
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice cETH
+    ICToken public constant CETH = ICToken(0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5);
+    /// @notice cDAI
+    ICToken public constant CDAI = ICToken(0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643);
+
+    /*//////////////////////////////////////////////////////////////
+                                 TRADES
+    //////////////////////////////////////////////////////////////*/
+    ICurvePool public constant CURVE = ICurvePool(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022);
+    ISwapRouter public constant UNI_ROUTER = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
 }
