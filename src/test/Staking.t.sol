@@ -11,6 +11,7 @@ import {console} from "forge-std/console.sol";
 
 contract StakingTest is TestPlus {
     StakingExp staking;
+    AffineVault vault;
 
     receive() external payable {}
 
@@ -19,7 +20,7 @@ contract StakingTest is TestPlus {
 
         address[] memory strategists = new address[](1);
         strategists[0] = address(this);
-        AffineVault vault = AffineVault(address(deployL1Vault()));
+        vault = AffineVault(address(deployL1Vault()));
 
         staking = new StakingExp(175, vault, strategists);
     }
@@ -27,6 +28,11 @@ contract StakingTest is TestPlus {
     function _giveEther() internal {
         ERC20 weth = staking.WETH();
         deal(address(weth), address(staking), 30.3 ether);
+    }
+
+    function _divest(uint256 amount) internal {
+        vm.prank(address(vault));
+        staking.divest(amount);
     }
 
     function testAddToPosition() public {
@@ -39,7 +45,7 @@ contract StakingTest is TestPlus {
         testAddToPosition();
         vm.warp(block.timestamp + 1 days);
         vm.roll(block.number + 1);
-        staking.endPosition(1 ether);
+        _divest(1 ether);
         console.log("WETH balance: %s", weth.balanceOf(address(this)));
         console.log("WETH staking balance: %s", weth.balanceOf(address(staking)));
     }
@@ -69,7 +75,7 @@ contract StakingTest is TestPlus {
 
         // vm.warp(block.timestamp + 1 days);
         // vm.roll(block.number + 1);
-        staking.endPosition(1 ether);
+        _divest(1 ether);
 
         // TODO: this working, but add some asserts
     }

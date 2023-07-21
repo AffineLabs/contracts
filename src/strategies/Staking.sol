@@ -156,11 +156,6 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     /// @dev We need this to receive ETH when calling WETH.withdraw()
     receive() external payable {}
 
-    // TODO: remove this
-    function endPosition(uint256 _amount) external onlyRole(STRATEGIST_ROLE) {
-        _divest(_amount);
-    }
-
     function _divest(uint256 amount) internal override returns (uint256) {
         uint256 tvl = totalLockedValue();
         uint256 ethDebt = CETH.borrowBalanceCurrent(address(this));
@@ -203,8 +198,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
             userData: abi.encode(LoanType.divest)
         });
 
-        // Unlocked collateral is equal to my current weth balance
-        // Send eth back to user
+        // Unlocked value is equal to my current weth balance
         uint256 wethToSend = Math.min(amount, asset.balanceOf(address(this)));
         asset.safeTransfer(address(vault), wethToSend);
         return wethToSend;
