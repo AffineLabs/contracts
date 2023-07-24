@@ -2,6 +2,11 @@
   {
     "inputs": [
       {
+        "internalType": "contract LidoLev",
+        "name": "oldStrat",
+        "type": "address"
+      },
+      {
         "internalType": "uint256",
         "name": "_leverage",
         "type": "uint256"
@@ -372,6 +377,19 @@
     "inputs": [
       {
         "internalType": "uint256",
+        "name": "ethToBorrow",
+        "type": "uint256"
+      }
+    ],
+    "name": "createCompoundDebt",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
       }
@@ -598,6 +616,19 @@
         "type": "uint256"
       }
     ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newStrategy",
+        "type": "address"
+      }
+    ],
+    "name": "upgrade",
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },

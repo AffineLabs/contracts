@@ -5,12 +5,12 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {StakingExp, IBalancerVault, IFlashLoanRecipient, AffineVault, ICdpManager} from "src/strategies/Staking.sol";
+import {LidoLev, IBalancerVault, IFlashLoanRecipient, AffineVault, ICdpManager} from "src/strategies/LidoLev.sol";
 
 import {console} from "forge-std/console.sol";
 
 contract StakingTest is TestPlus {
-    StakingExp staking;
+    LidoLev staking;
     AffineVault vault;
 
     receive() external payable {}
@@ -22,12 +22,14 @@ contract StakingTest is TestPlus {
         strategists[0] = address(this);
         vault = AffineVault(address(deployL1Vault()));
 
-        staking = new StakingExp(175, vault, strategists);
+        staking = new LidoLev(LidoLev(payable(address(0))), 175, vault, strategists);
+        vm.prank(governance);
+        vault.addStrategy(staking, 0);
     }
 
-    function _giveEther() internal {
+    function _giveEther(uint256 amount) internal {
         ERC20 weth = staking.WETH();
-        deal(address(weth), address(staking), 30.3 ether);
+        deal(address(weth), address(staking), amount);
     }
 
     function _divest(uint256 amount) internal {
@@ -36,7 +38,7 @@ contract StakingTest is TestPlus {
     }
 
     function testAddToPosition() public {
-        _giveEther();
+        _giveEther(30 ether);
         staking.addToPosition(30 ether);
     }
 
@@ -54,7 +56,15 @@ contract StakingTest is TestPlus {
         testAddToPosition();
         uint256 tvl = staking.totalLockedValue();
         console.log("TVL:  %s", tvl);
-        assertApproxEqRel(tvl, 30 ether, 0.02e18); // TODO: consider making this bound tighter than 2%
+        assertApproxEqRel(tvl, 30 ether, 0.001e18);
+    }
+
+    function testTotalLockedValueII() public {
+        _giveEther(7 ether);
+        staking.addToPosition(7 ether);
+        uint256 tvl = staking.totalLockedValue();
+        console.log("TVL:  %s", tvl);
+        assertApproxEqRel(tvl, 7 ether, 0.001e18);
     }
 
     function testMakerCompDivergence() public {
@@ -81,10 +91,35 @@ contract StakingTest is TestPlus {
     }
 
     function testMinDepositAmt() public {
-        _giveEther();
+        _giveEther(10 ether);
         vm.expectRevert();
         staking.addToPosition(1 ether);
 
         staking.addToPosition(7 ether);
+    }
+
+    function testUpgrade() public {
+        testAddToPosition();
+
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+        LidoLev staking2 = new LidoLev(staking, 175, vault, strategists);
+
+        vm.prank(governance);
+        staking.upgrade(address(staking2));
+
+        // Cdp was transferred
+        assertEq(staking.cdpId(), staking2.cdpId());
+        assertEq(staking.urn(), staking2.urn());
+
+        // All value was moved to staking2
+        assertEq(staking.totalLockedValue(), 0);
+        // TODO: assert that tvl is exactly equal to old one before migration
+        assertApproxEqRel(staking2.totalLockedValue(), 30 ether, 0.001e18);
+
+        vm.prank(address(vault));
+        staking2.divest(1 ether);
+
+        assertApproxEqRel(staking2.totalLockedValue(), 29 ether, 0.001e18);
     }
 }

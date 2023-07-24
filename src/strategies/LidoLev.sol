@@ -9,7 +9,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
 
-import {AffineVault} from "src/vaults/AffineVault.sol";
+import {AffineVault, Strategy} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
 import {IFlashLoanRecipient} from "src/interfaces/balancer/IFlashLoanRecipient.sol";
 import {IBalancerVault} from "src/interfaces/balancer/IBalancerVault.sol";
@@ -21,11 +21,11 @@ import {ICToken} from "src/interfaces/compound/ICToken.sol";
 import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 
-contract StakingExp is AccessStrategy, IFlashLoanRecipient {
+contract LidoLev is AccessStrategy, IFlashLoanRecipient {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    constructor(uint256 _leverage, AffineVault _vault, address[] memory strategists)
+    constructor(LidoLev oldStrat, uint256 _leverage, AffineVault _vault, address[] memory strategists)
         AccessStrategy(_vault, strategists)
     {
         leverage = _leverage;
@@ -52,8 +52,10 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         WETH.safeApprove(address(UNI_ROUTER), type(uint256).max);
 
         // Open cdp and store some metadata
-        cdpId = MAKER.open(ILK, address(this));
-        urn = MAKER.urns(cdpId);
+        // Using ternary because if statements aren't allowed with immutables. See https://github.com/ethereum/solidity/issues/12864
+        bool isUpgrade = address(oldStrat) != address(0);
+        cdpId = isUpgrade ? oldStrat.cdpId() : MAKER.open(ILK, address(this));
+        urn = isUpgrade ? oldStrat.urn() : MAKER.urns(cdpId);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -64,7 +66,8 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
     enum LoanType {
         invest,
-        divest
+        divest,
+        upgrade
     }
 
     function receiveFlashLoan(
@@ -77,7 +80,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
         uint256 ethBorrowed;
         uint256 daiBorrowed;
-        (LoanType loan) = abi.decode(userData, (LoanType));
+        (LoanType loan, address newStrategy) = abi.decode(userData, (LoanType, address));
 
         if (loan == LoanType.divest) {
             // We only flashloan dai in certain cases during divestment
@@ -91,6 +94,9 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         } else if (loan == LoanType.invest) {
             ethBorrowed = amounts[0];
             _addToPosition(ethBorrowed);
+        } else {
+            ethBorrowed = amounts[0];
+            _upgradeStrategy(ethBorrowed, payable(newStrategy));
         }
 
         // Payback Weth loan
@@ -119,7 +125,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
             recipient: IFlashLoanRecipient(address(this)),
             tokens: tokens,
             amounts: amounts,
-            userData: abi.encode(LoanType.invest)
+            userData: abi.encode(LoanType.invest, address(0))
         });
     }
 
@@ -195,12 +201,12 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
             recipient: IFlashLoanRecipient(address(this)),
             tokens: tokens,
             amounts: amounts,
-            userData: abi.encode(LoanType.divest)
+            userData: abi.encode(LoanType.divest, address(0))
         });
 
         // Unlocked value is equal to my current weth balance
-        uint256 wethToSend = Math.min(amount, asset.balanceOf(address(this)));
-        asset.safeTransfer(address(vault), wethToSend);
+        uint256 wethToSend = Math.min(amount, WETH.balanceOf(address(this)));
+        WETH.safeTransfer(address(vault), wethToSend);
         return wethToSend;
     }
 
@@ -288,10 +294,11 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
     //////////////////////////////////////////////////////////////*/
 
     function totalLockedValue() public override returns (uint256) {
+        if (MAKER.owns(cdpId) != address(this)) return 0;
+
         // Maker collateral, Maker debt (dai)
         // compound collateral (dai), compound debt (eth)
         // TVL = Maker collateral + compound collateral - maker debt - compound debt
-
         (uint256 wstEthCollat, uint256 rawMakerDebt) = VAT.urns(ILK, urn);
 
         // Using ETH denomination for everything
@@ -303,7 +310,7 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
         uint256 makerDebt = _daiToEth(rawMakerDebt, daiPrice);
         uint256 compoundDebt = CETH.borrowBalanceCurrent(address(this));
 
-        return makerCollateral + compoundCollateral - makerDebt - compoundDebt;
+        return WETH.balanceOf(address(this)) + makerCollateral + compoundCollateral - makerDebt - compoundDebt;
     }
 
     AggregatorV3Interface public constant ETH_DAI_FEED =
@@ -325,6 +332,51 @@ contract StakingExp is AccessStrategy, IFlashLoanRecipient {
 
     function _daiToEth(uint256 amountDai, uint256 price) internal pure returns (uint256) {
         return amountDai.mulWadDown(price);
+    }
+    /*//////////////////////////////////////////////////////////////
+                                UPGRADES
+    //////////////////////////////////////////////////////////////*/
+
+    function upgrade(address newStrategy) external onlyGovernance {
+        // Transfer any idle weth
+        WETH.safeTransfer(newStrategy, WETH.balanceOf(address(this)));
+
+        // Transfer cdp to new address
+        MAKER.give(cdpId, newStrategy);
+
+        // Transfer comp collateral/debt to new address
+        uint256 ethDebt = CETH.borrowBalanceCurrent(address(this));
+
+        ERC20[] memory tokens = new ERC20[](1);
+        tokens[0] = WETH;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = ethDebt;
+        BALANCER.flashLoan({
+            recipient: IFlashLoanRecipient(address(this)),
+            tokens: tokens,
+            amounts: amounts,
+            userData: abi.encode(LoanType.upgrade, newStrategy)
+        });
+    }
+
+    function _upgradeStrategy(uint256 ethBorrowed, address payable newStrategy) internal {
+        IWETH(address(WETH)).withdraw(ethBorrowed);
+        CETH.repayBorrow{value: ethBorrowed}();
+
+        ERC20(address(CDAI)).safeTransfer(newStrategy, CDAI.balanceOf(address(this)));
+        LidoLev(newStrategy).createCompoundDebt(ethBorrowed);
+
+        IWETH(address(WETH)).deposit{value: address(this).balance}();
+    }
+
+    function createCompoundDebt(uint256 ethToBorrow) external {
+        (bool isActive,,) = vault.strategies(Strategy(msg.sender));
+        require(isActive, "Staking: not a strategy");
+
+        uint256 borrowRes = CETH.borrow(ethToBorrow);
+        require(borrowRes == 0, "Staking: borrow failed");
+
+        Address.sendValue(payable(address(msg.sender)), address(this).balance);
     }
 
     /*//////////////////////////////////////////////////////////////
