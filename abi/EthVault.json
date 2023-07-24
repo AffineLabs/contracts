@@ -520,6 +520,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "accessNft",
+    "outputs": [
+      {
+        "internalType": "contract ERC721",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "contract BaseStrategy",
@@ -1343,6 +1356,19 @@
       }
     ],
     "name": "revokeRole",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract ERC721",
+        "name": "_accessNft",
+        "type": "address"
+      }
+    ],
+    "name": "setAccessNft",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

@@ -6,12 +6,24 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {Vault} from "src/vaults/Vault.sol";
+import {Vault, ERC721} from "src/vaults/Vault.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
 import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
 import {TestStrategy} from "./mocks/TestStrategy.sol";
+
+contract MockNft is ERC721 {
+    constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {}
+
+    function tokenURI(uint256 id) public view override returns (string memory) {
+        return "fakeuri";
+    }
+
+    function mint(address to, uint256 id) external {
+        _mint(to, id);
+    }
+}
 
 /// @notice Test common vault functionalities.
 contract CommonVaultTest is TestPlus {
@@ -363,5 +375,20 @@ contract CommonVaultTest is TestPlus {
         // initial price is $100, but if we increase tvl the price increases
         Vault.Number memory price2 = vault.detailedPrice();
         assertTrue(price2.num > price.num);
+    }
+
+    function testNft() public {
+        asset.mint(address(this), 1e18);
+        asset.approve(address(vault), type(uint256).max);
+
+        MockNft nft = new MockNft("foo", "bar");
+        vm.prank(governance);
+        vault.setAccessNft(nft);
+
+        vm.expectRevert("Vault: caller has no access NFT");
+        vault.deposit(1e18, address(this));
+
+        nft.mint(address(this), 1);
+        vault.deposit(1e18, address(this));
     }
 }

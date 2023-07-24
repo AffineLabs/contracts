@@ -12,6 +12,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {ERC721} from "solmate/src/tokens/ERC721.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
@@ -126,7 +127,17 @@ contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgr
         return assets;
     }
 
+    ERC721 public accessNft;
+
+    function setAccessNft(ERC721 _accessNft) external onlyGovernance {
+        accessNft = _accessNft;
+    }
+
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
+        if (address(accessNft) != address(0)) {
+            require(accessNft.balanceOf(caller) > 0, "Vault: caller has no access NFT");
+        }
+
         require(shares > 0, "Vault: zero shares");
         _mint(receiver, shares);
         _asset.safeTransferFrom(caller, address(this), assets);
