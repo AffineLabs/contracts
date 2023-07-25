@@ -12,6 +12,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {ERC721} from "solmate/src/tokens/ERC721.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
@@ -129,6 +130,8 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
     }
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
+        _checkNft(receiver);
+
         require(shares > 0, "Vault: zero shares");
         uint256 tvl = totalAssets();
         uint256 allowedAssets = tvl >= tvlCap ? 0 : tvlCap - tvl;
@@ -159,7 +162,7 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
 
         // Slippage during liquidation means we might get less than `assets` amount of `_asset`
         assets = Math.min(_asset.balanceOf(address(this)), assets);
-        uint256 assetsFee = _getWithdrawalFee(assets);
+        uint256 assetsFee = _getWithdrawalFee(assets, _msgSender());
         uint256 assetsToUser = assets - assetsFee;
 
         // Burn shares and give user equivalent value in `_asset` (minus withdrawal fees)
@@ -189,7 +192,7 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
      */
     function previewRedeem(uint256 shares) public view virtual override returns (uint256) {
         uint256 assets = _convertToAssets(shares, MathUpgradeable.Rounding.Down);
-        return assets - _getWithdrawalFee(assets);
+        return assets - _getWithdrawalFee(assets, _msgSender());
     }
 
     function _convertToShares(uint256 assets, MathUpgradeable.Rounding rounding)
@@ -255,8 +258,14 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
     }
 
     /// @dev  Return amount of `asset` to be given to user after applying withdrawal fee
-    function _getWithdrawalFee(uint256 assets) internal view virtual returns (uint256) {
-        return assets.mulDiv(withdrawalFee, MAX_BPS, MathUpgradeable.Rounding.Up);
+    function _getWithdrawalFee(uint256 assets, address owner) internal view virtual returns (uint256) {
+        uint256 feeBps;
+        if (address(accessNft) != address(0) && accessNft.balanceOf(owner) > 0) {
+            feeBps = withdrawalFeeWithNft;
+        } else {
+            feeBps = withdrawalFee;
+        }
+        return assets.mulDiv(feeBps, MAX_BPS, MathUpgradeable.Rounding.Up);
     }
     /*//////////////////////////////////////////////////////////////
                            CAPITAL MANAGEMENT
@@ -332,5 +341,21 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
 
     function detailedTotalSupply() external view override returns (Number memory supply) {
         supply = Number({num: totalSupply(), decimals: decimals()});
+    }
+    /*//////////////////////////////////////////////////////////////
+                              NFT STORAGE
+    //////////////////////////////////////////////////////////////*/
+
+    ERC721 public accessNft;
+    uint16 public withdrawalFeeWithNft;
+
+    function setWithdrawalFeeWithNft(uint16 _newFee) external onlyGovernance {
+        withdrawalFeeWithNft = _newFee;
+    }
+
+    function _checkNft(address owner) internal view {
+        if (address(accessNft) != address(0)) {
+            require(accessNft.balanceOf(owner) > 0, "Caller has no access NFT");
+        }
     }
 }

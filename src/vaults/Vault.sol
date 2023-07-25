@@ -76,6 +76,13 @@ contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgr
         return type(uint256).max;
     }
 
+    /*//////////////////////////////////////////////////////////////
+                          DEPOSITS/WITHDRAWALS
+    //////////////////////////////////////////////////////////////*/
+    function setAccessNft(ERC721 _accessNft) external onlyGovernance {
+        accessNft = _accessNft;
+    }
+
     /**
      * @dev See {IERC4262-deposit}.
      */
@@ -127,17 +134,8 @@ contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgr
         return assets;
     }
 
-    ERC721 public accessNft;
-
-    function setAccessNft(ERC721 _accessNft) external onlyGovernance {
-        accessNft = _accessNft;
-    }
-
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
-        if (address(accessNft) != address(0)) {
-            require(accessNft.balanceOf(caller) > 0, "Vault: caller has no access NFT");
-        }
-
+        _checkNft(receiver);
         require(shares > 0, "Vault: zero shares");
         _mint(receiver, shares);
         _asset.safeTransferFrom(caller, address(this), assets);
@@ -153,7 +151,7 @@ contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgr
 
         // Slippage during liquidation means we might get less than `assets` amount of `_asset`
         assets = Math.min(_asset.balanceOf(address(this)), assets);
-        uint256 assetsFee = _getWithdrawalFee(assets);
+        uint256 assetsFee = _getWithdrawalFee(assets, owner);
         uint256 assetsToUser = assets - assetsFee;
 
         // Burn shares and give user equivalent value in `_asset` (minus withdrawal fees)
@@ -183,7 +181,7 @@ contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgr
      */
     function previewRedeem(uint256 shares) public view virtual override returns (uint256) {
         uint256 assets = _convertToAssets(shares, MathUpgradeable.Rounding.Down);
-        return assets - _getWithdrawalFee(assets);
+        return assets - _getWithdrawalFee(assets, _msgSender());
     }
 
     function _convertToShares(uint256 assets, MathUpgradeable.Rounding rounding)
@@ -248,8 +246,14 @@ contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgr
     }
 
     /// @dev  Return amount of `asset` to be given to user after applying withdrawal fee
-    function _getWithdrawalFee(uint256 assets) internal view virtual returns (uint256) {
-        return assets.mulDiv(withdrawalFee, MAX_BPS, MathUpgradeable.Rounding.Up);
+    function _getWithdrawalFee(uint256 assets, address owner) internal view virtual returns (uint256) {
+        uint256 feeBps;
+        if (address(accessNft) != address(0) && accessNft.balanceOf(owner) > 0) {
+            feeBps = withdrawalFeeWithNft;
+        } else {
+            feeBps = withdrawalFee;
+        }
+        return assets.mulDiv(feeBps, MAX_BPS, MathUpgradeable.Rounding.Up);
     }
     /*//////////////////////////////////////////////////////////////
                            CAPITAL MANAGEMENT
@@ -277,5 +281,21 @@ contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgr
 
     function detailedTotalSupply() external view override returns (Number memory supply) {
         supply = Number({num: totalSupply(), decimals: decimals()});
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                              NFT STORAGE
+    //////////////////////////////////////////////////////////////*/
+    ERC721 public accessNft;
+    uint16 public withdrawalFeeWithNft;
+
+    function setWithdrawalFeeWithNft(uint16 _newFee) external onlyGovernance {
+        withdrawalFeeWithNft = _newFee;
+    }
+
+    function _checkNft(address owner) internal view {
+        if (address(accessNft) != address(0)) {
+            require(accessNft.balanceOf(owner) > 0, "Caller has no access NFT");
+        }
     }
 }

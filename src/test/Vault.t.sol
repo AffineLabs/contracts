@@ -377,6 +377,7 @@ contract CommonVaultTest is TestPlus {
         assertTrue(price2.num > price.num);
     }
 
+    /// @notice If nft address is set, you need one to deposit
     function testNft() public {
         asset.mint(address(this), 1e18);
         asset.approve(address(vault), type(uint256).max);
@@ -385,10 +386,50 @@ contract CommonVaultTest is TestPlus {
         vm.prank(governance);
         vault.setAccessNft(nft);
 
-        vm.expectRevert("Vault: caller has no access NFT");
+        vm.expectRevert("Cgaller has no access NFT");
         vault.deposit(1e18, address(this));
 
         nft.mint(address(this), 1);
         vault.deposit(1e18, address(this));
+    }
+
+    /// @notice If nft address is set and you have it you pay a reduced fee.
+    function testWithdrawalFeeWithNft() public {
+        // Alice deposits
+        uint256 amountAsset = 1e18;
+        vm.startPrank(alice);
+        asset.mint(alice, amountAsset);
+        asset.approve(address(vault), type(uint256).max);
+        vault.deposit(amountAsset, alice);
+        vm.stopPrank();
+
+        // Fees set
+        vm.prank(governance);
+        vault.setWithdrawalFee(50);
+        vm.prank(governance);
+        vault.setWithdrawalFeeWithNft(10);
+
+        // Bob has nft and gets discount
+        MockNft nft = new MockNft("foo", "bar");
+        vm.prank(governance);
+        vault.setAccessNft(nft);
+        nft.mint(bob, 1);
+
+        changePrank(bob);
+        asset.mint(bob, amountAsset);
+        asset.approve(address(vault), type(uint256).max);
+        vault.deposit(amountAsset, bob);
+
+        vault.redeem(vault.balanceOf(bob), bob, bob);
+        assertEq(vault.balanceOf(bob), 0);
+
+        // Bob gets 10 bps fee
+        assertEq(asset.balanceOf(bob), (amountAsset * (10_000 - 10)) / 10_000);
+
+        // Alice gets 50 bps fee
+        changePrank(alice);
+        vault.redeem(vault.balanceOf(alice), alice, alice);
+        assertEq(vault.balanceOf(alice), 0);
+        assertEq(asset.balanceOf(alice), (amountAsset * (10_000 - 50)) / 10_000);
     }
 }

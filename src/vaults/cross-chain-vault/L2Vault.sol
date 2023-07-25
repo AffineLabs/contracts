@@ -2,6 +2,7 @@
 pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {ERC721} from "solmate/src/tokens/ERC721.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
@@ -10,6 +11,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {MathUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
 import {BaseRelayRecipient} from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
@@ -36,6 +38,7 @@ contract L2Vault is
 {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
+    using MathUpgradeable for uint256;
 
     /*//////////////////////////////////////////////////////////////
                              INITIALIZATION
@@ -185,6 +188,10 @@ contract L2Vault is
                                 DEPOSITS
     //////////////////////////////////////////////////////////////*/
 
+    function setAccessNft(ERC721 _accessNft) external onlyGovernance {
+        accessNft = _accessNft;
+    }
+
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
         shares = previewDeposit(assets);
         _deposit(assets, shares, receiver);
@@ -197,6 +204,8 @@ contract L2Vault is
 
     /// @dev Deposit helper used in deposit/mint.
     function _deposit(uint256 assets, uint256 shares, address receiver) internal {
+        _checkNft(receiver);
+
         require(shares > 0, "L2Vault: zero shares");
         address caller = _msgSender();
 
@@ -254,7 +263,7 @@ contract L2Vault is
         // Only real share amounts are allowed since we might create an ewq request
         require(shares <= balanceOf(owner) + ewq.ownerToDebt(owner), "L2Vault: min shares");
 
-        uint256 assetsFee = _getWithdrawalFee(assets);
+        uint256 assetsFee = _getWithdrawalFee(assets, owner);
         assetsToUser = assets - assetsFee;
 
         // We must be able to repay all queued users and the current user.
@@ -351,19 +360,28 @@ contract L2Vault is
 
     function previewRedeem(uint256 shares) public view returns (uint256 assets) {
         uint256 rawAssets = _convertToAssets(shares, Rounding.Down);
-        uint256 assetsFee = _getWithdrawalFee(rawAssets);
+        uint256 assetsFee = _getWithdrawalFee(rawAssets, _msgSender());
         assets = rawAssets - assetsFee;
     }
 
     /// @dev  Return amount of `asset` to be given to user after applying withdrawal fee
-    function _getWithdrawalFee(uint256 tokenAmount) internal view returns (uint256) {
-        uint256 feeAmount = tokenAmount.mulDivUp(withdrawalFee, MAX_BPS);
+    function _getWithdrawalFee(uint256 assets, address owner) internal view returns (uint256) {
+        uint256 fee = _getWithdrawalFeeNft(assets, owner);
         if (_msgSender() == address(emergencyWithdrawalQueue)) {
-            feeAmount = Math.max(feeAmount, ewqMinFee);
+            fee = Math.max(fee, ewqMinFee);
         }
-        return feeAmount;
+        return fee;
     }
 
+    function _getWithdrawalFeeNft(uint256 assets, address owner) internal view virtual returns (uint256) {
+        uint256 feeBps;
+        if (address(accessNft) != address(0) && accessNft.balanceOf(owner) > 0) {
+            feeBps = withdrawalFeeWithNft;
+        } else {
+            feeBps = withdrawalFee;
+        }
+        return assets.mulDiv(feeBps, MAX_BPS, MathUpgradeable.Rounding.Up);
+    }
     /*//////////////////////////////////////////////////////////////
                        DEPOSIT/WITHDRAWAL LIMITS
     //////////////////////////////////////////////////////////////*/
@@ -567,5 +585,21 @@ contract L2Vault is
 
     function detailedTotalSupply() external view override returns (Number memory supply) {
         supply = Number({num: totalSupply(), decimals: decimals()});
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                              NFT STORAGE
+    //////////////////////////////////////////////////////////////*/
+    ERC721 public accessNft;
+    uint16 public withdrawalFeeWithNft;
+
+    function setWithdrawalFeeWithNft(uint16 _newFee) external onlyGovernance {
+        withdrawalFeeWithNft = _newFee;
+    }
+
+    function _checkNft(address owner) internal view {
+        if (address(accessNft) != address(0)) {
+            require(accessNft.balanceOf(owner) > 0, "Caller has no access NFT");
+        }
     }
 }
