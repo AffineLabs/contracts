@@ -42,7 +42,7 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
 
     /// @dev E.g. if the asset has 18 decimals, and initialSharesPerAsset is 1e8, then the vault has 26 decimals. And
     /// "one" `asset` will be worth "one" share (where "one" means 10 ** token.decimals()).
-    function decimals() public view virtual override(ERC20Upgradeable, IERC20MetadataUpgradeable) returns (uint8) {
+    function decimals() public view virtual override returns (uint8) {
         return _asset.decimals() + _initialShareDecimals();
     }
     /// @notice The amount of shares to mint per wei of `asset` at genesis.
