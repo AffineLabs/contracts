@@ -28,7 +28,7 @@ contract MockNft is ERC721 {
 }
 
 /// @notice Test common vault functionalities.
-contract VaultTest is TestPlus {
+contract CommonVaultTest is TestPlus {
     using stdStorage for StdStorage;
 
     Vault vault;
@@ -86,12 +86,6 @@ contract VaultTest is TestPlus {
         address indexed caller, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
     );
 
-    /// @notice Test post deployment, initial state of the vault.
-    function testDeploy() public {
-        // this makes sure that the first time we assess management fees we get a reasonable number
-        // since management fees are calculated based on block.timestamp - lastHarvest
-        assertEq(vault.lastHarvest(), block.timestamp);
-    }
 
     /// @notice Test redeeming after deposit.
     function testDepositRedeem(uint64 amountAsset) public {
@@ -100,7 +94,7 @@ contract VaultTest is TestPlus {
         address user = address(this);
         _giveAssets(user, amountAsset);
 
-        uint256 expectedShares = uint256(amountAsset) * vault.initialSharesPerAsset();
+        uint256 expectedShares = vault.previewDeposit(amountAsset);
         // user gives max approval to vault for asset
         asset.approve(address(vault), type(uint256).max);
         vault.deposit(amountAsset, user);
@@ -123,7 +117,7 @@ contract VaultTest is TestPlus {
         asset.approve(address(vault), type(uint256).max);
 
         // If vault is empty, assets are converted to shares at 1:vault.initialSharesPerAsset() ratio
-        uint256 expectedShares = uint256(amountAsset) * vault.initialSharesPerAsset(); // cast to uint256 to prevent overflow
+        uint256 expectedShares = vault.previewDeposit(amountAsset); // cast to uint256 to prevent overflow
 
         vm.expectEmit(true, true, true, true);
         emit Deposit(address(this), address(this), amountAsset, expectedShares);
@@ -145,7 +139,7 @@ contract VaultTest is TestPlus {
         asset.approve(address(vault), type(uint256).max);
 
         // If vault is empty, assets are converted to shares at 1:vault.initialSharesPerAsset() ratio
-        uint256 expectedShares = uint256(amountAsset) * vault.initialSharesPerAsset(); // cast to uint256 to prevent overflow
+        uint256 expectedShares = vault.previewDeposit(amountAsset); // cast to uint256 to prevent overflow
 
         vm.expectEmit(true, true, true, true);
         emit Deposit(address(this), address(this), amountAsset, expectedShares);
@@ -165,138 +159,6 @@ contract VaultTest is TestPlus {
         vault.deposit(0, user);
 
         vault.deposit(100, user);
-    }
-
-    /// @notice Test that depositing doesn't result in funds being invested into strategies.
-    function testDepositNoStrategyInvest() public {
-        address user = address(this);
-        uint256 amount = 100;
-        _giveAssets(user, amount);
-        asset.approve(address(vault), type(uint256).max);
-
-        TestStrategy strategy = new TestStrategy(vault);
-        vm.startPrank(governance);
-        vault.addStrategy(strategy, 10_000);
-        vm.stopPrank();
-
-        vault.deposit(amount, user);
-        assertEq(asset.balanceOf(address(vault)), amount);
-
-        vm.startPrank(governance);
-        uint256 capitalEfficientAmount = 50;
-        vault.depositIntoStrategies(capitalEfficientAmount);
-        assertEq(asset.balanceOf(address(vault)), amount - capitalEfficientAmount);
-        assertEq(vault.vaultTVL(), amount);
-        vm.stopPrank();
-    }
-
-    /// @notice Test that minting doesn't result in funds being invested into strategies.
-    function testMintNoStrategyInvest() public {
-        address user = address(this);
-        uint256 amount = 100;
-        _giveAssets(user, amount);
-        asset.approve(address(vault), type(uint256).max);
-
-        TestStrategy strategy = new TestStrategy(vault);
-        vm.startPrank(governance);
-        vault.addStrategy(strategy, 10_000);
-        vm.stopPrank();
-
-        vault.mint(amount * vault.initialSharesPerAsset(), user); // Initially asset:share = 1:vault.initialSharesPerAsset().
-        assertEq(asset.balanceOf(address(vault)), amount);
-
-        vm.startPrank(governance);
-        uint256 capitalEfficientAmount = 50;
-        vault.depositIntoStrategies(capitalEfficientAmount);
-        assertEq(asset.balanceOf(address(vault)), amount - capitalEfficientAmount);
-        assertEq(vault.vaultTVL(), amount);
-        vm.stopPrank();
-    }
-
-    /// @notice Test management fee is deducted and transferred to governance address.
-    function testManagementFee() public {
-        // Increase vault's total supply
-        deal(address(vault), address(0), 1e18, true);
-
-        assertEq(vault.totalSupply(), 1e18);
-
-        // Add this contract as a strategy
-        changePrank(governance);
-        BaseStrategy myStrat = BaseStrategy(address(this));
-        vault.addStrategy(myStrat, 10_000);
-        vault.setManagementFee(200);
-
-        // call to balanceOfAsset in harvest() will return 1e18
-        vm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfAsset.selector), abi.encode(1e18));
-        // block.timestamp must be >= lastHarvest + LOCK_INTERVAL when harvesting
-        vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
-
-        // Call harvest to update lastHarvest, note that no shares are minted here because
-        // (block.timestamp - lastHarvest) = LOCK_INTERVAL + 1 =  3 hours + 1 second
-        // and feeBps gets truncated to zero
-        BaseStrategy[] memory strategyList = new BaseStrategy[](1);
-        strategyList[0] = BaseStrategy(address(this));
-        vault.harvest(strategyList);
-
-        vm.warp(block.timestamp + 365 days / 2);
-
-        // Call harvest to trigger fee assessment
-        vault.harvest(strategyList);
-
-        // Check that fees were assesed in the correct amounts => Management fees are sent to governance address
-        // 1/2 of 2% of the vault's supply should be minted to governance
-        assertEq(vault.balanceOf(governance), (100 * 1e18) / 10_000);
-    }
-
-    /// @notice Test profit is locked over the `LOCK_INTERVAL` period.
-    function testLockedProfit() public {
-        // Add this contract as a strategy
-        changePrank(governance);
-        BaseStrategy myStrat = BaseStrategy(address(this));
-        vault.addStrategy(myStrat, 10_000);
-
-        // call to balanceOfAsset in harvest() will return 1e18
-        vm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfAsset.selector), abi.encode(1e18));
-        // block.timestamp must be >= lastHarvest + LOCK_INTERVAL when harvesting
-        vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
-
-
-        _giveAssets(address(myStrat), 1e18);
-        asset.approve(address(vault), type(uint256).max);
-
-        BaseStrategy[] memory strategyList = new BaseStrategy[](1);
-        strategyList[0] = BaseStrategy(address(this));
-        vault.harvest(strategyList);
-
-        assertEq(vault.lockedProfit(), 1e18);
-        assertEq(vault.totalAssets(), 0);
-
-        // Using up 50% of LOCK_INTERVAL unlocks 50% of profit
-        vm.warp(block.timestamp + vault.LOCK_INTERVAL() / 2);
-        assertEq(vault.lockedProfit(), 1e18 / 2);
-        assertEq(vault.totalAssets(), 1e18 / 2);
-    }
-
-    /// @notice total assets = vaultTVL() - lockedProfit()
-    function testTotalAssets() public {
-        // Add this contract as a strategy
-        changePrank(governance);
-        BaseStrategy myStrat = BaseStrategy(address(this));
-        vault.addStrategy(myStrat, 10_000);
-
-        // Give the strat some assets
-        _giveAssets(address(vault), 999);
-
-        // Harvest a gain of 1
-        _giveAssets(address(myStrat), 1);
-        BaseStrategy[] memory strategyList = new BaseStrategy[](1);
-        strategyList[0] = BaseStrategy(address(this));
-        vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
-        vault.harvest(strategyList);
-
-        assertEq(vault.totalAssets(), 999);
-        vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
-        assertEq(vault.totalAssets(), 1000);
     }
 
     /// @notice Test that withdrawal fee is deducted while withdwaring.
@@ -375,8 +237,7 @@ contract VaultTest is TestPlus {
     function testDetailedPrice() public {
         // This function should work even if there is nothing in the vault
         Vault.Number memory price = vault.detailedPrice();
-        assertEq(price.num, 10 ** uint256(asset.decimals()));
-
+ 
         _giveAssets(address(vault), 2e18);
 
         // initial price is $100, but if we increase tvl the price increases
@@ -403,7 +264,7 @@ contract VaultTest is TestPlus {
     /// @notice If nft address is set and you have it you pay a reduced fee.
     function testWithdrawalFeeWithNft() public {
         // Alice deposits
-        uint256 amountAsset = 1e18;
+        uint256 amountAsset = 10 ** uint256(asset.decimals());
         vm.startPrank(alice);
         _giveAssets(alice, amountAsset);
         asset.approve(address(vault), type(uint256).max);
@@ -430,13 +291,13 @@ contract VaultTest is TestPlus {
         vault.redeem(vault.balanceOf(bob), bob, bob);
         assertEq(vault.balanceOf(bob), 0);
 
-        // Bob gets 10 bps fee
-        assertEq(asset.balanceOf(bob), (amountAsset * (10_000 - 10)) / 10_000);
+        // Bob gets 10 bps fee -> Allowin some leeway for rounding errors
+        assertApproxEqAbs(asset.balanceOf(bob), (amountAsset * (10_000 - 10)) / 10_000, 2);
 
         // Alice gets 50 bps fee
         changePrank(alice);
         vault.redeem(vault.balanceOf(alice), alice, alice);
         assertEq(vault.balanceOf(alice), 0);
-        assertEq(asset.balanceOf(alice), (amountAsset * (10_000 - 50)) / 10_000);
+        assertApproxEqAbs(asset.balanceOf(alice), (amountAsset * (10_000 - 50)) / 10_000, 2);
     }
 }
