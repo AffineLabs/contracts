@@ -206,7 +206,7 @@ contract L2Vault is
     function _deposit(uint256 assets, uint256 shares, address receiver) internal {
         _checkNft(receiver);
 
-        require(shares > 0, "L2Vault: zero shares");
+        require(shares > 0, "Vault: zero shares");
         address caller = _msgSender();
 
         _asset.safeTransferFrom(caller, address(this), assets);

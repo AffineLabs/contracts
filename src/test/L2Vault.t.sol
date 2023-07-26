@@ -132,7 +132,7 @@ contract L2VaultTest is TestPlus {
         asset.approve(address(vault), type(uint256).max);
 
         // If we're minting zero shares we revert
-        vm.expectRevert("L2Vault: zero shares");
+        vm.expectRevert("Vault: zero shares");
         vault.deposit(0, user);
 
         vault.deposit(100, user);

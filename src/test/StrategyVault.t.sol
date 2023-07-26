@@ -19,7 +19,6 @@ import {MockEpochStrategy} from "src/testnet/MockEpochStrategy.sol";
 
 import {DegenVault} from "src/vaults/custom/DegenVault.sol";
 
-
 contract SVaultTest is TestPlus {
     using stdStorage for StdStorage;
 

@@ -41,7 +41,7 @@ contract VaultTest is TestPlus {
         vault.initialize(governance, address(asset), "USD Earn", "usdEarn");
     }
 
-    function _giveAssets( address user, uint assets) internal virtual {
+    function _giveAssets(address user, uint256 assets) internal virtual {
         MockERC20(address(asset)).mint(user, assets);
     }
 
@@ -259,7 +259,6 @@ contract VaultTest is TestPlus {
         vm.mockCall(address(this), abi.encodeWithSelector(BaseStrategy.balanceOfAsset.selector), abi.encode(1e18));
         // block.timestamp must be >= lastHarvest + LOCK_INTERVAL when harvesting
         vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
-
 
         _giveAssets(address(myStrat), 1e18);
         asset.approve(address(vault), type(uint256).max);
