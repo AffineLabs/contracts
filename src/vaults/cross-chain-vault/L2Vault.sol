@@ -188,26 +188,19 @@ contract L2Vault is
                                 DEPOSITS
     //////////////////////////////////////////////////////////////*/
 
-    function setAccessNft(ERC721 _accessNft) external onlyGovernance {
-        accessNft = _accessNft;
-    }
-
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
         shares = previewDeposit(assets);
-        _deposit(assets, shares, receiver);
+        _deposit(_msgSender(), receiver, assets, shares);
     }
 
     function mint(uint256 shares, address receiver) external whenNotPaused returns (uint256 assets) {
         assets = previewMint(shares);
-        _deposit(assets, shares, receiver);
+        _deposit(_msgSender(), receiver, assets, shares);
     }
 
     /// @dev Deposit helper used in deposit/mint.
-    function _deposit(uint256 assets, uint256 shares, address receiver) internal {
-        _checkNft(receiver);
-
+    function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual {
         require(shares > 0, "Vault: zero shares");
-        address caller = _msgSender();
 
         _asset.safeTransferFrom(caller, address(this), assets);
         _mint(receiver, shares);
@@ -365,23 +358,15 @@ contract L2Vault is
     }
 
     /// @dev  Return amount of `asset` to be given to user after applying withdrawal fee
-    function _getWithdrawalFee(uint256 assets, address owner) internal view returns (uint256) {
-        uint256 fee = _getWithdrawalFeeNft(assets, owner);
+    function _getWithdrawalFee(uint256 assets, address owner) internal view virtual returns (uint256) {
+        owner; // unused
+        uint256 fee = assets.mulDiv(withdrawalFee, MAX_BPS, MathUpgradeable.Rounding.Up);
         if (_msgSender() == address(emergencyWithdrawalQueue)) {
             fee = Math.max(fee, ewqMinFee);
         }
         return fee;
     }
 
-    function _getWithdrawalFeeNft(uint256 assets, address owner) internal view virtual returns (uint256) {
-        uint256 feeBps;
-        if (address(accessNft) != address(0) && accessNft.balanceOf(owner) > 0) {
-            feeBps = withdrawalFeeWithNft;
-        } else {
-            feeBps = withdrawalFee;
-        }
-        return assets.mulDiv(feeBps, MAX_BPS, MathUpgradeable.Rounding.Up);
-    }
     /*//////////////////////////////////////////////////////////////
                        DEPOSIT/WITHDRAWAL LIMITS
     //////////////////////////////////////////////////////////////*/
@@ -585,21 +570,5 @@ contract L2Vault is
 
     function detailedTotalSupply() external view override returns (Number memory supply) {
         supply = Number({num: totalSupply(), decimals: decimals()});
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                              NFT STORAGE
-    //////////////////////////////////////////////////////////////*/
-    ERC721 public accessNft;
-    uint16 public withdrawalFeeWithNft;
-
-    function setWithdrawalFeeWithNft(uint16 _newFee) external onlyGovernance {
-        withdrawalFeeWithNft = _newFee;
-    }
-
-    function _checkNft(address owner) internal view {
-        if (address(accessNft) != address(0)) {
-            require(accessNft.balanceOf(owner) > 0, "Caller has no access NFT");
-        }
     }
 }

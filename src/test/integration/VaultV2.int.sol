@@ -1,6 +1,11 @@
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity =0.8.16;
+
 import {CommonVaultTest, ERC20} from "src/test/CommonVault.t.sol";
 import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
+import {L2VaultV2} from "src/vaults/cross-chain-vault/L2VaultV2.sol";
 import {Vault} from "src/vaults/Vault.sol";
+import {VaultV2} from "src/vaults/VaultV2.sol";
 
 import "forge-std/console.sol";
 
@@ -8,8 +13,8 @@ contract L2VaultV2_IntegrationTest is CommonVaultTest {
     function setUp() public virtual override {
         vm.createSelectFork("polygon", POLYGON_FORK_BLOCK);
 
-        L2Vault impl = new L2Vault();
-        vault = Vault(0x829363736a5A9080e05549Db6d1271f070a7e224);
+        L2Vault impl = new L2VaultV2();
+        vault = VaultV2(0x829363736a5A9080e05549Db6d1271f070a7e224);
 
         governance = 0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0;
         vm.prank(governance);

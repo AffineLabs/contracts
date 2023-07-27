@@ -62,6 +62,25 @@
       {
         "indexed": true,
         "internalType": "address",
+        "name": "oldEscrow",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newEscrow",
+        "type": "address"
+      }
+    ],
+    "name": "BridgeEscrowSet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
         "name": "caller",
         "type": "address"
       },
@@ -85,6 +104,25 @@
       }
     ],
     "name": "Deposit",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "contract EmergencyWithdrawalQueue",
+        "name": "oldQ",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "contract EmergencyWithdrawalQueue",
+        "name": "newQ",
+        "type": "address"
+      }
+    ],
+    "name": "EwqSet",
     "type": "event"
   },
   {
@@ -117,6 +155,25 @@
       }
     ],
     "name": "Initialized",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "l1Ratio",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "l2Ratio",
+        "type": "uint8"
+      }
+    ],
+    "name": "LayerRatiosSet",
     "type": "event"
   },
   {
@@ -181,6 +238,38 @@
       }
     ],
     "name": "Rebalance",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint224",
+        "name": "oldDelta",
+        "type": "uint224"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint224",
+        "name": "newDelta",
+        "type": "uint224"
+      }
+    ],
+    "name": "RebalanceDeltaSet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "RequestFromL1",
     "type": "event"
   },
   {
@@ -377,6 +466,19 @@
     "inputs": [
       {
         "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "TransferToL1",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
         "internalType": "address",
         "name": "account",
         "type": "address"
@@ -468,6 +570,25 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "oldRouter",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newRouter",
+        "type": "address"
+      }
+    ],
+    "name": "WormholeRouterSet",
+    "type": "event"
+  },
+  {
     "inputs": [],
     "name": "DEFAULT_ADMIN_ROLE",
     "outputs": [
@@ -520,6 +641,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "accessNft",
+    "outputs": [
+      {
+        "internalType": "contract ERC721",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "contract BaseStrategy",
@@ -533,6 +667,19 @@
       }
     ],
     "name": "addStrategy",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "afterReceive",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -591,7 +738,7 @@
     "outputs": [
       {
         "internalType": "address",
-        "name": "",
+        "name": "assetTokenAddress",
         "type": "address"
       }
     ],
@@ -612,6 +759,45 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "bridgeEscrow",
+    "outputs": [
+      {
+        "internalType": "contract BridgeEscrow",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "canRequestFromL1",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "canTransferToL1",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -709,7 +895,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "shares",
         "type": "uint256"
       }
     ],
@@ -799,6 +985,45 @@
         "internalType": "struct DetailedShare.Number",
         "name": "supply",
         "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "emergencyWithdrawalQueue",
+    "outputs": [
+      {
+        "internalType": "contract EmergencyWithdrawalQueue",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "ewqMinAssets",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "ewqMinFee",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -929,19 +1154,6 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "initialSharesPerAsset",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "pure",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "address",
@@ -949,24 +1161,107 @@
         "type": "address"
       },
       {
-        "internalType": "address",
-        "name": "vaultAsset",
+        "internalType": "contract ERC20",
+        "name": "_vaultAsset",
         "type": "address"
       },
       {
-        "internalType": "string",
-        "name": "_name",
-        "type": "string"
+        "internalType": "address",
+        "name": "_wormholeRouter",
+        "type": "address"
       },
       {
-        "internalType": "string",
-        "name": "_symbol",
-        "type": "string"
+        "internalType": "contract L2BridgeEscrow",
+        "name": "_bridgeEscrow",
+        "type": "address"
+      },
+      {
+        "internalType": "contract EmergencyWithdrawalQueue",
+        "name": "_emergencyWithdrawalQueue",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "forwarder",
+        "type": "address"
+      },
+      {
+        "internalType": "uint8[2]",
+        "name": "layerRatios",
+        "type": "uint8[2]"
+      },
+      {
+        "internalType": "uint256[2]",
+        "name": "fees",
+        "type": "uint256[2]"
+      },
+      {
+        "internalType": "uint256[2]",
+        "name": "ewqParams",
+        "type": "uint256[2]"
       }
     ],
     "name": "initialize",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "forwarder",
+        "type": "address"
+      }
+    ],
+    "name": "isTrustedForwarder",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "l1Ratio",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "l1TotalLockedValue",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "l2Ratio",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -997,6 +1292,19 @@
   },
   {
     "inputs": [],
+    "name": "lockedTVL",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "managementFee",
     "outputs": [
       {
@@ -1012,7 +1320,7 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "",
+        "name": "receiver",
         "type": "address"
       }
     ],
@@ -1020,11 +1328,11 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "maxAssets",
         "type": "uint256"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -1044,7 +1352,7 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "",
+        "name": "receiver",
         "type": "address"
       }
     ],
@@ -1052,11 +1360,11 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "maxShares",
         "type": "uint256"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -1071,7 +1379,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "maxShares",
         "type": "uint256"
       }
     ],
@@ -1090,7 +1398,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "maxAssets",
         "type": "uint256"
       }
     ],
@@ -1114,7 +1422,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "assets",
         "type": "uint256"
       }
     ],
@@ -1185,7 +1493,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "shares",
         "type": "uint256"
       }
     ],
@@ -1204,7 +1512,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "assets",
         "type": "uint256"
       }
     ],
@@ -1223,7 +1531,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "assets",
         "type": "uint256"
       }
     ],
@@ -1234,7 +1542,7 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "assetsToUser",
+        "name": "assets",
         "type": "uint256"
       }
     ],
@@ -1242,7 +1550,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "shares",
         "type": "uint256"
       }
     ],
@@ -1270,6 +1578,37 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "rebalanceDelta",
+    "outputs": [
+      {
+        "internalType": "uint224",
+        "name": "",
+        "type": "uint224"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tvl",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "received",
+        "type": "bool"
+      }
+    ],
+    "name": "receiveTVL",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -1291,7 +1630,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "assets",
         "type": "uint256"
       }
     ],
@@ -1350,12 +1689,131 @@
   {
     "inputs": [
       {
+        "internalType": "contract ERC721",
+        "name": "_accessNft",
+        "type": "address"
+      }
+    ],
+    "name": "setAccessNft",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract BridgeEscrow",
+        "name": "_escrow",
+        "type": "address"
+      }
+    ],
+    "name": "setBridgeEscrow",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract EmergencyWithdrawalQueue",
+        "name": "_ewq",
+        "type": "address"
+      }
+    ],
+    "name": "setEwq",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_ewqMinFee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_ewqMinAssets",
+        "type": "uint256"
+      }
+    ],
+    "name": "setEwqParams",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint8",
+        "name": "_l1Ratio",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "_l2Ratio",
+        "type": "uint8"
+      }
+    ],
+    "name": "setLayerRatios",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint256",
         "name": "feeBps",
         "type": "uint256"
       }
     ],
     "name": "setManagementFee",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bool",
+        "name": "_needNftToDeposit",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "_nftDiscountActive",
+        "type": "bool"
+      }
+    ],
+    "name": "setNftProperties",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint224",
+        "name": "_rebalanceDelta",
+        "type": "uint224"
+      }
+    ],
+    "name": "setRebalanceDelta",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "forwarder",
+        "type": "address"
+      }
+    ],
+    "name": "setTrustedForwarder",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1376,12 +1834,38 @@
   {
     "inputs": [
       {
+        "internalType": "uint16",
+        "name": "_newFee",
+        "type": "uint16"
+      }
+    ],
+    "name": "setWithdrawalFeeWithNft",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "contract BaseStrategy[20]",
         "name": "newQueue",
         "type": "address[20]"
       }
     ],
     "name": "setWithdrawalQueue",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_router",
+        "type": "address"
+      }
+    ],
+    "name": "setWormholeRouter",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1453,7 +1937,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "totalManagedAssets",
         "type": "uint256"
       }
     ],
@@ -1554,6 +2038,19 @@
   },
   {
     "inputs": [],
+    "name": "trustedForwarder",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "unpause",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -1622,6 +2119,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "versionRecipient",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -1643,7 +2153,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "shares",
         "type": "uint256"
       }
     ],
@@ -1664,6 +2174,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "withdrawalFeeWithNft",
+    "outputs": [
+      {
+        "internalType": "uint16",
+        "name": "",
+        "type": "uint16"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -1675,6 +2198,19 @@
     "outputs": [
       {
         "internalType": "contract BaseStrategy",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "wormholeRouter",
+    "outputs": [
+      {
+        "internalType": "address",
         "name": "",
         "type": "address"
       }

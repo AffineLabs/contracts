@@ -9,6 +9,7 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {Vault, ERC721} from "src/vaults/Vault.sol";
+import {VaultV2} from "src/vaults/VaultV2.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
@@ -33,13 +34,13 @@ contract MockNft is ERC721 {
 contract CommonVaultTest is TestPlus {
     using stdStorage for StdStorage;
 
-    Vault vault;
+    VaultV2 vault;
     ERC20 asset;
 
     function setUp() public virtual {
         asset = new MockERC20("Mock", "MT", 6);
 
-        vault = new Vault();
+        vault = new VaultV2();
         vault.initialize(governance, address(asset), "USD Earn", "usdEarn");
     }
 
@@ -251,14 +252,16 @@ contract CommonVaultTest is TestPlus {
         assertTrue(price2.num > price.num);
     }
 
-    /// @notice If nft address is set, you need one to deposit
+    /// @notice If needNftToDeposit is set, you need an nft to deposit
     function testNft() public {
         _giveAssets(address(this), 1e18);
         asset.approve(address(vault), type(uint256).max);
 
         MockNft nft = new MockNft("foo", "bar");
-        vm.prank(governance);
+        vm.startPrank(governance);
         vault.setAccessNft(nft);
+        vault.setNftProperties(true, false);
+        vm.stopPrank();
 
         vm.expectRevert("Caller has no access NFT");
         vault.deposit(1e18, address(this));
@@ -277,18 +280,18 @@ contract CommonVaultTest is TestPlus {
         vault.deposit(amountAsset, alice);
         vm.stopPrank();
 
-        // Fees set
-        vm.prank(governance);
-        vault.setWithdrawalFee(50);
-        vm.prank(governance);
-        vault.setWithdrawalFeeWithNft(10);
-
-        // Bob has nft and gets discount
         MockNft nft = new MockNft("foo", "bar");
-        vm.prank(governance);
-        vault.setAccessNft(nft);
         nft.mint(bob, 1);
 
+        // Fees set
+        vm.startPrank(governance);
+        vault.setWithdrawalFee(50);
+        vault.setWithdrawalFeeWithNft(10);
+        vault.setAccessNft(nft);
+        vault.setNftProperties(false, true);
+        vm.stopPrank();
+
+        // Bob has nft and gets discount
         changePrank(bob);
         _giveAssets(bob, amountAsset);
         asset.approve(address(vault), type(uint256).max);

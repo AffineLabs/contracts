@@ -641,19 +641,6 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "accessNft",
-    "outputs": [
-      {
-        "internalType": "contract ERC721",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "contract BaseStrategy",
@@ -1689,19 +1676,6 @@
   {
     "inputs": [
       {
-        "internalType": "contract ERC721",
-        "name": "_accessNft",
-        "type": "address"
-      }
-    ],
-    "name": "setAccessNft",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "contract BridgeEscrow",
         "name": "_escrow",
         "type": "address"
@@ -1809,19 +1783,6 @@
       }
     ],
     "name": "setWithdrawalFee",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint16",
-        "name": "_newFee",
-        "type": "uint16"
-      }
-    ],
-    "name": "setWithdrawalFeeWithNft",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -2150,19 +2111,6 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "withdrawalFeeWithNft",
-    "outputs": [
-      {
-        "internalType": "uint16",
-        "name": "",
-        "type": "uint16"
       }
     ],
     "stateMutability": "view",
