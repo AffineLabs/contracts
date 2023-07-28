@@ -70,20 +70,6 @@ contract CommonVaultTest is TestPlus {
         _vault.upgradeTo(address(impl2));
     }
 
-    /// @notice Test vault initialization.
-    function testInit() public {
-        vm.expectRevert();
-        vault.initialize(governance, address(asset), "USD Earn", "usdEarn");
-
-        assertEq(vault.name(), "USD Earn");
-        assertEq(vault.symbol(), "usdEarn");
-    }
-
-    // Adding this since this test contract is used as a strategy
-    function totalLockedValue() public view returns (uint256) {
-        return asset.balanceOf(address(this));
-    }
-
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
     event Withdraw(
         address indexed caller, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
@@ -214,11 +200,7 @@ contract CommonVaultTest is TestPlus {
 
         vm.stopPrank();
 
-        console.log("DEP withdraw....");
-
         testDepositWithdraw(1e18);
-
-        console.log("PAST DEP WITHDRAW");
 
         // Only the HARVESTER address can call pause or unpause
         string memory errString = string(
@@ -242,12 +224,11 @@ contract CommonVaultTest is TestPlus {
 
     /// @notice Test that view functions for detailed price of vault token works.
     function testDetailedPrice() public {
-        // This function should work even if there is nothing in the vault
         Vault.Number memory price = vault.detailedPrice();
 
         _giveAssets(address(vault), 2e18);
 
-        // initial price is $100, but if we increase tvl the price increases
+        // If we increase tvl the price increases
         Vault.Number memory price2 = vault.detailedPrice();
         assertTrue(price2.num > price.num);
     }

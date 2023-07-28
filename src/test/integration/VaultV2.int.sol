@@ -2,27 +2,50 @@
 pragma solidity =0.8.16;
 
 import {CommonVaultTest, ERC20} from "src/test/CommonVault.t.sol";
-import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
-import {L2VaultV2} from "src/vaults/cross-chain-vault/L2VaultV2.sol";
 import {Vault} from "src/vaults/Vault.sol";
 import {VaultV2} from "src/vaults/VaultV2.sol";
 
 import "forge-std/console.sol";
 
-contract L2VaultV2_IntegrationTest is CommonVaultTest {
+abstract contract VaultV2_IntegrationTest is CommonVaultTest {
+    function _fork() internal virtual {}
+
+    function _vault() internal virtual returns (address) {}
+
     function setUp() public virtual override {
-        vm.createSelectFork("polygon", POLYGON_FORK_BLOCK);
+        _fork();
 
-        L2Vault impl = new L2VaultV2();
-        vault = VaultV2(0x829363736a5A9080e05549Db6d1271f070a7e224);
+        VaultV2 impl = new VaultV2();
+        vault = VaultV2(_vault());
 
-        governance = 0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0;
+        governance = vault.governance();
         vm.prank(governance);
         vault.upgradeTo(address(impl));
         asset = ERC20(vault.asset());
     }
 
     function _giveAssets(address user, uint256 assets) internal override {
-        deal(address(asset), address(user), assets);
+        uint256 currBal = asset.balanceOf(user);
+        deal(address(asset), address(user), currBal + assets);
+    }
+}
+
+contract SthEthLevPolygon_IntegrationTest is VaultV2_IntegrationTest {
+    function _fork() internal override {
+        vm.createSelectFork("polygon", 45_620_526);
+    }
+
+    function _vault() internal override returns (address) {
+        return 0xa92B1D196F0Df5F17215698f5de99eED26B659bF;
+    }
+}
+
+contract StEthLev_IntegrationTest is VaultV2_IntegrationTest {
+    function _fork() internal override {
+        vm.createSelectFork("ethereum", 17_791_940);
+    }
+
+    function _vault() internal override returns (address) {
+        return 0x1196B60c9ceFBF02C9a3960883213f47257BecdB;
     }
 }
