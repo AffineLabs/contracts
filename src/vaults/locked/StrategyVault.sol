@@ -130,8 +130,6 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
     }
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
-        _checkNft(receiver);
-
         require(shares > 0, "Vault: zero shares");
         uint256 tvl = totalAssets();
         uint256 allowedAssets = tvl >= tvlCap ? 0 : tvlCap - tvl;
@@ -259,13 +257,8 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
 
     /// @dev  Return amount of `asset` to be given to user after applying withdrawal fee
     function _getWithdrawalFee(uint256 assets, address owner) internal view virtual returns (uint256) {
-        uint256 feeBps;
-        if (address(accessNft) != address(0) && accessNft.balanceOf(owner) > 0) {
-            feeBps = withdrawalFeeWithNft;
-        } else {
-            feeBps = withdrawalFee;
-        }
-        return assets.mulDiv(feeBps, MAX_BPS, MathUpgradeable.Rounding.Up);
+        owner; // unused
+        return assets.mulDiv(withdrawalFee, MAX_BPS, MathUpgradeable.Rounding.Up);
     }
     /*//////////////////////////////////////////////////////////////
                            CAPITAL MANAGEMENT
@@ -341,21 +334,5 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
 
     function detailedTotalSupply() external view override returns (Number memory supply) {
         supply = Number({num: totalSupply(), decimals: decimals()});
-    }
-    /*//////////////////////////////////////////////////////////////
-                              NFT STORAGE
-    //////////////////////////////////////////////////////////////*/
-
-    ERC721 public accessNft;
-    uint16 public withdrawalFeeWithNft;
-
-    function setWithdrawalFeeWithNft(uint16 _newFee) external onlyGovernance {
-        withdrawalFeeWithNft = _newFee;
-    }
-
-    function _checkNft(address owner) internal view {
-        if (address(accessNft) != address(0)) {
-            require(accessNft.balanceOf(owner) > 0, "Caller has no access NFT");
-        }
     }
 }
