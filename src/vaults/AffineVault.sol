@@ -339,7 +339,7 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable, Multicallabl
      * @param strategyList The trusted strategies to harvest.
      * @dev Will always revert if profit from last harvest has not finished unlocking.
      */
-    function harvest(Strategy[] calldata strategyList) external onlyRole(HARVESTER) {
+    function harvest(Strategy[] calldata strategyList) external virtual onlyRole(HARVESTER) {
         // Profit must not be unlocking
         require(block.timestamp >= lastHarvest + LOCK_INTERVAL, "BV: profit unlocking");
 
@@ -352,7 +352,6 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable, Multicallabl
         // Used to store the total profit accrued by the strategies.
         uint256 totalProfitAccrued;
 
-        // Will revert if any of the specified strategies are untrusted.
         for (uint256 i = 0; i < strategyList.length; i = uncheckedInc(i)) {
             // Get the strategy at the current index.
             Strategy strategy = strategyList[i];
