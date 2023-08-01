@@ -391,7 +391,7 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
      * @param strategyList The trusted strategies to harvest.
      * @dev Will always revert if profit from last harvest has not finished unlocking.
      */
-    function harvest(Strategy[] calldata strategyList) external onlyRole(HARVESTER) {
+    function harvest(Strategy[] calldata strategyList) external virtual onlyRole(HARVESTER) {
         // Profit must not be unlocking
         require(block.timestamp >= lastHarvest + LOCK_INTERVAL, "BV: profit unlocking");
 
