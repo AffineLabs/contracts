@@ -95,7 +95,6 @@ contract VaultV2 is Vault, NftGate, HarvestStorage {
         emit Harvest(msg.sender, strategyList);
     }
 
-
     function withdrawPerformanceFee() external virtual onlyGovernance {
         uint256 fee = uint256(accumulatedPerformanceFee);
         _liquidate(fee);

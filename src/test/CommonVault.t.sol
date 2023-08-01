@@ -58,7 +58,7 @@ contract CommonVaultTest is TestPlus {
     function _harvest(BaseStrategy strat) internal virtual {
         vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
 
-        BaseStrategy[] memory strategyList  = new BaseStrategy[](1);
+        BaseStrategy[] memory strategyList = new BaseStrategy[](1);
         strategyList[0] = strat;
         vm.prank(governance);
         vault.harvest(strategyList);
@@ -316,15 +316,14 @@ contract CommonVaultTest is TestPlus {
 
         // get a strategy
         BaseStrategy strat = _getStrategy();
-    
+
         vm.prank(governance);
         vault.setPerformanceFeeBps(1000); // 10%
-        uint oldPerfFee = uint(vault.accumulatedPerformanceFee());
+        uint256 oldPerfFee = uint256(vault.accumulatedPerformanceFee());
 
         // Give money to strategy
-        uint oldTvl = vault.totalAssets();
-        uint assetsGained = oldTvl > 0 ? oldTvl : 1e18;
-        console.log("oldTvl, assetsGained: %s, %s");
+        uint256 oldTvl = vault.totalAssets();
+        uint256 assetsGained = oldTvl > 0 ? oldTvl : 100 * 10 ** (asset.decimals());
         _giveAssets(address(strat), assetsGained);
 
         // We got the correct performance fee
@@ -332,22 +331,23 @@ contract CommonVaultTest is TestPlus {
         _harvest(strat);
 
         // Price went up by the correct amount
-        uint perfFee = assetsGained / 10;
-        assertApproxEqAbs(vault.totalAssets(), oldTvl + assetsGained - perfFee, 10);
+        uint256 perfFee = assetsGained / 10;
+        // Beefy Strategy might increase increase in tvl a bit after warping forward
+        assertApproxEqRel(vault.totalAssets(), oldTvl + assetsGained - perfFee, 0.005e18);
 
         // Performance fee increased
-        assertApproxEqAbs(uint(vault.accumulatedPerformanceFee()), oldPerfFee + perfFee, 10);
+        assertApproxEqRel(uint256(vault.accumulatedPerformanceFee()), oldPerfFee + perfFee, 0.005e18);
 
-        uint oldGovBal = asset.balanceOf(vault.governance());
+        uint256 oldGovBal = asset.balanceOf(vault.governance());
         oldPerfFee = vault.accumulatedPerformanceFee();
 
         console.log("old: %s, %s", oldGovBal, oldPerfFee);
-        
+
         vm.prank(vault.governance());
         vault.withdrawPerformanceFee();
 
-        uint newGovBal = asset.balanceOf(vault.governance());
-        uint newPerfFee = vault.accumulatedPerformanceFee();
+        uint256 newGovBal = asset.balanceOf(vault.governance());
+        uint256 newPerfFee = vault.accumulatedPerformanceFee();
         console.log("new: %s, %s", newGovBal, newPerfFee);
         assertTrue(newGovBal > oldGovBal && newPerfFee < oldPerfFee);
         assertEq(oldGovBal + oldPerfFee - newPerfFee, newGovBal);

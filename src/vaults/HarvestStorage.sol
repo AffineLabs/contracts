@@ -13,5 +13,4 @@ abstract contract HarvestStorage is AffineGovernable {
     }
 
     event PerformanceFeeWithdrawn(uint256 amount);
-
 }

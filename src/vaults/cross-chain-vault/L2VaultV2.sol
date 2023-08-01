@@ -11,7 +11,6 @@ import {HarvestStorage} from "src/vaults/HarvestStorage.sol";
 import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
 
-
 contract L2VaultV2 is L2Vault, NftGate, HarvestStorage {
     using SafeTransferLib for ERC20;
     using MathUpgradeable for uint256;

@@ -183,7 +183,7 @@ contract BaseStrategyVault is AffineGovernable, AccessControlUpgradeable, Multic
      */
     event Harvest(address indexed user);
 
-    function _updateTVL() internal {
+    function _updateTVL() internal virtual {
         // Get the strategy's previous and current balance.
         uint256 prevBalance = strategyTVL;
         uint256 currentBalance = strategy.totalLockedValue();
