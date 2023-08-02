@@ -18,6 +18,7 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {DetailedShare} from "src/utils/Detailed.sol";
+import {VaultErrors} from "src/libs/VaultErrors.sol";
 
 contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare {
     using SafeTransferLib for ERC20;
@@ -132,7 +133,7 @@ contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgr
     }
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
-        require(shares > 0, "Vault: zero shares");
+        if (shares == 0) revert VaultErrors.ZeroShares();
         _mint(receiver, shares);
         _asset.safeTransferFrom(caller, address(this), assets);
         emit Deposit(caller, receiver, assets, shares);

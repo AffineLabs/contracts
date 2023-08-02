@@ -150,7 +150,6 @@ contract L2Vault is
     /// @notice Minimal amount needed to enqueue a request to ewq, number is in `asset`.
     uint256 public ewqMinAssets;
 
-
     function setManagementFee(uint256 feeBps) external onlyGovernance {
         managementFee = feeBps;
     }
@@ -196,7 +195,7 @@ contract L2Vault is
 
     /// @dev Deposit helper used in deposit/mint.
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual {
-        if (shares ==  0) revert VaultErrors.ZeroShares();
+        if (shares == 0) revert VaultErrors.ZeroShares();
 
         _asset.safeTransferFrom(caller, address(this), assets);
         _mint(receiver, shares);
@@ -222,6 +221,7 @@ contract L2Vault is
      * @notice Update the address of the emergency withdrawal queue.
      * @param _ewq The new queue.
      */
+
     function setEwq(EmergencyWithdrawalQueue _ewq) external onlyGovernance {
         emergencyWithdrawalQueue = _ewq;
     }
@@ -543,7 +543,7 @@ contract L2Vault is
      * @param amount The amount of assets.
      */
     function afterReceive(uint256 amount) external {
-        if(_msgSender() != address(bridgeEscrow)) revert VaultErrors.OnlyEscrow();
+        if (_msgSender() != address(bridgeEscrow)) revert VaultErrors.OnlyEscrow();
         l1TotalLockedValue -= amount;
         canRequestFromL1 = true;
     }

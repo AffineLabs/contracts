@@ -11,6 +11,7 @@ import {L2WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L2Wormhole
 import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
 import {L2BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/L2BridgeEscrow.sol";
 import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/EmergencyWithdrawalQueue.sol";
+import {VaultErrors} from "src/libs/VaultErrors.sol";
 
 import {Deploy} from "./Deploy.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
@@ -132,7 +133,7 @@ contract L2VaultTest is TestPlus {
         asset.approve(address(vault), type(uint256).max);
 
         // If we're minting zero shares we revert
-        vm.expectRevert("Vault: zero shares");
+        vm.expectRevert(VaultErrors.ZeroShares.selector);
         vault.deposit(0, user);
 
         vault.deposit(100, user);
@@ -256,7 +257,7 @@ contract L2VaultTest is TestPlus {
         vault.setMockRebalanceDelta(1e6);
 
         vm.prank(alice);
-        vm.expectRevert("L2Vault: only router");
+        vm.expectRevert(VaultErrors.OnlyWormholeRouter.selector);
         vault.receiveTVL(0, false);
 
         // If L1 has received our last transfer, we can transfer again

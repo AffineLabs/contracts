@@ -16,13 +16,12 @@ import {WormholeRouter} from "./wormhole/WormholeRouter.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
 import {VaultErrors} from "src/libs/VaultErrors.sol";
 
-
 /**
  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
  * strategy liquidation.
  */
-abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multicallable {
+abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable {
     using SafeTransferLib for ERC20;
 
     /*//////////////////////////////////////////////////////////////
@@ -296,7 +295,7 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
      */
     event StrategyWithdrawal(Strategy indexed strategy, uint256 assetsRequested, uint256 assetsReceived);
 
-    function depositIntoStrategy(Strategy strategy, uint assets) external virtual onlyRole(HARVESTER) {
+    function depositIntoStrategy(Strategy strategy, uint256 assets) external virtual onlyRole(HARVESTER) {
         _depositIntoStrategy(strategy, assets);
     }
 
@@ -333,8 +332,7 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
         emit StrategyDeposit(strategy, assets);
     }
 
-
-    function withdrawFromStrategy(Strategy strategy, uint assets) external virtual onlyRole(HARVESTER) {
+    function withdrawFromStrategy(Strategy strategy, uint256 assets) external virtual onlyRole(HARVESTER) {
         _withdrawFromStrategy(strategy, assets);
     }
 
@@ -362,8 +360,6 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
         emit StrategyWithdrawal({strategy: strategy, assetsRequested: assets, assetsReceived: amountWithdrawn});
         return amountWithdrawn;
     }
-
-
 
     /// @dev A small wrapper around divest(). We try-catch to make sure that a bad strategy does not pause withdrawals.
     function _divest(Strategy strategy, uint256 assets) internal returns (uint256) {

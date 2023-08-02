@@ -8,7 +8,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {Vault, ERC721} from "src/vaults/Vault.sol";
+import {Vault, ERC721, VaultErrors} from "src/vaults/Vault.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
@@ -161,7 +161,7 @@ contract VaultTest is TestPlus {
         asset.approve(address(vault), type(uint256).max);
 
         // If we're minting zero shares we revert
-        vm.expectRevert("Vault: zero shares");
+        vm.expectRevert(VaultErrors.ZeroShares.selector);
         vault.deposit(0, user);
 
         vault.deposit(100, user);

@@ -10,6 +10,7 @@ import {NftGate} from "src/vaults/NftGate.sol";
 import {HarvestStorage} from "src/vaults/HarvestStorage.sol";
 import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
+import {VaultErrors} from "src/libs/VaultErrors.sol";
 
 contract VaultV2 is Vault, NftGate, HarvestStorage {
     using SafeTransferLib for ERC20;
@@ -17,7 +18,7 @@ contract VaultV2 is Vault, NftGate, HarvestStorage {
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
         _checkNft(receiver);
-        require(shares > 0, "Vault: zero shares");
+        if (shares == 0) revert VaultErrors.ZeroShares();
         _mint(receiver, shares);
         _asset.safeTransferFrom(caller, address(this), assets);
         emit Deposit(caller, receiver, assets, shares);

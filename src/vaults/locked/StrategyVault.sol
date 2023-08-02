@@ -19,6 +19,7 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {BaseStrategyVault} from "src/vaults/locked/BaseStrategyVault.sol";
 import {DetailedShare} from "src/utils/Detailed.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
+import {VaultErrors} from "src/libs/VaultErrors.sol";
 
 contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare {
     using SafeTransferLib for ERC20;
@@ -130,7 +131,7 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
     }
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
-        require(shares > 0, "Vault: zero shares");
+        if (shares == 0) revert VaultErrors.ZeroShares();
         uint256 tvl = totalAssets();
         uint256 allowedAssets = tvl >= tvlCap ? 0 : tvlCap - tvl;
         assets = Math.min(allowedAssets, assets);

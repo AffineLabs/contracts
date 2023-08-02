@@ -21,7 +21,7 @@ contract L2VaultV2 is L2Vault, NftGate, HarvestStorage, RebalanceStorage {
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
         _checkNft(receiver);
 
-        if (shares ==  0) revert VaultErrors.ZeroShares();
+        if (shares == 0) revert VaultErrors.ZeroShares();
         _mint(receiver, shares);
         _asset.safeTransferFrom(caller, address(this), assets);
         emit Deposit(caller, receiver, assets, shares);

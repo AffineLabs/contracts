@@ -1,0 +1,32 @@
+[
+  {
+    "inputs": [],
+    "name": "OnlyEscrow",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OnlyWormholeRouter",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ProfitUnlocking",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "SharesExceedBalance",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "TooManyStrategyBps",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroShares",
+    "type": "error"
+  }
+]

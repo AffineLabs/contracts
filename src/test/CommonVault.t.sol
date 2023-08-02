@@ -15,6 +15,7 @@ import {MockERC20} from "./mocks/MockERC20.sol";
 import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
 import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
 import {TestStrategy} from "./mocks/TestStrategy.sol";
+import {VaultErrors} from "src/libs/VaultErrors.sol";
 
 import "forge-std/console.sol";
 
@@ -162,7 +163,7 @@ contract CommonVaultTest is TestPlus {
         asset.approve(address(vault), type(uint256).max);
 
         // If we're minting zero shares we revert
-        vm.expectRevert("Vault: zero shares");
+        vm.expectRevert(VaultErrors.ZeroShares.selector);
         vault.deposit(0, user);
 
         vault.deposit(100, user);

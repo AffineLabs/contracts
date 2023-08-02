@@ -10,16 +10,14 @@ import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
 
 contract RebalanceModule {
-
     uint256 constant MAX_BPS = 10_000;
     uint8 constant MAX_STRATEGIES = 20;
 
-     /**
+    /**
      * @notice Emitted when we do a strategy rebalance, i.e. when we make the strategy tvls match their tvl bps
      * @param caller The caller
      */
     event Rebalance(address indexed caller);
-
 
     function rebalance() external {
         AffineVault vault = AffineVault(msg.sender);
@@ -37,11 +35,11 @@ contract RebalanceModule {
                 break;
             }
 
-            (, uint16 tvlBps, ) = vault.strategies(strategy);
+            (, uint16 tvlBps,) = vault.strategies(strategy);
             uint256 idealStrategyTVL = (tvl * tvlBps) / MAX_BPS;
             uint256 currStrategyTVL = strategy.totalLockedValue();
             if (idealStrategyTVL < currStrategyTVL) {
-               vault.withdrawFromStrategy(strategy, currStrategyTVL - idealStrategyTVL);
+                vault.withdrawFromStrategy(strategy, currStrategyTVL - idealStrategyTVL);
             }
             if (idealStrategyTVL > currStrategyTVL) {
                 amountsToInvest[i] = idealStrategyTVL - currStrategyTVL;
