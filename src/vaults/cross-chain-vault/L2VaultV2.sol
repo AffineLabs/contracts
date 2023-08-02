@@ -11,13 +11,17 @@ import {HarvestStorage} from "src/vaults/HarvestStorage.sol";
 import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
 
-contract L2VaultV2 is L2Vault, NftGate, HarvestStorage {
+import {VaultErrors} from "src/libs/VaultErrors.sol";
+import {RebalanceStorage} from "src/vaults/cross-chain-vault/RebalanceStorage.sol";
+
+contract L2VaultV2 is L2Vault, NftGate, HarvestStorage, RebalanceStorage {
     using SafeTransferLib for ERC20;
     using MathUpgradeable for uint256;
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
         _checkNft(receiver);
-        require(shares > 0, "Vault: zero shares");
+
+        if (shares ==  0) revert VaultErrors.ZeroShares();
         _mint(receiver, shares);
         _asset.safeTransferFrom(caller, address(this), assets);
         emit Deposit(caller, receiver, assets, shares);
@@ -39,7 +43,7 @@ contract L2VaultV2 is L2Vault, NftGate, HarvestStorage {
 
     function harvest(Strategy[] calldata strategyList) external virtual override onlyRole(HARVESTER) {
         // Profit must not be unlocking
-        require(block.timestamp >= lastHarvest + LOCK_INTERVAL, "BV: profit unlocking");
+        if (block.timestamp < lastHarvest + LOCK_INTERVAL) revert VaultErrors.ProfitUnlocking();
 
         // Get the Vault's current total strategy holdings.
         uint256 oldTotalStrategyHoldings = totalStrategyHoldings;
@@ -108,5 +112,9 @@ contract L2VaultV2 is L2Vault, NftGate, HarvestStorage {
 
         _asset.safeTransfer(governance, fee);
         emit PerformanceFeeWithdrawn(fee);
+    }
+
+    function rebalance() external virtual override onlyRole(HARVESTER) {
+        rebalanceModule.rebalance();
     }
 }

@@ -14,6 +14,8 @@ import {AffineGovernable} from "src/utils/AffineGovernable.sol";
 import {BridgeEscrow} from "./escrow/BridgeEscrow.sol";
 import {WormholeRouter} from "./wormhole/WormholeRouter.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
+import {VaultErrors} from "src/libs/VaultErrors.sol";
+
 
 /**
  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding
@@ -136,9 +138,6 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
      * @param newQueue The new withdrawal queue.
      */
     function setWithdrawalQueue(Strategy[MAX_STRATEGIES] calldata newQueue) external onlyGovernance {
-        // Maintain queue size
-        require(newQueue.length == MAX_STRATEGIES, "BV: bad qu size");
-
         // Replace the withdrawal queue.
         withdrawalQueue = newQueue;
 
@@ -193,7 +192,7 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
     /// @notice A helper function for increasing `totalBps`. Used when adding strategies or updating strategy allocs
     function _increaseTVLBps(uint256 tvlBps) internal {
         uint256 newTotalBps = totalBps + tvlBps;
-        require(newTotalBps <= MAX_BPS, "BV: too many bps");
+        if (newTotalBps > MAX_BPS) revert VaultErrors.TooManyStrategyBps();
         totalBps = newTotalBps;
     }
 
@@ -297,6 +296,10 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
      */
     event StrategyWithdrawal(Strategy indexed strategy, uint256 assetsRequested, uint256 assetsReceived);
 
+    function depositIntoStrategy(Strategy strategy, uint assets) external virtual onlyRole(HARVESTER) {
+        _depositIntoStrategy(strategy, assets);
+    }
+
     /// @notice Deposit `assetAmount` amount of `asset` into strategies according to each strategy's `tvlBps`.
     function _depositIntoStrategies(uint256 assetAmount) internal {
         // All non-zero strategies are active
@@ -330,6 +333,11 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
         emit StrategyDeposit(strategy, assets);
     }
 
+
+    function withdrawFromStrategy(Strategy strategy, uint assets) external virtual onlyRole(HARVESTER) {
+        _withdrawFromStrategy(strategy, assets);
+    }
+
     /**
      * @notice Withdraw a specific amount of underlying tokens from a strategy.
      * @dev This is a "best effort" withdrawal. It could potentially withdraw nothing.
@@ -354,6 +362,8 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
         emit StrategyWithdrawal({strategy: strategy, assetsRequested: assets, assetsReceived: amountWithdrawn});
         return amountWithdrawn;
     }
+
+
 
     /// @dev A small wrapper around divest(). We try-catch to make sure that a bad strategy does not pause withdrawals.
     function _divest(Strategy strategy, uint256 assets) internal returns (uint256) {
@@ -393,7 +403,7 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
      */
     function harvest(Strategy[] calldata strategyList) external virtual onlyRole(HARVESTER) {
         // Profit must not be unlocking
-        require(block.timestamp >= lastHarvest + LOCK_INTERVAL, "BV: profit unlocking");
+        if (block.timestamp < lastHarvest + LOCK_INTERVAL) revert VaultErrors.ProfitUnlocking();
 
         // Get the Vault's current total strategy holdings.
         uint256 oldTotalStrategyHoldings = totalStrategyHoldings;
@@ -520,7 +530,7 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable, Multi
     event Rebalance(address indexed caller);
 
     /// @notice  Rebalance strategies according to given tvl bps
-    function rebalance() external onlyRole(HARVESTER) {
+    function rebalance() external virtual onlyRole(HARVESTER) {
         uint256 tvl = vaultTVL();
 
         // Loop through all strategies. Divesting from those whose tvl is too high,

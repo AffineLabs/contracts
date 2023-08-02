@@ -245,6 +245,11 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable, Multicallabl
      */
     event StrategyWithdrawal(Strategy indexed strategy, uint256 assetsRequested, uint256 assetsReceived);
 
+    function depositIntoStrategy(Strategy strategy, uint assets) external virtual onlyRole(HARVESTER) {
+        _depositIntoStrategy(strategy, assets);
+    }
+
+
     /// @notice Deposit `assetAmount` amount of `asset` into strategies according to each strategy's `tvlBps`.
     function _depositIntoStrategies(uint256 assetAmount) internal {
         // All non-zero strategies are active
@@ -277,6 +282,12 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable, Multicallabl
         strategy.invest(assets);
         emit StrategyDeposit(strategy, assets);
     }
+
+
+    function withdrawFromStrategy(Strategy strategy, uint assets) external virtual onlyRole(HARVESTER) {
+        _withdrawFromStrategy(strategy, assets);
+    }
+
 
     /**
      * @notice Withdraw a specific amount of underlying tokens from a strategy.
