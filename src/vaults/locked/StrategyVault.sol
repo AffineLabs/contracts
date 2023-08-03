@@ -161,7 +161,7 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
 
         // Slippage during liquidation means we might get less than `assets` amount of `_asset`
         assets = Math.min(_asset.balanceOf(address(this)), assets);
-        uint256 assetsFee = _getWithdrawalFee(assets, _msgSender());
+        uint256 assetsFee = _getWithdrawalFee(assets, owner);
         uint256 assetsToUser = assets - assetsFee;
 
         // Burn shares and give user equivalent value in `_asset` (minus withdrawal fees)
