@@ -25,12 +25,8 @@ contract VaultV2 is Vault, NftGate, HarvestStorage {
     }
 
     function _getWithdrawalFee(uint256 assets, address owner) internal view virtual override returns (uint256) {
-        uint256 feeBps;
-        if (nftDiscountActive && accessNft.balanceOf(owner) > 0) {
-            feeBps = withdrawalFeeWithNft;
-        } else {
-            feeBps = withdrawalFee;
-        }
+        uint256 feeBps = withdrawalFee;
+        if (nftDiscountActive && accessNft.balanceOf(owner) > 0) feeBps = withdrawalFeeWithNft;
         return assets.mulDiv(feeBps, MAX_BPS, MathUpgradeable.Rounding.Up);
     }
 

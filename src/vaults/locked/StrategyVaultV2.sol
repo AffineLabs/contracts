@@ -22,15 +22,15 @@ contract StrategyVaultV2 is StrategyVault, NftGate, HarvestStorage {
         emit Deposit(caller, receiver, assets, shares);
     }
 
-        function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
+    function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
         internal
         virtual
         override
     {
         // If vault is illiquid, lock shares
         if (!epochEnded) {
-            uint govShares = _getWithdrawalFee(shares, owner);
-            uint userShares = shares - govShares;
+            uint256 govShares = _getWithdrawalFee(shares, owner);
+            uint256 userShares = shares - govShares;
             _transfer({from: owner, to: address(debtEscrow), amount: userShares});
             _transfer({from: owner, to: governance, amount: govShares});
             debtEscrow.registerWithdrawalRequest(owner, userShares);
@@ -54,14 +54,9 @@ contract StrategyVaultV2 is StrategyVault, NftGate, HarvestStorage {
         _asset.safeTransfer(governance, assetsFee);
     }
 
-
     function _getWithdrawalFee(uint256 assets, address owner) internal view virtual override returns (uint256) {
-        uint256 feeBps;
-        if (address(accessNft) != address(0) && accessNft.balanceOf(owner) > 0) {
-            feeBps = withdrawalFeeWithNft;
-        } else {
-            feeBps = withdrawalFee;
-        }
+        uint256 feeBps = withdrawalFee;
+        if (nftDiscountActive && accessNft.balanceOf(owner) > 0) feeBps = withdrawalFeeWithNft;
         return assets.mulDiv(feeBps, MAX_BPS, MathUpgradeable.Rounding.Up);
     }
 

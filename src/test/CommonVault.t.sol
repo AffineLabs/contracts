@@ -192,7 +192,7 @@ contract CommonVaultTest is TestPlus {
     }
 
     /// @notice Test that goveranance can modify management fees.
-    function testSettingFees() public {
+    function testCanSetManagementAndWithdrawalFees() public {
         changePrank(governance);
         vault.setManagementFee(300);
         assertEq(vault.managementFee(), 300);
@@ -222,7 +222,7 @@ contract CommonVaultTest is TestPlus {
 
         testDepositWithdraw(1e18);
 
-        // Only the HARVESTER address can call pause or unpause
+        // Only those with GUARDIAN_ROLE address can call pause or unpause
         string memory errString = string(
             abi.encodePacked(
                 "AccessControl: account ",
@@ -251,6 +251,8 @@ contract CommonVaultTest is TestPlus {
         // If we increase tvl the price increases
         Vault.Number memory price2 = vault.detailedPrice();
         assertTrue(price2.num > price.num);
+        // Price is exactly one share's worth of assets
+        assertEq(price2.num, vault.convertToAssets(10 ** vault.decimals()));
     }
 
     /// @notice If needNftToDeposit is set, you need an nft to deposit

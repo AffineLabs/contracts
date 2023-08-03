@@ -319,7 +319,7 @@ contract SVaultTest is TestPlus {
     }
 
     /// @notice Test that goveranance can modify management fees.
-    function testSettingFees() public {
+    function testCanSetManagementAndWithdrawalFees() public {
         changePrank(governance);
         vault.setManagementFee(300);
         assertEq(vault.managementFee(), 300);

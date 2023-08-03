@@ -28,12 +28,8 @@ contract L2VaultV2 is L2Vault, NftGate, HarvestStorage, RebalanceStorage {
     }
 
     function _getWithdrawalFee(uint256 assets, address owner) internal view virtual override returns (uint256) {
-        uint256 feeBps;
-        if (nftDiscountActive && accessNft.balanceOf(owner) > 0) {
-            feeBps = withdrawalFeeWithNft;
-        } else {
-            feeBps = withdrawalFee;
-        }
+        uint256 feeBps = withdrawalFee;
+        if (nftDiscountActive && accessNft.balanceOf(owner) > 0) feeBps = withdrawalFeeWithNft;
 
         uint256 fee = assets.mulDiv(feeBps, MAX_BPS, MathUpgradeable.Rounding.Up);
         if (_msgSender() == address(emergencyWithdrawalQueue)) fee = MathUpgradeable.max(fee, ewqMinFee);
