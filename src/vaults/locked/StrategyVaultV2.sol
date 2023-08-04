@@ -22,38 +22,6 @@ contract StrategyVaultV2 is StrategyVault, NftGate, HarvestStorage {
         emit Deposit(caller, receiver, assets, shares);
     }
 
-    function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
-        internal
-        virtual
-        override
-    {
-        // If vault is illiquid, lock shares
-        if (!epochEnded) {
-            uint256 govShares = _getWithdrawalFee(shares, owner);
-            uint256 userShares = shares - govShares;
-            _transfer({from: owner, to: address(debtEscrow), amount: userShares});
-            _transfer({from: owner, to: governance, amount: govShares});
-            debtEscrow.registerWithdrawalRequest(owner, userShares);
-            emit DebtRegistration(caller, receiver, owner, userShares);
-            return;
-        }
-
-        _withdrawFromStrategy(assets);
-
-        // Slippage during liquidation means we might get less than `assets` amount of `_asset`
-        assets = MathUpgradeable.min(_asset.balanceOf(address(this)), assets);
-        uint256 assetsFee = _getWithdrawalFee(assets, owner);
-        uint256 assetsToUser = assets - assetsFee;
-
-        // Burn shares and give user equivalent value in `_asset` (minus withdrawal fees)
-        if (caller != owner) _spendAllowance(owner, caller, shares);
-        _burn(owner, shares);
-        emit Withdraw(caller, receiver, owner, assets, shares);
-
-        _asset.safeTransfer(receiver, assetsToUser);
-        _asset.safeTransfer(governance, assetsFee);
-    }
-
     function _getWithdrawalFee(uint256 assets, address owner) internal view virtual override returns (uint256) {
         uint256 feeBps = withdrawalFee;
         if (nftDiscountActive && accessNft.balanceOf(owner) > 0) feeBps = withdrawalFeeWithNft;
