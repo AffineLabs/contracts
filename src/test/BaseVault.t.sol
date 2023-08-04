@@ -159,7 +159,7 @@ abstract contract CommonVaultTestSuite is TestPlus {
         assertTrue(newStrategy1.balanceOfAsset() == 0);
     }
 
-    /// @notice Test internal rebalanceing of vault.
+    /// @notice Test internal rebalancing of vault.
     function testRebalance() public {
         BaseStrategy strat1 = new TestStrategy(AffineVault(address(vault)));
         BaseStrategy strat2 = new TestStrategy(AffineVault(address(vault)));

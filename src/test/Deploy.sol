@@ -21,7 +21,7 @@ import {Create3Deployer} from "./Create3Deployer.sol";
 import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
-import {MockL2Vault, MockL1Vault} from "./mocks/index.sol";
+import {MockL2Vault, MockL1Vault, MockL2VaultV2} from "./mocks/index.sol";
 
 contract Deploy is Test {
     address governance = makeAddr("governance");
@@ -34,6 +34,44 @@ contract Deploy is Test {
 
         MockERC20 asset = new MockERC20("Mock", "MT", 6);
         vault = new MockL2Vault();
+
+        // Deploy helper contracts (escrow and router)
+        L2BridgeEscrow escrow = L2BridgeEscrow(create3.getDeployed(escrowSalt));
+        L2WormholeRouter router = L2WormholeRouter(create3.getDeployed(routerSalt));
+        EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(vault);
+
+        vault.initialize(
+            governance, // governance
+            asset, // asset
+            address(router),
+            escrow,
+            emergencyWithdrawalQueue,
+            address(0), // forwarder
+            [1, 1], // layer ratios
+            [uint256(0), uint256(200)], // withdrawal and AUM fees
+            [uint256(1_000_000), uint256(100_000)]
+        );
+
+        create3.deploy(escrowSalt, abi.encodePacked(type(L2BridgeEscrow).creationCode, abi.encode(address(vault))), 0);
+        create3.deploy(
+            routerSalt,
+            abi.encodePacked(
+                type(L2WormholeRouter).creationCode,
+                abi.encode(
+                    vault,
+                    IWormhole(0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7),
+                    uint16(2) // ethereum wormhole id is 2
+                )
+            ),
+            0
+        );
+    }
+
+    function deployL2VaultV2() internal returns (MockL2VaultV2 vault) {
+        Create3Deployer create3 = new Create3Deployer();
+
+        MockERC20 asset = new MockERC20("Mock", "MT", 6);
+        vault = new MockL2VaultV2();
 
         // Deploy helper contracts (escrow and router)
         L2BridgeEscrow escrow = L2BridgeEscrow(create3.getDeployed(escrowSalt));

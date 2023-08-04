@@ -4,8 +4,8 @@
     "inputs": [
       {
         "indexed": true,
-        "internalType": "address",
-        "name": "caller",
+        "internalType": "contract AffineVault",
+        "name": "vault",
         "type": "address"
       }
     ],

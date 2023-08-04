@@ -15,9 +15,9 @@ contract RebalanceModule {
 
     /**
      * @notice Emitted when we do a strategy rebalance, i.e. when we make the strategy tvls match their tvl bps
-     * @param caller The caller
+     * @param vault The vault that called the rebalance.
      */
-    event Rebalance(address indexed caller);
+    event Rebalance(AffineVault indexed vault);
 
     function rebalance() external {
         AffineVault vault = AffineVault(msg.sender);
@@ -57,7 +57,7 @@ contract RebalanceModule {
             // when divesting from strategies
             // NOTE: Strategies closer to the start of the queue are more likely to get the exact
             // amount of money needed
-            amountToInvest = Math.min(amountToInvest, _asset.balanceOf(address(this)));
+            amountToInvest = Math.min(amountToInvest, _asset.balanceOf(address(vault)));
             if (amountToInvest == 0) {
                 break;
             }
@@ -65,6 +65,6 @@ contract RebalanceModule {
             vault.depositIntoStrategy(vault.withdrawalQueue(i), amountToInvest);
         }
 
-        emit Rebalance(msg.sender);
+        emit Rebalance(vault);
     }
 }
