@@ -2,6 +2,7 @@
 pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {ERC721} from "solmate/src/tokens/ERC721.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
@@ -9,7 +10,7 @@ import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {MathUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
 import {BaseRelayRecipient} from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
@@ -19,6 +20,7 @@ import {DetailedShare} from "src/utils/Detailed.sol";
 import {L2WormholeRouter} from "./wormhole/L2WormholeRouter.sol";
 import {IERC4626} from "src/interfaces/IERC4626.sol";
 import {EmergencyWithdrawalQueue} from "./EmergencyWithdrawalQueue.sol";
+import {VaultErrors} from "src/libs/VaultErrors.sol";
 
 /**
  * @notice An L2 vault. This is a cross-chain vault, i.e. some funds deposited here will be moved to L1 for investment.
@@ -36,6 +38,7 @@ contract L2Vault is
 {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
+    using MathUpgradeable for uint256;
 
     /*//////////////////////////////////////////////////////////////
                              INITIALIZATION
@@ -147,16 +150,11 @@ contract L2Vault is
     /// @notice Minimal amount needed to enqueue a request to ewq, number is in `asset`.
     uint256 public ewqMinAssets;
 
-    event ManagementFeeSet(uint256 oldFee, uint256 newFee);
-    event WithdrawalFeeSet(uint256 oldFee, uint256 newFee);
-
     function setManagementFee(uint256 feeBps) external onlyGovernance {
-        emit ManagementFeeSet({oldFee: managementFee, newFee: feeBps});
         managementFee = feeBps;
     }
 
     function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
-        emit WithdrawalFeeSet({oldFee: withdrawalFee, newFee: feeBps});
         withdrawalFee = feeBps;
     }
 
@@ -187,18 +185,17 @@ contract L2Vault is
 
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
         shares = previewDeposit(assets);
-        _deposit(assets, shares, receiver);
+        _deposit(_msgSender(), receiver, assets, shares);
     }
 
     function mint(uint256 shares, address receiver) external whenNotPaused returns (uint256 assets) {
         assets = previewMint(shares);
-        _deposit(assets, shares, receiver);
+        _deposit(_msgSender(), receiver, assets, shares);
     }
 
     /// @dev Deposit helper used in deposit/mint.
-    function _deposit(uint256 assets, uint256 shares, address receiver) internal {
-        require(shares > 0, "L2Vault: zero shares");
-        address caller = _msgSender();
+    function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual {
+        if (shares == 0) revert VaultErrors.ZeroShares();
 
         _asset.safeTransferFrom(caller, address(this), assets);
         _mint(receiver, shares);
@@ -220,15 +217,12 @@ contract L2Vault is
 
     /// @notice A withdrawal registry. When this vault has no liquidity, requests go here.
     EmergencyWithdrawalQueue public emergencyWithdrawalQueue;
-
-    event EwqSet(EmergencyWithdrawalQueue indexed oldQ, EmergencyWithdrawalQueue indexed newQ);
-
     /**
      * @notice Update the address of the emergency withdrawal queue.
      * @param _ewq The new queue.
      */
+
     function setEwq(EmergencyWithdrawalQueue _ewq) external onlyGovernance {
-        emit EwqSet({oldQ: emergencyWithdrawalQueue, newQ: _ewq});
         emergencyWithdrawalQueue = _ewq;
     }
 
@@ -252,9 +246,9 @@ contract L2Vault is
     {
         EmergencyWithdrawalQueue ewq = emergencyWithdrawalQueue;
         // Only real share amounts are allowed since we might create an ewq request
-        require(shares <= balanceOf(owner) + ewq.ownerToDebt(owner), "L2Vault: min shares");
+        if (shares > balanceOf(owner) + ewq.ownerToDebt(owner)) revert VaultErrors.SharesExceedBalance();
 
-        uint256 assetsFee = _getWithdrawalFee(assets);
+        uint256 assetsFee = _getWithdrawalFee(assets, owner);
         assetsToUser = assets - assetsFee;
 
         // We must be able to repay all queued users and the current user.
@@ -351,17 +345,18 @@ contract L2Vault is
 
     function previewRedeem(uint256 shares) public view returns (uint256 assets) {
         uint256 rawAssets = _convertToAssets(shares, Rounding.Down);
-        uint256 assetsFee = _getWithdrawalFee(rawAssets);
+        uint256 assetsFee = _getWithdrawalFee(rawAssets, _msgSender());
         assets = rawAssets - assetsFee;
     }
 
     /// @dev  Return amount of `asset` to be given to user after applying withdrawal fee
-    function _getWithdrawalFee(uint256 tokenAmount) internal view returns (uint256) {
-        uint256 feeAmount = tokenAmount.mulDivUp(withdrawalFee, MAX_BPS);
+    function _getWithdrawalFee(uint256 assets, address owner) internal view virtual returns (uint256) {
+        owner; // unused
+        uint256 fee = assets.mulDiv(withdrawalFee, MAX_BPS, MathUpgradeable.Rounding.Up);
         if (_msgSender() == address(emergencyWithdrawalQueue)) {
-            feeAmount = Math.max(feeAmount, ewqMinFee);
+            fee = MathUpgradeable.max(fee, ewqMinFee);
         }
-        return feeAmount;
+        return fee;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -458,7 +453,7 @@ contract L2Vault is
      * @param received True if L1 has received our last transfer.
      */
     function receiveTVL(uint256 tvl, bool received) external {
-        require(msg.sender == wormholeRouter, "L2Vault: only router");
+        if (_msgSender() != wormholeRouter) revert VaultErrors.OnlyWormholeRouter();
 
         // If L1 has received the last transfer we sent it, unlock the L2->L1 bridge
         if (received && !canTransferToL1) {
@@ -510,7 +505,7 @@ contract L2Vault is
     function _l1L2Rebalance(bool invest, uint256 amount) internal {
         if (invest) {
             _liquidate(amount);
-            uint256 amountToSend = Math.min(_asset.balanceOf(address(this)), amount);
+            uint256 amountToSend = MathUpgradeable.min(_asset.balanceOf(address(this)), amount);
             _transferToL1(amountToSend);
         } else {
             _divestFromL1(amount);
@@ -548,7 +543,7 @@ contract L2Vault is
      * @param amount The amount of assets.
      */
     function afterReceive(uint256 amount) external {
-        require(_msgSender() == address(bridgeEscrow), "L2Vault: only escrow");
+        if (_msgSender() != address(bridgeEscrow)) revert VaultErrors.OnlyEscrow();
         l1TotalLockedValue -= amount;
         canRequestFromL1 = true;
     }

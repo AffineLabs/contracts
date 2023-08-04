@@ -3,28 +3,46 @@ pragma solidity 0.8.16;
 
 import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {Vault} from "src/vaults/Vault.sol";
+import {Vault, ERC721, VaultErrors} from "src/vaults/Vault.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
 import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
 import {TestStrategy} from "./mocks/TestStrategy.sol";
 
+contract MockNft is ERC721 {
+    constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {}
+
+    function tokenURI(uint256 id) public view override returns (string memory) {
+        return "fakeuri";
+    }
+
+    function mint(address to, uint256 id) external {
+        _mint(to, id);
+    }
+}
+
 /// @notice Test common vault functionalities.
-contract CommonVaultTest is TestPlus {
+contract VaultTest is TestPlus {
     using stdStorage for StdStorage;
 
     Vault vault;
-    MockERC20 asset;
+    ERC20 asset;
 
-    function setUp() public {
+    function setUp() public virtual {
         asset = new MockERC20("Mock", "MT", 6);
 
         vault = new Vault();
         vault.initialize(governance, address(asset), "USD Earn", "usdEarn");
+    }
+
+    function _giveAssets(address user, uint256 assets) internal virtual {
+        MockERC20(address(asset)).mint(user, assets);
     }
 
     event Upgraded(address indexed implementation);
@@ -80,7 +98,7 @@ contract CommonVaultTest is TestPlus {
         vm.assume(amountAsset > 99);
         // Running into overflow issues on the call to vault.redeem
         address user = address(this);
-        asset.mint(user, amountAsset);
+        _giveAssets(user, amountAsset);
 
         uint256 expectedShares = uint256(amountAsset) * vault.initialSharesPerAsset();
         // user gives max approval to vault for asset
@@ -101,7 +119,7 @@ contract CommonVaultTest is TestPlus {
         // shares = assets * totalShares / totalAssets but totalShares will actually be bigger than a uint128
         // so the `assets * totalShares` calc will overflow if using a uint128
         address user = address(this);
-        asset.mint(user, amountAsset);
+        _giveAssets(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
 
         // If vault is empty, assets are converted to shares at 1:vault.initialSharesPerAsset() ratio
@@ -123,7 +141,7 @@ contract CommonVaultTest is TestPlus {
     function testMint(uint64 amountAsset) public {
         vm.assume(amountAsset > 99);
         address user = address(this);
-        asset.mint(user, amountAsset);
+        _giveAssets(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
 
         // If vault is empty, assets are converted to shares at 1:vault.initialSharesPerAsset() ratio
@@ -139,11 +157,11 @@ contract CommonVaultTest is TestPlus {
     /// @notice Test minting zero share results in error.
     function testMinDeposit() public {
         address user = address(this);
-        asset.mint(user, 100);
+        _giveAssets(user, 100);
         asset.approve(address(vault), type(uint256).max);
 
         // If we're minting zero shares we revert
-        vm.expectRevert("Vault: zero shares");
+        vm.expectRevert(VaultErrors.ZeroShares.selector);
         vault.deposit(0, user);
 
         vault.deposit(100, user);
@@ -153,7 +171,7 @@ contract CommonVaultTest is TestPlus {
     function testDepositNoStrategyInvest() public {
         address user = address(this);
         uint256 amount = 100;
-        asset.mint(user, amount);
+        _giveAssets(user, amount);
         asset.approve(address(vault), type(uint256).max);
 
         TestStrategy strategy = new TestStrategy(vault);
@@ -176,7 +194,7 @@ contract CommonVaultTest is TestPlus {
     function testMintNoStrategyInvest() public {
         address user = address(this);
         uint256 amount = 100;
-        asset.mint(user, amount);
+        _giveAssets(user, amount);
         asset.approve(address(vault), type(uint256).max);
 
         TestStrategy strategy = new TestStrategy(vault);
@@ -242,7 +260,7 @@ contract CommonVaultTest is TestPlus {
         // block.timestamp must be >= lastHarvest + LOCK_INTERVAL when harvesting
         vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
 
-        asset.mint(address(myStrat), 1e18);
+        _giveAssets(address(myStrat), 1e18);
         asset.approve(address(vault), type(uint256).max);
 
         BaseStrategy[] memory strategyList = new BaseStrategy[](1);
@@ -266,10 +284,10 @@ contract CommonVaultTest is TestPlus {
         vault.addStrategy(myStrat, 10_000);
 
         // Give the strat some assets
-        asset.mint(address(vault), 999);
+        _giveAssets(address(vault), 999);
 
         // Harvest a gain of 1
-        asset.mint(address(myStrat), 1);
+        _giveAssets(address(myStrat), 1);
         BaseStrategy[] memory strategyList = new BaseStrategy[](1);
         strategyList[0] = BaseStrategy(address(this));
         vm.warp(vault.lastHarvest() + vault.LOCK_INTERVAL() + 1);
@@ -288,7 +306,7 @@ contract CommonVaultTest is TestPlus {
         uint256 amountAsset = 1e18;
 
         changePrank(alice);
-        asset.mint(alice, amountAsset);
+        _giveAssets(alice, amountAsset);
         asset.approve(address(vault), type(uint256).max);
         vault.deposit(amountAsset, alice);
 
@@ -302,7 +320,7 @@ contract CommonVaultTest is TestPlus {
     }
 
     /// @notice Test that goveranance can modify management fees.
-    function testSettingFees() public {
+    function testCanSetManagementAndWithdrawalFees() public {
         changePrank(governance);
         vault.setManagementFee(300);
         assertEq(vault.managementFee(), 300);
@@ -358,7 +376,7 @@ contract CommonVaultTest is TestPlus {
         Vault.Number memory price = vault.detailedPrice();
         assertEq(price.num, 10 ** uint256(asset.decimals()));
 
-        asset.mint(address(vault), 2e18);
+        _giveAssets(address(vault), 2e18);
 
         // initial price is $100, but if we increase tvl the price increases
         Vault.Number memory price2 = vault.detailedPrice();

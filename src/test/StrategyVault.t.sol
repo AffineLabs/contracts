@@ -8,7 +8,7 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
-import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
+import {StrategyVault, VaultErrors} from "src/vaults/locked/StrategyVault.sol";
 import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
 import {WithdrawalEscrow} from "src/vaults/locked/WithdrawalEscrow.sol";
 import {Vault} from "src/vaults/Vault.sol";
@@ -18,9 +18,6 @@ import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockEpochStrategy} from "src/testnet/MockEpochStrategy.sol";
 
 import {DegenVault} from "src/vaults/custom/DegenVault.sol";
-
-// TODO: merge with CommonVaultTest
-import {CommonVaultTest} from "./Vault.t.sol";
 
 contract SVaultTest is TestPlus {
     using stdStorage for StdStorage;
@@ -219,7 +216,7 @@ contract SVaultTest is TestPlus {
         asset.approve(address(vault), type(uint256).max);
 
         // If we're minting zero shares we revert
-        vm.expectRevert("Vault: zero shares");
+        vm.expectRevert(VaultErrors.ZeroShares.selector);
         vault.deposit(0, user);
 
         vault.deposit(100, user);
@@ -322,7 +319,7 @@ contract SVaultTest is TestPlus {
     }
 
     /// @notice Test that goveranance can modify management fees.
-    function testSettingFees() public {
+    function testCanSetManagementAndWithdrawalFees() public {
         changePrank(governance);
         vault.setManagementFee(300);
         assertEq(vault.managementFee(), 300);

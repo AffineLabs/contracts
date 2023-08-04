@@ -1,0 +1,22 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "contract AffineVault",
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "name": "Rebalance",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "rebalance",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

@@ -223,6 +223,19 @@
     "anonymous": false,
     "inputs": [
       {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "PerformanceFeeWithdrawn",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
         "indexed": true,
         "internalType": "address",
         "name": "caller",
@@ -608,6 +621,32 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "accessNft",
+    "outputs": [
+      {
+        "internalType": "contract ERC721",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "accumulatedPerformanceFee",
+    "outputs": [
+      {
+        "internalType": "uint128",
+        "name": "",
+        "type": "uint128"
       }
     ],
     "stateMutability": "view",
@@ -1441,6 +1480,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "performanceFeeBps",
+    "outputs": [
+      {
+        "internalType": "uint128",
+        "name": "",
+        "type": "uint128"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -1550,6 +1602,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "rebalanceModule",
+    "outputs": [
+      {
+        "internalType": "contract RebalanceModule",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -1648,6 +1713,19 @@
   {
     "inputs": [
       {
+        "internalType": "contract ERC721",
+        "name": "_accessNft",
+        "type": "address"
+      }
+    ],
+    "name": "setAccessNft",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "contract BridgeEscrow",
         "name": "_escrow",
         "type": "address"
@@ -1723,12 +1801,56 @@
   {
     "inputs": [
       {
+        "internalType": "bool",
+        "name": "_needNftToDeposit",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "_nftDiscountActive",
+        "type": "bool"
+      }
+    ],
+    "name": "setNftProperties",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint128",
+        "name": "_newFeeBps",
+        "type": "uint128"
+      }
+    ],
+    "name": "setPerformanceFeeBps",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint224",
         "name": "_rebalanceDelta",
         "type": "uint224"
       }
     ],
     "name": "setRebalanceDelta",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_rebalanceModule",
+        "type": "address"
+      }
+    ],
+    "name": "setRebalanceModule",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1755,6 +1877,19 @@
       }
     ],
     "name": "setWithdrawalFee",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint16",
+        "name": "_newFee",
+        "type": "uint16"
+      }
+    ],
+    "name": "setWithdrawalFeeWithNft",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -2095,12 +2230,32 @@
   },
   {
     "inputs": [],
+    "name": "withdrawPerformanceFee",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "withdrawalFee",
     "outputs": [
       {
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "withdrawalFeeWithNft",
+    "outputs": [
+      {
+        "internalType": "uint16",
+        "name": "",
+        "type": "uint16"
       }
     ],
     "stateMutability": "view",

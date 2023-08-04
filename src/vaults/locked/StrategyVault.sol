@@ -12,12 +12,14 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {ERC721} from "solmate/src/tokens/ERC721.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
 import {BaseStrategyVault} from "src/vaults/locked/BaseStrategyVault.sol";
 import {DetailedShare} from "src/utils/Detailed.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
+import {VaultErrors} from "src/libs/VaultErrors.sol";
 
 contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare {
     using SafeTransferLib for ERC20;
@@ -129,7 +131,7 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
     }
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
-        require(shares > 0, "Vault: zero shares");
+        if (shares == 0) revert VaultErrors.ZeroShares();
         uint256 tvl = totalAssets();
         uint256 allowedAssets = tvl >= tvlCap ? 0 : tvlCap - tvl;
         assets = Math.min(allowedAssets, assets);
@@ -159,7 +161,7 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
 
         // Slippage during liquidation means we might get less than `assets` amount of `_asset`
         assets = Math.min(_asset.balanceOf(address(this)), assets);
-        uint256 assetsFee = _getWithdrawalFee(assets);
+        uint256 assetsFee = _getWithdrawalFee(assets, owner);
         uint256 assetsToUser = assets - assetsFee;
 
         // Burn shares and give user equivalent value in `_asset` (minus withdrawal fees)
@@ -189,7 +191,7 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
      */
     function previewRedeem(uint256 shares) public view virtual override returns (uint256) {
         uint256 assets = _convertToAssets(shares, MathUpgradeable.Rounding.Down);
-        return assets - _getWithdrawalFee(assets);
+        return assets - _getWithdrawalFee(assets, _msgSender());
     }
 
     function _convertToShares(uint256 assets, MathUpgradeable.Rounding rounding)
@@ -255,7 +257,8 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
     }
 
     /// @dev  Return amount of `asset` to be given to user after applying withdrawal fee
-    function _getWithdrawalFee(uint256 assets) internal view virtual returns (uint256) {
+    function _getWithdrawalFee(uint256 assets, address owner) internal view virtual returns (uint256) {
+        owner; // unused
         return assets.mulDiv(withdrawalFee, MAX_BPS, MathUpgradeable.Rounding.Up);
     }
     /*//////////////////////////////////////////////////////////////
