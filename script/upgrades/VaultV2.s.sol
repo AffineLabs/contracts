@@ -4,11 +4,12 @@ pragma solidity 0.8.16;
 import {Script, console} from "forge-std/Script.sol";
 
 import {VaultV2} from "src/vaults/VaultV2.sol";
+import {EthVaultV2} from "src/vaults/EthVaultV2.sol";
 
 contract LevStakingV2Poly is VaultV2 {
 }
 
-contract LevStakingV2Eth is VaultV2 {
+contract LevStakingV2Eth is EthVaultV2 {
 }
 
 contract Deploy is Script {
