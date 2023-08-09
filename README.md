@@ -19,11 +19,7 @@ The `master` branch is what is currently deployed. The last audit was conducted 
 
 ## Pre Requisites
 
-### Foundry
-
-See instructions for installation [here](https://github.com/gakonst/foundry#installation).
-
-### Hardhat
+### Base requirements
 
 - Install nvm with these [instructions](https://github.com/nvm-sh/nvm#install--update-script). Then run
 
@@ -45,22 +41,15 @@ yarn install
 
 - If using vscode, install the [prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) and [solidity](https://marketplace.visualstudio.com/items?itemName=JuanBlanco.solidity) extensions
 
-### Slither
+### Foundry
 
-Install slither with these [instructions](https://github.com/crytic/slither#using-pip). Install [solc-select](https://github.com/crytic/solc-select#quickstart). Update your solc version with:
-
-```sh
-solc-select install 0.8.16
-solc-select use 0.8.16
-```
-
-### Husky
-
-Install pre-commit hooks: `yarn husky install`
+See instructions for installation [here](https://github.com/gakonst/foundry#installation).
 
 ## Usage
 
-Create a `.env` file in the root of this repo. It should contain the same variables seen in `.env.example`.
+- Create a `.env` file in the root of this repo. It should contain the same variables seen in `.env.example`.
+
+- Contact one of the repo admins to get access to the values of the env variables.
 
 ### Compile
 
@@ -71,6 +60,12 @@ $ yarn build
 ```
 
 ### Test
+
+Run the foundry local node
+
+```sh
+$ foundryup -v nightly-87bc53fc6c874bd4c92d97ed180b949e3a36d78c
+```
 
 Run the solidity tests
 
@@ -90,22 +85,6 @@ Run solhint:
 
 ```sh
 $ yarn lint
-```
-
-Run slither:
-
-```sh
-$ slither .
-```
-
-### Running a Hardhat Script
-
-To run a script run `yarn script <script>`. Pass in the ethereum and polygon networks you want to use with the `-eth` and `-p` flags. The two network names will be in the `ETH_NETWORK` and `POLYGON_NETWORK` environment variables. In the script, use `hre.changeNetwork` to change the current network. If run without the `--no-fork` flag `yarn script` will bring up two anvil nodes, one which forks the selected ethereum network, and one which forks the selected polygon network. If run with `--relay` then OZ Relayer will be used to send any transactions.
-
-To run the rebalance script against testnets:
-
-```sh
-$ yarn script scripts/rebalance.ts -eth goerli -p mumbai --no-fork
 ```
 
 ### Deploying the Contracts
