@@ -17,5 +17,6 @@ interface I3CrvMetaPoolZap {
         returns (uint256);
 
     function calc_withdraw_one_coin(address pool, uint256 tokenAmount, int128 index) external view returns (uint256);
+    function calc_token_amount(address pool, uint256[4] memory amounts, bool deposit) external view returns (uint256);
 }
 /*  solhint-disable func-name-mixedcase, var-name-mixedcase */

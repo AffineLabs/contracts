@@ -7,8 +7,6 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
-import {Multicallable} from "solady/src/utils/Multicallable.sol";
-
 import {AffineGovernable} from "src/utils/AffineGovernable.sol";
 import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
@@ -18,7 +16,7 @@ import {uncheckedInc} from "src/libs/Unchecked.sol";
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
  * strategy liquidation.
  */
-contract AffineVault is AffineGovernable, AccessControlUpgradeable, Multicallable {
+contract AffineVault is AffineGovernable, AccessControlUpgradeable {
     using SafeTransferLib for ERC20;
 
     /*//////////////////////////////////////////////////////////////
@@ -245,6 +243,10 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable, Multicallabl
      */
     event StrategyWithdrawal(Strategy indexed strategy, uint256 assetsRequested, uint256 assetsReceived);
 
+    function depositIntoStrategy(Strategy strategy, uint256 assets) external virtual onlyRole(HARVESTER) {
+        _depositIntoStrategy(strategy, assets);
+    }
+
     /// @notice Deposit `assetAmount` amount of `asset` into strategies according to each strategy's `tvlBps`.
     function _depositIntoStrategies(uint256 assetAmount) internal {
         // All non-zero strategies are active
@@ -276,6 +278,10 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable, Multicallabl
         // Deposit into the strategy, will revert upon failure
         strategy.invest(assets);
         emit StrategyDeposit(strategy, assets);
+    }
+
+    function withdrawFromStrategy(Strategy strategy, uint256 assets) external virtual onlyRole(HARVESTER) {
+        _withdrawFromStrategy(strategy, assets);
     }
 
     /**
@@ -339,7 +345,7 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable, Multicallabl
      * @param strategyList The trusted strategies to harvest.
      * @dev Will always revert if profit from last harvest has not finished unlocking.
      */
-    function harvest(Strategy[] calldata strategyList) external onlyRole(HARVESTER) {
+    function harvest(Strategy[] calldata strategyList) external virtual onlyRole(HARVESTER) {
         // Profit must not be unlocking
         require(block.timestamp >= lastHarvest + LOCK_INTERVAL, "BV: profit unlocking");
 
@@ -352,7 +358,6 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable, Multicallabl
         // Used to store the total profit accrued by the strategies.
         uint256 totalProfitAccrued;
 
-        // Will revert if any of the specified strategies are untrusted.
         for (uint256 i = 0; i < strategyList.length; i = uncheckedInc(i)) {
             // Get the strategy at the current index.
             Strategy strategy = strategyList[i];

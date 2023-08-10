@@ -12,11 +12,13 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {ERC721} from "solmate/src/tokens/ERC721.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {DetailedShare} from "src/utils/Detailed.sol";
+import {VaultErrors} from "src/libs/VaultErrors.sol";
 
 contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare {
     using SafeTransferLib for ERC20;
@@ -75,6 +77,10 @@ contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgr
         return type(uint256).max;
     }
 
+    /*//////////////////////////////////////////////////////////////
+                          DEPOSITS/WITHDRAWALS
+    //////////////////////////////////////////////////////////////*/
+
     /**
      * @dev See {IERC4262-deposit}.
      */
@@ -127,7 +133,7 @@ contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgr
     }
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
-        require(shares > 0, "Vault: zero shares");
+        if (shares == 0) revert VaultErrors.ZeroShares();
         _mint(receiver, shares);
         _asset.safeTransferFrom(caller, address(this), assets);
         emit Deposit(caller, receiver, assets, shares);
@@ -142,7 +148,7 @@ contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgr
 
         // Slippage during liquidation means we might get less than `assets` amount of `_asset`
         assets = Math.min(_asset.balanceOf(address(this)), assets);
-        uint256 assetsFee = _getWithdrawalFee(assets);
+        uint256 assetsFee = _getWithdrawalFee(assets, owner);
         uint256 assetsToUser = assets - assetsFee;
 
         // Burn shares and give user equivalent value in `_asset` (minus withdrawal fees)
@@ -172,7 +178,7 @@ contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgr
      */
     function previewRedeem(uint256 shares) public view virtual override returns (uint256) {
         uint256 assets = _convertToAssets(shares, MathUpgradeable.Rounding.Down);
-        return assets - _getWithdrawalFee(assets);
+        return assets - _getWithdrawalFee(assets, _msgSender());
     }
 
     function _convertToShares(uint256 assets, MathUpgradeable.Rounding rounding)
@@ -237,7 +243,8 @@ contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgr
     }
 
     /// @dev  Return amount of `asset` to be given to user after applying withdrawal fee
-    function _getWithdrawalFee(uint256 assets) internal view virtual returns (uint256) {
+    function _getWithdrawalFee(uint256 assets, address owner) internal view virtual returns (uint256) {
+        owner; // unused
         return assets.mulDiv(withdrawalFee, MAX_BPS, MathUpgradeable.Rounding.Up);
     }
     /*//////////////////////////////////////////////////////////////

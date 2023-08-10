@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-import "forge-std/Components.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
 import {TestPlus} from "src/test/TestPlus.sol";
@@ -111,9 +110,6 @@ contract WithdrawalEscrowTest is TestPlus {
         withdrawalEscrow.registerWithdrawalRequest(alice, initialWithdrawAmount);
 
         withdrawalEscrow.resolveDebtShares();
-
-        // console.log("withdrable shares", withdrawalEscrow.withdrawableShares(alice, 0));
-        // console.log("withdrable assets", withdrawalEscrow.withdrawableAssets(alice, 0));
 
         assertEq(withdrawalEscrow.withdrawableShares(alice, 0), initialWithdrawAmount);
 

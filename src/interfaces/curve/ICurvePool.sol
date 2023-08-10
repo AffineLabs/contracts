@@ -3,6 +3,7 @@ pragma solidity =0.8.16;
 
 // See https://curve.readthedocs.io/exchange-deposits.html#curve-stableswap-exchange-deposit-contracts
 /*  solhint-disable func-name-mixedcase, var-name-mixedcase */
+
 interface ICurvePool {
     function lp_token() external view returns (address);
 

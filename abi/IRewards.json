@@ -1,0 +1,61 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "comet",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "src",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "shouldAccrue",
+        "type": "bool"
+      }
+    ],
+    "name": "claim",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "comet",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "getRewardOwed",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "owed",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct CometStructs.RewardOwed",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
