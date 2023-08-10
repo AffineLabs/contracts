@@ -6,11 +6,11 @@ import {Script, console} from "forge-std/Script.sol";
 import {VaultV2} from "src/vaults/VaultV2.sol";
 import {EthVaultV2} from "src/vaults/EthVaultV2.sol";
 
-contract LevStakingV2Poly is VaultV2 {
-}
+/* solhint-disable reason-string, no-console */
 
-contract LevStakingV2Eth is EthVaultV2 {
-}
+contract LevStakingV2Poly is VaultV2 {}
+
+contract LevStakingV2Eth is EthVaultV2 {}
 
 contract Deploy is Script {
     function run() external {
@@ -28,5 +28,4 @@ contract Deploy is Script {
         LevStakingV2Eth vault = new LevStakingV2Eth();
         console.log("new implementation address: ", address(vault));
     }
-
 }
