@@ -67,6 +67,20 @@ contract StakingTest is TestPlus {
         assertApproxEqRel(tvl, 7 ether, 0.001e18);
     }
 
+    function testMutateTotalLockedValue() public {
+        testAddToPosition();
+        uint256 tvl = staking.totalLockedValue();
+
+        deal(address(staking.WETH()), address(this), 1 ether);
+        staking.WETH().transfer(address(staking), 1 ether);
+
+        assertApproxEqRel(staking.totalLockedValue(), tvl + 1 ether, 0.001e18);
+
+        vm.prank(address(vault));
+        staking.divest(1 ether);
+        assertApproxEqRel(staking.totalLockedValue(), tvl, 0.001e18);
+    }
+
     function testMakerCompDivergence() public {
         testAddToPosition();
 
