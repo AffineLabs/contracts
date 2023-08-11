@@ -100,6 +100,7 @@ contract StakingTest is TestPlus {
 
     function testUpgrade() public {
         testAddToPosition();
+        uint256 beforeTvl = staking.totalLockedValue();
 
         address[] memory strategists = new address[](1);
         strategists[0] = address(this);
@@ -114,12 +115,18 @@ contract StakingTest is TestPlus {
 
         // All value was moved to staking2
         assertEq(staking.totalLockedValue(), 0);
-        // TODO: assert that tvl is exactly equal to old one before migration
-        assertApproxEqRel(staking2.totalLockedValue(), 30 ether, 0.001e18);
+        assertEq(staking2.totalLockedValue(), beforeTvl);
 
+        // We can divest in staking2
         vm.prank(address(vault));
         staking2.divest(1 ether);
-
         assertApproxEqRel(staking2.totalLockedValue(), 29 ether, 0.001e18);
+
+        // We can invest in staking2
+        // Dealing to staking2 directly will overwrite any weth dust and slighlty reduce the tvl
+        deal(address(staking2.WETH()), address(this), 1 ether);
+        ERC20(staking2.WETH()).transfer(address(staking2), 1 ether);
+        staking2.addToPosition(1 ether);
+        assertApproxEqRel(staking2.totalLockedValue(), 30 ether, 0.001e18);
     }
 }
