@@ -66,6 +66,15 @@ contract StakingTest is TestPlus {
         staking.addToPosition(30 ether);
     }
 
+    function testLeverage() public {
+        testAddToPosition();
+        (uint256 wstEthCollat,) = staking.VAT().urns(staking.ILK(), staking.urn());
+
+        uint256 makerCollateral = staking.LIDO().getStETHByWstETH(wstEthCollat);
+        uint256 depSize = 30 ether;
+        assertApproxEqRel(makerCollateral, depSize * 175 / 100, 0.0001e18);
+    }
+
     function testClosePosition() public {
         ERC20 weth = staking.WETH();
         testAddToPosition();
@@ -143,6 +152,32 @@ contract StakingTest is TestPlus {
 
         // Divest 3 ether
         _divest(3 ether);
+    }
+
+    /// @dev Rebalance scenario #1
+    function testBorrowMoreEth() public {
+        testAddToPosition();
+
+        uint256 oldTvl = staking.totalLockedValue();
+        uint256 oldCompDebt = staking.CETH().borrowBalanceCurrent(address(staking));
+        staking.rebalance(1 ether, 0);
+
+        assertEq(staking.CETH().borrowBalanceCurrent(address(staking)), oldCompDebt + 1 ether);
+        assertEq(staking.totalLockedValue(), oldTvl);
+    }
+
+    /// @dev Rebalance scenario #2
+    function testBorrowMoreDai() public {
+        testAddToPosition();
+
+        uint256 oldTvl = staking.totalLockedValue();
+        (, uint256 oldMakerDebt) = staking.VAT().urns(staking.ILK(), staking.urn());
+        staking.rebalance(0, 1 ether);
+
+        (, uint256 newMakerDebt) = staking.VAT().urns(staking.ILK(), staking.urn());
+        assertEq(newMakerDebt, oldMakerDebt + 1 ether);
+        // We borrow 1 ether of Dai but compound will round against us when depositing collateral
+        assertApproxEqRel(staking.totalLockedValue(), oldTvl, 0.0001e18);
     }
 
     function testMinDepositAmt() public {

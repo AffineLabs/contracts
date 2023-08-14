@@ -134,18 +134,10 @@ contract LidoLev is AccessStrategy, IFlashLoanRecipient {
         IWETH(address(WETH)).withdraw(ethBorrowed);
         uint256 amountWStEth = _ethToSteth();
 
-        // Lock wsteth in maker
-        WSTETH_JOIN.join(urn, amountWStEth);
-
         // Borrow at 58% collateral ratio
         uint256 daiPrice = _getDaiPrice();
         uint256 debt = _ethToDai(LIDO.getStETHByWstETH(amountWStEth), daiPrice).mulDivDown(58, 100);
-        MAKER.frob(cdpId, int256(amountWStEth), int256(debt));
-
-        // Transfer Dai from cdp to this contract
-        MAKER.move({cdp: cdpId, dst: address(this), rad: debt * 1e27});
-        VAT.hope(address(JOIN_DAI));
-        JOIN_DAI.exit(address(this), debt);
+        _borrowDai(amountWStEth, debt);
 
         // Deposit Dai in compound v2
         CDAI.mint({underlying: debt});
@@ -224,7 +216,6 @@ contract LidoLev is AccessStrategy, IFlashLoanRecipient {
         require(res == 0, "Staking: comp redeem error");
 
         // Pay debt in maker
-
         // Send dai to urn
         JOIN_DAI.join({usr: urn, wad: daiToRedeem});
 
@@ -275,18 +266,18 @@ contract LidoLev is AccessStrategy, IFlashLoanRecipient {
         // Eth price goes up => borrow more dai from maker and supply to compound
         // Eth price goes down => borrow more eth from compound and supply to maker
         if (amountEth > 0) {
-            // borrow
+            // Borrow
             uint256 borrowRes = CETH.borrow(amountEth);
             require(borrowRes == 0, "Staking: borrow failed");
 
-            // deposit in maker
+            // Deposit in maker
             uint256 amountWStEth = _ethToSteth();
             MAKER.frob(cdpId, int256(amountWStEth), int256(0));
         }
 
         if (amountDai > 0) {
             // Borrow dai from maker
-            MAKER.frob(cdpId, int256(0), int256(amountDai));
+            _borrowDai(0, amountDai);
 
             // Deposit Dai in compound v2
             CDAI.mint({underlying: amountDai});
@@ -391,9 +382,12 @@ contract LidoLev is AccessStrategy, IFlashLoanRecipient {
     IWStEth public constant LIDO = IWStEth(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
     ERC20 public constant STETH = ERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
 
+    /// @dev Convert eth to stEth and send to maker's `join` contract. Return amount of staked eth deposited.
+    /// This allows us to call `frob` and actually add collateral and mint debt.
     function _ethToSteth() internal returns (uint256) {
         Address.sendValue(payable(address(LIDO)), address(this).balance);
         uint256 wstEthBal = ERC20(address(LIDO)).balanceOf(address(this));
+        WSTETH_JOIN.join(urn, wstEthBal);
         return wstEthBal;
     }
 
@@ -408,6 +402,16 @@ contract LidoLev is AccessStrategy, IFlashLoanRecipient {
     IVat public constant VAT = IVat(0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B);
     /// @dev cast --to-bytes32 $(cast --from-utf8 "WSTETH-A");
     bytes32 public constant ILK = 0x5753544554482d41000000000000000000000000000000000000000000000000;
+
+    /// @dev Given that the collateral is already in the `join` contract, borrow dai and send to this contract
+    function _borrowDai(uint256 collateralToAdd, uint256 daiToMint) internal {
+        MAKER.frob(cdpId, int256(collateralToAdd), int256(daiToMint));
+
+        // Transfer Dai from cdp to this contract
+        MAKER.move({cdp: cdpId, dst: address(this), rad: daiToMint * 1e27});
+        VAT.hope(address(JOIN_DAI));
+        JOIN_DAI.exit(address(this), daiToMint);
+    }
 
     /*//////////////////////////////////////////////////////////////
                                 COMPOUND
