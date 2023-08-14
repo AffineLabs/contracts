@@ -5,12 +5,36 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {LidoLev, IBalancerVault, IFlashLoanRecipient, AffineVault, ICdpManager} from "src/strategies/LidoLev.sol";
+import {
+    LidoLev,
+    IBalancerVault,
+    IFlashLoanRecipient,
+    AffineVault,
+    ICdpManager,
+    ISwapRouter,
+    FixedPointMathLib
+} from "src/strategies/LidoLev.sol";
 
 import {console} from "forge-std/console.sol";
 
+contract MockLidoLev is LidoLev {
+    constructor(LidoLev oldStrat, uint256 _leverage, AffineVault _vault, address[] memory strategists)
+        LidoLev(oldStrat, _leverage, _vault, strategists)
+    {}
+
+    function daiToEth(uint256 dai) external view returns (uint256) {
+        return _daiToEth(dai, _getDaiPrice());
+    }
+
+    function getDivestAmounts(uint256 wethToDivest) external returns (uint256 daiToBorrow) {
+        (, daiToBorrow) = _getDivestFlashLoanAmounts(wethToDivest);
+    }
+}
+
 contract StakingTest is TestPlus {
-    LidoLev staking;
+    using FixedPointMathLib for uint256;
+
+    MockLidoLev staking;
     AffineVault vault;
 
     receive() external payable {}
@@ -22,7 +46,7 @@ contract StakingTest is TestPlus {
         strategists[0] = address(this);
         vault = AffineVault(address(deployL1Vault()));
 
-        staking = new LidoLev(LidoLev(payable(address(0))), 175, vault, strategists);
+        staking = new MockLidoLev(LidoLev(payable(address(0))), 175, vault, strategists);
         vm.prank(governance);
         vault.addStrategy(staking, 0);
     }
@@ -81,12 +105,14 @@ contract StakingTest is TestPlus {
         assertApproxEqRel(staking.totalLockedValue(), tvl, 0.001e18);
     }
 
-    function testMakerCompDivergence() public {
+    /// @dev Test divergence between maker debt and comp collateral
+    function testSecondFlashLoan() public {
         testAddToPosition();
 
         uint256 compDai = staking.CDAI().balanceOfUnderlying(address(staking));
         uint256 makerDai = (compDai * 101) / 100; // Maker debt is 1% higher than Compound collateral
 
+        // Calls to maker will now return the inflated debt of `makerDai`
         ICdpManager maker = staking.MAKER();
         address urn = maker.urns(staking.cdpId());
         (uint256 wstCollat,) = staking.VAT().urns(staking.ILK(), urn);
@@ -97,11 +123,26 @@ contract StakingTest is TestPlus {
             abi.encode(wstCollat, makerDai)
         );
 
-        // vm.warp(block.timestamp + 1 days);
-        // vm.roll(block.number + 1);
-        _divest(1 ether);
+        // This number should be roughly 60 DAI, since we have about $100k in wsteth collateral (30 * 1.75 * 2k)
+        // and about 60k (~58%) in maker debt. We increase this by ~$600 via the mock above. We are divesting about 10% of the vault
+        // So we will need to flashloan an extra $60 to cover the gap between the maker debt and comp collateral.
+        uint256 daiBorrowed = staking.getDivestAmounts(3 ether);
 
-        // TODO: this working, but add some asserts
+        // Expect call on the uniswap router
+        ISwapRouter.ExactInputSingleParams memory uniParams = ISwapRouter.ExactInputSingleParams({
+            tokenIn: address(staking.WETH()),
+            tokenOut: address(staking.DAI()),
+            fee: 500,
+            recipient: address(staking),
+            deadline: block.timestamp,
+            amountIn: staking.daiToEth(daiBorrowed).mulDivUp(110, 100),
+            amountOutMinimum: daiBorrowed,
+            sqrtPriceLimitX96: 0
+        });
+        vm.expectCall(address(staking.UNI_ROUTER()), abi.encodeCall(ISwapRouter.exactInputSingle, (uniParams)));
+
+        // Divest 3 ether
+        _divest(3 ether);
     }
 
     function testMinDepositAmt() public {

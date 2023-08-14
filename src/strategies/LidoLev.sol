@@ -163,21 +163,7 @@ contract LidoLev is AccessStrategy, IFlashLoanRecipient {
     receive() external payable {}
 
     function _divest(uint256 amount) internal override returns (uint256) {
-        uint256 tvl = totalLockedValue();
-        uint256 ethDebt = CETH.borrowBalanceCurrent(address(this));
-        uint256 ethNeeded = ethDebt.mulDivDown(amount, tvl);
-
-        uint256 compDaiToRedeem = (CDAI.balanceOfUnderlying(address(this)).mulDivDown(amount, tvl));
-        (, uint256 makerDai) = VAT.urns(ILK, MAKER.urns(cdpId));
-        uint256 makerDaiToPay = makerDai.mulDivDown(amount, tvl);
-
-        // Maker debt and comp collateral may diverge over time. Flashloan DAI if need to pay same percentage
-        // of maker debt as we pay of compound debt
-        // stEth will be traded to DAI to pay back this flashloan, so we need to set a min amount to make sure the trade succeeds
-        uint256 daiNeeded;
-        if (makerDaiToPay > compDaiToRedeem && makerDaiToPay - compDaiToRedeem > 0.01e18) {
-            daiNeeded = makerDaiToPay - compDaiToRedeem;
-        }
+        (uint256 ethNeeded, uint256 daiNeeded) = _getDivestFlashLoanAmounts(amount);
 
         // Flashloan `ethNeeded` eth from balancer, _endPosition gets called
         // Note that balancer actually token addresses to be sorted, so dai must come before weth
@@ -208,6 +194,23 @@ contract LidoLev is AccessStrategy, IFlashLoanRecipient {
         uint256 wethToSend = Math.min(amount, WETH.balanceOf(address(this)));
         WETH.safeTransfer(address(vault), wethToSend);
         return wethToSend;
+    }
+
+    function _getDivestFlashLoanAmounts(uint256 wethToDivest) internal returns (uint256 ethNeeded, uint256 daiNeeded) {
+        uint256 tvl = totalLockedValue();
+        uint256 ethDebt = CETH.borrowBalanceCurrent(address(this));
+        ethNeeded = ethDebt.mulDivDown(wethToDivest, tvl);
+
+        uint256 compDaiToRedeem = (CDAI.balanceOfUnderlying(address(this)).mulDivDown(wethToDivest, tvl));
+        (, uint256 makerDai) = VAT.urns(ILK, MAKER.urns(cdpId));
+        uint256 makerDaiToPay = makerDai.mulDivDown(wethToDivest, tvl);
+
+        // Maker debt and comp collateral may diverge over time. Flashloan DAI if need to pay same percentage
+        // of maker debt as we pay of compound debt
+        // stEth will be traded to DAI to pay back this flashloan, so we need to set a min amount to make sure the trade succeeds
+        if (makerDaiToPay > compDaiToRedeem && makerDaiToPay - compDaiToRedeem > 0.01e18) {
+            daiNeeded = makerDaiToPay - compDaiToRedeem;
+        }
     }
 
     function _endPosition(uint256 ethBorrowed, uint256 daiBorrowed) internal {
