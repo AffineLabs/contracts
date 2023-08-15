@@ -31,7 +31,7 @@ contract MockLidoLev is LidoLev {
     }
 }
 
-contract StakingTest is TestPlus {
+contract LidoLevTest is TestPlus {
     using FixedPointMathLib for uint256;
 
     MockLidoLev staking;
@@ -70,7 +70,7 @@ contract StakingTest is TestPlus {
         testAddToPosition();
         (uint256 wstEthCollat,) = staking.VAT().urns(staking.ILK(), staking.urn());
 
-        uint256 makerCollateral = staking.LIDO().getStETHByWstETH(wstEthCollat);
+        uint256 makerCollateral = staking.WSTETH().getStETHByWstETH(wstEthCollat);
         uint256 depSize = 30 ether;
         assertApproxEqRel(makerCollateral, depSize * 175 / 100, 0.0001e18);
     }
