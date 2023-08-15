@@ -46,7 +46,7 @@ contract LidoLev is AccessStrategy, IFlashLoanRecipient {
         uint256[] memory results = IComptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B).enterMarkets(cTokens);
         require(results[0] == 0, "Staking: failed to enter market");
 
-        // Trade stETH for Eth
+        // Trade stETH for ETH
         STETH.safeApprove(address(CURVE), type(uint256).max);
         // Trade wETH for DAI
         WETH.safeApprove(address(UNI_ROUTER), type(uint256).max);
@@ -151,7 +151,7 @@ contract LidoLev is AccessStrategy, IFlashLoanRecipient {
         WETH.deposit{value: compoundDebtEth}();
     }
 
-    /// @dev We need this to receive Eth when calling WETH.withdraw()
+    /// @dev We need this to receive ETH when calling WETH.withdraw()
     receive() external payable {}
 
     function _divest(uint256 amount) internal override returns (uint256) {
@@ -232,7 +232,7 @@ contract LidoLev is AccessStrategy, IFlashLoanRecipient {
         WSTETH.unwrap(wstEthToRedeem);
 
         // Convert stETH => ETH to pay back flashloan and pay back user
-        // Trade on stETH for Eth (stETH is at index 1)
+        // Trade on stETH for ETH (stETH is at index 1)
         uint256 stEthToTrade = STETH.balanceOf(address(this));
         CURVE.exchange({x: 1, y: 0, dx: stEthToTrade, min_dy: stEthToTrade.mulDivDown(93, 100)});
 
@@ -263,8 +263,8 @@ contract LidoLev is AccessStrategy, IFlashLoanRecipient {
     /// @param amountEth Amount of ETH to borrow from compound.
     /// @param amountDai Amount of DAI to borrow from maker.
     function rebalance(uint256 amountEth, uint256 amountDai) external onlyRole(STRATEGIST_ROLE) {
-        // Eth price goes up => borrow more DAI from maker and supply to compound
-        // Eth price goes down => borrow more ETH from compound and supply to maker
+        // ETH price goes up => borrow more DAI from maker and supply to compound
+        // ETH price goes down => borrow more ETH from compound and supply to maker
         if (amountEth > 0) {
             // Borrow
             uint256 borrowRes = CETH.borrow(amountEth);
@@ -284,27 +284,35 @@ contract LidoLev is AccessStrategy, IFlashLoanRecipient {
         }
     }
     /*//////////////////////////////////////////////////////////////
-                           ASSET CONVERSIONS
+                           VALUATION
     //////////////////////////////////////////////////////////////*/
 
     function totalLockedValue() public override returns (uint256) {
         if (MAKER.owns(cdpId) != address(this)) return 0;
 
-        // Maker collateral, Maker debt (DAI)
+        // Maker collateral (ETH), Maker debt (DAI)
         // compound collateral (DAI), compound debt (ETH)
         // TVL = Maker collateral + compound collateral - maker debt - compound debt
-        (uint256 wstEthCollat, uint256 rawMakerDebt) = VAT.urns(ILK, urn);
-
-        // Using Eth denomination for everything
-        uint256 daiPrice = _getDaiPrice();
-
-        uint256 makerCollateral = WSTETH.getStETHByWstETH(wstEthCollat);
-        uint256 compoundCollateral = _daiToEth(CDAI.balanceOfUnderlying(address(this)), daiPrice);
-
-        uint256 makerDebt = _daiToEth(rawMakerDebt, daiPrice);
-        uint256 compoundDebt = CETH.borrowBalanceCurrent(address(this));
+        (uint256 makerCollateral, uint256 makerDebt, uint256 compoundCollateral, uint256 compoundDebt) =
+            getPositionInfo();
 
         return WETH.balanceOf(address(this)) + makerCollateral + compoundCollateral - makerDebt - compoundDebt;
+    }
+
+    function getPositionInfo()
+        public
+        returns (uint256 makerCollateral, uint256 makerDebt, uint256 compoundCollateral, uint256 compoundDebt)
+    {
+        (uint256 wstEthCollat, uint256 rawMakerDebt) = VAT.urns(ILK, urn);
+
+        // Using ETH denomination for everything
+        uint256 daiPrice = _getDaiPrice();
+
+        makerCollateral = WSTETH.getStETHByWstETH(wstEthCollat);
+        compoundCollateral = _daiToEth(CDAI.balanceOfUnderlying(address(this)), daiPrice);
+
+        makerDebt = _daiToEth(rawMakerDebt, daiPrice);
+        compoundDebt = CETH.borrowBalanceCurrent(address(this));
     }
 
     AggregatorV3Interface public constant ETH_DAI_FEED =
