@@ -195,6 +195,7 @@ contract LidoLevTest is TestPlus {
         address[] memory strategists = new address[](1);
         strategists[0] = address(this);
         LidoLev staking2 = new LidoLev(staking, 175, vault, strategists);
+        assertEq(staking2.totalLockedValue(), 0);
 
         vm.prank(governance);
         staking.upgrade(address(staking2));
