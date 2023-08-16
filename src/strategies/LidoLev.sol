@@ -232,7 +232,7 @@ contract LidoLev is AccessStrategy, IFlashLoanRecipient {
         WSTETH.unwrap(wstEthToRedeem);
 
         // Convert stETH => ETH to pay back flashloan and pay back user
-        // Trade on stETH for ETH (stETH is at index 1)
+        // Trade stETH for ETH (stETH is at index 1)
         uint256 stEthToTrade = STETH.balanceOf(address(this));
         CURVE.exchange({x: 1, y: 0, dx: stEthToTrade, min_dy: stEthToTrade.mulDivDown(93, 100)});
 
@@ -241,17 +241,17 @@ contract LidoLev is AccessStrategy, IFlashLoanRecipient {
 
         // Convert wETH => DAI to pay back flashloan
         if (daiBorrowed > 0) {
-            ISwapRouter.ExactInputSingleParams memory uniParams = ISwapRouter.ExactInputSingleParams({
+            ISwapRouter.ExactOutputSingleParams memory uniParams = ISwapRouter.ExactOutputSingleParams({
                 tokenIn: address(WETH),
                 tokenOut: address(DAI),
                 fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp,
-                amountIn: _daiToEth(daiBorrowed, _getDaiPrice()).mulDivUp(110, 100),
-                amountOutMinimum: daiBorrowed,
+                amountOut: daiBorrowed,
+                amountInMaximum: _daiToEth(daiBorrowed, _getDaiPrice()).mulDivUp(110, 100),
                 sqrtPriceLimitX96: 0
             });
-            UNI_ROUTER.exactInputSingle(uniParams);
+            UNI_ROUTER.exactOutputSingle(uniParams);
         }
     }
 

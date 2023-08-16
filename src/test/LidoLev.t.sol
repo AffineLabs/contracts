@@ -138,17 +138,17 @@ contract LidoLevTest is TestPlus {
         uint256 daiBorrowed = staking.getDivestAmounts(3 ether);
 
         // Expect call on the uniswap router
-        ISwapRouter.ExactInputSingleParams memory uniParams = ISwapRouter.ExactInputSingleParams({
+        ISwapRouter.ExactOutputSingleParams memory uniParams = ISwapRouter.ExactOutputSingleParams({
             tokenIn: address(staking.WETH()),
             tokenOut: address(staking.DAI()),
             fee: 500,
             recipient: address(staking),
             deadline: block.timestamp,
-            amountIn: staking.daiToEth(daiBorrowed).mulDivUp(110, 100),
-            amountOutMinimum: daiBorrowed,
+            amountOut: daiBorrowed,
+            amountInMaximum: staking.daiToEth(daiBorrowed).mulDivUp(110, 100),
             sqrtPriceLimitX96: 0
         });
-        vm.expectCall(address(staking.UNI_ROUTER()), abi.encodeCall(ISwapRouter.exactInputSingle, (uniParams)));
+        vm.expectCall(address(staking.UNI_ROUTER()), abi.encodeCall(ISwapRouter.exactOutputSingle, (uniParams)));
 
         // Divest 3 ether
         _divest(3 ether);
