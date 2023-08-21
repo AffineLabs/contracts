@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-interface IPair {
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
+interface IPair is IERC20Metadata {
     function initialize(address _token0, address _token1, bool _stable) external;
 
     function metadata()

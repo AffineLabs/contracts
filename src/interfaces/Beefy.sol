@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 /**
  * @dev Implementation of a vault to deposit funds for yield optimizing.
  * This is the contract that receives funds and that users interface with.
  * The yield optimizing strategy itself is implemented in a separate 'Strategy.sol' contract.
  */
 
-interface IBeefyVault is IERC20 {
-    function want() external view returns (IERC20);
+interface IBeefyVault is IERC20Metadata {
+    function want() external view returns (IERC20Metadata);
     /**
      * @dev It calculates the total underlying value of {token} held by the system.
      * It takes into account the vault contract balance, the strategy contract balance
