@@ -163,12 +163,17 @@ contract BeefyPearlStrategy is AccessStrategy {
      * @dev will transfer the assets to the vault
      */
     function _divest(uint256 assets) internal override returns (uint256) {
+        _divestFromBeefy(assets, defaultSlippageBps);
+        return Math.min(asset.balanceOf(address(this)), assets);
+    }
+
+    function _divestFromBeefy(uint256 assets, uint256 slippage) internal {
         uint256 requiredAssets = assets - asset.balanceOf(address(this));
 
         (uint256 token0Ratio, uint256 token1Ratio) = _getOutLPRatio();
 
         // calc slippage calc 1
-        uint256 minToken1Ratio = _calculateSlippageAmount(token1Ratio, defaultSlippageBps, true);
+        uint256 minToken1Ratio = _calculateSlippageAmount(token1Ratio, slippage, true);
 
         uint256 totalLpToken = _getTotalLpTokenAmount();
 
@@ -179,11 +184,9 @@ contract BeefyPearlStrategy is AccessStrategy {
             _withdrawLPTokenFromBeefy(lpTokenAmount - lpToken.balanceOf(address(this)));
         }
 
-        _removeLiquidityFromPearl(lpToken.balanceOf(address(this)), defaultSlippageBps);
+        _removeLiquidityFromPearl(lpToken.balanceOf(address(this)), slippage);
 
-        _swapToken(token1, token0, token1.balanceOf(address(this)), defaultSlippageBps);
-
-        return Math.min(asset.balanceOf(address(this)), assets);
+        _swapToken(token1, token0, token1.balanceOf(address(this)), slippage);
     }
 
     /**
@@ -218,6 +221,6 @@ contract BeefyPearlStrategy is AccessStrategy {
     }
 
     function divestAssets(uint256 amount, uint256 slippageBps) external onlyRole(STRATEGIST_ROLE) {
-        // _divestFromBeefy(amount, slippageBps);
+        _divestFromBeefy(amount, slippageBps);
     }
 }
