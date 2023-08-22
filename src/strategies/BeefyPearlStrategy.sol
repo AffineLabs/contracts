@@ -14,6 +14,8 @@ import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
 
 import {AffineVault} from "src/vaults/Vault.sol";
 
+// import {console} from "forge-std/console.sol";
+
 contract BeefyPearlStrategy is AccessStrategy {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
@@ -41,6 +43,14 @@ contract BeefyPearlStrategy is AccessStrategy {
         lpToken = IPair(pearlRouter.pairFor(address(token0), address(token1), true));
 
         require(pearlRouter.isPair(address(lpToken)), "BPS: invalid pearl LP pair");
+
+        // approve assets to use in pearl router
+        token0.approve(address(pearlRouter), type(uint256).max);
+        token1.approve(address(pearlRouter), type(uint256).max);
+
+        // approve lp token for pearlRouter and beefy vault
+        lpToken.approve(address(pearlRouter), type(uint256).max);
+        lpToken.approve(address(beefy), type(uint256).max);
     }
 
     // TODO: parameterize (address from, address to)
@@ -49,8 +59,7 @@ contract BeefyPearlStrategy is AccessStrategy {
             address(token0), address(token1), true, 10 ** token0.decimals(), 10 ** token1.decimals()
         );
 
-        (uint256 token0ToToken1SwapPrice,) =
-            pearlRouter.getAmountOut(10 ** token0.decimals(), address(token0), address(token1));
+        uint256 token0ToToken1SwapPrice = _getSwapPrice(token0, token1, 10 ** token0.decimals());
 
         uint256 token1EqToken0 = token1desired.mulDivDown(10 ** token0.decimals(), token0ToToken1SwapPrice);
 
@@ -67,37 +76,42 @@ contract BeefyPearlStrategy is AccessStrategy {
         (uint256 token0Out, uint256 token1Out) =
             pearlRouter.quoteRemoveLiquidity(address(token0), address(token1), true, lpTokenAmount);
 
-        (uint256 token1ToToken0SwapPrice,) =
-            pearlRouter.getAmountOut(10 ** token1.decimals(), address(token1), address(token0));
+        uint256 token1ToToken0SwapPrice = _getSwapPrice(token1, token0, 10 ** token1.decimals());
 
         uint256 token1EqToken0 = token1Out.mulDivDown(token1ToToken0SwapPrice, 10 ** token1.decimals());
 
         return (token0Out, token1EqToken0);
     }
 
-    function _swapToken(ERC20 from, ERC20 to, uint256 amount, uint256 slippage) internal {
-        require(from.balanceOf(address(this)) <= amount, "BPS: INSUFFICIENT BALANCE FOR SWAP T0 -> T1");
+    function _getSwapPrice(ERC20 from, ERC20 to, uint256 amount) internal view returns (uint256 tokenToAmount) {
+        (tokenToAmount,) = pearlRouter.getAmountOut(amount, address(from), address(to));
+    }
 
-        (uint256 tokenToAmount,) = pearlRouter.getAmountOut(amount, address(from), address(to));
+    function _swapToken(ERC20 from, ERC20 to, uint256 amount, uint256 slippage) internal {
+        require(amount <= from.balanceOf(address(this)), "BPS: INSUFFICIENT BALANCE FOR SWAP T0 -> T1");
+
+        uint256 tokenToAmount = _getSwapPrice(from, to, amount);
         uint256 minTokenToReceive = _calculateSlippageAmount(tokenToAmount, slippage, true);
         pearlRouter.swapExactTokensForTokensSimple(
-            amount, minTokenToReceive, address(from), address(to), true, address(this), block.number + 2
+            amount, minTokenToReceive, address(from), address(to), true, address(this), block.timestamp
         );
     }
 
     function _provideLiquidityToPearl(uint256 token0Amount, uint256 token1Amount, uint256 slippage) internal {
-        uint256 minToken0Amount = _calculateSlippageAmount(token0Amount, slippage, true);
-        uint256 minToken1Amount = _calculateSlippageAmount(token1Amount, slippage, true);
+        (uint256 token0Desired, uint256 token1desired,) =
+            pearlRouter.quoteAddLiquidity(address(token0), address(token1), true, token0Amount, token1Amount);
+        uint256 minToken0Amount = _calculateSlippageAmount(token0Desired, slippage, true);
+        uint256 minToken1Amount = _calculateSlippageAmount(token1desired, slippage, true);
         pearlRouter.addLiquidity(
             address(token0),
             address(token1),
             true,
-            token0Amount,
-            token1Amount,
+            token0Desired,
+            token1desired,
             minToken0Amount,
             minToken1Amount,
             address(this),
-            block.number + 2
+            block.timestamp
         );
     }
 
@@ -116,28 +130,47 @@ contract BeefyPearlStrategy is AccessStrategy {
             minToken0Out,
             minToken1Out,
             address(this),
-            block.number + 2
+            block.timestamp
         );
     }
 
     function _investIntoBeefy(uint256 assets, uint256 slippage) internal {
-        (uint256 token0Ratio, uint256 token1ratio) = _getInLPRatio();
-        // check for slippage
-        token1ratio = _calculateSlippageAmount(token1ratio, slippage, false);
+        (uint256 token0Ratio, uint256 token1Ratio) = _getInLPRatio();
 
-        uint256 token0ToSwap = assets.mulDivDown(token1ratio, token0Ratio + token1ratio);
+        // console.log("ratio zero %s ==> ratio 1 %s", token0Ratio, token1Ratio);
+        // check for slippage
+        token1Ratio = _calculateSlippageAmount(token1Ratio, slippage, false);
+
+        // console.log("ratio zero %s ==> ratio 1 %s", token0Ratio, token1Ratio);
+
+        // we are utilizing the existing USDR idle from previous investment
+        uint256 existingToken1EqToken0 = _getSwapPrice(token1, token0, token1.balanceOf(address(this)));
+        uint256 totalAssetsToInvest = assets + existingToken1EqToken0;
+
+        uint256 token0ToSwap = totalAssetsToInvest.mulDivDown(token1Ratio, token0Ratio + token1Ratio);
+
+        // console.log("token0toSwap 1 %s and token0 %s", token0ToSwap, (assets - token0ToSwap));
+
+        // console.log("Balance asset %s, balance t0 %s", asset.balanceOf(address(this)), token0.balanceOf(address(this)));
 
         // swap token0/asset/USDC to token1/USDR
+        if (token0ToSwap > existingToken1EqToken0) {
+            token0ToSwap = token0ToSwap - existingToken1EqToken0;
+        }
         _swapToken(token0, token1, token0ToSwap, slippage);
         // provide liquidity
 
         uint256 token0Amount = assets - token0ToSwap;
         uint256 token1Amount = token1.balanceOf(address(this));
 
+        // console.log("Balance asset %s, balance t0 %s", token0.balanceOf(address(this)), token1.balanceOf(address(this)));
+
         _provideLiquidityToPearl(token0Amount, token1Amount, slippage);
 
         // deposit to beefy
         beefy.depositAll();
+
+        // console.log("Balance asset %s, balance t0 %s", token0.balanceOf(address(this)), token1.balanceOf(address(this)));
     }
 
     /**
@@ -210,13 +243,13 @@ contract BeefyPearlStrategy is AccessStrategy {
     }
 
     function setDefaultSlippageBps(uint256 slippageBps) external onlyRole(STRATEGIST_ROLE) {
-        require(defaultSlippageBps <= MAX_BPS, "BS: invalid slippage bps");
+        require(defaultSlippageBps <= MAX_BPS, "BPS: invalid slippage bps");
 
         defaultSlippageBps = slippageBps;
     }
 
     function investAssets(uint256 amount, uint256 slippageBps) external onlyRole(STRATEGIST_ROLE) {
-        require(amount <= asset.balanceOf(address(this)), "BS: insufficient assets");
+        require(amount <= asset.balanceOf(address(this)), "BPS: insufficient assets");
         _investIntoBeefy(amount, slippageBps);
     }
 
