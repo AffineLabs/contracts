@@ -47,7 +47,7 @@ contract TestBeefyPearlStrategy is TestPlus {
     }
 
     function setUp() public virtual {
-        vm.createSelectFork("polygon");
+        vm.createSelectFork("polygon", 46_643_471);
         vault = vault = new Vault();
         vault.initialize(governance, address(usdc), "BeefyVault", "BeefyVault");
         setupBeefyStrategy();
@@ -73,139 +73,141 @@ contract TestBeefyPearlStrategy is TestPlus {
         changePrank(address(this));
 
         strategy.investAssets(initialAssets, 50);
+
+        console.log("TVL %s", strategy.totalLockedValue());
         // tvl should be in range of BPS
-        // assertApproxEqRel(initialAssets, strategy.totalLockedValue(), 0.01e18);
-        // should use all usdc
-        // assertEq(usdc.balanceOf(address(strategy)), 0);
+        assertApproxEqRel(initialAssets, strategy.totalLockedValue(), 0.01e18);
+        // should have less than 50 bps amount of usdc
+        // assertTrue(usdc.balanceOf(address(strategy)) <= ((initialAssets*50)/10000));
         // assertEq(strategy.lpToken.balanceOf(address(strategy)), 0);
     }
 
-    // function testWithdrawFromStrategy() public {
-    //     deal(address(usdc), alice, initialAssets);
-    //     vm.startPrank(alice);
+    function testWithdrawFromStrategy() public {
+        deal(address(usdc), alice, initialAssets);
+        vm.startPrank(alice);
 
-    //     usdc.approve(address(strategy), type(uint256).max);
+        usdc.approve(address(strategy), type(uint256).max);
 
-    //     strategy.invest(initialAssets);
+        strategy.invest(initialAssets);
 
-    //     changePrank(address(vault));
-    //     strategy.divest(initialAssets);
+        changePrank(address(vault));
+        strategy.divest(initialAssets);
 
-    //     assertApproxEqRel(usdc.balanceOf(address(vault)), initialAssets, 0.01e18);
+        assertApproxEqRel(usdc.balanceOf(address(vault)), initialAssets, 0.01e18);
 
-    //     assertEq(strategy.totalLockedValue(), 0);
-    // }
+        assertEq(strategy.totalLockedValue(), 0);
+    }
 
-    // function testWithdrawFromStrategyAfterInvestInLP() public {
-    //     deal(address(usdc), alice, initialAssets);
-    //     vm.startPrank(alice);
+    function testWithdrawFromStrategyAfterInvestInLP() public {
+        deal(address(usdc), alice, initialAssets);
+        vm.startPrank(alice);
 
-    //     usdc.approve(address(strategy), type(uint256).max);
+        usdc.approve(address(strategy), type(uint256).max);
 
-    //     strategy.invest(initialAssets);
+        strategy.invest(initialAssets);
 
-    //     changePrank(address(this));
-    //     strategy.investAssets(initialAssets, defaultSlippageBps);
+        changePrank(address(this));
+        strategy.investAssets(initialAssets, defaultSlippageBps);
 
-    //     changePrank(address(vault));
-    //     strategy.divest(initialAssets);
+        changePrank(address(vault));
+        strategy.divest(initialAssets);
 
-    //     assertApproxEqRel(usdc.balanceOf(address(vault)), initialAssets, 0.01e18);
+        assertApproxEqRel(usdc.balanceOf(address(vault)), initialAssets, 0.01e18);
 
-    //     assertEq(strategy.totalLockedValue(), 0);
-    // }
+        assertEq(strategy.totalLockedValue(), 0);
+    }
 
-    // function testDivestHalf() public {
-    //     deal(address(usdc), alice, initialAssets);
-    //     vm.startPrank(alice);
+    function testDivestHalf() public {
+        deal(address(usdc), alice, initialAssets);
+        vm.startPrank(alice);
 
-    //     usdc.approve(address(strategy), type(uint256).max);
+        usdc.approve(address(strategy), type(uint256).max);
 
-    //     strategy.invest(initialAssets);
+        strategy.invest(initialAssets);
 
-    //     changePrank(address(vault));
-    //     strategy.divest(initialAssets / 2);
+        changePrank(address(vault));
+        strategy.divest(initialAssets / 2);
 
-    //     // tvl should be in range of BPS
-    //     assertApproxEqRel(initialAssets / 2, strategy.totalLockedValue(), 0.01e18);
+        // tvl should be in range of BPS
+        assertApproxEqRel(initialAssets / 2, strategy.totalLockedValue(), 0.01e18);
 
-    //     assertApproxEqRel(usdc.balanceOf(address(vault)), initialAssets / 2, 0.01e18);
-    // }
+        assertApproxEqRel(usdc.balanceOf(address(vault)), initialAssets / 2, 0.01e18);
+    }
 
-    // function testDivestHalfAfterInvestInLP() public {
-    //     deal(address(usdc), alice, initialAssets);
-    //     vm.startPrank(alice);
+    function testDivestHalfAfterInvestInLP() public {
+        deal(address(usdc), alice, initialAssets);
+        vm.startPrank(alice);
 
-    //     usdc.approve(address(strategy), type(uint256).max);
+        usdc.approve(address(strategy), type(uint256).max);
 
-    //     strategy.invest(initialAssets);
+        strategy.invest(initialAssets);
 
-    //     changePrank(address(this));
-    //     strategy.investAssets(initialAssets, defaultSlippageBps);
+        changePrank(address(this));
+        strategy.investAssets(initialAssets, defaultSlippageBps);
 
-    //     changePrank(address(vault));
-    //     strategy.divest(initialAssets / 2);
+        changePrank(address(vault));
+        strategy.divest(initialAssets / 2);
 
-    //     // tvl should be in range of BPS
-    //     assertApproxEqRel(initialAssets / 2, strategy.totalLockedValue(), 0.01e18);
+        // tvl should be in range of BPS
+        assertApproxEqRel(initialAssets / 2, strategy.totalLockedValue(), 0.01e18);
 
-    //     assertApproxEqRel(usdc.balanceOf(address(vault)), initialAssets / 2, 0.01e18);
-    // }
+        assertApproxEqRel(usdc.balanceOf(address(vault)), initialAssets / 2, 0.01e18);
+    }
 
-    // function testDivestByStrategist() public {
-    //     deal(address(usdc), alice, initialAssets);
-    //     vm.startPrank(alice);
+    function testDivestByStrategist() public {
+        deal(address(usdc), alice, initialAssets);
+        vm.startPrank(alice);
 
-    //     usdc.approve(address(strategy), type(uint256).max);
+        usdc.approve(address(strategy), type(uint256).max);
 
-    //     strategy.invest(initialAssets);
+        strategy.invest(initialAssets);
 
-    //     changePrank(address(this));
-    //     strategy.investAssets(initialAssets, defaultSlippageBps);
+        changePrank(address(this));
+        strategy.investAssets(initialAssets, defaultSlippageBps);
 
-    //     assertEq(usdc.balanceOf(address(strategy)), 0);
+        assertEq(usdc.balanceOf(address(strategy)), 0);
 
-    //     strategy.divestAssets(initialAssets, defaultSlippageBps);
+        strategy.divestAssets(initialAssets, defaultSlippageBps);
 
-    //     // tvl should be in range of BPS
-    //     assertApproxEqRel(initialAssets, strategy.totalLockedValue(), 0.01e18);
+        // tvl should be in range of BPS
+        assertApproxEqRel(initialAssets, strategy.totalLockedValue(), 0.01e18);
 
-    //     assertApproxEqRel(usdc.balanceOf(address(strategy)), initialAssets, 0.01e18);
-    // }
+        assertApproxEqRel(usdc.balanceOf(address(strategy)), initialAssets, 0.01e18);
+    }
 
-    // function testDepositAndWithdrawFromVault() public virtual {
-    //     deal(address(usdc), alice, initialAssets);
-    //     vm.startPrank(alice);
-    //     usdc.approve(address(vault), type(uint256).max);
-    //     vault.deposit(initialAssets, alice);
+    function testDepositAndWithdrawFromVault() public virtual {
+        deal(address(usdc), alice, initialAssets);
+        vm.startPrank(alice);
+        usdc.approve(address(vault), type(uint256).max);
+        vault.deposit(initialAssets, alice);
 
-    //     assertEq(vault.vaultTVL(), initialAssets);
+        assertEq(vault.vaultTVL(), initialAssets);
 
-    //     changePrank(governance);
+        changePrank(governance);
 
-    //     vault.depositIntoStrategies(usdc.balanceOf(address(vault)));
+        vault.depositIntoStrategies(usdc.balanceOf(address(vault)));
 
-    //     // update block timestamp to harvest
+        // update block timestamp to harvest
 
-    //     vm.warp(block.timestamp + 3 days);
+        vm.warp(block.timestamp + 3 days);
 
-    //     // harvest
-    //     BaseStrategy[] memory strategies = new BaseStrategy[](1);
-    //     strategies[0] = strategy;
-    //     vault.harvest(strategies);
+        // harvest
+        BaseStrategy[] memory strategies = new BaseStrategy[](1);
+        strategies[0] = strategy;
+        vault.harvest(strategies);
 
-    //     assertEq(vault.vaultTVL(), strategy.totalLockedValue());
+        assertEq(vault.vaultTVL(), strategy.totalLockedValue());
 
-    //     changePrank(alice);
-    //     vault.withdraw(initialAssets / 2, alice, alice);
+        changePrank(alice);
+        vault.withdraw(initialAssets / 2, alice, alice);
 
-    //     assertEq(usdc.balanceOf(alice), initialAssets / 2);
-    //     assertEq(vault.vaultTVL(), strategy.totalLockedValue());
+        assertEq(usdc.balanceOf(alice), initialAssets / 2);
+        assertEq(vault.vaultTVL(), strategy.totalLockedValue());
 
-    //     changePrank(address(this));
+        changePrank(address(this));
 
-    //     strategy.investAssets(initialAssets / 2, defaultSlippageBps);
+        strategy.investAssets(initialAssets / 2, defaultSlippageBps);
 
-    //     assertEq(usdc.balanceOf(address(strategy)), 0);
-    // }
+        assertEq(usdc.balanceOf(address(strategy)), 0);
+    }
 }

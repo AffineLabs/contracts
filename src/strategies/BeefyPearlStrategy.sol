@@ -13,8 +13,7 @@ import {IBeefyVault} from "src/interfaces/Beefy.sol";
 import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
 
 import {AffineVault} from "src/vaults/Vault.sol";
-
-// import {console} from "forge-std/console.sol";
+import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 
 contract BeefyPearlStrategy is AccessStrategy {
     using FixedPointMathLib for uint256;
@@ -42,7 +41,8 @@ contract BeefyPearlStrategy is AccessStrategy {
         pearlRouter = _router;
         lpToken = IPair(pearlRouter.pairFor(address(token0), address(token1), true));
 
-        require(pearlRouter.isPair(address(lpToken)), "BPS: invalid pearl LP pair");
+        require(pearlRouter.isPair(address(lpToken)), "BPS: Invalid pearl LP pair");
+        require(address(beefy.want()) == address(lpToken), "BPS: Invalid beefy vault asset.");
 
         // approve assets to use in pearl router
         token0.approve(address(pearlRouter), type(uint256).max);
@@ -67,8 +67,8 @@ contract BeefyPearlStrategy is AccessStrategy {
     }
 
     function _getTotalLpTokenAmount() internal view returns (uint256) {
-        return beefy.balanceOf(address(this)).mulDivDown(beefy.getPricePerFullShare(), 10 ** beefy.decimals())
-            + lpToken.balanceOf(address(this));
+        return
+            beefy.balanceOf(address(this)).mulWadDown(beefy.getPricePerFullShare()) + lpToken.balanceOf(address(this));
     }
 
     function _getOutLPRatio() internal view returns (uint256, uint256) {
@@ -76,10 +76,7 @@ contract BeefyPearlStrategy is AccessStrategy {
         (uint256 token0Out, uint256 token1Out) =
             pearlRouter.quoteRemoveLiquidity(address(token0), address(token1), true, lpTokenAmount);
 
-        uint256 token1ToToken0SwapPrice = _getSwapPrice(token1, token0, 10 ** token1.decimals());
-
-        uint256 token1EqToken0 = token1Out.mulDivDown(token1ToToken0SwapPrice, 10 ** token1.decimals());
-
+        uint256 token1EqToken0 = _getSwapPrice(token1, token0, token1Out);
         return (token0Out, token1EqToken0);
     }
 
@@ -137,21 +134,14 @@ contract BeefyPearlStrategy is AccessStrategy {
     function _investIntoBeefy(uint256 assets, uint256 slippage) internal {
         (uint256 token0Ratio, uint256 token1Ratio) = _getInLPRatio();
 
-        // console.log("ratio zero %s ==> ratio 1 %s", token0Ratio, token1Ratio);
         // check for slippage
         token1Ratio = _calculateSlippageAmount(token1Ratio, slippage, false);
-
-        // console.log("ratio zero %s ==> ratio 1 %s", token0Ratio, token1Ratio);
 
         // we are utilizing the existing USDR idle from previous investment
         uint256 existingToken1EqToken0 = _getSwapPrice(token1, token0, token1.balanceOf(address(this)));
         uint256 totalAssetsToInvest = assets + existingToken1EqToken0;
 
         uint256 token0ToSwap = totalAssetsToInvest.mulDivDown(token1Ratio, token0Ratio + token1Ratio);
-
-        // console.log("token0toSwap 1 %s and token0 %s", token0ToSwap, (assets - token0ToSwap));
-
-        // console.log("Balance asset %s, balance t0 %s", asset.balanceOf(address(this)), token0.balanceOf(address(this)));
 
         // swap token0/asset/USDC to token1/USDR
         if (token0ToSwap > existingToken1EqToken0) {
@@ -163,14 +153,10 @@ contract BeefyPearlStrategy is AccessStrategy {
         uint256 token0Amount = assets - token0ToSwap;
         uint256 token1Amount = token1.balanceOf(address(this));
 
-        // console.log("Balance asset %s, balance t0 %s", token0.balanceOf(address(this)), token1.balanceOf(address(this)));
-
         _provideLiquidityToPearl(token0Amount, token1Amount, slippage);
 
         // deposit to beefy
         beefy.depositAll();
-
-        // console.log("Balance asset %s, balance t0 %s", token0.balanceOf(address(this)), token1.balanceOf(address(this)));
     }
 
     /**
@@ -197,29 +183,43 @@ contract BeefyPearlStrategy is AccessStrategy {
      */
     function _divest(uint256 assets) internal override returns (uint256) {
         _divestFromBeefy(assets, defaultSlippageBps);
-        return Math.min(asset.balanceOf(address(this)), assets);
+        uint256 amountToSend = Math.min(assets, asset.balanceOf(address(this)));
+        asset.safeTransfer(address(vault), amountToSend);
+        return amountToSend;
     }
 
     function _divestFromBeefy(uint256 assets, uint256 slippage) internal {
-        uint256 requiredAssets = assets - asset.balanceOf(address(this));
+        if (assets <= asset.balanceOf(address(this))) {
+            return;
+        }
+
+        _divestLP(assets - asset.balanceOf(address(this)), slippage);
+
+        _swapToken(token1, token0, token1.balanceOf(address(this)), slippage);
+    }
+
+    function _divestLP(uint256 assets, uint256 slippage) internal {
+        uint256 token1EqToken0 = _getSwapPrice(token1, token0, token1.balanceOf(address(this)));
+        uint256 minToken1EqToken0 = _calculateSlippageAmount(token1EqToken0, slippage, true);
+
+        if (minToken1EqToken0 >= assets) {
+            return;
+        }
+
+        uint256 requiredAssets = assets - minToken1EqToken0;
 
         (uint256 token0Ratio, uint256 token1Ratio) = _getOutLPRatio();
-
         // calc slippage calc 1
         uint256 minToken1Ratio = _calculateSlippageAmount(token1Ratio, slippage, true);
 
         uint256 totalLpToken = _getTotalLpTokenAmount();
-
         uint256 lpTokenAmount = totalLpToken.mulDivDown(requiredAssets, token0Ratio + minToken1Ratio);
-
         // withdraw from beefy
-        if (lpTokenAmount < lpToken.balanceOf(address(this))) {
+        if (lpTokenAmount > lpToken.balanceOf(address(this))) {
             _withdrawLPTokenFromBeefy(lpTokenAmount - lpToken.balanceOf(address(this)));
         }
 
         _removeLiquidityFromPearl(lpToken.balanceOf(address(this)), slippage);
-
-        _swapToken(token1, token0, token1.balanceOf(address(this)), slippage);
     }
 
     /**
@@ -239,7 +239,8 @@ contract BeefyPearlStrategy is AccessStrategy {
     function totalLockedValue() external view override returns (uint256) {
         (uint256 token0Amount, uint256 token1EqToken0Amount) = _getOutLPRatio();
 
-        return token0Amount + token1EqToken0Amount + token0.balanceOf(address(this)) + token1.balanceOf(address(this));
+        return token0Amount + token1EqToken0Amount + token0.balanceOf(address(this))
+            + _getSwapPrice(token1, token0, token1.balanceOf(address(this)));
     }
 
     function setDefaultSlippageBps(uint256 slippageBps) external onlyRole(STRATEGIST_ROLE) {
@@ -255,5 +256,19 @@ contract BeefyPearlStrategy is AccessStrategy {
 
     function divestAssets(uint256 amount, uint256 slippageBps) external onlyRole(STRATEGIST_ROLE) {
         _divestFromBeefy(amount, slippageBps);
+    }
+}
+
+contract BeefyPearlEpochStrategy is BeefyPearlStrategy {
+    StrategyVault public immutable sVault;
+
+    constructor(StrategyVault _vault, IBeefyVault _beefy, IRouter _router, ERC20 _token1, address[] memory strategists)
+        BeefyPearlStrategy(AffineVault(address(_vault)), _beefy, _router, _token1, strategists)
+    {
+        sVault = _vault;
+    }
+
+    function endEpoch() external onlyRole(STRATEGIST_ROLE) {
+        sVault.endEpoch();
     }
 }
