@@ -67,6 +67,7 @@ contract BeefyPearlStrategy is AccessStrategy {
     }
 
     function _getTotalLpTokenAmount() internal view returns (uint256) {
+        // beefy return price per share with 10^18 decimal
         return
             beefy.balanceOf(address(this)).mulWadDown(beefy.getPricePerFullShare()) + lpToken.balanceOf(address(this));
     }
@@ -85,8 +86,6 @@ contract BeefyPearlStrategy is AccessStrategy {
     }
 
     function _swapToken(ERC20 from, ERC20 to, uint256 amount, uint256 slippage) internal {
-        require(amount <= from.balanceOf(address(this)), "BPS: INSUFFICIENT BALANCE FOR SWAP T0 -> T1");
-
         uint256 tokenToAmount = _getSwapPrice(from, to, amount);
         uint256 minTokenToReceive = _calculateSlippageAmount(tokenToAmount, slippage, true);
         pearlRouter.swapExactTokensForTokensSimple(
