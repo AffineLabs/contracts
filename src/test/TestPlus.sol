@@ -26,6 +26,10 @@ contract TestPlus is Test, Deploy {
         vm.createSelectFork("polygon", POLYGON_FORK_BLOCK);
     }
 
+    function forkArb() internal {
+        vm.createSelectFork("arbitrum", 124_531_545);
+    }
+
     function assertInRange(uint256 a, uint256 b1, uint256 b2) internal {
         if (a < b1 || a > b2) {
             emit log("Error: a in range [b1, b2] not satisfied [uint]");
