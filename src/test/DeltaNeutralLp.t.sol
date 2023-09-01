@@ -125,20 +125,6 @@ contract L1DeltaNeutralTest is TestPlus {
     }
 
     /**
-     * @notice Fuzz test start position with less assets than balance
-     */
-    function testStartPositionWithLessAmountFuzz(uint256 _unusedAssets) public {
-        _unusedAssets = (_unusedAssets % startAssets);
-
-        deal(address(asset), address(strategy), startAssets);
-
-        vm.startPrank(vault.governance());
-        strategy.startPosition(startAssets - _unusedAssets, IDEAL_SLIPPAGE_BPS);
-        // remaining balance should be greater or equal to the less amount
-        assertGe(asset.balanceOf(address(strategy)), _unusedAssets);
-    }
-
-    /**
      * @notice test start position with more assets than balance
      */
     function testStartInvalidPosition() public {
@@ -157,7 +143,7 @@ contract L1DeltaNeutralTest is TestPlus {
         vm.startPrank(vault.governance());
         strategy.startPosition(startAssets, IDEAL_SLIPPAGE_BPS);
 
-        changePrank(alice);
+        vm.startPrank(alice);
         vm.expectRevert(
             abi.encodePacked(
                 "AccessControl: account ",

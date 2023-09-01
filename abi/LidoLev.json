@@ -219,19 +219,6 @@
   },
   {
     "inputs": [],
-    "name": "LIDO",
-    "outputs": [
-      {
-        "internalType": "contract IWStEth",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "MAKER",
     "outputs": [
       {
@@ -300,7 +287,20 @@
     "name": "WETH",
     "outputs": [
       {
-        "internalType": "contract ERC20",
+        "internalType": "contract WETH",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "WSTETH",
+    "outputs": [
+      {
+        "internalType": "contract IWSTETH",
         "name": "",
         "type": "address"
       }
@@ -399,6 +399,34 @@
       {
         "internalType": "uint256",
         "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getPositionInfo",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "makerCollateral",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "makerDebt",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "compoundCollateral",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "compoundDebt",
         "type": "uint256"
       }
     ],
