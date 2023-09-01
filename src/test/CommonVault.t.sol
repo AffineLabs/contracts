@@ -176,7 +176,7 @@ contract CommonVaultTest is TestPlus {
 
         uint256 amountAsset = 1e18;
 
-        changePrank(alice);
+        vm.startPrank(alice);
         _giveAssets(alice, amountAsset);
         asset.approve(address(vault), type(uint256).max);
         vault.deposit(amountAsset, alice);
@@ -193,13 +193,13 @@ contract CommonVaultTest is TestPlus {
 
     /// @notice Test that goveranance can modify management fees.
     function testCanSetManagementAndWithdrawalFees() public {
-        changePrank(governance);
+        vm.startPrank(governance);
         vault.setManagementFee(300);
         assertEq(vault.managementFee(), 300);
         vault.setWithdrawalFee(10);
         assertEq(vault.withdrawalFee(), 10);
 
-        changePrank(alice);
+        vm.startPrank(alice);
         vm.expectRevert("Only Governance.");
         vault.setManagementFee(300);
         vm.expectRevert("Only Governance.");
@@ -208,7 +208,7 @@ contract CommonVaultTest is TestPlus {
 
     /// @notice Test that goveranance can pause the vault.
     function testVaultPause() public {
-        changePrank(governance);
+        vm.startPrank(governance);
         vault.pause();
 
         vm.expectRevert("Pausable: paused");
@@ -235,7 +235,7 @@ contract CommonVaultTest is TestPlus {
         bytes memory errorMsg = abi.encodePacked(errString);
 
         vm.expectRevert(errorMsg);
-        changePrank(alice);
+        vm.startPrank(alice);
         vault.pause();
 
         vm.expectRevert(errorMsg);
@@ -295,7 +295,7 @@ contract CommonVaultTest is TestPlus {
         vm.stopPrank();
 
         // Bob has nft and gets discount
-        changePrank(bob);
+        vm.startPrank(bob);
         _giveAssets(bob, amountAsset);
         asset.approve(address(vault), type(uint256).max);
         vault.deposit(amountAsset, bob);
@@ -307,7 +307,7 @@ contract CommonVaultTest is TestPlus {
         assertApproxEqAbs(asset.balanceOf(bob), (amountAsset * (10_000 - 10)) / 10_000, 2);
 
         // Alice gets 50 bps fee
-        changePrank(alice);
+        vm.startPrank(alice);
         vault.redeem(vault.balanceOf(alice), alice, alice);
         assertEq(vault.balanceOf(alice), 0);
         assertApproxEqAbs(asset.balanceOf(alice), (amountAsset * (10_000 - 50)) / 10_000, 2);

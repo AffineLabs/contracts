@@ -197,7 +197,7 @@ contract L2VaultTest is TestPlus {
         assertEq(vault.totalSupply(), 1e18);
 
         // Add this contract as a strategy
-        changePrank(governance);
+        vm.startPrank(governance);
         BaseStrategy myStrat = BaseStrategy(address(this));
         vault.addStrategy(myStrat, 10_000);
 
@@ -226,7 +226,7 @@ contract L2VaultTest is TestPlus {
     /// @notice Test profit is locked over the `LOCK_INTERVAL` period.
     function testLockedProfit() public {
         // Add this contract as a strategy
-        changePrank(governance);
+        vm.startPrank(governance);
         BaseStrategy myStrat = BaseStrategy(address(this));
         vault.addStrategy(myStrat, 10_000);
 
@@ -405,7 +405,7 @@ contract L2VaultTest is TestPlus {
 
         uint256 amountAsset = 1e18;
 
-        changePrank(alice);
+        vm.startPrank(alice);
         asset.mint(alice, amountAsset);
         asset.approve(address(vault), type(uint256).max);
         vault.deposit(amountAsset, alice);
@@ -421,13 +421,13 @@ contract L2VaultTest is TestPlus {
 
     /// @notice Test that goveranance can modify management fees.
     function testCanSetManagementAndWithdrawalFees() public {
-        changePrank(governance);
+        vm.startPrank(governance);
         vault.setManagementFee(300);
         assertEq(vault.managementFee(), 300);
         vault.setWithdrawalFee(10);
         assertEq(vault.withdrawalFee(), 10);
 
-        changePrank(alice);
+        vm.startPrank(alice);
         vm.expectRevert("Only Governance.");
         vault.setManagementFee(300);
         vm.expectRevert("Only Governance.");
@@ -436,7 +436,7 @@ contract L2VaultTest is TestPlus {
 
     /// @notice Test that goveranance can pause the vault.
     function testVaultPause() public {
-        changePrank(governance);
+        vm.startPrank(governance);
         vault.pause();
 
         vm.expectRevert("Pausable: paused");
@@ -463,7 +463,7 @@ contract L2VaultTest is TestPlus {
         bytes memory errorMsg = abi.encodePacked(errString);
 
         vm.expectRevert(errorMsg);
-        changePrank(alice);
+        vm.startPrank(alice);
         vault.pause();
 
         vm.expectRevert(errorMsg);

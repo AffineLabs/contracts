@@ -28,10 +28,10 @@ contract BaseStrategyTest is TestPlus {
     function testSweep() public {
         // Will revert if non governance tries to call it
         vm.expectRevert("BS: only governance");
-        changePrank(alice); // vitalik
+        vm.startPrank(alice); // vitalik
         strategy.sweep(rewardToken);
 
-        changePrank(governance);
+        vm.startPrank(governance);
         // award the strategy some tokens
         rewardToken.mint(address(strategy), 1e18);
         strategy.sweep(rewardToken);

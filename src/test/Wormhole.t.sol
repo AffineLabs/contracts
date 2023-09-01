@@ -45,11 +45,11 @@ contract L2WormholeRouterTest is TestPlus {
     /// @notice Test that the governance can update wormhole router configurations.
     function testWormholeConfigUpdates() public {
         // update consistencyLevel
-        changePrank(router.governance());
+        vm.startPrank(router.governance());
         router.setConsistencyLevel(100);
         assertEq(router.consistencyLevel(), 100);
 
-        changePrank(alice);
+        vm.startPrank(alice);
         vm.expectRevert("Only Governance.");
         router.setConsistencyLevel(0);
     }
