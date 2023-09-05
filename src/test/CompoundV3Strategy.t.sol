@@ -60,7 +60,7 @@ contract CompoundV3Test is TestPlus {
         vm.startPrank(governance);
         vault.addStrategy(strategy, 5000);
 
-        changePrank(address(vault.bridgeEscrow()));
+        vm.startPrank(address(vault.bridgeEscrow()));
         // After calling this, 5,000 bps of vault assets will be invested
         // in the aforementioed strategy and the remaining 5,000 bips will stay in vault
         // as a pile of idle USDC.
@@ -120,7 +120,7 @@ contract CompoundV3Test is TestPlus {
 
         uint256 tvl = strategy.totalLockedValue();
 
-        changePrank(address(vault));
+        vm.startPrank(address(vault));
         strategy.divest(tvl);
         assertInRange(usdc.balanceOf(address(vault)), oneUSDC - 1, oneUSDC);
     }
@@ -131,11 +131,11 @@ contract CompoundV3Test is TestPlus {
         deal(address(usdc), address(strategy), 3e6, false);
 
         // Mint two cTokens, only 1 should be liquidated during a request for $2
-        changePrank(address(strategy));
+        vm.startPrank(address(strategy));
         strategy.cToken().supply(address(strategy.asset()), 2e6);
 
         // Divest to get 2 usdc back to vault
-        changePrank(address(vault));
+        vm.startPrank(address(vault));
         strategy.divest(2e6);
 
         // We only withdrew 2 - 1 == 1 usdc worth of cToken. We gave 2 usdc to the vault

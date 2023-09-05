@@ -13,7 +13,7 @@ import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
 import {AffineVault, Strategy} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
 import {IBalancerVault, IFlashLoanRecipient} from "src/interfaces/balancer.sol";
-import {IWSTETH} from "src/interfaces/lido/IWStEth.sol";
+import {IWSTETH} from "src/interfaces/lido/IWSTETH.sol";
 import {ICurvePool} from "src/interfaces/curve/ICurvePool.sol";
 import {ICdpManager, IVat, IGemJoin, ICropper} from "src/interfaces/maker.sol";
 import {IComptroller, ICToken} from "src/interfaces/compound.sol";

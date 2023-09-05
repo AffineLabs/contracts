@@ -41,7 +41,7 @@ contract L1VaultTest is TestPlus {
     /// @notice Test sending TVL to L2 works.
     function testSendTVL() public {
         // user can call sendTVL
-        changePrank(alice);
+        vm.startPrank(alice);
         vault.sendTVL();
         assertTrue(vault.received() == false);
     }
@@ -66,12 +66,12 @@ contract L1VaultTest is TestPlus {
     function testafterReceive() public {
         BaseStrategy newStrategy1 = new TestStrategy(AffineVault(address(vault)));
 
-        changePrank(governance);
+        vm.startPrank(governance);
         vault.addStrategy(newStrategy1, 1);
 
         deal(address(asset), address(vault), 10_000, true);
 
-        changePrank(address(vault.bridgeEscrow()));
+        vm.startPrank(address(vault.bridgeEscrow()));
         vault.afterReceive();
 
         assertTrue(vault.received() == true);
@@ -80,7 +80,7 @@ contract L1VaultTest is TestPlus {
 
     /// @notice Test that profit is locked over a `LOCK_INTERVAL`.
     function testLockedProfit() public {
-        changePrank(governance);
+        vm.startPrank(governance);
 
         BaseStrategy newStrategy1 = new TestStrategy(AffineVault(address(vault)));
         vault.addStrategy(newStrategy1, 1000);
