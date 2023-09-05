@@ -54,6 +54,9 @@ contract BeefyPearlStrategy is AccessStrategy {
     }
 
     // TODO: parameterize (address from, address to)
+    /**
+     * @notice return the ration of token0 and token1 in terms of equivalent asset
+     */
     function _getInLPRatio() internal view returns (uint256, uint256) {
         (uint256 token0Desired, uint256 token1desired,) = pearlRouter.quoteAddLiquidity(
             address(token0), address(token1), true, 10 ** token0.decimals(), 10 ** token1.decimals()
@@ -66,12 +69,18 @@ contract BeefyPearlStrategy is AccessStrategy {
         return (token0Desired, token1EqToken0);
     }
 
+    /**
+     * @notice return total LP token in the strategy
+     */
     function _getTotalLpTokenAmount() internal view returns (uint256) {
         // beefy return price per share with 10^18 decimal
         return
             beefy.balanceOf(address(this)).mulWadDown(beefy.getPricePerFullShare()) + lpToken.balanceOf(address(this));
     }
 
+    /**
+     * @notice return asset equivalent token0 and token1 ratio in removing liquidity
+     */
     function _getOutLPRatio() internal view returns (uint256, uint256) {
         uint256 lpTokenAmount = _getTotalLpTokenAmount();
         (uint256 token0Out, uint256 token1Out) =
@@ -81,10 +90,23 @@ contract BeefyPearlStrategy is AccessStrategy {
         return (token0Out, token1EqToken0);
     }
 
+    /**
+     * @notice return swapped token amount
+     * @param from token to swap
+     * @param to token swapped into
+     * @param amount amount of from token
+     */
     function _getSwapPrice(ERC20 from, ERC20 to, uint256 amount) internal view returns (uint256 tokenToAmount) {
         (tokenToAmount,) = pearlRouter.getAmountOut(amount, address(from), address(to));
     }
 
+    /**
+     * @notice swap token from to token to
+     * @param from token to swap
+     * @param to token swapped into
+     * @param amount amount of from token
+     * @param slippage max acceptable slippage in swap
+     */
     function _swapToken(ERC20 from, ERC20 to, uint256 amount, uint256 slippage) internal {
         uint256 tokenToAmount = _getSwapPrice(from, to, amount);
         uint256 minTokenToReceive = _calculateSlippageAmount(tokenToAmount, slippage, true);
