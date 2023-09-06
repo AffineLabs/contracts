@@ -31,6 +31,10 @@ contract AAVEStratTest is TestPlus {
         forkPolygon();
     }
 
+    function _deployStrategy() internal virtual returns (address strat) {
+        strat = address(new AaveV2Strategy(vault, ILendingPool(_lendingPool())));
+    }
+
     function setUp() public {
         _fork();
         vault = AffineVault(address(Deploy.deployL2Vault()));
@@ -39,7 +43,7 @@ contract AAVEStratTest is TestPlus {
         bytes32 tokenAddr = bytes32(uint256(uint160(_usdc())));
         vm.store(address(vault), bytes32(slot), tokenAddr);
 
-        strategy = new AaveV2Strategy(vault, ILendingPool(_lendingPool()));
+        strategy = AaveV2Strategy(_deployStrategy());
 
         vm.prank(governance);
         vault.addStrategy(strategy, 5000);
