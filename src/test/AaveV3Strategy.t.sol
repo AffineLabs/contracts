@@ -14,17 +14,17 @@ import {AaveV3Strategy, IPool} from "src/strategies/AaveV3Strategy.sol";
 import {AAVEStratTest} from "./AaveV2Strategy.t.sol";
 
 /// @notice Test AAVE strategy
-contract ArbitrumAaveStratTest is AAVEStratTest {
+contract BaseAaveStratTest is AAVEStratTest {
     function _fork() internal override {
-        forkArb();
+        forkBase();
     }
 
     function _usdc() internal override returns (address) {
-        return 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
+        return 0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA;
     }
 
     function _lendingPool() internal override returns (address) {
-        return 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
+        return 0xA238Dd80C259a72e81d7e4664a9801593F98d1c5;
     }
 
     function _deployStrategy() internal override returns (address strat) {
