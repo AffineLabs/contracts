@@ -6,9 +6,11 @@ import {Script, console} from "forge-std/Script.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
 import {IBeefyVault} from "src/interfaces/Beefy.sol";
+import {IRouter, IPair} from "src/interfaces/IPearl.sol";
 
 import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 import {BeefyEpochStrategy} from "src/strategies/BeefyEpochStrategy.sol";
+import {BeefyPearlEpochStrategy} from "src/strategies/BeefyPearlStrategy.sol";
 import {Base} from "./Base.sol";
 
 /* solhint-disable reason-string, no-console */
@@ -34,6 +36,21 @@ library BeefyLib {
             _getStrategists()
         );
     }
+
+    function deployBeefyPearlStrategy() internal returns (BeefyPearlEpochStrategy strategy) {
+        IRouter router = IRouter(0xcC25C0FD84737F44a7d38649b69491BBf0c7f083);
+        IBeefyVault beefy = IBeefyVault(0xD74B5df80347cE9c81b91864DF6a50FfAfE44aa5);
+        ERC20 token1 = ERC20(0x40379a439D4F6795B6fc9aa5687dB461677A2dBa); // usdr
+        StrategyVault vault = StrategyVault(0x684D1dbd30c67Fe7fF6D502A04e0E7076b4b9D46);
+
+        strategy = new BeefyPearlEpochStrategy(
+            vault, 
+            beefy,
+            router,
+            token1,
+            _getStrategists()
+        );
+    }
 }
 
 contract Deploy is Script {
@@ -46,6 +63,12 @@ contract Deploy is Script {
     function deployBeefyEpochStrategyPolygon() public {
         _start();
         BeefyEpochStrategy strategy = BeefyLib.deployBeefyStrategy();
+        console.log("Beefy strategy addr: %s", address(strategy));
+    }
+
+    function deployBeefyPearlEpochStrategyPolygon() public {
+        _start();
+        BeefyPearlEpochStrategy strategy = BeefyLib.deployBeefyPearlStrategy();
         console.log("Beefy strategy addr: %s", address(strategy));
     }
 }

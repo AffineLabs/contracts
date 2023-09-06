@@ -70,7 +70,7 @@ contract TestBeefyPearlStrategy is TestPlus {
 
         assertEq(strategy.totalLockedValue(), initialAssets);
 
-        changePrank(address(this));
+        vm.startPrank(address(this));
 
         strategy.investAssets(initialAssets, 50);
 
@@ -90,7 +90,7 @@ contract TestBeefyPearlStrategy is TestPlus {
 
         strategy.invest(initialAssets);
 
-        changePrank(address(vault));
+        vm.startPrank(address(vault));
         strategy.divest(initialAssets);
 
         assertApproxEqRel(usdc.balanceOf(address(vault)), initialAssets, 0.01e18);
@@ -106,10 +106,10 @@ contract TestBeefyPearlStrategy is TestPlus {
 
         strategy.invest(initialAssets);
 
-        changePrank(address(this));
+        vm.startPrank(address(this));
         strategy.investAssets(initialAssets, defaultSlippageBps);
 
-        changePrank(address(vault));
+        vm.startPrank(address(vault));
         strategy.divest(initialAssets);
 
         assertApproxEqRel(usdc.balanceOf(address(vault)), initialAssets, 0.01e18);
@@ -125,7 +125,7 @@ contract TestBeefyPearlStrategy is TestPlus {
 
         strategy.invest(initialAssets);
 
-        changePrank(address(vault));
+        vm.startPrank(address(vault));
         strategy.divest(initialAssets / 2);
 
         // tvl should be in range of BPS
@@ -142,10 +142,10 @@ contract TestBeefyPearlStrategy is TestPlus {
 
         strategy.invest(initialAssets);
 
-        changePrank(address(this));
+        vm.startPrank(address(this));
         strategy.investAssets(initialAssets, defaultSlippageBps);
 
-        changePrank(address(vault));
+        vm.startPrank(address(vault));
         strategy.divest(initialAssets / 2);
 
         // tvl should be in range of BPS
@@ -162,7 +162,7 @@ contract TestBeefyPearlStrategy is TestPlus {
 
         strategy.invest(initialAssets);
 
-        changePrank(address(this));
+        vm.startPrank(address(this));
         strategy.investAssets(initialAssets, defaultSlippageBps);
 
         assertEq(usdc.balanceOf(address(strategy)), 0);
@@ -183,7 +183,7 @@ contract TestBeefyPearlStrategy is TestPlus {
 
         assertEq(vault.vaultTVL(), initialAssets);
 
-        changePrank(governance);
+        vm.startPrank(governance);
 
         vault.depositIntoStrategies(usdc.balanceOf(address(vault)));
 
@@ -198,13 +198,13 @@ contract TestBeefyPearlStrategy is TestPlus {
 
         assertEq(vault.vaultTVL(), strategy.totalLockedValue());
 
-        changePrank(alice);
+        vm.startPrank(alice);
         vault.withdraw(initialAssets / 2, alice, alice);
 
         assertEq(usdc.balanceOf(alice), initialAssets / 2);
         assertEq(vault.vaultTVL(), strategy.totalLockedValue());
 
-        changePrank(address(this));
+        vm.startPrank(address(this));
 
         strategy.investAssets(initialAssets / 2, defaultSlippageBps);
 

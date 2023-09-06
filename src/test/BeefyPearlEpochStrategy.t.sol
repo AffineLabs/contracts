@@ -75,12 +75,12 @@ contract TestBeefyPearlWithStrategyVault is TestPlus {
 
         assertEq(vault.vaultTVL(), initialAssets);
 
-        changePrank(address(this));
+        vm.startPrank(address(this));
         strategy.endEpoch();
 
         assertEq(vault.vaultTVL(), strategy.totalLockedValue());
 
-        changePrank(alice);
+        vm.startPrank(alice);
         vault.withdraw(initialAssets / 2, alice, alice);
 
         assertEq(usdc.balanceOf(alice), initialAssets / 2);
@@ -95,14 +95,14 @@ contract TestBeefyPearlWithStrategyVault is TestPlus {
 
         assertEq(vault.vaultTVL(), initialAssets);
 
-        changePrank(address(this));
+        vm.startPrank(address(this));
         strategy.endEpoch();
 
         assertEq(vault.vaultTVL(), strategy.totalLockedValue());
 
         strategy.investAssets(strategy.totalLockedValue(), 50);
 
-        changePrank(alice);
+        vm.startPrank(alice);
         vault.withdraw(initialAssets / 2, alice, alice);
 
         assertEq(usdc.balanceOf(alice), initialAssets / 2);
@@ -120,14 +120,14 @@ contract TestBeefyPearlWithStrategyVault is TestPlus {
 
         assertEq(vault.vaultTVL(), initialAssets);
 
-        changePrank(address(this));
+        vm.startPrank(address(this));
         strategy.endEpoch();
 
         assertEq(vault.vaultTVL(), strategy.totalLockedValue());
 
         // change prank to gov update vault
 
-        changePrank(governance);
+        vm.startPrank(governance);
         vault.pause();
 
         vault.withdrawFromStrategy(vault.vaultTVL());
@@ -144,11 +144,11 @@ contract TestBeefyPearlWithStrategyVault is TestPlus {
         setupBeefyPearlEpochStrategy();
         vault.setStrategy(strategy);
 
-        changePrank(address(this));
+        vm.startPrank(address(this));
 
         strategy.setDefaultSlippageBps(defaultSlippageBps);
 
-        changePrank(governance);
+        vm.startPrank(governance);
 
         vault.depositIntoStrategy(vault.vaultTVL());
 
@@ -156,7 +156,7 @@ contract TestBeefyPearlWithStrategyVault is TestPlus {
 
         assertEq(vault.vaultTVL(), oldTVL);
 
-        changePrank(address(this));
+        vm.startPrank(address(this));
         strategy.endEpoch();
 
         assertEq(vault.vaultTVL(), strategy.totalLockedValue());
@@ -168,11 +168,11 @@ contract TestBeefyPearlWithStrategyVault is TestPlus {
 
         assertEq(usdc.balanceOf(address(strategy)), 0);
 
-        changePrank(governance);
+        vm.startPrank(governance);
         vault.unpause();
 
         //trying to withdraw
-        changePrank(alice);
+        vm.startPrank(alice);
         vault.withdraw(initialAssets / 2, alice, alice);
         assertApproxEqRel(usdc.balanceOf(alice), initialAssets / 2, 0.01e18);
     }
