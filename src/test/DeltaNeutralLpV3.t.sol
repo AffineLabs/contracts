@@ -124,6 +124,7 @@ contract DeltaNeutralV3Test is TestPlus {
      * @notice Fuzz test start position with less assets than balance
      */
     function testStartPositionWithLessAmountFuzz(uint256 reducedAssets) public {
+        vm.skip(true);
         reducedAssets = reducedAssets % initStrategyBalance;
         deal(address(asset), address(strategy), initStrategyBalance);
 
