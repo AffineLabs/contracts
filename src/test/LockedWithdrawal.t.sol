@@ -68,7 +68,7 @@ contract LockedWithdrawalTest is TestPlus {
 
         assertEq(withdrawalEscrow.withdrawableAmount(alice), 0);
 
-        changePrank(alice);
+        vm.startPrank(alice);
         assertEq(withdrawalEscrow.redeem(), 0);
         // check balance of alice
         assertEq(withdrawalEscrow.balanceOf(alice), 0);
@@ -94,7 +94,7 @@ contract LockedWithdrawalTest is TestPlus {
         // check alice get the full amount
         assertEq(withdrawalEscrow.withdrawableAmount(alice), 1234);
 
-        changePrank(alice);
+        vm.startPrank(alice);
         assertEq(withdrawalEscrow.redeem(), 1234);
         // check balance of alice
         assertEq(withdrawalEscrow.balanceOf(alice), 0);
@@ -120,12 +120,12 @@ contract LockedWithdrawalTest is TestPlus {
         assertEq(withdrawalEscrow.canWithdraw(alice), true);
         assertEq(withdrawalEscrow.withdrawableAmount(alice), 1000);
 
-        changePrank(alice);
+        vm.startPrank(alice);
         assertEq(withdrawalEscrow.redeem(), 1000);
 
         assertEq(withdrawalEscrow.canWithdraw(bob), true);
         assertEq(withdrawalEscrow.withdrawableAmount(bob), 2000);
-        changePrank(bob);
+        vm.startPrank(bob);
         assertEq(withdrawalEscrow.redeem(), 2000);
     }
 
@@ -169,7 +169,7 @@ contract LockedWithdrawalTest is TestPlus {
         vm.warp(blockStartTime + sla);
 
         // transfer funds to alice
-        changePrank(alice);
+        vm.startPrank(alice);
         withdrawalEscrow.transfer(bob, 1000);
 
         // should not change anything

@@ -73,7 +73,7 @@ contract L2BridgeEscrowTest is TestPlus {
         deal(address(asset), address(escrow), 100);
 
         // Send money to vault (clear funds)
-        changePrank(wormholeRouter);
+        vm.startPrank(wormholeRouter);
         vm.expectCall(address(vault), abi.encodeCall(L2Vault.afterReceive, (100)));
         escrow.clearFunds(100, "");
 
@@ -92,7 +92,7 @@ contract L2BridgeEscrowTest is TestPlus {
         // This means that the funds have not arrived from l1
         deal(address(asset), address(escrow), 100);
 
-        changePrank(wormholeRouter);
+        vm.startPrank(wormholeRouter);
         vm.expectRevert("BE: Funds not received");
         escrow.clearFunds(200, "");
     }
@@ -127,7 +127,7 @@ contract L1BridgeEscrowTest is TestPlus {
 
         // Send money to vault (clear funds)
         // Using an exitProof that is just empty bytes
-        changePrank(wormholeRouter);
+        vm.startPrank(wormholeRouter);
         vm.expectCall(address(vault), abi.encodeCall(L1Vault.afterReceive, ()));
         bytes memory exitProof;
         vm.mockCall(address(manager), abi.encodeCall(IRootChainManager.exit, (exitProof)), "");
@@ -150,7 +150,7 @@ contract L1BridgeEscrowTest is TestPlus {
         bytes memory exitProof;
         vm.mockCall(address(manager), abi.encodeCall(IRootChainManager.exit, (exitProof)), "");
 
-        changePrank(wormholeRouter);
+        vm.startPrank(wormholeRouter);
         vm.expectRevert("BE: Funds not received");
         escrow.clearFunds(200, "");
     }
@@ -161,7 +161,7 @@ contract L1BridgeEscrowTest is TestPlus {
         deal(address(asset), address(escrow), 100);
 
         // Send money to vault (clear funds)
-        changePrank(wormholeRouter);
+        vm.startPrank(wormholeRouter);
         vm.expectCall(address(vault), abi.encodeCall(L1Vault.afterReceive, ()));
 
         // We don't pass a valid exitProof, so we know rootchainmanager.exit() will fail

@@ -320,13 +320,13 @@ contract SVaultTest is TestPlus {
 
     /// @notice Test that goveranance can modify management fees.
     function testCanSetManagementAndWithdrawalFees() public {
-        changePrank(governance);
+        vm.startPrank(governance);
         vault.setManagementFee(300);
         assertEq(vault.managementFee(), 300);
         vault.setWithdrawalFee(10);
         assertEq(vault.withdrawalFee(), 10);
 
-        changePrank(alice);
+        vm.startPrank(alice);
         vm.expectRevert("Only Governance.");
         vault.setManagementFee(300);
         vm.expectRevert("Only Governance.");
@@ -335,7 +335,7 @@ contract SVaultTest is TestPlus {
 
     /// @notice Test that goveranance can pause the vault.
     function testVaultPause() public {
-        changePrank(governance);
+        vm.startPrank(governance);
         vault.pause();
 
         vm.expectRevert("Pausable: paused");
@@ -364,7 +364,7 @@ contract SVaultTest is TestPlus {
         bytes memory errorMsg = abi.encodePacked(errString);
 
         vm.expectRevert(errorMsg);
-        changePrank(alice);
+        vm.startPrank(alice);
         vault.pause();
 
         vm.expectRevert(errorMsg);
@@ -407,7 +407,7 @@ contract SVaultTest is TestPlus {
         // provide alice some assets
         uint256 initialAssets = 1e10;
         deal(address(sVault.asset()), alice, initialAssets);
-        changePrank(alice);
+        vm.startPrank(alice);
         MockERC20(sVault.asset()).approve(address(sVault), initialAssets);
         sVault.deposit(initialAssets, alice);
 
@@ -417,7 +417,7 @@ contract SVaultTest is TestPlus {
         assertEq(sVault.vaultTVL(), strategy1.totalLockedValue());
         StrategyVault impl2 = new StrategyVault();
 
-        changePrank(governance);
+        vm.startPrank(governance);
         sVault.pause();
 
         sVault.upgradeTo(address(impl2));
@@ -486,7 +486,7 @@ contract SVaultTest is TestPlus {
 
         deal(address(asset), alice, initialAssets);
 
-        changePrank(alice);
+        vm.startPrank(alice);
 
         MockERC20(sVault.asset()).approve(address(sVault), initialAssets);
 
@@ -522,21 +522,21 @@ contract SVaultTest is TestPlus {
 
         deal(address(asset), alice, initialAssets);
 
-        changePrank(alice);
+        vm.startPrank(alice);
 
         MockERC20(sVault.asset()).approve(address(sVault), initialAssets);
 
         sVault.deposit(initialAssets, alice);
 
-        changePrank(strategists[0]);
+        vm.startPrank(strategists[0]);
 
         strategy1.beginEpoch();
 
-        changePrank(alice);
+        vm.startPrank(alice);
 
         sVault.withdraw(initialAssets / 10, alice, alice);
 
-        changePrank(strategists[0]);
+        vm.startPrank(strategists[0]);
 
         strategy1.endEpoch();
     }

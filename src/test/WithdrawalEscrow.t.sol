@@ -47,7 +47,7 @@ contract WithdrawalEscrowTest is TestPlus {
         asset.approve(address(vault), type(uint256).max);
         vault.deposit(initialAssets, alice);
 
-        changePrank(bob);
+        vm.startPrank(bob);
         asset.approve(address(vault), type(uint256).max);
         vault.deposit(initialAssets, bob);
 

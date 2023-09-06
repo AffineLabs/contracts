@@ -27,17 +27,17 @@ jobs:
       FOUNDRY_PROFILE: ci
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Use Node
-        uses: actions/setup-node@v2
-        with:
-          node-version: "16.x"
+      - name: Reconfigure git to use HTTP authentication
+        run: >
+          git config --global url."https://github.com/".insteadOf
+          ssh://git@github.com/
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly-87bc53fc6c874bd4c92d97ed180b949e3a36d78c
+          version: nightly-577dae3f632b392856d1d62a5016c765fadd872d
 
       - name: Install yarn dependencies, and compile contracts
         run: yarn --frozen-lockfile && yarn build
