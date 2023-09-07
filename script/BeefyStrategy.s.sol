@@ -69,6 +69,6 @@ contract Deploy is Script {
     function deployBeefyPearlEpochStrategyPolygon() public {
         _start();
         BeefyPearlEpochStrategy strategy = BeefyLib.deployBeefyPearlStrategy();
-        console.log("Beefy strategy addr: %s", address(strategy));
+        console.log("Beefy Pearl Strategy addr: %s", address(strategy));
     }
 }

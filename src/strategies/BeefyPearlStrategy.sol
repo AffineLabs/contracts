@@ -57,7 +57,7 @@ contract BeefyPearlStrategy is AccessStrategy {
     /**
      * @notice return the ration of token0 and token1 in terms of equivalent asset
      */
-    function _getInLPRatio() internal view returns (uint256, uint256) {
+    function _getLPInTokenRatiosInAssets() internal view returns (uint256, uint256) {
         (uint256 token0Desired, uint256 token1desired,) = pearlRouter.quoteAddLiquidity(
             address(token0), address(token1), true, 10 ** token0.decimals(), 10 ** token1.decimals()
         );
@@ -81,13 +81,12 @@ contract BeefyPearlStrategy is AccessStrategy {
     /**
      * @notice return asset equivalent token0 and token1 ratio in removing liquidity
      */
-    function _getOutLPRatio() internal view returns (uint256, uint256) {
+    function _getAssetsAmountFromLP() internal view returns (uint256) {
         uint256 lpTokenAmount = _getTotalLpTokenAmount();
         (uint256 token0Out, uint256 token1Out) =
             pearlRouter.quoteRemoveLiquidity(address(token0), address(token1), true, lpTokenAmount);
 
-        uint256 token1EqToken0 = _getSwapPrice(token1, token0, token1Out);
-        return (token0Out, token1EqToken0);
+        return token0Out + _getSwapPrice(token1, token0, token1Out);
     }
 
     /**
@@ -153,7 +152,7 @@ contract BeefyPearlStrategy is AccessStrategy {
     }
 
     function _investIntoBeefy(uint256 assets, uint256 slippage) internal {
-        (uint256 token0Ratio, uint256 token1Ratio) = _getInLPRatio();
+        (uint256 token0Ratio, uint256 token1Ratio) = _getLPInTokenRatiosInAssets();
 
         // check for slippage
         token1Ratio = _calculateSlippageAmount(token1Ratio, slippage, false);
@@ -166,9 +165,8 @@ contract BeefyPearlStrategy is AccessStrategy {
 
         // swap token0/asset/USDC to token1/USDR
         if (token0ToSwap > existingToken1EqToken0) {
-            token0ToSwap = token0ToSwap - existingToken1EqToken0;
+            _swapToken(token0, token1, token0ToSwap - existingToken1EqToken0, slippage);
         }
-        _swapToken(token0, token1, token0ToSwap, slippage);
         // provide liquidity
 
         uint256 token0Amount = assets - token0ToSwap;
@@ -219,22 +217,24 @@ contract BeefyPearlStrategy is AccessStrategy {
         _swapToken(token1, token0, token1.balanceOf(address(this)), slippage);
     }
 
+    /**
+     * @notice divest LP token worth of assets amount
+     * @param assets amount of assets required
+     * @param slippage acceptable slippage
+     */
     function _divestLP(uint256 assets, uint256 slippage) internal {
-        uint256 token1EqToken0 = _getSwapPrice(token1, token0, token1.balanceOf(address(this)));
-        uint256 minToken1EqToken0 = _calculateSlippageAmount(token1EqToken0, slippage, true);
+        // consider existing token1
+        uint256 exToken1EqToken0 = _getSwapPrice(token1, token0, token1.balanceOf(address(this)));
 
-        if (minToken1EqToken0 >= assets) {
+        if (exToken1EqToken0 >= assets) {
             return;
         }
 
-        uint256 requiredAssets = assets - minToken1EqToken0;
+        uint256 requiredAssets = assets - exToken1EqToken0;
 
-        (uint256 token0Ratio, uint256 token1Ratio) = _getOutLPRatio();
-        // calc slippage calc 1
-        uint256 minToken1Ratio = _calculateSlippageAmount(token1Ratio, slippage, true);
+        uint256 totalAssetsInLP = _getAssetsAmountFromLP();
 
-        uint256 totalLpToken = _getTotalLpTokenAmount();
-        uint256 lpTokenAmount = totalLpToken.mulDivDown(requiredAssets, token0Ratio + minToken1Ratio);
+        uint256 lpTokenAmount = _getTotalLpTokenAmount().mulDivDown(requiredAssets, totalAssetsInLP);
         // withdraw from beefy
         if (lpTokenAmount > lpToken.balanceOf(address(this))) {
             _withdrawLPTokenFromBeefy(lpTokenAmount - lpToken.balanceOf(address(this)));
@@ -258,9 +258,7 @@ contract BeefyPearlStrategy is AccessStrategy {
     }
 
     function totalLockedValue() external view override returns (uint256) {
-        (uint256 token0Amount, uint256 token1EqToken0Amount) = _getOutLPRatio();
-
-        return token0Amount + token1EqToken0Amount + token0.balanceOf(address(this))
+        return _getAssetsAmountFromLP() + token0.balanceOf(address(this))
             + _getSwapPrice(token1, token0, token1.balanceOf(address(this)));
     }
 
