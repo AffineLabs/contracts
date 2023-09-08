@@ -3,6 +3,7 @@ pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
 import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
@@ -23,6 +24,8 @@ import {DeployLib} from "script/ConvexStrategy.s.sol";
 import {console} from "forge-std/console.sol";
 
 contract TestBeefyPearlStrategy is TestPlus {
+    using FixedPointMathLib for uint256;
+
     Vault vault;
     ERC20 usdc = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     IRouter router = IRouter(0xcC25C0FD84737F44a7d38649b69491BBf0c7f083);
@@ -173,6 +176,59 @@ contract TestBeefyPearlStrategy is TestPlus {
         assertApproxEqRel(initialAssets, strategy.totalLockedValue(), 0.01e18);
 
         assertApproxEqRel(usdc.balanceOf(address(strategy)), initialAssets, 0.01e18);
+    }
+
+    function testInvestWithExistingUSDR() public {
+        deal(address(usdc), alice, initialAssets);
+        vm.startPrank(alice);
+
+        usdc.approve(address(strategy), type(uint256).max);
+
+        strategy.invest(initialAssets);
+
+        vm.startPrank(address(this));
+        strategy.investAssets(initialAssets, defaultSlippageBps);
+
+        assertEq(usdc.balanceOf(address(strategy)), 0);
+
+        uint256 remainingUSDRAmount = token1.balanceOf(address(strategy));
+        uint256 USDREqUSDCAmount = remainingUSDRAmount.mulDivDown(10 ** usdc.decimals(), 10 ** token1.decimals());
+
+        deal(address(usdc), alice, USDREqUSDCAmount);
+        vm.startPrank(alice);
+
+        strategy.invest(USDREqUSDCAmount);
+
+        // total tvl
+        uint256 totalTVL = initialAssets + USDREqUSDCAmount;
+        assertApproxEqRel(totalTVL, strategy.totalLockedValue(), 0.001e18);
+
+        vm.startPrank(address(this));
+        strategy.investAssets(USDREqUSDCAmount / 2, defaultSlippageBps);
+
+        assertApproxEqRel(totalTVL, strategy.totalLockedValue(), 0.001e18);
+
+        strategy.investAssets(usdc.balanceOf(address(strategy)), defaultSlippageBps);
+        console.log(
+            "01 Rem USDC %s, USDR %s, TVL %s",
+            usdc.balanceOf(address(strategy)),
+            token1.balanceOf(address(strategy)),
+            strategy.totalLockedValue()
+        );
+        assertApproxEqRel(totalTVL, strategy.totalLockedValue(), 0.001e18);
+
+        strategy.divestAssets(initialAssets, defaultSlippageBps);
+
+        // // tvl should be in range of BPS
+        assertApproxEqRel(totalTVL, strategy.totalLockedValue(), 0.001e18);
+
+        assertApproxEqRel(usdc.balanceOf(address(strategy)), initialAssets, 0.01e18);
+        console.log(
+            "02 Rem USDC %s, USDR %s, TVL %s",
+            usdc.balanceOf(address(strategy)),
+            token1.balanceOf(address(strategy)),
+            strategy.totalLockedValue()
+        );
     }
 
     function testDepositAndWithdrawFromVault() public virtual {

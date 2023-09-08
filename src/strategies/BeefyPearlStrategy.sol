@@ -152,20 +152,23 @@ contract BeefyPearlStrategy is AccessStrategy {
     }
 
     function _investIntoBeefy(uint256 assets, uint256 slippage) internal {
-        (uint256 token0Ratio, uint256 token1Ratio) = _getLPInTokenRatiosInAssets();
+        (uint256 token0Ratio, uint256 token1RatioEqToken0) = _getLPInTokenRatiosInAssets();
 
         // check for slippage
-        token1Ratio = _calculateSlippageAmount(token1Ratio, slippage, false);
+        token1RatioEqToken0 = _calculateSlippageAmount(token1RatioEqToken0, slippage, false);
 
         // we are utilizing the existing USDR idle from previous investment
         uint256 existingToken1EqToken0 = _getSwapPrice(token1, token0, token1.balanceOf(address(this)));
         uint256 totalAssetsToInvest = assets + existingToken1EqToken0;
 
-        uint256 token0ToSwap = totalAssetsToInvest.mulDivDown(token1Ratio, token0Ratio + token1Ratio);
+        uint256 token0ToSwap = totalAssetsToInvest.mulDivDown(token1RatioEqToken0, token0Ratio + token1RatioEqToken0);
 
         // swap token0/asset/USDC to token1/USDR
         if (token0ToSwap > existingToken1EqToken0) {
-            _swapToken(token0, token1, token0ToSwap - existingToken1EqToken0, slippage);
+            token0ToSwap = token0ToSwap - existingToken1EqToken0;
+            _swapToken(token0, token1, token0ToSwap, slippage);
+        } else {
+            token0ToSwap = 0;
         }
         // provide liquidity
 
