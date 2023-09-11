@@ -17,8 +17,6 @@ import {IWSTETH} from "src/interfaces/lido/IWSTETH.sol";
 import {ICurvePool} from "src/interfaces/curve/ICurvePool.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 
-import "forge-std/console.sol";
-
 contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
     using SafeTransferLib for ERC20;
     using SafeTransferLib for IWETH;
@@ -45,10 +43,9 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
         WSTETH.safeApprove(address(CURVE), type(uint256).max);
         WETH.safeApprove(address(AAVE), type(uint256).max);
 
-        aToken  = ERC20(AAVE.getReserveData(address(WSTETH)).aTokenAddress);
+        aToken = ERC20(AAVE.getReserveData(address(WSTETH)).aTokenAddress);
         debtToken = ERC20(AAVE.getReserveData(address(WETH)).variableDebtTokenAddress);
         AAVE.setUserEMode(1); // 1 = enabled
-
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -63,7 +60,7 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
     }
 
     function receiveFlashLoan(
-        ERC20[] memory /* tokens */,
+        ERC20[] memory, /* tokens */
         uint256[] memory amounts,
         uint256[] memory, /* feeAmounts */
         bytes memory userData
@@ -80,7 +77,6 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
         }
 
         // Payback wETH loan
-        console.log("balance: ", WETH.balanceOf(address(this)));
         WETH.safeTransfer(address(BALANCER), ethBorrowed);
     }
 
@@ -102,20 +98,21 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
             amounts: amounts,
             userData: abi.encode(LoanType.invest)
         });
-    }   
+    }
 
     function _addToPosition(uint256 ethBorrowed) internal {
         // Trade ETHto wstETH
-        uint expectedWstETh = _ethToWstEth(ethBorrowed);
+        uint256 expectedWstETh = _ethToWstEth(ethBorrowed);
         // TODO: allow custom slippage params to be set
-        uint wstEth = CURVE.exchange({x: uint(0), y: 1, dx: ethBorrowed, min_dy: expectedWstETh.mulDivDown(93, 100)});
+        uint256 wstEth =
+            CURVE.exchange({x: uint256(0), y: 1, dx: ethBorrowed, min_dy: expectedWstETh.mulDivDown(93, 100)});
 
         // Deposit wstETH in AAVE
         asset.safeApprove(address(AAVE), type(uint256).max);
         AAVE.deposit(address(WSTETH), wstEth, address(this), 0);
 
         // Borrow 90% of wstETH value in ETH using e-mode
-        uint ethToBorrow =  _wstEthToEth(wstEth).mulDivDown(8999, 10_000);
+        uint256 ethToBorrow = _wstEthToEth(wstEth).mulDivDown(8999, 10_000);
         AAVE.borrow(address(WETH), ethToBorrow, 2, 0, address(this));
     }
 
@@ -132,8 +129,8 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = ethNeeded;
 
-        uint origAssets = WETH.balanceOf(address(this));
-   
+        uint256 origAssets = WETH.balanceOf(address(this));
+
         BALANCER.flashLoan({
             recipient: IFlashLoanRecipient(address(this)),
             tokens: tokens,
@@ -141,17 +138,16 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
             userData: abi.encode(LoanType.divest)
         });
 
-
-        uint unlockedWeth = WETH.balanceOf(address(this));
+        uint256 unlockedWeth = WETH.balanceOf(address(this)) - origAssets;
         // The loan has been paid, any other unlocked collateral belongs to user
         WETH.safeTransfer(address(vault), unlockedWeth);
         return unlockedWeth;
     }
 
-    function _getDivestFlashLoanAmounts(uint256 wethToDivest) internal view  returns (uint256 ethNeeded) {
+    function _getDivestFlashLoanAmounts(uint256 wethToDivest) internal view returns (uint256 ethNeeded) {
         // Proportion of tvl == proportion of debt to pay back
         uint256 tvl = totalLockedValue();
-        uint ethDebt = debtToken.balanceOf(address(this));
+        uint256 ethDebt = debtToken.balanceOf(address(this));
 
         ethNeeded = ethDebt.mulDivDown(wethToDivest, tvl);
     }
@@ -161,29 +157,33 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
         AAVE.repay(address(WETH), ethBorrowed, 2, address(this));
 
         // Withdraw same proportion of collateral from aave
-        uint wstEthToRedeem = aToken.balanceOf(address(this)).mulDivDown(ethBorrowed, debtToken.balanceOf(address(this)));
+        uint256 wstEthToRedeem =
+            aToken.balanceOf(address(this)).mulDivDown(ethBorrowed, debtToken.balanceOf(address(this)));
         AAVE.withdraw(address(WSTETH), wstEthToRedeem, address(this));
 
         // Convert wstETH => wETH to prepare flashloan repayment
         // TODO: custom slippage params
-        CURVE.exchange({x: uint(1), y: 0, dx: wstEthToRedeem, min_dy: _wstEthToEth(wstEthToRedeem).mulDivDown(93, 100)});
+        CURVE.exchange({
+            x: uint256(1),
+            y: 0,
+            dx: wstEthToRedeem,
+            min_dy: _wstEthToEth(wstEthToRedeem).mulDivDown(93, 100)
+        });
     }
 
- 
     /*//////////////////////////////////////////////////////////////
                            VALUATION
     //////////////////////////////////////////////////////////////*/
 
     function totalLockedValue() public view override returns (uint256) {
-        uint aaveDebt = debtToken.balanceOf(address(this));
-        uint aaveCollateral = _wstEthToEth(aToken.balanceOf(address(this)));
+        uint256 aaveDebt = debtToken.balanceOf(address(this));
+        uint256 aaveCollateral = _wstEthToEth(aToken.balanceOf(address(this)));
 
         return aaveCollateral - aaveDebt;
     }
 
     AggregatorV3Interface public constant WSTETH_ETH_FEED =
         AggregatorV3Interface(0x806b4Ac04501c29769051e42783cF04dCE41440b);
-
 
     /*//////////////////////////////////////////////////////////////
                                   STAKED ETHER
@@ -192,24 +192,23 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
     IWETH public constant WETH = IWETH(payable(0x4200000000000000000000000000000000000006));
     IWSTETH public constant WSTETH = IWSTETH(0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22);
 
-    function _getEthToWstEthRatio() internal view returns (uint) {
-         (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = WSTETH_ETH_FEED.latestRoundData();
+    function _getEthToWstEthRatio() internal view returns (uint256) {
+        (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = WSTETH_ETH_FEED.latestRoundData();
         require(price > 0, "LidoLevL2: price <= 0");
         require(answeredInRound >= roundId, "LidoLevL2: stale data");
         require(timestamp != 0, "LidoLevL2: round not done");
-        return uint(price);
+        return uint256(price);
     }
-    function _wstEthToEth(uint amountWstEth) internal view returns (uint) {
+
+    function _wstEthToEth(uint256 amountWstEth) internal view returns (uint256) {
         return amountWstEth.mulWadDown(_getEthToWstEthRatio());
-
     }
 
-    function _ethToWstEth(uint amountEth) internal view returns (uint) {
+    function _ethToWstEth(uint256 amountEth) internal view returns (uint256) {
         // This is (ETH * 1e18) / price. The price feed gives the ETH/wstETH ratio, and we divide by price to get amount of wstETH.
         // `divWad` is used because both both ETH and the price feed have 18 decimals (the decimals are retained after division).
         return amountEth.divWadDown(_getEthToWstEthRatio());
     }
-
 
     /*//////////////////////////////////////////////////////////////
                                  TRADES
