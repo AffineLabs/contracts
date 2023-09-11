@@ -17,6 +17,7 @@ import {IWSTETH} from "src/interfaces/lido/IWSTETH.sol";
 import {ICurvePool} from "src/interfaces/curve/ICurvePool.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 
+import "forge-std/console.sol";
 
 contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
     using SafeTransferLib for ERC20;
@@ -79,6 +80,7 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
         }
 
         // Payback wETH loan
+        console.log("balance: ", WETH.balanceOf(address(this)));
         WETH.safeTransfer(address(BALANCER), ethBorrowed);
     }
 
@@ -113,7 +115,7 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
         AAVE.deposit(address(WSTETH), wstEth, address(this), 0);
 
         // Borrow 90% of wstETH value in ETH using e-mode
-        uint ethToBorrow =  _wstEthToEth(wstEth).mulDivDown(895, 1000);
+        uint ethToBorrow =  _wstEthToEth(wstEth).mulDivDown(8999, 10_000);
         AAVE.borrow(address(WETH), ethToBorrow, 2, 0, address(this));
     }
 

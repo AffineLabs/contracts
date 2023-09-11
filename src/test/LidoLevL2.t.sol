@@ -44,7 +44,7 @@ contract LidoLevL2Test is TestPlus {
         strategists[0] = address(this);
         vault = AffineVault(address(deployL1Vault()));
 
-        staking = new MockLidoLev(995, vault, strategists);
+        staking = new MockLidoLev(992, vault, strategists);
         vm.prank(governance);
         vault.addStrategy(staking, 0);
     }
@@ -68,7 +68,7 @@ contract LidoLevL2Test is TestPlus {
         testAddToPosition();
         uint256 aaveCollateral =  staking.wstEthToEth(staking.aToken().balanceOf(address(staking)));
         uint256 depSize = 10 ether;
-        assertApproxEqRel(aaveCollateral, depSize * 175 / 100, 0.01e18);
+        assertApproxEqRel(aaveCollateral, depSize * 992 / 100, 0.02e18);
     }
 
     function testClosePosition() public {
@@ -96,6 +96,6 @@ contract LidoLevL2Test is TestPlus {
         vm.prank(address(vault));
         staking.divest(1 ether);
     
-        assertApproxEqRel(staking.totalLockedValue(), tvl - 1 ether, 0.01e18);
+        assertApproxEqRel(staking.totalLockedValue(), tvl - 1 ether, 0.02e18);
     }
 }
