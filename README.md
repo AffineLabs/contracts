@@ -23,6 +23,8 @@ The `master` branch is what is currently deployed. The last audit was conducted 
 
 See instructions for installation [here](https://github.com/gakonst/foundry#installation).
 
+Update the version with `foundryup -v nightly-ca67d15f4abd46394b324c50e21e66f306a1162d`.
+
 ### Hardhat
 
 - Install nvm with these [instructions](https://github.com/nvm-sh/nvm#install--update-script). Then run
