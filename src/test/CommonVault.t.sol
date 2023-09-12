@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -43,6 +44,10 @@ contract CommonVaultTest is TestPlus {
 
         vault = new VaultV2();
         vault.initialize(governance, address(asset), "USD Earn", "usdEarn");
+    }
+
+    function _getRemainingVaultTvlCap() internal virtual returns (uint256) {
+        return type(uint256).max;
     }
 
     function _giveAssets(address user, uint256 assets) internal virtual {
@@ -97,7 +102,7 @@ contract CommonVaultTest is TestPlus {
 
     /// @notice Test redeeming after deposit.
     function testDepositRedeem(uint64 amountAsset) public {
-        vm.assume(amountAsset > 99);
+        vm.assume(amountAsset > 99 && amountAsset <= _getRemainingVaultTvlCap());
         // Running into overflow issues on the call to vault.redeem
         address user = address(this);
         _giveAssets(user, amountAsset);
@@ -111,13 +116,14 @@ contract CommonVaultTest is TestPlus {
         assertEq(asset.balanceOf(address(user)), 0);
 
         uint256 assetsReceived = vault.redeem(expectedShares, user, user);
+
         assertEq(vault.balanceOf(user), 0);
         assertApproxEqAbs(assetsReceived, amountAsset, 10); // We round down when sending assets out, so user may get slightly less
     }
 
     /// @notice Test withdawing after deposit.
     function testDepositWithdraw(uint64 amountAsset) public {
-        vm.assume(amountAsset > 99);
+        vm.assume(amountAsset > 99 && amountAsset <= _getRemainingVaultTvlCap());
         // shares = assets * totalShares / totalAssets but totalShares will actually be bigger than a uint128
         // so the `assets * totalShares` calc will overflow if using a uint128
         address user = address(this);
@@ -141,7 +147,7 @@ contract CommonVaultTest is TestPlus {
 
     /// @notice Test minting vault token.
     function testMint(uint64 amountAsset) public {
-        vm.assume(amountAsset > 99);
+        vm.assume(amountAsset > 99 && amountAsset <= _getRemainingVaultTvlCap());
         address user = address(this);
         _giveAssets(user, amountAsset);
         asset.approve(address(vault), type(uint256).max);
@@ -174,7 +180,7 @@ contract CommonVaultTest is TestPlus {
         vm.prank(governance);
         vault.setWithdrawalFee(50);
 
-        uint256 amountAsset = 1e18;
+        uint256 amountAsset = Math.min(1e18, _getRemainingVaultTvlCap());
 
         vm.startPrank(alice);
         _giveAssets(alice, amountAsset);
@@ -220,7 +226,9 @@ contract CommonVaultTest is TestPlus {
 
         vm.stopPrank();
 
-        testDepositWithdraw(1e18);
+        // can deposit and withdraw over tvl cap
+
+        testDepositWithdraw(uint64(Math.min(1e18, _getRemainingVaultTvlCap())));
 
         // Only those with GUARDIAN_ROLE address can call pause or unpause
         string memory errString = string(
