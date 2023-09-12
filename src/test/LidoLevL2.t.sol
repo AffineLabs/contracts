@@ -91,11 +91,14 @@ contract LidoLevL2Test is TestPlus {
     function testMutateTotalLockedValue() public {
         testAddToPosition();
         uint256 tvl = staking.totalLockedValue();
+        console.log("Orig tvl: ", tvl);
+        console.log("orig collateral: ", staking.aToken().balanceOf(address(staking)));
+        console.log("orig debt: ", staking.debtToken().balanceOf(address(staking)));
 
         vm.prank(address(vault));
         staking.divest(1 ether);
 
         // TODO: Bring this bound down to 1%
-        assertApproxEqRel(staking.totalLockedValue(), tvl - 1 ether, 0.15e18);
+        assertApproxEqRel(staking.totalLockedValue(), tvl - 1 ether, 0.1e18);
     }
 }

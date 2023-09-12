@@ -138,8 +138,8 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
             userData: abi.encode(LoanType.divest)
         });
 
-        uint256 unlockedWeth = WETH.balanceOf(address(this)) - origAssets;
         // The loan has been paid, any other unlocked collateral belongs to user
+        uint256 unlockedWeth = WETH.balanceOf(address(this)) - origAssets;
         WETH.safeTransfer(address(vault), unlockedWeth);
         return unlockedWeth;
     }
@@ -153,12 +153,15 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
     }
 
     function _endPosition(uint256 ethBorrowed) internal {
+        // Proportion of collateral to unlock is same as proportion of debt to pay back (ethBorrowed / debt)
+        // We need to calculate this number before paying back debt, since the fraction will change
+        uint256 wstEthToRedeem =
+            aToken.balanceOf(address(this)).mulDivDown(ethBorrowed, debtToken.balanceOf(address(this)));
+
         // Pay debt in aave
         AAVE.repay(address(WETH), ethBorrowed, 2, address(this));
 
         // Withdraw same proportion of collateral from aave
-        uint256 wstEthToRedeem =
-            aToken.balanceOf(address(this)).mulDivDown(ethBorrowed, debtToken.balanceOf(address(this)));
         AAVE.withdraw(address(WSTETH), wstEthToRedeem, address(this));
 
         // Convert wstETH => wETH to prepare flashloan repayment
