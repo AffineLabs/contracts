@@ -140,7 +140,7 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
 
         // The loan has been paid, any other unlocked collateral belongs to user
         uint256 unlockedWeth = WETH.balanceOf(address(this)) - origAssets;
-        WETH.safeTransfer(address(vault), unlockedWeth);
+        WETH.safeTransfer(address(vault), Math.min(unlockedWeth, amount));
         return unlockedWeth;
     }
 
