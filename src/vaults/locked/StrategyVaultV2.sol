@@ -4,7 +4,6 @@ pragma solidity =0.8.16;
 import {MathUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 import {NftGate} from "src/vaults/NftGate.sol";
@@ -20,7 +19,7 @@ contract StrategyVaultV2 is StrategyVault, NftGate, HarvestStorage {
         if (shares == 0) revert VaultErrors.ZeroShares();
         uint256 tvl = totalAssets();
         uint256 allowedAssets = tvl >= tvlCap ? 0 : tvlCap - tvl;
-        assets = Math.min(allowedAssets, assets);
+        assets = MathUpgradeable.min(allowedAssets, assets);
         require(assets > 0, "Vault: deposit limit reached");
         _mint(receiver, shares);
         _asset.safeTransferFrom(caller, address(this), assets);
