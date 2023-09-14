@@ -135,7 +135,7 @@ contract StrategyVault is UUPSUpgradeable, BaseStrategyVault, ERC4626Upgradeable
         uint256 tvl = totalAssets();
         uint256 allowedAssets = tvl >= tvlCap ? 0 : tvlCap - tvl;
         assets = Math.min(allowedAssets, assets);
-        require(assets > 0, "Vault: deposit limit reached");
+        if (assets == 0) revert VaultErrors.TvlLimitReached();
         _mint(receiver, shares);
         _asset.safeTransferFrom(caller, address(this), assets);
         _depositIntoStrategy(assets);

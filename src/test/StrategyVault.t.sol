@@ -102,7 +102,7 @@ contract SVaultTest is TestPlus {
         vault.deposit(1000, address(this));
         assertEq(asset.balanceOf(address(this)), 1000);
 
-        vm.expectRevert("Vault: deposit limit reached");
+        vm.expectRevert(VaultErrors.TvlLimitReached.selector);
         vault.deposit(200, address(this));
         assertEq(asset.balanceOf(address(this)), 1000);
     }
