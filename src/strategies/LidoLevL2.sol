@@ -16,12 +16,14 @@ import {IBalancerVault, IFlashLoanRecipient} from "src/interfaces/balancer.sol";
 import {IWSTETH} from "src/interfaces/lido/IWSTETH.sol";
 import {ICurvePool} from "src/interfaces/curve/ICurvePool.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
+import {SlippageUtils} from "src/libs/SlippageUtils.sol";
 
 contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
     using SafeTransferLib for ERC20;
     using SafeTransferLib for IWETH;
     using SafeTransferLib for IWSTETH;
     using FixedPointMathLib for uint256;
+    using SlippageUtils for uint256;
 
     IPool public constant AAVE = IPool(0xA238Dd80C259a72e81d7e4664a9801593F98d1c5);
     ERC20 public immutable debtToken;
@@ -103,9 +105,8 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
     function _addToPosition(uint256 ethBorrowed) internal {
         // Trade ETHto wstETH
         uint256 expectedWstETh = _ethToWstEth(ethBorrowed);
-        // TODO: allow custom slippage params to be set
         uint256 wstEth =
-            CURVE.exchange({x: uint256(0), y: 1, dx: ethBorrowed, min_dy: expectedWstETh.mulDivDown(93, 100)});
+            CURVE.exchange({x: uint256(0), y: 1, dx: ethBorrowed, min_dy: expectedWstETh.slippageDown(slippageBps)});
 
         // Deposit wstETH in AAVE
         asset.safeApprove(address(AAVE), type(uint256).max);
@@ -170,7 +171,7 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
             x: uint256(1),
             y: 0,
             dx: wstEthToRedeem,
-            min_dy: _wstEthToEth(wstEthToRedeem).mulDivDown(93, 100)
+            min_dy: _wstEthToEth(wstEthToRedeem).slippageDown(slippageBps)
         });
     }
 
@@ -217,4 +218,9 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
                                  TRADES
     //////////////////////////////////////////////////////////////*/
     ICurvePool public constant CURVE = ICurvePool(0x11C1fBd4b3De66bC0565779b35171a6CF3E71f59);
+    uint256 public slippageBps = 60; // 0.6%
+
+    function setSlippageBps(uint256 _slippageBps) external onlyRole(STRATEGIST_ROLE) {
+        slippageBps = _slippageBps;
+    }
 }
