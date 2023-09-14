@@ -17,8 +17,13 @@ contract StrategyVaultV2 is StrategyVault, NftGate, HarvestStorage {
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
         _checkNft(receiver);
         if (shares == 0) revert VaultErrors.ZeroShares();
+        uint256 tvl = totalAssets();
+        uint256 allowedAssets = tvl >= tvlCap ? 0 : tvlCap - tvl;
+        assets = MathUpgradeable.min(allowedAssets, assets);
+        if (assets == 0) revert VaultErrors.TvlLimitReached();
         _mint(receiver, shares);
         _asset.safeTransferFrom(caller, address(this), assets);
+        _depositIntoStrategy(assets);
         emit Deposit(caller, receiver, assets, shares);
     }
 

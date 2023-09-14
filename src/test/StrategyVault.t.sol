@@ -9,6 +9,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {StrategyVault, VaultErrors} from "src/vaults/locked/StrategyVault.sol";
+import {StrategyVaultV2} from "src/vaults/locked/StrategyVaultV2.sol";
 import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
 import {WithdrawalEscrow} from "src/vaults/locked/WithdrawalEscrow.sol";
 import {Vault} from "src/vaults/Vault.sol";
@@ -28,12 +29,17 @@ contract SVaultTest is TestPlus {
 
     function forkNet() public virtual {}
 
+    function _initVault() internal virtual returns (StrategyVault) {
+        StrategyVault _vault = new StrategyVault();
+        _vault.initialize(governance, address(asset), "USD Earn", "usdEarn");
+        return _vault;
+    }
+
     function setUp() public {
         forkNet();
         asset = new MockERC20("Mock", "MT", 6);
 
-        vault = new StrategyVault();
-        vault.initialize(governance, address(asset), "USD Earn", "usdEarn");
+        vault = _initVault();
 
         WithdrawalEscrow escrow = new WithdrawalEscrow(vault);
 
@@ -96,7 +102,7 @@ contract SVaultTest is TestPlus {
         vault.deposit(1000, address(this));
         assertEq(asset.balanceOf(address(this)), 1000);
 
-        vm.expectRevert("Vault: deposit limit reached");
+        vm.expectRevert(VaultErrors.TvlLimitReached.selector);
         vault.deposit(200, address(this));
         assertEq(asset.balanceOf(address(this)), 1000);
     }
@@ -542,6 +548,14 @@ contract SVaultTest is TestPlus {
     }
 }
 
+contract SVaultV2Test is SVaultTest {
+    function _initVault() internal virtual override returns (StrategyVault) {
+        StrategyVaultV2 _vault = new StrategyVaultV2();
+        _vault.initialize(governance, address(asset), "USD Earn", "usdEarn");
+        return StrategyVault(address(_vault));
+    }
+}
+
 contract SVaultUpgradeLiveTest is SVaultTest {
     function forkNet() public override {
         // fork polygon to test live vault
@@ -598,6 +612,7 @@ contract SVaultUpgradeLiveTest is SVaultTest {
     function testDegenVaultUpgradeImpl() public {
         DegenVault mainnetVault = DegenVault(0x684D1dbd30c67Fe7fF6D502A04e0E7076b4b9D46);
 
+        BaseStrategy oldStrat = BaseStrategy(mainnetVault.strategy());
         uint256 oldDecimals = mainnetVault.decimals();
         uint256 oldPrice = mainnetVault.detailedPrice().num;
         uint256 oldTVL = mainnetVault.vaultTVL();
@@ -628,5 +643,7 @@ contract SVaultUpgradeLiveTest is SVaultTest {
 
         assertEq(oldTVL, newTVL);
         assertEq(oldSupply, newSupply);
+        assertEq(address(oldStrat), address(mainnetVault.strategy()));
+        assertEq(oldStrat.totalLockedValue(), BaseStrategy(address(mainnetVault.strategy())).totalLockedValue());
     }
 }

@@ -24,6 +24,12 @@ abstract contract StrategyVaultV2_IntegrationTest is CommonVaultTest {
         vm.prank(governance);
         vault.upgradeTo(address(impl));
         asset = ERC20(vault.asset());
+        // vm.prank(governance);
+        // StrategyVaultV2(address(vault)).setTvlCap(type(uint256).max);
+    }
+
+    function _getRemainingVaultTvlCap() internal virtual override returns (uint256) {
+        return StrategyVaultV2(address(vault)).tvlCap() - vault.totalAssets();
     }
 
     function _giveAssets(address user, uint256 assets) internal override {
