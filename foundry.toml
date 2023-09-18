@@ -20,10 +20,12 @@ ethereum = "https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_ETH_MAINNET_KEY}"
 polygon = "https://polygon-mainnet.g.alchemy.com/v2/${ALCHEMY_POLYGON_MAINNET_KEY}"
 arbitrum = "https://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_ARB_MAINNET_KEY}"
 base = "https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_BASE_MAINNET_KEY}"
+base-goerli = "https://base-goerli.g.alchemy.com/v2/${ALCHEMY_BASE_TESTNET_KEY}"
+
 
 [etherscan]
 ethereum = { key = "${ETHERSCAN_MAINNET_KEY}", chain = 1 }
-polygon = { key = "${POLYGONSCAN_API_KEY}", chain = 137, url = "https://api.polygonscan.com/" }
+polygon = { key = "${POLYGONSCAN_API_KEY}", chain = 137, url = "https://api.polygonscan.com/api?" }
 base = { key = "${BASESCAN_API_KEY}", chain = "base" , url = "https://api.basescan.org/api?"}
 
 
