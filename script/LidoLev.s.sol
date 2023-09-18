@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Script, console} from "forge-std/Script.sol";
+import {Script, console2} from "forge-std/Script.sol";
 
 import {Vault} from "src/vaults/Vault.sol";
 import {LidoLev} from "src/strategies/LidoLev.sol";

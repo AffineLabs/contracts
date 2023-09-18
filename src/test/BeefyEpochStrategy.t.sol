@@ -18,7 +18,7 @@ import {IBeefyVault} from "src/interfaces/Beefy.sol";
 
 import {DeployLib} from "script/ConvexStrategy.s.sol";
 
-import {console} from "forge-std/console.sol";
+import {console2} from "forge-std/console2.sol";
 
 contract TestBeefyWithStrategyVault is TestPlus {
     StrategyVault vault;

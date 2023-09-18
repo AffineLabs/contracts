@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-import {Script, console} from "forge-std/Script.sol";
+import {Script, console2} from "forge-std/Script.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
@@ -45,6 +45,6 @@ contract Deploy is Script {
     function usdEarnEth() external {
         _start();
         ConvexStrategy strat = DeployLib.deployMim3Crv(AffineVault(0x78Bb94Feab383ccEd39766a7d6CF31dED177Ad0c));
-        console.log("vault: ", address(strat.vault()));
+        console2.log("vault: ", address(strat.vault()));
     }
 }
