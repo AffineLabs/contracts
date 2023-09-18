@@ -16,9 +16,7 @@ import {
 import {console} from "forge-std/console.sol";
 
 contract MockLidoLev is LidoLevL2 {
-    constructor(uint256 _leverage, AffineVault _vault, address[] memory strategists)
-        LidoLevL2(_leverage, _vault, strategists)
-    {}
+    constructor(AffineVault _vault, address[] memory strategists) LidoLevL2(_vault, strategists) {}
 
     function wstEthToEth(uint256 wstEthAmount) external returns (uint256 ethAmount) {
         ethAmount = _wstEthToEth(wstEthAmount);
@@ -44,7 +42,7 @@ contract LidoLevL2Test is TestPlus {
         strategists[0] = address(this);
         vault = AffineVault(address(deployL1Vault()));
 
-        staking = new MockLidoLev(992, vault, strategists);
+        staking = new MockLidoLev(vault, strategists);
         vm.prank(governance);
         vault.addStrategy(staking, 0);
     }
@@ -98,7 +96,14 @@ contract LidoLevL2Test is TestPlus {
         vm.prank(address(vault));
         staking.divest(1 ether);
 
-        // TODO: Bring this bound down to 1%
-        assertApproxEqRel(staking.totalLockedValue(), tvl - 1 ether, 0.1e18);
+        assertApproxEqRel(staking.totalLockedValue(), tvl - 1 ether, 0.01e18);
+    }
+
+    function testSetParams() public {
+        staking.setLeverage(1000);
+        assertEq(staking.leverage(), 1000);
+
+        staking.setBorrowBps(9500);
+        assertEq(staking.borrowBps(), 9500);
     }
 }

@@ -7,7 +7,6 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
 
 import {AffineVault, Strategy} from "src/vaults/AffineVault.sol";
@@ -25,15 +24,7 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
     using FixedPointMathLib for uint256;
     using SlippageUtils for uint256;
 
-    IPool public constant AAVE = IPool(0xA238Dd80C259a72e81d7e4664a9801593F98d1c5);
-    ERC20 public immutable debtToken;
-    ERC20 public immutable aToken;
-
-    constructor(uint256 _leverage, AffineVault _vault, address[] memory strategists)
-        AccessStrategy(_vault, strategists)
-    {
-        leverage = _leverage;
-
+    constructor(AffineVault _vault, address[] memory strategists) AccessStrategy(_vault, strategists) {
         /* Deposit flow */
         // Trade wEth for wstETH (or equivalent, e.g. cbETH)
         WETH.safeApprove(address(CURVE), type(uint256).max);
@@ -85,9 +76,6 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
     /*//////////////////////////////////////////////////////////////
                          INVESTMENT/DIVESTMENT
     //////////////////////////////////////////////////////////////*/
-
-    /// @notice The leverage factor of the position in %. e.g. 150 would be 1.5x leverage.
-    uint256 public immutable leverage;
 
     function _afterInvest(uint256 amount) internal override {
         ERC20[] memory tokens = new ERC20[](1);
@@ -223,4 +211,25 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
     function setSlippageBps(uint256 _slippageBps) external onlyRole(STRATEGIST_ROLE) {
         slippageBps = _slippageBps;
     }
+    /*//////////////////////////////////////////////////////////////
+                                  AAVE
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice The leverage factor of the position multiplied by 100. E.g. 150 would be 1.5x leverage.
+    uint256 public leverage = 992; // 9.92x
+
+    function setLeverage(uint256 _leverage) external onlyRole(STRATEGIST_ROLE) {
+        leverage = _leverage;
+    }
+
+    /// @notice The percentage of the collateral to borrow from AAVE in bps.
+    uint256 public borrowBps = 8999; // 89.99%
+
+    function setBorrowBps(uint256 _borrowBps) external onlyRole(STRATEGIST_ROLE) {
+        borrowBps = _borrowBps;
+    }
+
+    IPool public constant AAVE = IPool(0xA238Dd80C259a72e81d7e4664a9801593F98d1c5);
+    ERC20 public immutable debtToken;
+    ERC20 public immutable aToken;
 }
