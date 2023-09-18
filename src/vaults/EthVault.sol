@@ -11,10 +11,6 @@ contract EthVault is Vault {
     /// @dev We need this to receive ETH when calling WETH.withdraw()
     receive() external payable {}
 
-    function weth() public pure virtual returns (IWETH) {
-        return IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    }
-
     function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
         internal
         virtual
@@ -33,7 +29,7 @@ contract EthVault is Vault {
         emit Withdraw(caller, receiver, owner, assets, shares);
 
         // Convert WETH to ETH and send to user
-        weth().withdraw(assetsToUser);
+        IWETH(address(_asset)).withdraw(assetsToUser);
         (bool success,) = receiver.call{value: assetsToUser}("");
         require(success, "EthVault: ETH transfer failed");
         // Send withdrawal fee to governance
