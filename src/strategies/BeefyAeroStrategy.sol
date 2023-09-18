@@ -45,8 +45,7 @@ contract BeefyAeroStrategy is AccessStrategy {
         aeroRouter = _router;
         lpToken = IAeroPool(aeroRouter.poolFor(address(token0), address(token1), false, aeroRouter.defaultFactory()));
 
-        // require(pearlRouter.isPair(address(lpToken)), "BPS: Invalid pearl LP pair");
-        require(address(beefy.want()) == address(lpToken), "BPS: Invalid beefy vault asset.");
+        require(address(beefy.want()) == address(lpToken), "BAS: Invalid beefy vault asset.");
 
         // approve assets to use in aerodrome router
         token0.approve(address(aeroRouter), type(uint256).max);
@@ -56,7 +55,10 @@ contract BeefyAeroStrategy is AccessStrategy {
         lpToken.approve(address(aeroRouter), type(uint256).max);
         lpToken.approve(address(beefy), type(uint256).max);
 
-        // TODO: check for valid token0 and token1 from pool
+        // @dev check for valid token0 and token1 from pool as poolFor generate the address
+        (address t0, address t1) = aeroRouter.sortTokens(address(token0), address(token1));
+        require(lpToken.token0() == t0, "BAS: invalid token0.");
+        require(lpToken.token1() == t1, "BAS: invalid token1.");
     }
 
     /**
