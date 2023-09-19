@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-import {Script, console} from "forge-std/Script.sol";
+import {Script, console2} from "forge-std/Script.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
@@ -57,18 +57,18 @@ contract Deploy is Script {
     function _start() internal {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
-        console.log("deployer %s", deployer);
+        console2.log("deployer %s", deployer);
     }
 
     function deployBeefyEpochStrategyPolygon() public {
         _start();
         BeefyEpochStrategy strategy = BeefyLib.deployBeefyStrategy();
-        console.log("Beefy strategy addr: %s", address(strategy));
+        console2.log("Beefy strategy addr: %s", address(strategy));
     }
 
     function deployBeefyPearlEpochStrategyPolygon() public {
         _start();
         BeefyPearlEpochStrategy strategy = BeefyLib.deployBeefyPearlStrategy();
-        console.log("Beefy Pearl Strategy addr: %s", address(strategy));
+        console2.log("Beefy Pearl Strategy addr: %s", address(strategy));
     }
 }

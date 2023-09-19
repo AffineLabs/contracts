@@ -18,7 +18,7 @@ import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
 import {TestStrategy} from "./mocks/TestStrategy.sol";
 import {VaultErrors} from "src/libs/VaultErrors.sol";
 
-import "forge-std/console.sol";
+import "forge-std/console2.sol";
 
 contract MockNft is ERC721 {
     constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {}
@@ -352,14 +352,14 @@ contract CommonVaultTest is TestPlus {
         uint256 oldGovBal = asset.balanceOf(vault.governance());
         oldPerfFee = vault.accumulatedPerformanceFee();
 
-        console.log("old: %s, %s", oldGovBal, oldPerfFee);
+        console2.log("old: %s, %s", oldGovBal, oldPerfFee);
 
         vm.prank(vault.governance());
         vault.withdrawPerformanceFee();
 
         uint256 newGovBal = asset.balanceOf(vault.governance());
         uint256 newPerfFee = vault.accumulatedPerformanceFee();
-        console.log("new: %s, %s", newGovBal, newPerfFee);
+        console2.log("new: %s, %s", newGovBal, newPerfFee);
         assertTrue(newGovBal > oldGovBal && newPerfFee < oldPerfFee);
         assertEq(oldGovBal + oldPerfFee - newPerfFee, newGovBal);
     }

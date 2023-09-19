@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-import {Script, console} from "forge-std/Script.sol";
+import {Script, console2} from "forge-std/Script.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
@@ -110,8 +110,8 @@ contract Deploy is Script, Base {
     function run() external {
         bool testnet = vm.envBool("TEST");
         Base.L2Config memory config = abi.decode(_getConfigJson({mainnet: !testnet, layer1: false}), (Base.L2Config));
-        console.log("config registry: ", config.aaveRegistry);
-        console.log("config usdc: ", config.usdc);
+        console2.log("config registry: ", config.aaveRegistry);
+        console2.log("config usdc: ", config.usdc);
 
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
@@ -129,8 +129,8 @@ contract Deploy is Script, Base {
         bytes32 routerSalt = _getSaltFile("router.salt");
         bytes32 ewqSalt = _getSalt();
 
-        console.logBytes32(escrowSalt);
-        console.logBytes32(routerSalt);
+        console2.logBytes32(escrowSalt);
+        console2.logBytes32(routerSalt);
         require(escrowSalt != routerSalt, "Salts not unique");
 
         L2BridgeEscrow escrow = L2BridgeEscrow(create3.getDeployed(deployer, escrowSalt));

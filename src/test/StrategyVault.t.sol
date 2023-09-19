@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
-import "forge-std/console.sol";
+import "forge-std/console2.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -487,8 +487,8 @@ contract SVaultTest is TestPlus {
         uint256 initialAssets = 100_000 * (10 ** asset.decimals());
         sVault.setTvlCap(10 * initialAssets);
 
-        console.log("initial assets %s deci %s", initialAssets, asset.decimals());
-        console.log("Debt escrow %s", address(sVault.debtEscrow()));
+        console2.log("initial assets %s deci %s", initialAssets, asset.decimals());
+        console2.log("Debt escrow %s", address(sVault.debtEscrow()));
 
         deal(address(asset), alice, initialAssets);
 
@@ -523,8 +523,8 @@ contract SVaultTest is TestPlus {
         uint256 initialAssets = 100_000 * (10 ** asset.decimals());
         sVault.setTvlCap(10 * initialAssets);
 
-        console.log("initial assets %s deci %s", initialAssets, asset.decimals());
-        console.log("Debt escrow %s", address(sVault.debtEscrow()));
+        console2.log("initial assets %s deci %s", initialAssets, asset.decimals());
+        console2.log("Debt escrow %s", address(sVault.debtEscrow()));
 
         deal(address(asset), alice, initialAssets);
 
@@ -606,7 +606,7 @@ contract SVaultUpgradeLiveTest is SVaultTest {
 
         // check new strategy tvl
         assertEq(newStrategy.totalLockedValue(), tvl);
-        console.log("vault tvl %s", tvl);
+        console2.log("vault tvl %s", tvl);
     }
 
     function testDegenVaultUpgradeImpl() public {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-import {Script, console} from "forge-std/Script.sol";
+import {Script, console2} from "forge-std/Script.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
@@ -117,6 +117,6 @@ contract Deploy is Script {
     function runEthWeth() external {
         _start();
         address strategyAddr = address(SslpV3.deployEthWeth(AffineVault(0x84eF1F1A7f14A237c4b1DA8d13548123879FC3A9)));
-        console.log("Eth denominated sslp uni v3 strategy addr: %s", strategyAddr);
+        console2.log("Eth denominated sslp uni v3 strategy addr: %s", strategyAddr);
     }
 }

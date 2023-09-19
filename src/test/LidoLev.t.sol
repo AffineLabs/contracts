@@ -15,7 +15,7 @@ import {
     FixedPointMathLib
 } from "src/strategies/LidoLev.sol";
 
-import {console} from "forge-std/console.sol";
+import {console2} from "forge-std/console2.sol";
 
 contract MockLidoLev is LidoLev {
     constructor(LidoLev oldStrat, uint256 _leverage, AffineVault _vault, address[] memory strategists)
@@ -81,14 +81,14 @@ contract LidoLevTest is TestPlus {
         vm.warp(block.timestamp + 1 days);
         vm.roll(block.number + 1);
         _divest(1 ether);
-        console.log("WETH balance: %s", weth.balanceOf(address(this)));
-        console.log("WETH staking balance: %s", weth.balanceOf(address(staking)));
+        console2.log("WETH balance: %s", weth.balanceOf(address(this)));
+        console2.log("WETH staking balance: %s", weth.balanceOf(address(staking)));
     }
 
     function testTotalLockedValue() public {
         testAddToPosition();
         uint256 tvl = staking.totalLockedValue();
-        console.log("TVL:  %s", tvl);
+        console2.log("TVL:  %s", tvl);
         assertApproxEqRel(tvl, 30 ether, 0.001e18);
     }
 
@@ -96,7 +96,7 @@ contract LidoLevTest is TestPlus {
         _giveEther(7 ether);
         staking.addToPosition(7 ether);
         uint256 tvl = staking.totalLockedValue();
-        console.log("TVL:  %s", tvl);
+        console2.log("TVL:  %s", tvl);
         assertApproxEqRel(tvl, 7 ether, 0.001e18);
     }
 

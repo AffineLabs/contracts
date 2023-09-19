@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-import {TestPlus, console} from "./TestPlus.sol";
+import {TestPlus} from "./TestPlus.sol";
+import {console2} from "forge-std/console2.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
@@ -204,7 +205,7 @@ contract DeltaNeutralV3Test is TestPlus {
         strategy.startPosition(initStrategyBalance, tickLow, tickHigh, slippageBps);
 
         (uint256 assetsFee, uint256 borrowsFee) = strategy.positionFees();
-        console.log("assetsFee: %s, borrowsFee: %s", assetsFee, borrowsFee);
+        console2.log("assetsFee: %s, borrowsFee: %s", assetsFee, borrowsFee);
         assertTrue(assetsFee == 0 && borrowsFee == 0);
 
         deal(address(asset), address(this), initStrategyBalance);
@@ -224,7 +225,7 @@ contract DeltaNeutralV3Test is TestPlus {
         strategy.router().exactInputSingle(params);
 
         (assetsFee, borrowsFee) = strategy.positionFees();
-        console.log("assetsFee: %s, borrowsFee: %s", assetsFee, borrowsFee);
+        console2.log("assetsFee: %s, borrowsFee: %s", assetsFee, borrowsFee);
         assertTrue(assetsFee > 0);
         assertTrue(borrowsFee == 0);
     }

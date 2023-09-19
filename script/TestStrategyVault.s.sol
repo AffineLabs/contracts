@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-import {Script, console} from "forge-std/Script.sol";
+import {Script, console2} from "forge-std/Script.sol";
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -73,7 +73,7 @@ library SSV {
 
         sVault = StrategyVault(address(proxy));
 
-        console.log("Vault addr:", address(sVault));
+        console2.log("Vault addr:", address(sVault));
         require(sVault.hasRole(sVault.DEFAULT_ADMIN_ROLE(), deployer));
         require(sVault.asset() == _getEthMainNetUSDCAddr());
 
@@ -88,8 +88,8 @@ library SSV {
 
         // set escrow
         sVault.setDebtEscrow(escrow);
-        console.log("Strategy addr:", address(strategy));
-        console.log("Escrow addr:", address(escrow));
+        console2.log("Strategy addr:", address(strategy));
+        console2.log("Escrow addr:", address(escrow));
     }
 }
 
@@ -358,7 +358,7 @@ contract Deploy is Script {
     function runMainNet() external {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
-        console.log("Deployer addr", deployer);
+        console2.log("Deployer addr", deployer);
         SSV.deployEthSSVSushiUSDC(deployer);
     }
 
@@ -385,7 +385,7 @@ contract Deploy is Script {
         StrategyVault sVault = StrategyVault(0x3E84ac8696CB58A9044ff67F8cf2Da2a81e39Cf9);
         MockEpochStrategy strategy = MockEpochStrategy(address(sVault.strategy()));
 
-        console.log("strategy: %s", address(strategy));
+        console2.log("strategy: %s", address(strategy));
 
         strategy.mint(100);
     }
@@ -397,8 +397,8 @@ contract Deploy is Script {
         StrategyVault sVault = StrategyVault(0x3E84ac8696CB58A9044ff67F8cf2Da2a81e39Cf9);
         MockEpochStrategy strategy = MockEpochStrategy(address(sVault.strategy()));
 
-        console.log("Current epoch: ", sVault.epoch());
-        console.log("Epoch ended: %s", sVault.epochEnded());
+        console2.log("Current epoch: ", sVault.epoch());
+        console2.log("Epoch ended: %s", sVault.epochEnded());
         strategy.beginEpoch();
     }
 
@@ -409,8 +409,8 @@ contract Deploy is Script {
         StrategyVault sVault = StrategyVault(0x3E84ac8696CB58A9044ff67F8cf2Da2a81e39Cf9);
         MockEpochStrategy strategy = MockEpochStrategy(address(sVault.strategy()));
 
-        console.log("Current epoch: ", sVault.epoch());
-        console.log("Epoch ended: %s", sVault.epochEnded());
+        console2.log("Current epoch: ", sVault.epoch());
+        console2.log("Epoch ended: %s", sVault.epochEnded());
         strategy.endEpoch();
     }
 
@@ -424,7 +424,7 @@ contract Deploy is Script {
         vm.startBroadcast(deployer);
 
         DegenVault sVault = new DegenVault();
-        console.log("deployer %s", deployer);
-        console.log("Vault address %s", address(sVault));
+        console2.log("deployer %s", deployer);
+        console2.log("Vault address %s", address(sVault));
     }
 }
