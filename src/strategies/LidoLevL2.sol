@@ -101,7 +101,7 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
         AAVE.deposit(address(WSTETH), wstEth, address(this), 0);
 
         // Borrow 90% of wstETH value in ETH using e-mode
-        uint256 ethToBorrow = _wstEthToEth(wstEth).mulDivDown(8999, 10_000);
+        uint256 ethToBorrow = _wstEthToEth(wstEth).mulDivDown(borrowBps, 10_000);
         AAVE.borrow(address(WETH), ethToBorrow, 2, 0, address(this));
     }
 
