@@ -21,7 +21,7 @@ import {IBeefyVault} from "src/interfaces/Beefy.sol";
 
 import {DeployLib} from "script/ConvexStrategy.s.sol";
 
-import {console} from "forge-std/console.sol";
+import {console2} from "forge-std/console2.sol";
 
 contract TestBeefyPearlStrategy is TestPlus {
     using FixedPointMathLib for uint256;
@@ -77,7 +77,7 @@ contract TestBeefyPearlStrategy is TestPlus {
 
         strategy.investAssets(initialAssets, 50);
 
-        console.log("TVL %s", strategy.totalLockedValue());
+        console2.log("TVL %s", strategy.totalLockedValue());
         // tvl should be in range of BPS
         assertApproxEqRel(initialAssets, strategy.totalLockedValue(), 0.01e18);
         // should have less than 50 bps amount of usdc
@@ -209,7 +209,7 @@ contract TestBeefyPearlStrategy is TestPlus {
         assertApproxEqRel(totalTVL, strategy.totalLockedValue(), 0.001e18);
 
         strategy.investAssets(usdc.balanceOf(address(strategy)), defaultSlippageBps);
-        console.log(
+        console2.log(
             "01 Rem USDC %s, USDR %s, TVL %s",
             usdc.balanceOf(address(strategy)),
             token1.balanceOf(address(strategy)),
@@ -223,7 +223,7 @@ contract TestBeefyPearlStrategy is TestPlus {
         assertApproxEqRel(totalTVL, strategy.totalLockedValue(), 0.001e18);
 
         assertApproxEqRel(usdc.balanceOf(address(strategy)), initialAssets, 0.01e18);
-        console.log(
+        console2.log(
             "02 Rem USDC %s, USDR %s, TVL %s",
             usdc.balanceOf(address(strategy)),
             token1.balanceOf(address(strategy)),

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-import {Script, console} from "forge-std/Script.sol";
+import {Script, console2} from "forge-std/Script.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
@@ -33,17 +33,17 @@ contract Deploy is Script, Base {
 
     function _getSaltAndWrite(string memory fileName) internal returns (bytes32 salt) {
         salt = _getSalt();
-        console.log("about to log bytes salt");
-        console.logBytes(abi.encodePacked(salt));
+        console2.log("about to log bytes salt");
+        console2.logBytes(abi.encodePacked(salt));
         vm.writeFileBinary(fileName, abi.encodePacked(salt));
     }
 
     function run() external {
         bool testnet = vm.envBool("TEST");
-        console.log("test: ", testnet ? 1 : 0);
+        console2.log("test: ", testnet ? 1 : 0);
         bytes memory configBytes = _getConfigJson({mainnet: !testnet, layer1: true});
         Base.L1Config memory config = abi.decode(configBytes, (Base.L1Config));
-        console.log("config usdc: ", config.usdc);
+        console2.log("config usdc: ", config.usdc);
 
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);

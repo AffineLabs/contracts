@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-import {Script, console} from "forge-std/Script.sol";
+import {Script, console2} from "forge-std/Script.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {AaveV2Strategy, ILendingPool} from "src/strategies/AaveV2Strategy.sol";
@@ -25,6 +25,6 @@ contract Deploy is Script {
         AffineVault vault = AffineVault(0x72D51B2233c5feA8a702FDd0E51B0adE95638f2c);
         AaveV2Strategy strategy = new AaveV2Strategy(vault, ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9));
         require(strategy.vault() == vault);
-        console.log("asset: ", address(strategy.asset()));
+        console2.log("asset: ", address(strategy.asset()));
     }
 }

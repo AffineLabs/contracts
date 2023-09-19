@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-import {Script, console} from "forge-std/Script.sol";
+import {Script, console2} from "forge-std/Script.sol";
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {EthVault} from "src/vaults/EthVault.sol";
@@ -37,19 +37,19 @@ contract Deploy is Script, Base {
 
     function runEthWeth() external {
         bool testnet = vm.envBool("TEST");
-        console.log("test: ", testnet ? 1 : 0);
+        console2.log("test: ", testnet ? 1 : 0);
         bytes memory configBytes = _getConfigJson({mainnet: !testnet, layer1: true});
         Base.L1Config memory config = abi.decode(configBytes, (Base.L1Config));
 
         address governance = config.governance;
         address weth = config.weth;
-        console.log("weth: %s", weth);
+        console2.log("weth: %s", weth);
 
         _start();
         EthVault vault = EthVaults.deployEthWeth(governance, weth);
-        console.log("Eth denominated vault addr:", address(vault));
+        console2.log("Eth denominated vault addr:", address(vault));
         EthVault.Number memory price = vault.detailedPrice();
-        console.log("price: %s", price.num);
+        console2.log("price: %s", price.num);
     }
 
     function routerDeploy() external {
@@ -58,10 +58,10 @@ contract Deploy is Script, Base {
         Base.L1Config memory config = abi.decode(configBytes, (Base.L1Config));
 
         address weth = config.weth;
-        console.log("weth: %s", weth);
+        console2.log("weth: %s", weth);
 
         _start();
         Router router = new Router("affine-router-v2", address(0), IWETH(weth));
-        console.log("router weth: %s", address(router.weth()));
+        console2.log("router weth: %s", address(router.weth()));
     }
 }

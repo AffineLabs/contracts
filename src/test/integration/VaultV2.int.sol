@@ -5,7 +5,7 @@ import {CommonVaultTest, ERC20} from "src/test/CommonVault.t.sol";
 import {Vault} from "src/vaults/Vault.sol";
 import {VaultV2} from "src/vaults/VaultV2.sol";
 
-import "forge-std/console.sol";
+import "forge-std/console2.sol";
 
 abstract contract VaultV2_IntegrationTest is CommonVaultTest {
     function _fork() internal virtual {}

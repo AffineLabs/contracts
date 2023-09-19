@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Script, console} from "forge-std/Script.sol";
+import {Script, console2} from "forge-std/Script.sol";
 
 import {Base} from "./Base.sol";
 import {Vault} from "src/vaults/Vault.sol";
@@ -22,13 +22,13 @@ contract Deploy is Script, Base {
     function run() external {
         // Get config info
         bool testnet = vm.envBool("TEST");
-        console.log("test: ", testnet ? 1 : 0);
+        console2.log("test: ", testnet ? 1 : 0);
         bytes memory configBytes = _getConfigJson({mainnet: !testnet, layer1: true});
         Base.L1Config memory config = abi.decode(configBytes, (Base.L1Config));
 
         address governance = config.governance;
         address usdc = config.usdc;
-        console.log("usdc: %s governance: %s", usdc, governance);
+        console2.log("usdc: %s governance: %s", usdc, governance);
 
         // Start broadcasting txs
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
