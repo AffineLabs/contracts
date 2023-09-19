@@ -60,7 +60,7 @@ contract BeefyAeroStrategy is AccessStrategy {
 
         // @dev check for valid token0 and token1 from pool as poolFor generate the address
         (address t0, address t1) = aeroRouter.sortTokens(address(token0), address(token1));
-        require(lpToken.token0() == t0 && lpToken.token1() == t1, "BAS: Invalid Aerodrome LP address");
+        require(lpToken.token0() == t0 && lpToken.token1() == t1, "BAS: Invalid AeroLP address");
     }
 
     /**
