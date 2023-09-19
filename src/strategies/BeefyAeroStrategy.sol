@@ -7,7 +7,7 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
-import {IAeroRouter, IAeroPool} from "src/interfaces/IAerodrome.sol";
+import {IAeroRouter, IAeroPool} from "src/interfaces/aerodrome.sol";
 import {IBeefyVault} from "src/interfaces/Beefy.sol";
 
 import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
@@ -30,6 +30,7 @@ contract BeefyAeroStrategy is AccessStrategy {
 
     IAeroRouter public immutable aeroRouter;
     IAeroPool public immutable lpToken;
+    address public immutable factory;
 
     constructor(
         AffineVault _vault,
@@ -43,7 +44,9 @@ contract BeefyAeroStrategy is AccessStrategy {
         token1 = _token1;
 
         aeroRouter = _router;
-        lpToken = IAeroPool(aeroRouter.poolFor(address(token0), address(token1), false, aeroRouter.defaultFactory()));
+
+        factory = aeroRouter.defaultFactory();
+        lpToken = IAeroPool(aeroRouter.poolFor(address(token0), address(token1), false, factory));
 
         require(address(beefy.want()) == address(lpToken), "BAS: Invalid beefy vault asset.");
 
@@ -57,8 +60,7 @@ contract BeefyAeroStrategy is AccessStrategy {
 
         // @dev check for valid token0 and token1 from pool as poolFor generate the address
         (address t0, address t1) = aeroRouter.sortTokens(address(token0), address(token1));
-        require(lpToken.token0() == t0, "BAS: invalid token0.");
-        require(lpToken.token1() == t1, "BAS: invalid token1.");
+        require(lpToken.token0() == t0 && lpToken.token1() == t1, "BAS: Invalid Aerodrome LP address");
     }
 
     /**
@@ -87,34 +89,10 @@ contract BeefyAeroStrategy is AccessStrategy {
     function _getSwapPrice(ERC20 from, ERC20 to, uint256 amount) internal view returns (uint256 tokenToAmount) {
         IAeroRouter.Route[] memory route = new IAeroRouter.Route[](1);
 
-        route[0].from = address(from);
-        route[0].to = address(to);
-        route[0].stable = false;
-        route[0].factory = aeroRouter.defaultFactory();
+        route[0] = IAeroRouter.Route({from: address(from), to: address(to), stable: false, factory: factory});
 
         uint256[] memory amounts = aeroRouter.getAmountsOut(amount, route);
         return amounts[1];
-    }
-
-    // TODO: parameterize (address from, address to)
-    /**
-     * @notice return the ration of token0 and token1 in terms of equivalent asset
-     */
-    function _getLPInTokenRatiosInAssets() internal view returns (uint256, uint256) {
-        (uint256 token0Desired, uint256 token1desired,) = aeroRouter.quoteAddLiquidity(
-            address(token0),
-            address(token1),
-            false,
-            aeroRouter.defaultFactory(),
-            10 ** token0.decimals(),
-            10 ** token1.decimals()
-        );
-
-        uint256 token0ToToken1SwapPrice = _getSwapPrice(token0, token1, 10 ** token0.decimals());
-
-        uint256 token1EqToken0 = token1desired.mulDivDown(10 ** token0.decimals(), token0ToToken1SwapPrice);
-
-        return (token0Desired, token1EqToken0);
     }
 
     /**
@@ -131,9 +109,8 @@ contract BeefyAeroStrategy is AccessStrategy {
      */
     function _getAssetsAmountFromLP() internal view returns (uint256) {
         uint256 lpTokenAmount = _getTotalLpTokenAmount();
-        (uint256 token0Out, uint256 token1Out) = aeroRouter.quoteRemoveLiquidity(
-            address(token0), address(token1), false, aeroRouter.defaultFactory(), lpTokenAmount
-        );
+        (uint256 token0Out, uint256 token1Out) =
+            aeroRouter.quoteRemoveLiquidity(address(token0), address(token1), false, factory, lpTokenAmount);
 
         return token0Out + _getSwapPrice(token1, token0, token1Out);
     }
@@ -151,18 +128,14 @@ contract BeefyAeroStrategy is AccessStrategy {
 
         IAeroRouter.Route[] memory route = new IAeroRouter.Route[](1);
 
-        route[0].from = address(from);
-        route[0].to = address(to);
-        route[0].stable = false;
-        route[0].factory = aeroRouter.defaultFactory();
+        route[0] = IAeroRouter.Route({from: address(from), to: address(to), stable: false, factory: factory});
 
         aeroRouter.swapExactTokensForTokens(amount, minTokenToReceive, route, address(this), block.timestamp);
     }
 
     function _provideLiquidityToAero(uint256 token0Amount, uint256 token1Amount, uint256 slippage) internal {
-        (uint256 token0Desired, uint256 token1desired,) = aeroRouter.quoteAddLiquidity(
-            address(token0), address(token1), false, aeroRouter.defaultFactory(), token0Amount, token1Amount
-        );
+        (uint256 token0Desired, uint256 token1desired,) =
+            aeroRouter.quoteAddLiquidity(address(token0), address(token1), false, factory, token0Amount, token1Amount);
 
         uint256 minToken0Amount = _calculateSlippageAmount(token0Desired, slippage, true);
         uint256 minToken1Amount = _calculateSlippageAmount(token1desired, slippage, true);
@@ -180,9 +153,8 @@ contract BeefyAeroStrategy is AccessStrategy {
     }
 
     function _removeLiquidityFromAero(uint256 lpTokenAmount, uint256 slippage) internal {
-        (uint256 token0Out, uint256 token1Out) = aeroRouter.quoteRemoveLiquidity(
-            address(token0), address(token1), false, aeroRouter.defaultFactory(), lpTokenAmount
-        );
+        (uint256 token0Out, uint256 token1Out) =
+            aeroRouter.quoteRemoveLiquidity(address(token0), address(token1), false, factory, lpTokenAmount);
 
         uint256 minToken0Out = _calculateSlippageAmount(token0Out, slippage, true);
         uint256 minToken1Out = _calculateSlippageAmount(token1Out, slippage, true);
@@ -200,16 +172,11 @@ contract BeefyAeroStrategy is AccessStrategy {
     }
 
     function _investIntoBeefy(uint256 assets, uint256 slippage) internal {
-        (uint256 token0Ratio, uint256 token1RatioEqToken0) = _getLPInTokenRatiosInAssets();
-
-        // check for slippage
-        token1RatioEqToken0 = _calculateSlippageAmount(token1RatioEqToken0, slippage, false);
-
         // we are utilizing the existing USDR idle from previous investment
         uint256 existingToken1EqToken0 = _getSwapPrice(token1, token0, token1.balanceOf(address(this)));
         uint256 totalAssetsToInvest = assets + existingToken1EqToken0;
 
-        uint256 token0ToSwap = totalAssetsToInvest.mulDivDown(token1RatioEqToken0, token0Ratio + token1RatioEqToken0);
+        uint256 token0ToSwap = totalAssetsToInvest / 2;
 
         // swap token0/asset/USDC to token1/USDR
         if (token0ToSwap > existingToken1EqToken0) {

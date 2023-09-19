@@ -14,7 +14,7 @@ import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 import {BeefyAeroStrategy} from "src/strategies/BeefyAeroStrategy.sol";
 
 import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
-import {IAeroRouter, IAeroPool} from "src/interfaces/IAerodrome.sol";
+import {IAeroRouter, IAeroPool} from "src/interfaces/aerodrome.sol";
 
 import {IBeefyVault} from "src/interfaces/Beefy.sol";
 
@@ -167,14 +167,14 @@ contract TestBeefyAeroStrategy is TestPlus {
         vm.startPrank(address(this));
         strategy.investAssets(initialAssets, defaultSlippageBps);
 
-        assertEq(asset.balanceOf(address(strategy)), 0);
+        assertApproxEqRel(initialAssets, strategy.totalLockedValue(), 0.005e18);
 
         strategy.divestAssets(initialAssets, defaultSlippageBps);
 
         // tvl should be in range of BPS
-        assertApproxEqRel(initialAssets, strategy.totalLockedValue(), 0.01e18);
+        assertApproxEqRel(initialAssets, strategy.totalLockedValue(), 0.005e18);
 
-        assertApproxEqRel(asset.balanceOf(address(strategy)), initialAssets, 0.01e18);
+        assertApproxEqRel(asset.balanceOf(address(strategy)), initialAssets, 0.005e18);
     }
 
     function testInvestWithExistingUSDR() public {
@@ -187,8 +187,6 @@ contract TestBeefyAeroStrategy is TestPlus {
 
         vm.startPrank(address(this));
         strategy.investAssets(initialAssets, defaultSlippageBps);
-
-        assertEq(asset.balanceOf(address(strategy)), 0);
 
         uint256 remainingUSDRAmount = token1.balanceOf(address(strategy));
         uint256 USDREqassetAmount = remainingUSDRAmount.mulDivDown(10 ** asset.decimals(), 10 ** token1.decimals());
@@ -209,8 +207,9 @@ contract TestBeefyAeroStrategy is TestPlus {
         uint256 totalTVL = initialAssets + USDREqassetAmount;
         assertApproxEqRel(totalTVL, strategy.totalLockedValue(), 0.005e18);
 
+        uint256 remAssets = asset.balanceOf(address(strategy)) + USDREqassetAmount;
         vm.startPrank(address(this));
-        strategy.investAssets(USDREqassetAmount / 2, defaultSlippageBps);
+        strategy.investAssets(remAssets / 2, defaultSlippageBps);
 
         console.log(
             "02 Rem asset %s, USDR %s, TVL %s",
@@ -277,6 +276,8 @@ contract TestBeefyAeroStrategy is TestPlus {
 
         strategy.investAssets(initialAssets / 2, defaultSlippageBps);
 
-        assertEq(asset.balanceOf(address(strategy)), 0);
+        console.log("strategy asset %s", asset.balanceOf(address(strategy)));
+        console.log("strategy TVL %s", strategy.totalLockedValue());
+        assertApproxEqRel(strategy.totalLockedValue(), initialAssets / 2, 0.005e18);
     }
 }
