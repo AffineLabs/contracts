@@ -235,19 +235,6 @@
   },
   {
     "inputs": [],
-    "name": "borrowBps",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "debtToken",
     "outputs": [
       {
@@ -425,19 +412,6 @@
       }
     ],
     "name": "revokeRole",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_borrowBps",
-        "type": "uint256"
-      }
-    ],
-    "name": "setBorrowBps",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

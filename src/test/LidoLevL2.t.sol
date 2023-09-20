@@ -102,9 +102,6 @@ contract LidoLevL2Test is TestPlus {
     function testSetParams() public {
         staking.setLeverage(1000);
         assertEq(staking.leverage(), 1000);
-
-        staking.setBorrowBps(9500);
-        assertEq(staking.borrowBps(), 9500);
     }
 
     function testAddLargeEthAmount() public {

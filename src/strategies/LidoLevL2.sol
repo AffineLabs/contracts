@@ -101,7 +101,7 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
         AAVE.deposit(address(WSTETH), wstEth, address(this), 0);
 
         // Borrow 90% of wstETH value in ETH using e-mode
-        uint256 ethToBorrow = _wstEthToEth(wstEth).mulDivDown(borrowBps, 10_000);
+        uint256 ethToBorrow = ethBorrowed - WETH.balanceOf(address(this));
         AAVE.borrow(address(WETH), ethToBorrow, 2, 0, address(this));
     }
 
@@ -220,13 +220,6 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
 
     function setLeverage(uint256 _leverage) external onlyRole(STRATEGIST_ROLE) {
         leverage = _leverage;
-    }
-
-    /// @notice The percentage of the collateral to borrow from AAVE in bps.
-    uint256 public borrowBps = 8999; // 89.99%
-
-    function setBorrowBps(uint256 _borrowBps) external onlyRole(STRATEGIST_ROLE) {
-        borrowBps = _borrowBps;
     }
 
     IPool public constant AAVE = IPool(0xA238Dd80C259a72e81d7e4664a9801593F98d1c5);
