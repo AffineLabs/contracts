@@ -13,7 +13,7 @@ import {
     FixedPointMathLib
 } from "src/strategies/LidoLevL2.sol";
 
-import {console} from "forge-std/console.sol";
+import {console2} from "forge-std/console2.sol";
 
 contract MockLidoLev is LidoLevL2 {
     constructor(AffineVault _vault, address[] memory strategists) LidoLevL2(_vault, strategists) {}
@@ -75,23 +75,23 @@ contract LidoLevL2Test is TestPlus {
         vm.warp(block.timestamp + 1 days);
         vm.roll(block.number + 1);
         _divest(1 ether);
-        console.log("WETH balance: %s", weth.balanceOf(address(this)));
-        console.log("WETH staking balance: %s", weth.balanceOf(address(staking)));
+        console2.log("WETH balance: %s", weth.balanceOf(address(this)));
+        console2.log("WETH staking balance: %s", weth.balanceOf(address(staking)));
     }
 
     function testTotalLockedValue() public {
         testAddToPosition();
         uint256 tvl = staking.totalLockedValue();
-        console.log("TVL:  %s", tvl);
+        console2.log("TVL:  %s", tvl);
         assertApproxEqRel(tvl, 10 ether, 0.01e18);
     }
 
     function testMutateTotalLockedValue() public {
         testAddToPosition();
         uint256 tvl = staking.totalLockedValue();
-        console.log("Orig tvl: ", tvl);
-        console.log("orig collateral: ", staking.aToken().balanceOf(address(staking)));
-        console.log("orig debt: ", staking.debtToken().balanceOf(address(staking)));
+        console2.log("Orig tvl: ", tvl);
+        console2.log("orig collateral: ", staking.aToken().balanceOf(address(staking)));
+        console2.log("orig debt: ", staking.debtToken().balanceOf(address(staking)));
 
         vm.prank(address(vault));
         staking.divest(1 ether);
@@ -105,5 +105,14 @@ contract LidoLevL2Test is TestPlus {
 
         staking.setBorrowBps(9500);
         assertEq(staking.borrowBps(), 9500);
+    }
+
+    function testAddLargeEthAmount() public {
+        // AAVE only allows about 500 cbETH as of current block
+        uint256 amount = 30 ether;
+        _giveEther(amount);
+        staking.setSlippageBps(2000);
+        staking.setLeverage(955);
+        staking.addToPosition(amount);
     }
 }
