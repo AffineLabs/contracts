@@ -9,6 +9,12 @@ import {Vault} from "src/vaults/Vault.sol";
 
 contract BaseChainVault is VaultV2 {}
 
+contract BaseDegenVault is VaultV2 {
+    function _initialShareDecimals() internal pure override returns (uint8) {
+        return 10;
+    }
+}
+
 contract Deploy is Script {
     function _start() internal {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
@@ -29,6 +35,24 @@ contract Deploy is Script {
 
         // Check that values were set correctly.
         BaseChainVault vault = BaseChainVault(address(proxy));
+        require(vault.governance() == governance);
+        require(address(vault.asset()) == asset);
+    }
+
+    function deployBaseDegen() public {
+        _start();
+        // Deploy implementation
+        BaseDegenVault impl = new BaseDegenVault();
+
+        address governance = 0x535B06019dD972Cd48655F5838306dfF8E68d6FD;
+        address asset = 0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA;
+
+        // Initialize proxy with correct data
+        bytes memory initData = abi.encodeCall(Vault.initialize, (governance, asset, "Base USD Degen", "usdEarnDegen"));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+
+        // Check that values were set correctly.
+        BaseDegenVault vault = BaseDegenVault(address(proxy));
         require(vault.governance() == governance);
         require(address(vault.asset()) == asset);
     }
