@@ -21,6 +21,11 @@
     "type": "error"
   },
   {
+    "inputs": [],
+    "name": "onlyBalancerVault",
+    "type": "error"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
