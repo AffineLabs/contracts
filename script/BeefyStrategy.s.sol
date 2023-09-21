@@ -59,8 +59,7 @@ library BeefyLib {
         IAeroRouter router = IAeroRouter(0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43);
         IBeefyVault beefy = IBeefyVault(0x8aeDd79BC918722d4948502b18deceaBeD60d044);
         ERC20 token1 = ERC20(0x9483ab65847A447e36d21af1CaB8C87e9712ff93); // wusdr
-        // check vault
-        VaultV2 vault = VaultV2(0x684D1dbd30c67Fe7fF6D502A04e0E7076b4b9D46);
+        VaultV2 vault = VaultV2(0xcb3f73F228B8980ec0766735b8F5551935556354);
         strategy = new BeefyAeroStrategy(
             vault, 
             beefy,

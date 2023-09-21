@@ -7,11 +7,16 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {VaultV2} from "src/vaults/VaultV2.sol";
 import {Vault} from "src/vaults/Vault.sol";
 
+/* solhint-disable reason-string, no-console */
+
 contract BaseChainVault is VaultV2 {}
 
 contract BaseDegenVault is VaultV2 {
-    function _initialShareDecimals() internal pure override returns (uint8) {
-        return 10;
+    /**
+     * @dev vault initial decimals fixed at 8, making initial shares to 1e6 increased the asset per share 100 times
+     */
+    function initialSharesPerAsset() public pure override returns (uint256) {
+        return 1e6;
     }
 }
 
@@ -48,12 +53,16 @@ contract Deploy is Script {
         address asset = 0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA;
 
         // Initialize proxy with correct data
-        bytes memory initData = abi.encodeCall(Vault.initialize, (governance, asset, "Base USD Degen", "usdEarnDegen"));
+        bytes memory initData =
+            abi.encodeCall(Vault.initialize, (governance, asset, " Affine High Yield LP", "BaseDegen"));
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
 
         // Check that values were set correctly.
         BaseDegenVault vault = BaseDegenVault(address(proxy));
         require(vault.governance() == governance);
         require(address(vault.asset()) == asset);
+
+        console2.log("detailed price %s", vault.detailedPrice().num);
+        console2.log("Vault address %s", address(vault));
     }
 }
