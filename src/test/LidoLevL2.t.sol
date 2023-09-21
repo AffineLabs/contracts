@@ -15,7 +15,7 @@ import {
 
 import {console2} from "forge-std/console2.sol";
 
-contract MockLidoLev is LidoLevL2 {
+contract MockLidoLevL2 is LidoLevL2 {
     constructor(AffineVault _vault, address[] memory strategists) LidoLevL2(_vault, strategists) {}
 
     function wstEthToEth(uint256 wstEthAmount) external returns (uint256 ethAmount) {
@@ -30,8 +30,10 @@ contract MockLidoLev is LidoLevL2 {
 contract LidoLevL2Test is TestPlus {
     using FixedPointMathLib for uint256;
 
-    MockLidoLev staking;
+    MockLidoLevL2 staking;
     AffineVault vault;
+
+    uint256 depSize = 10 ether;
 
     receive() external payable {}
 
@@ -42,7 +44,7 @@ contract LidoLevL2Test is TestPlus {
         strategists[0] = address(this);
         vault = AffineVault(address(deployL1Vault()));
 
-        staking = new MockLidoLev(vault, strategists);
+        staking = new MockLidoLevL2(vault, strategists);
         vm.prank(governance);
         vault.addStrategy(staking, 0);
     }
@@ -58,14 +60,13 @@ contract LidoLevL2Test is TestPlus {
     }
 
     function testAddToPosition() public {
-        _giveEther(10 ether);
-        staking.addToPosition(10 ether);
+        _giveEther(depSize);
+        staking.addToPosition(depSize);
     }
 
     function testLeverage() public {
         testAddToPosition();
         uint256 aaveCollateral = staking.wstEthToEth(staking.aToken().balanceOf(address(staking)));
-        uint256 depSize = 10 ether;
         assertApproxEqRel(aaveCollateral, depSize * 992 / 100, 0.02e18);
     }
 
@@ -83,7 +84,7 @@ contract LidoLevL2Test is TestPlus {
         testAddToPosition();
         uint256 tvl = staking.totalLockedValue();
         console2.log("TVL:  %s", tvl);
-        assertApproxEqRel(tvl, 10 ether, 0.01e18);
+        assertApproxEqRel(tvl, depSize, 0.01e18);
     }
 
     function testMutateTotalLockedValue() public {
@@ -111,5 +112,33 @@ contract LidoLevL2Test is TestPlus {
         staking.setSlippageBps(2000);
         staking.setLeverage(955);
         staking.addToPosition(amount);
+    }
+
+    function testUpgrade() public {
+        testAddToPosition();
+        uint256 beforeTvl = staking.totalLockedValue();
+
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+        MockLidoLevL2 staking2 = new MockLidoLevL2(vault, strategists);
+        assertEq(staking2.totalLockedValue(), 0);
+
+        vm.startPrank(governance);
+        vault.addStrategy(staking2, 0);
+        staking.upgradeTo(staking2);
+
+        // All value was moved to staking2
+        assertEq(staking.totalLockedValue(), 0);
+        assertEq(staking2.totalLockedValue(), beforeTvl);
+
+        // We can divest in staking2
+        vm.startPrank(address(vault));
+        staking2.divest(1 ether);
+        assertApproxEqRel(staking2.totalLockedValue(), beforeTvl - 1 ether, 0.01e18);
+
+        // We can invest in staking2
+        deal(address(staking2.WETH()), address(staking2), 1 ether);
+        staking2.addToPosition(1 ether);
+        assertApproxEqRel(staking2.totalLockedValue(), beforeTvl, 0.001e18);
     }
 }

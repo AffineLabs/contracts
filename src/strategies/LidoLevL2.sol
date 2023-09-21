@@ -32,13 +32,21 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
         // Deposit wstETH in AAVE
         WSTETH.safeApprove(address(AAVE), type(uint256).max);
 
-        // Withdrawals => Trade wstETH for ETH
-        WSTETH.safeApprove(address(CURVE), type(uint256).max);
+        /* Withdrawal flow */
+
+        // Pay wETH debt in aave
         WETH.safeApprove(address(AAVE), type(uint256).max);
+
+        // Trade wstETH for ETH
+        WSTETH.safeApprove(address(CURVE), type(uint256).max);
+
+        /* Get/Set aave information */
 
         aToken = ERC20(AAVE.getReserveData(address(WSTETH)).aTokenAddress);
         debtToken = ERC20(AAVE.getReserveData(address(WETH)).variableDebtTokenAddress);
-        AAVE.setUserEMode(1); // 1 = enabled
+
+        // This enables E-mode. It allows us to borrow at 90% of the value of our collateral.
+        AAVE.setUserEMode(1);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -49,7 +57,13 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
 
     enum LoanType {
         invest,
-        divest
+        divest,
+        upgrade
+    }
+
+    struct FlashLoanData {
+        LoanType loan;
+        LidoLevL2 newStrategy;
     }
 
     function receiveFlashLoan(
@@ -61,12 +75,14 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
         require(msg.sender == address(BALANCER), "Staking: only balancer");
 
         uint256 ethBorrowed = amounts[0];
-        (LoanType loan) = abi.decode(userData, (LoanType));
+        (LoanType loan, address newStrategy) = abi.decode(userData, (LoanType, address));
 
         if (loan == LoanType.divest) {
             _endPosition(ethBorrowed);
-        } else {
+        } else if (loan == LoanType.invest) {
             _addToPosition(ethBorrowed);
+        } else {
+            _payDebtAndTransferCollateral(LidoLevL2(payable(newStrategy)));
         }
 
         // Payback wETH loan
@@ -77,6 +93,7 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
                          INVESTMENT/DIVESTMENT
     //////////////////////////////////////////////////////////////*/
 
+    /// @dev Add to leveraged position  upon investment from vault.
     function _afterInvest(uint256 amount) internal override {
         ERC20[] memory tokens = new ERC20[](1);
         tokens[0] = WETH;
@@ -86,12 +103,15 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
             recipient: IFlashLoanRecipient(address(this)),
             tokens: tokens,
             amounts: amounts,
-            userData: abi.encode(LoanType.invest)
+            userData: abi.encode(LoanType.invest, address(0))
         });
     }
 
+    /**
+     * @dev Add to leveraged position. Trader ETH to wstETH, deposit in AAVE, and borrow to repay balancer loan.
+     */
     function _addToPosition(uint256 ethBorrowed) internal {
-        // Trade ETHto wstETH
+        // Trade ETH to wstETH
         uint256 expectedWstETh = _ethToWstEth(ethBorrowed);
         uint256 wstEth =
             CURVE.exchange({x: uint256(0), y: 1, dx: ethBorrowed, min_dy: expectedWstETh.slippageDown(slippageBps)});
@@ -108,6 +128,7 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
     /// @dev We need this to receive ETH when calling WETH.withdraw()
     receive() external payable {}
 
+    /// @dev Unlock wstETH collateral via flashloan, then repay balancer loan with unlocked collateral.
     function _divest(uint256 amount) internal override returns (uint256) {
         uint256 ethNeeded = _getDivestFlashLoanAmounts(amount);
 
@@ -124,7 +145,7 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
             recipient: IFlashLoanRecipient(address(this)),
             tokens: tokens,
             amounts: amounts,
-            userData: abi.encode(LoanType.divest)
+            userData: abi.encode(LoanType.divest, address(0))
         });
 
         // The loan has been paid, any other unlocked collateral belongs to user
@@ -133,6 +154,7 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
         return unlockedWeth;
     }
 
+    /// @dev Calculate the amount of ETH needed to flashloan to divest `wethToDivest` wETH.
     function _getDivestFlashLoanAmounts(uint256 wethToDivest) internal view returns (uint256 ethNeeded) {
         // Proportion of tvl == proportion of debt to pay back
         uint256 tvl = totalLockedValue();
@@ -225,4 +247,49 @@ contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
     IPool public constant AAVE = IPool(0xA238Dd80C259a72e81d7e4664a9801593F98d1c5);
     ERC20 public immutable debtToken;
     ERC20 public immutable aToken;
+
+    /*//////////////////////////////////////////////////////////////
+                                UPGRADES
+    //////////////////////////////////////////////////////////////*/
+
+    error NotAStrategy();
+
+    function upgradeTo(LidoLevL2 newStrategy) external onlyGovernance {
+        _checkIfStrategy(newStrategy);
+        ERC20[] memory tokens = new ERC20[](1);
+        tokens[0] = WETH;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = debtToken.balanceOf(address(this));
+        BALANCER.flashLoan({
+            recipient: IFlashLoanRecipient(address(this)),
+            tokens: tokens,
+            amounts: amounts,
+            userData: abi.encode(LoanType.upgrade, address(newStrategy))
+        });
+    }
+
+    function _payDebtAndTransferCollateral(LidoLevL2 newStrategy) internal {
+        // Pay debt in aave.
+        uint256 debt = debtToken.balanceOf(address(this));
+        AAVE.repay(address(WETH), debt, 2, address(this));
+
+        // Transfer collateral (aTokens) to new Strategy.
+        aToken.safeTransfer(address(newStrategy), aToken.balanceOf(address(this)));
+
+        // Make the new strategy borrow exactly the same amount as this strategy originally had in debt.
+        newStrategy.createAaveDebt(debt);
+    }
+
+    function createAaveDebt(uint256 wethAmount) external {
+        _checkIfStrategy(Strategy(msg.sender));
+        AAVE.borrow(address(WETH), wethAmount, 2, 0, address(this));
+
+        // Transfer weth to calling strategy (old LidoLevL2) so that it can pay its flashloan.
+        WETH.safeTransfer(msg.sender, wethAmount);
+    }
+
+    function _checkIfStrategy(Strategy strat) internal view {
+        (bool isActive,,) = vault.strategies(strat);
+        if (!isActive) revert NotAStrategy();
+    }
 }
