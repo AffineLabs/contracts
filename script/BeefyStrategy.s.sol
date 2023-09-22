@@ -7,10 +7,13 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
 import {IBeefyVault} from "src/interfaces/Beefy.sol";
 import {IRouter, IPair} from "src/interfaces/IPearl.sol";
+import {IAeroRouter} from "src/interfaces/aerodrome.sol";
 
 import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
+import {VaultV2} from "src/vaults/VaultV2.sol";
 import {BeefyEpochStrategy} from "src/strategies/BeefyEpochStrategy.sol";
 import {BeefyPearlEpochStrategy} from "src/strategies/BeefyPearlStrategy.sol";
+import {BeefyAeroStrategy} from "src/strategies/BeefyAeroStrategy.sol";
 import {Base} from "./Base.sol";
 
 /* solhint-disable reason-string, no-console */
@@ -51,6 +54,20 @@ library BeefyLib {
             _getStrategists()
         );
     }
+
+    function deployBeefyAeroStrategy() internal returns (BeefyAeroStrategy strategy) {
+        IAeroRouter router = IAeroRouter(0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43);
+        IBeefyVault beefy = IBeefyVault(0x8aeDd79BC918722d4948502b18deceaBeD60d044);
+        ERC20 token1 = ERC20(0x9483ab65847A447e36d21af1CaB8C87e9712ff93); // wusdr
+        VaultV2 vault = VaultV2(0xcb3f73F228B8980ec0766735b8F5551935556354);
+        strategy = new BeefyAeroStrategy(
+            vault, 
+            beefy,
+            router,
+            token1,
+            _getStrategists()
+        );
+    }
 }
 
 contract Deploy is Script {
@@ -70,5 +87,11 @@ contract Deploy is Script {
         _start();
         BeefyPearlEpochStrategy strategy = BeefyLib.deployBeefyPearlStrategy();
         console2.log("Beefy Pearl Strategy addr: %s", address(strategy));
+    }
+
+    function deployBeefyAeroStrategyBase() public {
+        _start();
+        BeefyAeroStrategy strategy = BeefyLib.deployBeefyAeroStrategy();
+        console2.log("Beefy Aero Strategy Addr: %s", address(strategy));
     }
 }
