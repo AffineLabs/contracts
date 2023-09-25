@@ -209,11 +209,11 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
         return super.supportsInterface(interfaceId);
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256 tokenId, uint256 batchSize)
+    function _beforeTokenTransfer(address from, address to, uint256 tokenId)
         internal
         override(ERC721, ERC721Enumerable)
     {
-        super._beforeTokenTransfer(from, to, tokenId, batchSize);
+        super._beforeTokenTransfer(from, to, tokenId);
     }
 
     function setIsWhitelistedBridge(address _bridge, bool _isWhitelisted) public onlyOwner {
