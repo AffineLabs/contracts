@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-import {TestPlus, console} from "src/test/TestPlus.sol";
+import {TestPlus} from "./TestPlus.sol";
+import {console2} from "forge-std/console2.sol";
+import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
 import {SSVDeltaNeutralLp} from "src/strategies/SSVDeltaNeutralLp.sol";
@@ -77,7 +79,7 @@ contract SSVDeltaNeutralLpTest is TestPlus {
 
         strategy.endPosition(IDEAL_SLIPPAGE_BPS);
 
-        console.log("escrow shares at end: ", vault.balanceOf(address(escrow)));
+        console2.log("escrow shares at end: ", vault.balanceOf(address(escrow)));
 
         assertTrue(vault.epochEnded());
         // strategy shares should be zero

@@ -26,6 +26,11 @@
   },
   {
     "inputs": [],
+    "name": "TvlLimitReached",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "ZeroShares",
     "type": "error"
   }

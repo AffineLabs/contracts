@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
-import {Script, console} from "forge-std/Script.sol";
+import {Script, console2} from "forge-std/Script.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {CompoundV3Strategy, IComet, IRewards, IUniswapV2Router02} from "src/strategies/CompoundV3Strategy.sol";

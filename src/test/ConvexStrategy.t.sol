@@ -14,7 +14,7 @@ import {IConvexBooster} from "src/interfaces/convex.sol";
 
 import {DeployLib} from "script/ConvexStrategy.s.sol";
 
-import "forge-std/console.sol";
+import "forge-std/console2.sol";
 
 /// @notice Test convex FRAX-USDC strategy
 contract ConvexStratTest is TestPlus {
@@ -213,12 +213,12 @@ contract ConvexStratMIMTest is ConvexStratTest {
     function testBooster() internal {
         IConvexBooster booster = strategy.CVX_BOOSTER();
         uint256 length = booster.poolLength();
-        console.log("length: ", length);
+        console2.log("length: ", length);
 
         for (uint256 i = 0; i < length; ++i) {
             IConvexBooster.PoolInfo memory poolInfo = booster.poolInfo(i);
             if (poolInfo.lptoken == 0x5a6A4D54456819380173272A5E8E9B9904BdF41B) {
-                console.log("pid: ", i);
+                console2.log("pid: ", i);
             }
         }
     }

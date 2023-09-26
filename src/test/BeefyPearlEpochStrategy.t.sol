@@ -10,9 +10,10 @@ import {Deploy} from "./Deploy.sol";
 
 import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 import {BeefyEpochStrategy} from "src/strategies/BeefyEpochStrategy.sol";
+import {BeefyPearlEpochStrategy} from "src/strategies/BeefyPearlStrategy.sol";
 
 import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
-import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
+import {IRouter, IPair} from "src/interfaces/IPearl.sol";
 
 import {IBeefyVault} from "src/interfaces/Beefy.sol";
 
@@ -20,34 +21,32 @@ import {DeployLib} from "script/ConvexStrategy.s.sol";
 
 import {console2} from "forge-std/console2.sol";
 
-contract TestBeefyWithStrategyVault is TestPlus {
+contract TestBeefyPearlWithStrategyVault is TestPlus {
     StrategyVault vault;
     ERC20 usdc = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
-    ICurvePool pool = ICurvePool(0xa138341185a9D0429B0021A11FB717B225e13e1F);
-    I3CrvMetaPoolZap zapper = I3CrvMetaPoolZap(0x5ab5C56B9db92Ba45a0B46a207286cD83C15C939);
-    IBeefyVault beefy = IBeefyVault(0x2520D50bfD793D3C757900D81229422F70171969);
-    ERC20 curveLPToken = ERC20(0xa138341185a9D0429B0021A11FB717B225e13e1F);
+    IRouter router = IRouter(0xcC25C0FD84737F44a7d38649b69491BBf0c7f083);
+    IBeefyVault beefy = IBeefyVault(0xD74B5df80347cE9c81b91864DF6a50FfAfE44aa5);
+    ERC20 token1 = ERC20(0x40379a439D4F6795B6fc9aa5687dB461677A2dBa);
 
-    BeefyEpochStrategy strategy;
+    BeefyPearlEpochStrategy strategy;
 
     uint256 initialAssets;
     uint256 defaultSlippageBps;
 
-    function setupBeefyStrategy() public {
+    function setupBeefyPearlEpochStrategy() public {
         address[] memory strategists = new address[](1);
         strategists[0] = address(this);
-        strategy = new BeefyEpochStrategy(
+        strategy = new BeefyPearlEpochStrategy(
             vault, 
-            pool,
-            zapper,
-            2, // assetIndex
             beefy,
+            router,
+            token1,
             strategists
         );
     }
 
     function setUp() public {
-        vm.createSelectFork("polygon", 44_367_000);
+        vm.createSelectFork("polygon", 46_643_471);
         StrategyVault sVault = new StrategyVault();
 
         bytes memory initData =
@@ -58,7 +57,7 @@ contract TestBeefyWithStrategyVault is TestPlus {
 
         vault = StrategyVault(address(proxy));
 
-        setupBeefyStrategy();
+        setupBeefyPearlEpochStrategy();
         initialAssets = 10_000 * (10 ** usdc.decimals());
         // // link strategy to vault.
         vm.prank(governance);
@@ -86,6 +85,31 @@ contract TestBeefyWithStrategyVault is TestPlus {
 
         assertEq(usdc.balanceOf(alice), initialAssets / 2);
         assertEq(vault.vaultTVL(), strategy.totalLockedValue());
+    }
+
+    function testDepositInvestWithdrawFromVault() public {
+        deal(address(usdc), alice, initialAssets);
+        vm.startPrank(alice);
+        usdc.approve(address(vault), type(uint256).max);
+        vault.deposit(initialAssets, alice);
+
+        assertEq(vault.vaultTVL(), initialAssets);
+
+        vm.startPrank(address(this));
+        strategy.endEpoch();
+
+        assertEq(vault.vaultTVL(), strategy.totalLockedValue());
+
+        strategy.investAssets(strategy.totalLockedValue(), 50);
+
+        vm.startPrank(alice);
+        vault.withdraw(initialAssets / 2, alice, alice);
+
+        assertEq(usdc.balanceOf(alice), initialAssets / 2);
+        assertEq(vault.vaultTVL(), strategy.totalLockedValue());
+        // remaining vault tvl and strategy tvl should be half
+
+        assertApproxEqRel(strategy.totalLockedValue(), initialAssets / 2, 0.01e18);
     }
 
     function testReplaceStrategy() public {
@@ -117,7 +141,7 @@ contract TestBeefyWithStrategyVault is TestPlus {
         address oldStrategy = address(strategy);
 
         // moving assets to strategy
-        setupBeefyStrategy();
+        setupBeefyPearlEpochStrategy();
         vault.setStrategy(strategy);
 
         vm.startPrank(address(this));
@@ -151,46 +175,5 @@ contract TestBeefyWithStrategyVault is TestPlus {
         vm.startPrank(alice);
         vault.withdraw(initialAssets / 2, alice, alice);
         assertApproxEqRel(usdc.balanceOf(alice), initialAssets / 2, 0.01e18);
-    }
-
-    /// @dev this test is done to test out live vault and strategy update.
-    /// @dev may be discarded later
-    function testStrategyUpgradeWithDeployedVault() public {
-        StrategyVault mainnetVault = StrategyVault(0x684D1dbd30c67Fe7fF6D502A04e0E7076b4b9D46);
-
-        vm.startPrank(0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0); // gov
-
-        BeefyEpochStrategy vaultStrat = BeefyEpochStrategy(address(mainnetVault.strategy()));
-        uint256 tvl = vaultStrat.totalLockedValue();
-        mainnetVault.pause();
-
-        // using strategy tvl to withdraw full assets
-        mainnetVault.withdrawFromStrategy(vaultStrat.totalLockedValue());
-
-        assertEq(vaultStrat.totalLockedValue(), 0);
-        assertEq(mainnetVault.vaultTVL(), tvl);
-
-        vault = mainnetVault;
-
-        setupBeefyStrategy();
-
-        mainnetVault.setStrategy(strategy);
-        strategy.setDefaultSlippageBps(defaultSlippageBps);
-
-        mainnetVault.depositIntoStrategy(tvl);
-
-        assertApproxEqRel(strategy.totalLockedValue(), tvl, 0.01e18);
-
-        assertEq(vault.vaultTVL(), tvl);
-
-        vm.startPrank(address(this));
-
-        strategy.endEpoch();
-
-        assertEq(vault.vaultTVL(), strategy.totalLockedValue());
-
-        vm.startPrank(0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0);
-
-        vault.unpause();
     }
 }

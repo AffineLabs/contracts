@@ -8,4 +8,5 @@ library VaultErrors {
     error OnlyWormholeRouter();
     error OnlyEscrow();
     error TooManyStrategyBps();
+    error TvlLimitReached();
 }
