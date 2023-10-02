@@ -13,6 +13,7 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
     
     uint256 public constant MAX_SUPPLY = 3000;
     uint256 public constant MAX_RESERVE_TOKENS = 988;
+    uint256 MAXMINTABLESUPPLY = MAX_SUPPLY - MAX_RESERVE_TOKENS;
     uint256 public reserveTokens = 0;
     uint256 public constant MAX_WHITELIST_MINT = 1; // Maximum number of NFTs that can be minted by a whitelisted wallet
     uint256 public constant MAX_PUBLIC_MINT = 1; // Maximum number of NFTs that can be minted by a wallet
@@ -90,14 +91,14 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
 
     function hasRemainingSupply() public view returns (bool) {
         uint256 currentSupply = totalSupply() - reserveTokens;
-        uint256 maxMintableSupply = MAX_SUPPLY - MAX_RESERVE_TOKENS;
-        return currentSupply < maxMintableSupply;
+        return currentSupply < MAXMINTABLESUPPLY;
     }
 
     function mintDrop(address[] memory recipients, uint256[] memory quantities) public onlyOwner {
         require(recipients.length == quantities.length, "Recipients and quantities length mismatch");
         for (uint256 i = 0; i < recipients.length; i++) {
             for (uint256 j = 0; j < quantities[i]; j++) {
+                require(totalSupply() + quantities[i] <= MAX_SUPPLY, "Exceeds max supply");
                 uint256 tokenId = _tokenIdCounter.current();
                 _tokenIdCounter.increment();
                 _safeMint(recipients[i], tokenId);
@@ -107,7 +108,6 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
     
     function mintWhitelist(bytes32[] memory proof) public payable {
         require(
-            _msgSender() == owner() ||
                 (whitelistSaleIsActive && isWhitelisted(_msgSender(), proof)),
             "Sale paused or not whitelisted"
         );
@@ -118,15 +118,14 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
         );
 
         _whitelistMinted[_msgSender()] += 1;
-        for (uint256 i = 0; i < 1; i++) {
-            uint256 tokenId = _tokenIdCounter.current();
-            _tokenIdCounter.increment();
-            _safeMint(_msgSender(), tokenId);
-        }
+
+        uint256 tokenId = _tokenIdCounter.current();
+        _tokenIdCounter.increment();
+        _safeMint(_msgSender(), tokenId);
     }
 
     function mint() public payable {
-        require(_msgSender() == owner() || saleIsActive, "Sale is not active");
+        require(saleIsActive, "Sale is not active");
         require(hasRemainingSupply(), "Exceeds max supply");
         require(
             _minted[_msgSender()] + 1 <= MAX_PUBLIC_MINT,
@@ -134,11 +133,11 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
         );
 
         _minted[_msgSender()] += 1;
-        for (uint256 i = 0; i < 1; i++) {
-            uint256 tokenId = _tokenIdCounter.current();
-            _tokenIdCounter.increment();
-            _safeMint(_msgSender(), tokenId);
-        }
+
+        uint256 tokenId = _tokenIdCounter.current();
+        _tokenIdCounter.increment();
+        _safeMint(_msgSender(), tokenId);
+
     }
 
     function withdraw() public onlyOwner {
