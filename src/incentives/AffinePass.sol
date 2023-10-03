@@ -13,16 +13,15 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
     
     uint256 public constant MAX_SUPPLY = 3000;
     uint256 public constant MAX_RESERVE_TOKENS = 988;
-    uint256 MAXMINTABLESUPPLY = MAX_SUPPLY - MAX_RESERVE_TOKENS;
-    uint256 public reserveTokens = 0;
+    uint256 public constant MAX_MINTABLE_SUPPLY = MAX_SUPPLY - MAX_RESERVE_TOKENS;
+    uint256 public mintedReserveTokens = 0;
     uint256 public constant MAX_WHITELIST_MINT = 1; // Maximum number of NFTs that can be minted by a whitelisted wallet
     uint256 public constant MAX_PUBLIC_MINT = 1; // Maximum number of NFTs that can be minted by a wallet
-    bool public saleIsActive = false;
-    bool public whitelistSaleIsActive = false;
+    bool public saleIsActive;
+    bool public whitelistSaleIsActive;
     string public baseURI;
     bytes32 public merkleRoot;
     mapping(address => bool) public whitelistedBridge;
-    mapping(address => bool) private _hasMintedGuaranteed;
     mapping(address => uint256) private _minted; // Total number of NFTs minted by each address
     mapping(address => uint256) private _whitelistMinted; // Number of NFTs minted by a whitelisted wallet
 
@@ -71,6 +70,7 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
 
     function toggleWhitelistSale() public onlyOwner {
         whitelistSaleIsActive = !whitelistSaleIsActive;
+        saleIsActive = false;
     }
 
     function togglePublicSale() public onlyOwner {
@@ -80,8 +80,8 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
 
     function mintReserve(uint256 amount) public onlyOwner {
         require(totalSupply() + amount <= MAX_SUPPLY, "Exceeds max supply");
-        require(reserveTokens + amount <= MAX_RESERVE_TOKENS, "Exceeds max reserve supply");
-        reserveTokens += amount;
+        require(mintedReserveTokens + amount <= MAX_RESERVE_TOKENS, "Exceeds max reserve supply");
+        mintedReserveTokens += amount;
         for (uint256 i = 0; i < amount; i++) {
             uint256 tokenId = _tokenIdCounter.current();
             _tokenIdCounter.increment();
@@ -90,15 +90,15 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
     }
 
     function hasRemainingSupply() public view returns (bool) {
-        uint256 currentSupply = totalSupply() - reserveTokens;
-        return currentSupply < MAXMINTABLESUPPLY;
+        uint256 currentSupply = totalSupply() - mintedReserveTokens;
+        return currentSupply < MAX_MINTABLE_SUPPLY;
     }
 
     function mintDrop(address[] memory recipients, uint256[] memory quantities) public onlyOwner {
         require(recipients.length == quantities.length, "Recipients and quantities length mismatch");
         for (uint256 i = 0; i < recipients.length; i++) {
+            require(totalSupply() + quantities[i] <= MAX_SUPPLY, "Exceeds max supply");
             for (uint256 j = 0; j < quantities[i]; j++) {
-                require(totalSupply() + quantities[i] <= MAX_SUPPLY, "Exceeds max supply");
                 uint256 tokenId = _tokenIdCounter.current();
                 _tokenIdCounter.increment();
                 _safeMint(recipients[i], tokenId);
@@ -159,15 +159,14 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
         return super.supportsInterface(interfaceId);
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256 tokenId, uint256 batchSize)
+    function _beforeTokenTransfer(address from, address to, uint256 tokenId)
         internal
         override(ERC721, ERC721Enumerable)
     {
-        super._beforeTokenTransfer(from, to, tokenId, batchSize);
+        super._beforeTokenTransfer(from, to, tokenId);
     }
 
     function setIsWhitelistedBridge(address _bridge, bool _isWhitelisted) public onlyOwner {
-        require(whitelistedBridge[_bridge] != _isWhitelisted, "Already set");
         whitelistedBridge[_bridge] = _isWhitelisted;
     }
 
