@@ -40,6 +40,7 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
         merkleRoot = _merkleRoot;
         _tokenIdCounter.increment();
         whitelistedBridge[msg.sender] = true;
+        setBaseURI("https://affine-pass.s3.amazonaws.com/pass/");
     }
 
     function setMerkleRoot(bytes32 _merkleRoot) public onlyOwner {
@@ -97,8 +98,8 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
     function mintDrop(address[] memory recipients, uint256[] memory quantities) public onlyOwner {
         require(recipients.length == quantities.length, "Recipients and quantities length mismatch");
         for (uint256 i = 0; i < recipients.length; i++) {
-            require(totalSupply() + quantities[i] <= MAX_SUPPLY, "Exceeds max supply");
             for (uint256 j = 0; j < quantities[i]; j++) {
+                require(hasRemainingSupply(), "Exceeds max supply");
                 uint256 tokenId = _tokenIdCounter.current();
                 _tokenIdCounter.increment();
                 _safeMint(recipients[i], tokenId);
