@@ -1,27 +1,20 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.16;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications/CCIPReceiver.sol";
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
 import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
+import {AffinePass} from "./affine-pass.sol";
 
-interface IAffinePass {
-    function bridgeMint(address to, uint256 tokenId) external;
-    function bridgeBurn(uint256 tokenId) external;
-    function ownerOf(uint256 tokenId) external view returns (address);
-}
-
-
-contract AffineBridge is CCIPReceiver, Ownable {
-    IAffinePass public affinePass;
+contract AffinePassBridge is CCIPReceiver, Ownable {
+    AffinePass public affinePass;
     mapping(uint64 => bool) public whitelistedDestinationChains;
     mapping(uint64 => bool) public whitelistedSourceChains;
     mapping(address => bool) public whitelistedSenders;
     mapping(uint64 => address) public chainReciever;
     bool public paused = true;
 
-    error NotEnoughBalance(uint256 currentBalance, uint256 calculatedFees); // Used to make sure contract has enough balance.
     error DestinationChainNotWhitelisted(uint64 destinationChainSelector); // Used when the destination chain has not been whitelisted by the contract owner.
     error SourceChainNotWhitelisted(uint64 sourceChainSelector); // Used when the source chain has not been whitelisted by the contract owner.
     error SenderNotWhitelisted(address sender); // Used when the sender has not been whitelisted by the contract owner.
@@ -59,42 +52,58 @@ contract AffineBridge is CCIPReceiver, Ownable {
         _;
     }
 
-    modifier canBridge() {
-        require(!paused, "Bridging is paused");
-        _;
-    }
-
-    constructor(address router) CCIPReceiver(router) {
-        // Polygon
-        whitelistedDestinationChains[4051577828743386545] = true;
-        whitelistedSourceChains[4051577828743386545] = true;
-
-        // ETH
-        whitelistedDestinationChains[5009297550715157269] = true;
-        whitelistedSourceChains[5009297550715157269] = true;
+    constructor(address _affinePass, 
+                address router, 
+                uint64[] memory destinationChainSelectors, 
+                uint64[] memory sourceChainSelectors
+                ) CCIPReceiver(router) {
+        affinePass = AffinePass(_affinePass);
+        for (uint i = 0; i < destinationChainSelectors.length; i++) {
+            whitelistedDestinationChains[destinationChainSelectors[i]] = true;
+        }
+        for (uint i = 0; i < sourceChainSelectors.length; i++) {
+            whitelistedSourceChains[sourceChainSelectors[i]] = true;
+        }
     }
 
     fallback() external payable { }
     receive() external payable { }
 
     function setAffinePassAddress(address _affinePass) external onlyOwner {
-        affinePass = IAffinePass(_affinePass);
+        affinePass = AffinePass(_affinePass);
     }
 
     function setPaused(bool _paused) external onlyOwner {
         paused = _paused;
     }
 
-    function setChainReciever(uint64 _chainId, address _router) external onlyOwner {
-        chainReciever[_chainId] = _router;
+    function setChainReciever(uint64 _chainSelector, address _reciever) external onlyOwner {
+        chainReciever[_chainSelector] = _reciever;
+    }
+
+    function ccipFee(
+        uint64 destinationChainSelector
+    ) external view returns (uint256) {
+        Client.EVM2AnyMessage memory message = _buildCCIPMessage(
+            chainReciever[destinationChainSelector],
+            address(0),
+            1,
+            address(0)
+        );
+
+        return IRouterClient(i_router).getFee(
+            destinationChainSelector,
+            message
+        );
     }
 
     function bridgePass(
         uint64 destinationChainSelector,
         address receiver,
         uint256 id
-    ) external onlyWhitelistedDestinationChain(destinationChainSelector) canBridge returns (bytes32 messageId) {
+    ) external payable onlyWhitelistedDestinationChain(destinationChainSelector) returns (bytes32 messageId) {
         require(affinePass.ownerOf(id) == msg.sender, "Not owner of token");
+        require(!paused, "Bridging is paused");
 
         Client.EVM2AnyMessage memory message = _buildCCIPMessage(
             chainReciever[destinationChainSelector],
@@ -108,8 +117,7 @@ contract AffineBridge is CCIPReceiver, Ownable {
             message
         );
 
-        if (fee > address(this).balance)
-            revert NotEnoughBalance(address(this).balance, fee);
+        require(msg.value >= fee, "Not enough for fee");
 
         messageId = IRouterClient(i_router).ccipSend{value: fee}(
             destinationChainSelector,
@@ -123,42 +131,29 @@ contract AffineBridge is CCIPReceiver, Ownable {
         return messageId;
     }
 
-    function withdraw() public onlyOwner {
-        uint256 balance = address(this).balance;
-        payable(owner()).transfer(balance);
+    function withdraw(uint256 amount) public onlyOwner {
+        require(amount <= address(this).balance, "Not enough balance");
+        payable(owner()).transfer(amount);
     }
 
     function whitelistDestinationChain(
-        uint64 _destinationChainSelector
+        uint64 _destinationChainSelector,
+        bool _whitelist
     ) external onlyOwner {
-        whitelistedDestinationChains[_destinationChainSelector] = true;
-    }
-
-    function denylistDestinationChain(
-        uint64 _destinationChainSelector
-    ) external onlyOwner {
-        whitelistedDestinationChains[_destinationChainSelector] = false;
+        whitelistedDestinationChains[_destinationChainSelector] = _whitelist;
     }
 
     function whitelistSourceChain(
-        uint64 _sourceChainSelector
+        uint64 _sourceChainSelector,
+        bool _whitelist
     ) external onlyOwner {
-        whitelistedSourceChains[_sourceChainSelector] = true;
-    }
-
-    function denylistSourceChain(
-        uint64 _sourceChainSelector
-    ) external onlyOwner {
-        whitelistedSourceChains[_sourceChainSelector] = false;
+        whitelistedSourceChains[_sourceChainSelector] = _whitelist;
     }
     
-    function whitelistSender(address _sender) external onlyOwner {
-        whitelistedSenders[_sender] = true;
+    function whitelistSender(address _sender, bool _whitelist) external onlyOwner {
+        whitelistedSenders[_sender] = _whitelist;
     }
 
-    function denySender(address _sender) external onlyOwner {
-        whitelistedSenders[_sender] = false;
-    }
 
     function _buildCCIPMessage(
         address _receiver,
