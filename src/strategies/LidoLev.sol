@@ -234,7 +234,7 @@ contract LidoLev is AccessStrategy, IFlashLoanRecipient {
         // Convert stETH => ETH to pay back flashloan and pay back user
         // Trade stETH for ETH (stETH is at index 1)
         uint256 stEthToTrade = STETH.balanceOf(address(this));
-        CURVE.exchange({x: 1, y: 0, dx: stEthToTrade, min_dy: stEthToTrade.mulDivDown(93, 100)});
+        CURVE.exchange({x: int128(1), y: 0, dx: stEthToTrade, min_dy: stEthToTrade.mulDivDown(93, 100)});
 
         // Convert to wETH
         WETH.deposit{value: address(this).balance}();

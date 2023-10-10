@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
 contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
     using Counters for Counters.Counter;
-    
+
     uint256 public constant MAX_SUPPLY = 3000;
     uint256 public constant MAX_RESERVE_TOKENS = 988;
     uint256 public constant MAX_MINTABLE_SUPPLY = MAX_SUPPLY - MAX_RESERVE_TOKENS;
@@ -26,7 +26,7 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
     mapping(address => uint256) private _whitelistMinted; // Number of NFTs minted by a whitelisted wallet
 
     Counters.Counter private _tokenIdCounter;
-    
+
     event WhitelistMerkleRootUpdated(bytes32 indexed merkleRoot);
 
     modifier onlyBridge() {
@@ -34,9 +34,7 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
         _;
     }
 
-    constructor( bytes32 _merkleRoot) 
-        ERC721("Affine Pass", "APASS")          
-    {
+    constructor(bytes32 _merkleRoot) ERC721("Affine Pass", "APASS") {
         merkleRoot = _merkleRoot;
         _tokenIdCounter.increment();
         whitelistedBridge[msg.sender] = true;
@@ -61,10 +59,7 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
         return _minted[_address] > 0;
     }
 
-    function isWhitelisted(
-        address user,
-        bytes32[] memory proof
-    ) public view returns (bool) {
+    function isWhitelisted(address user, bytes32[] memory proof) public view returns (bool) {
         bytes32 node = keccak256(abi.encodePacked(user));
         return MerkleProof.verify(proof, merkleRoot, node);
     }
@@ -106,17 +101,11 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
             }
         }
     }
-    
+
     function mintWhitelist(bytes32[] memory proof) public payable {
-        require(
-                (whitelistSaleIsActive && isWhitelisted(_msgSender(), proof)),
-            "Sale paused or not whitelisted"
-        );
+        require((whitelistSaleIsActive && isWhitelisted(_msgSender(), proof)), "Sale paused or not whitelisted");
         require(hasRemainingSupply(), "Exceeds max supply");
-        require(
-            _whitelistMinted[_msgSender()] + 1 <= MAX_WHITELIST_MINT,
-            "Exceeds max WL mint"
-        );
+        require(_whitelistMinted[_msgSender()] + 1 <= MAX_WHITELIST_MINT, "Exceeds max WL mint");
 
         _whitelistMinted[_msgSender()] += 1;
 
@@ -128,17 +117,13 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
     function mint() public payable {
         require(saleIsActive, "Sale is not active");
         require(hasRemainingSupply(), "Exceeds max supply");
-        require(
-            _minted[_msgSender()] + 1 <= MAX_PUBLIC_MINT,
-            "Exceeds max public mint"
-        );
+        require(_minted[_msgSender()] + 1 <= MAX_PUBLIC_MINT, "Exceeds max public mint");
 
         _minted[_msgSender()] += 1;
 
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(_msgSender(), tokenId);
-
     }
 
     function withdraw() public onlyOwner {
@@ -178,5 +163,4 @@ contract AffinePass is ERC721, ERC721Burnable, ERC721Enumerable, Ownable {
     function bridgeBurn(uint256 tokenId) external onlyBridge {
         _burn(tokenId);
     }
-
 }
