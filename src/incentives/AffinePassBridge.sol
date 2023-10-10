@@ -26,6 +26,15 @@ contract AffinePassBridge is CCIPReceiver, Ownable {
     /// @notice Used when the sender has not been whitelisted by the contract owner.
     error SenderNotWhitelisted(address sender);
 
+    /// @notice Used when the bridge is paused.
+    error BridgePaused();
+
+    /// @notice Used when a token is bridged by anyone other than the owner.
+    error OnlyOwnerCanBridge();
+
+    /// @notice Used when `msg.value` is not enough to cover the fee.
+    error FeeUnpaid();
+
     /// @notice  Event emitted when a message is sent to another chain.
     event BridgeRequest(bytes32 indexed messageId, uint64 indexed destinationChainSelector, address sender, uint256 id);
 
@@ -69,18 +78,19 @@ contract AffinePassBridge is CCIPReceiver, Ownable {
         payable
         returns (bytes32 messageId)
     {
+        if (paused) revert BridgePaused();
+
         if (!whitelistedDestinationChains[destinationChainSelector]) {
             revert DestinationChainNotWhitelisted(destinationChainSelector);
         }
-        require(affinePass.ownerOf(id) == msg.sender, "Not owner of token");
-        require(!paused, "Bridging is paused");
+
+        if (affinePass.ownerOf(id) != msg.sender) revert OnlyOwnerCanBridge();
 
         Client.EVM2AnyMessage memory message =
             _buildCCIPMessage(chainReciever[destinationChainSelector], receiver, id, address(0));
 
         uint256 fee = IRouterClient(i_router).getFee(destinationChainSelector, message);
-
-        require(msg.value >= fee, "Not enough for fee");
+        if (msg.value < fee) revert FeeUnpaid();
 
         messageId = IRouterClient(i_router).ccipSend{value: fee}(destinationChainSelector, message);
 
@@ -92,7 +102,6 @@ contract AffinePassBridge is CCIPReceiver, Ownable {
     }
 
     function withdraw(uint256 amount) public onlyOwner {
-        require(amount <= address(this).balance, "Not enough balance");
         payable(owner()).transfer(amount);
     }
 
