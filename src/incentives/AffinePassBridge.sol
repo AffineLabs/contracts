@@ -18,21 +18,8 @@ contract AffinePassBridge is UUPSUpgradeable, CCIPReceiver, Ownable {
     /// @notice The address of the AffinePass NFT contract.
     AffinePass public immutable affinePass;
 
-    constructor(
-        AffinePass _affinePass,
-        address router,
-        uint64[] memory destinationChainSelectors,
-        uint64[] memory sourceChainSelectors
-    ) CCIPReceiver(router) {
+    constructor(AffinePass _affinePass, address router) CCIPReceiver(router) {
         affinePass = _affinePass;
-
-        for (uint256 i = 0; i < destinationChainSelectors.length; i = uncheckedInc(i)) {
-            whitelistedDestinationChains[destinationChainSelectors[i]] = true;
-        }
-
-        for (uint256 i = 0; i < sourceChainSelectors.length; i = uncheckedInc(i)) {
-            whitelistedSourceChains[sourceChainSelectors[i]] = true;
-        }
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
