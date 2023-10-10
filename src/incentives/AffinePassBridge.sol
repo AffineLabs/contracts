@@ -61,13 +61,13 @@ contract AffinePassBridge is CCIPReceiver, Ownable {
     mapping(address => bool) public whitelistedSenders;
 
     /// @notice Maps chain ids to the address of the contract that can recieve the message on the given chain.
-    mapping(uint64 => address) public chainReciever;
+    mapping(uint64 => address) public chainReceiver;
 
     /// @notice Set the address that will receive messages from the this contract for the given chain.
     /// @param chainSelector The chain id of the destination chain.
     /// @param reciever The address of the contract that will receive the message.
-    function setChainReciever(uint64 chainSelector, address reciever) external onlyOwner {
-        chainReciever[chainSelector] = reciever;
+    function setchainReceiver(uint64 chainSelector, address reciever) external onlyOwner {
+        chainReceiver[chainSelector] = reciever;
     }
 
     function whitelistDestinationChain(uint64 _destinationChainSelector, bool _whitelist) external onlyOwner {
@@ -93,7 +93,7 @@ contract AffinePassBridge is CCIPReceiver, Ownable {
 
     function ccipFee(uint64 destinationChainSelector) external view returns (uint256) {
         Client.EVM2AnyMessage memory message =
-            _buildCCIPMessage(chainReciever[destinationChainSelector], address(0), 1, address(0));
+            _buildCCIPMessage(chainReceiver[destinationChainSelector], address(0), 1, address(0));
 
         return IRouterClient(i_router).getFee(destinationChainSelector, message);
     }
@@ -128,7 +128,7 @@ contract AffinePassBridge is CCIPReceiver, Ownable {
         if (affinePass.ownerOf(id) != msg.sender) revert OnlyOwnerCanBridge();
 
         Client.EVM2AnyMessage memory message =
-            _buildCCIPMessage(chainReciever[destinationChainSelector], receiver, id, address(0));
+            _buildCCIPMessage(chainReceiver[destinationChainSelector], receiver, id, address(0));
 
         uint256 fee = IRouterClient(i_router).getFee(destinationChainSelector, message);
         if (msg.value < fee) revert FeeUnpaid();
@@ -169,7 +169,7 @@ contract AffinePassBridge is CCIPReceiver, Ownable {
     error SenderNotWhitelisted(address sender);
 
     /// @notice Event emitted when a message is received from another chain.
-    event BridgeReciept(bytes32 indexed messageId, uint64 indexed sourceChainSelector, address receiver, uint256 id);
+    event BridgeReceipt(bytes32 indexed messageId, uint64 indexed sourceChainSelector, address receiver, uint256 id);
 
     function _ccipReceive(Client.Any2EVMMessage memory message) internal override {
         // Only whitwlisted source chains can send messages to this contract
@@ -181,7 +181,7 @@ contract AffinePassBridge is CCIPReceiver, Ownable {
         if (!whitelistedSenders[sender]) revert SenderNotWhitelisted(sender);
 
         (address _address, uint256 _id) = abi.decode(message.data, (address, uint256));
-        emit BridgeReciept(message.messageId, message.sourceChainSelector, _address, _id);
+        emit BridgeReceipt(message.messageId, message.sourceChainSelector, _address, _id);
 
         affinePass.bridgeMint(_address, _id);
     }
