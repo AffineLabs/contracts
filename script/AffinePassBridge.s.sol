@@ -10,13 +10,17 @@ import {AffinePassBridge} from "src/incentives/AffinePassBridge.sol";
 /* solhint-disable reason-string, no-console */
 
 contract Deploy is Script {
+    address deployer;
+
     function _start() internal {
-        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        (address _deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        deployer = _deployer;
         vm.startBroadcast(deployer);
     }
 
     function _deployProxy(address impl) internal returns (AffinePassBridge bridge) {
-        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), "");
+        bytes memory initData = abi.encodeCall(AffinePassBridge.initialize, ());
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
         bridge = AffinePassBridge(payable(address(proxy)));
     }
 
@@ -30,6 +34,7 @@ contract Deploy is Script {
         // Do some checks
         require(bridge.paused() == false);
         require(bridge.getRouter() == router);
+        require(bridge.owner() == deployer);
     }
 
     function runMumbai() external {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.16;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications/CCIPReceiver.sol";
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
@@ -10,7 +10,7 @@ import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/
 import {AffinePass} from "./AffinePass.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
 
-contract AffinePassBridge is UUPSUpgradeable, CCIPReceiver, Ownable {
+contract AffinePassBridge is UUPSUpgradeable, CCIPReceiver, OwnableUpgradeable {
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTION
     //////////////////////////////////////////////////////////////*/
@@ -18,10 +18,18 @@ contract AffinePassBridge is UUPSUpgradeable, CCIPReceiver, Ownable {
     /// @notice The address of the AffinePass NFT contract.
     AffinePass public immutable affinePass;
 
+    /// @dev The CCIPReceiver contract uses a constructor, so we use a constructor as well.
     constructor(AffinePass _affinePass, address router) CCIPReceiver(router) {
         affinePass = _affinePass;
     }
 
+    /// @dev This makes sure that the deployer is the owner of the contract.
+    function initialize() external initializer {
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+    }
+
+    /// @dev Only the owner can upgrade the contract.
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /*//////////////////////////////////////////////////////////////
