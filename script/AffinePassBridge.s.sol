@@ -9,6 +9,7 @@ import {AffinePassBridge} from "src/incentives/AffinePassBridge.sol";
 
 /* solhint-disable reason-string, no-console */
 
+/// @dev For chainlink addresses, see: https://docs.chain.link/ccip/supported-networks
 contract Deploy is Script {
     address deployer;
 
@@ -68,6 +69,24 @@ contract Deploy is Script {
         _start();
 
         address router = 0xE561d5E02207fb5eB32cca20a699E0d8919a1476;
+        AffinePass affinePass = AffinePass(address(0));
+
+        _deployBridge(affinePass, router);
+    }
+
+    function runBaseGoerli() external {
+        _start();
+
+        address router = 0xA8C0c11bf64AF62CDCA6f93D3769B88BdD7cb93D;
+        AffinePass affinePass = AffinePass(0xC91add0FC0112528014cb0792DEe9ACd37D53369);
+
+        _deployBridge(affinePass, router);
+    }
+
+    function runBase() external {
+        _start();
+
+        address router = 0x673AA85efd75080031d44fcA061575d1dA427A28;
         AffinePass affinePass = AffinePass(address(0));
 
         _deployBridge(affinePass, router);
