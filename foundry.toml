@@ -14,19 +14,28 @@ seed="0x64"
 number_underscore = "thousands"
 
 [profile.default.rpc_endpoints]
-mumbai = "https://polygon-mumbai.g.alchemy.com/v2/${ALCHEMY_POLYGON_MUMBAI_KEY}"
-goerli = "https://eth-goerli.alchemyapi.io/v2/${ALCHEMY_ETH_GOERLI_KEY}"
 ethereum = "https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_ETH_MAINNET_KEY}"
+goerli = "https://eth-goerli.alchemyapi.io/v2/${ALCHEMY_ETH_GOERLI_KEY}"
+sepolia = "https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_ETH_SEPOLIA_KEY}"
+
 polygon = "https://polygon-mainnet.g.alchemy.com/v2/${ALCHEMY_POLYGON_MAINNET_KEY}"
+mumbai = "https://polygon-mumbai.g.alchemy.com/v2/${ALCHEMY_POLYGON_MUMBAI_KEY}"
+
 arbitrum = "https://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_ARB_MAINNET_KEY}"
 base = "https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_BASE_MAINNET_KEY}"
 base-goerli = "https://base-goerli.g.alchemy.com/v2/${ALCHEMY_BASE_TESTNET_KEY}"
 
-
 [etherscan]
 ethereum = { key = "${ETHERSCAN_MAINNET_KEY}", chain = 1 }
+goerli = { key = "${ETHERSCAN_MAINNET_KEY}", chain = 5, url = "https://api-goerli.etherscan.io/api?"}
+sepolia = { key = "${ETHERSCAN_MAINNET_KEY}", chain = 11155111, url = "https://api-sepolia.etherscan.io/api?"} 
+
 polygon = { key = "${POLYGONSCAN_API_KEY}", chain = 137, url = "https://api.polygonscan.com/api?" }
+mumbai = { key = "${POLYGONSCAN_API_KEY}", chain = 80001, url = "https://api-testnet.polygonscan.com/api?" }
+
+
 base = { key = "${BASESCAN_API_KEY}", chain = "base" , url = "https://api.basescan.org/api?"}
+base-goerli = { key = "${BASESCAN_API_KEY}", chain = 84531, url = "https://api-goerli.basescan.org/api?"}
 
 
 [profile.ci.fuzz]

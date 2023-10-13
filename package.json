@@ -30,6 +30,7 @@
     "@opengsn/contracts": "^2.2.5",
     "@openzeppelin/contracts": "^4.6.0",
     "@openzeppelin/contracts-upgradeable": "^4.4.2",
+    "@chainlink/contracts-ccip": "^0.7.6",
     "@typechain/ethers-v5": "^10.0.0",
     "@typechain/hardhat": "^6.0.0",
     "@types/chai": "^4.2.18",
