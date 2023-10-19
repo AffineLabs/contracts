@@ -5,26 +5,32 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {LidoLevL2, AffineVault, FixedPointMathLib} from "src/strategies/LidoLevL2.sol";
+import {StrikeEthStrategy, ICToken, AffineVault, FixedPointMathLib} from "src/strategies/StrikeEthStrategy.sol";
 
 import {console2} from "forge-std/console2.sol";
 
-contract MockLidoLevL2 is LidoLevL2 {
-    constructor(AffineVault _vault, address[] memory strategists) LidoLevL2(_vault, strategists) {}
-
-    function wstEthToEth(uint256 wstEthAmount) external returns (uint256 ethAmount) {
-        ethAmount = _wstEthToEth(wstEthAmount);
-    }
+contract MockStrikeEthStrategy is StrikeEthStrategy {
+    constructor(AffineVault _vault, ICToken _cToken, address[] memory strategists)
+        StrikeEthStrategy(_vault, _cToken, strategists)
+    {}
 
     function addToPosition(uint256 amount) external {
         _afterInvest(amount);
     }
+
+    function collateral() external returns (uint256) {
+        return cToken.balanceOfUnderlying(address(this));
+    }
+
+    function debt() external returns (uint256) {
+        return cToken.balanceOfUnderlying(address(this));
+    }
 }
 
-contract LidoLevL2Test is TestPlus {
+contract StrikeEthStrategyTest is TestPlus {
     using FixedPointMathLib for uint256;
 
-    MockLidoLevL2 staking;
+    MockStrikeEthStrategy staking;
     AffineVault vault;
 
     uint256 depSize = 10 ether;
@@ -32,13 +38,13 @@ contract LidoLevL2Test is TestPlus {
     receive() external payable {}
 
     function setUp() public {
-        forkBase();
+        forkEth();
 
         address[] memory strategists = new address[](1);
         strategists[0] = address(this);
         vault = AffineVault(address(deployL1Vault()));
 
-        staking = new MockLidoLevL2(vault, strategists);
+        staking = new MockStrikeEthStrategy(vault, ICToken(0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5), strategists);
         vm.prank(governance);
         vault.addStrategy(staking, 0);
     }
@@ -60,8 +66,8 @@ contract LidoLevL2Test is TestPlus {
 
     function testLeverage() public {
         testAddToPosition();
-        uint256 aaveCollateral = staking.wstEthToEth(staking.aToken().balanceOf(address(staking)));
-        assertApproxEqRel(aaveCollateral, depSize * 992 / 100, 0.02e18);
+        uint256 collateral = staking.collateral();
+        assertApproxEqRel(collateral, depSize * staking.leverage() / 100, 0.02e18);
     }
 
     function testClosePosition() public {
@@ -85,8 +91,8 @@ contract LidoLevL2Test is TestPlus {
         testAddToPosition();
         uint256 tvl = staking.totalLockedValue();
         console2.log("Orig tvl: ", tvl);
-        console2.log("orig collateral: ", staking.aToken().balanceOf(address(staking)));
-        console2.log("orig debt: ", staking.debtToken().balanceOf(address(staking)));
+        console2.log("orig collateral: ", staking.collateral());
+        console2.log("orig debt: ", staking.debt());
 
         vm.prank(address(vault));
         staking.divest(1 ether);
@@ -97,42 +103,5 @@ contract LidoLevL2Test is TestPlus {
     function testSetParams() public {
         staking.setLeverage(1000);
         assertEq(staking.leverage(), 1000);
-    }
-
-    function testAddLargeEthAmount() public {
-        // AAVE only allows about 500 cbETH as of current block
-        uint256 amount = 30 ether;
-        _giveEther(amount);
-        staking.setSlippageBps(2000);
-        staking.setLeverage(955);
-        staking.addToPosition(amount);
-    }
-
-    function testUpgrade() public {
-        testAddToPosition();
-        uint256 beforeTvl = staking.totalLockedValue();
-
-        address[] memory strategists = new address[](1);
-        strategists[0] = address(this);
-        MockLidoLevL2 staking2 = new MockLidoLevL2(vault, strategists);
-        assertEq(staking2.totalLockedValue(), 0);
-
-        vm.startPrank(governance);
-        vault.addStrategy(staking2, 0);
-        staking.upgradeTo(staking2);
-
-        // All value was moved to staking2
-        assertEq(staking.totalLockedValue(), 0);
-        assertEq(staking2.totalLockedValue(), beforeTvl);
-
-        // We can divest in staking2
-        vm.startPrank(address(vault));
-        staking2.divest(1 ether);
-        assertApproxEqRel(staking2.totalLockedValue(), beforeTvl - 1 ether, 0.01e18);
-
-        // We can invest in staking2
-        deal(address(staking2.WETH()), address(staking2), 1 ether);
-        staking2.addToPosition(1 ether);
-        assertApproxEqRel(staking2.totalLockedValue(), beforeTvl, 0.001e18);
     }
 }

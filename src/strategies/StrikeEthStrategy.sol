@@ -43,8 +43,8 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
     }
 
     error onlyBalancerVault();
-    /// @notice Callback called by balancer vault after flashloan is initiated.
 
+    /// @notice Callback called by balancer vault after flashloan is initiated.
     function receiveFlashLoan(
         ERC20[] memory, /* tokens */
         uint256[] memory amounts,
@@ -54,6 +54,9 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
         if (msg.sender != address(BALANCER)) revert onlyBalancerVault();
 
         uint256 ethBorrowed = amounts[0];
+
+        // Convert wETH to ETH
+        WETH.withdraw(ethBorrowed);
 
         (LoanType loan) = abi.decode(userData, (LoanType));
 
@@ -81,15 +84,12 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
             recipient: IFlashLoanRecipient(address(this)),
             tokens: tokens,
             amounts: amounts,
-            userData: abi.encode(LoanType.invest, address(0))
+            userData: abi.encode(LoanType.invest)
         });
     }
 
-    /// @dev Add to leveraged position. Trade ETH to wstETH, deposit in AAVE, and borrow to repay balancer loan.
+    /// @dev Add to leveraged position. Deposit into compound and borrow to repay balancer loan.
     function _addToPosition(uint256 ethBorrowed) internal {
-        // Convert wETH to ETH
-        WETH.withdraw(ethBorrowed);
-
         // Deposit ETH into compound
         cToken.mint{value: ethBorrowed}();
 
@@ -98,22 +98,20 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
         uint256 borrowRes = cToken.borrow(amountToBorrow);
         if (borrowRes != 0) revert CompBorrowError(borrowRes);
 
-        // convert to wETH to pay back balancer loan
+        // Convert ETH to wETH for balancer repayment
         WETH.deposit{value: amountToBorrow}();
     }
 
     /// @dev We need this to receive ETH when calling wETH.withdraw()
     receive() external payable {}
 
-    /// @dev Unlock wstETH collateral via flashloan, then repay balancer loan with unlocked collateral.
+    /// @dev Unlock ETH collateral via flashloan, then repay balancer loan with unlocked collateral.
     function _divest(uint256 amount) internal override returns (uint256) {
-        uint256 ethNeeded = _getDivestFlashLoanAmounts(amount);
-
         ERC20[] memory tokens = new ERC20[](1);
         tokens[0] = WETH;
 
         uint256[] memory amounts = new uint256[](1);
-        amounts[0] = ethNeeded;
+        amounts[0] = _getDivestFlashLoanAmounts(amount);
 
         uint256 origAssets = WETH.balanceOf(address(this));
 
@@ -121,7 +119,7 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
             recipient: IFlashLoanRecipient(address(this)),
             tokens: tokens,
             amounts: amounts,
-            userData: abi.encode(LoanType.divest, address(0))
+            userData: abi.encode(LoanType.divest)
         });
 
         // The loan has been paid, any other unlocked collateral belongs to user
@@ -151,6 +149,9 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
         // Withdraw same proportion of collateral from aave
         uint256 res = cToken.redeemUnderlying(ethToRedeem);
         if (res != 0) revert CompRedeemError(res);
+
+        // Convert ETH to wETH for balancer repayment and payment to user
+        WETH.deposit{value: ethToRedeem}();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -187,7 +188,7 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
     error CompRedeemError(uint256 errorCode);
 
     /// @notice The leverage factor of the position multiplied by 100. E.g. 150 would be 1.5x leverage.
-    uint256 public leverage = 992; // 9.92x
+    uint256 public leverage = 333; // 3.33x
 
     /// @notice Set the leverage factor.
     /// @param _leverage The new leverage.
