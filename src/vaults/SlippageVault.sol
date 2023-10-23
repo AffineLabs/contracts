@@ -24,12 +24,12 @@ contract SlippageVault is VaultV2 {
         _harvestAll();
         _asset.safeTransferFrom(_msgSender(), address(this), assets);
 
-        uint256 oldStrategyHoldings = totalStrategyHoldings;
+        uint256 oldTVL = vaultTVL();
 
         _depositIntoStrategies(assets);
 
         // assets after investment
-        uint256 investedAssets = totalStrategyHoldings - oldStrategyHoldings;
+        uint256 investedAssets = vaultTVL() - oldTVL;
 
         uint256 shares = previewDeposit(investedAssets);
         _deposit(_msgSender(), receiver, assets, shares);
