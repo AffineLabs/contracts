@@ -259,7 +259,7 @@ contract AffineVault is AffineGovernable, AccessControlUpgradeable {
         }
     }
 
-    function _depositIntoStrategy(Strategy strategy, uint256 assets) internal {
+    function _depositIntoStrategy(Strategy strategy, uint256 assets) internal virtual {
         // Don't allow empty investments
         if (assets == 0) return;
 
