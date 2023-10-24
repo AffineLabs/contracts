@@ -22,36 +22,45 @@ contract SlippageVault is VaultV2 {
      */
     function deposit(uint256 assets, address receiver) public virtual override whenNotPaused returns (uint256) {
         _harvestAll();
-        _asset.safeTransferFrom(_msgSender(), address(this), assets);
-
-        uint256 oldTVL = vaultTVL();
-
-        _depositIntoStrategies(assets);
-
-        // assets after investment
-        uint256 investedAssets = vaultTVL() - oldTVL;
-
-        uint256 shares = previewDeposit(investedAssets);
+        uint256 shares = previewDeposit(assets);
+        uint256 oldSupply = totalSupply();
         _deposit(_msgSender(), receiver, assets, shares);
-        return shares;
+        return totalSupply() - oldSupply;
     }
 
     /**
      * @dev See {IERC4262-mint}.
      */
     function mint(uint256 shares, address receiver) public virtual override whenNotPaused returns (uint256) {
+        _harvestAll();
         uint256 assets = previewMint(shares);
+
+        uint256 oldTVL = vaultTVL();
         _deposit(_msgSender(), receiver, assets, shares);
 
-        return assets;
+        return vaultTVL() - oldTVL;
     }
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
         _checkNft(receiver);
         if (shares == 0) revert VaultErrors.ZeroShares();
-        _mint(receiver, shares);
 
-        emit Deposit(caller, receiver, assets, shares);
+        _asset.safeTransferFrom(_msgSender(), address(this), assets);
+
+        uint256 oldTVL = vaultTVL();
+        uint256 assetsPerShare = _convertToAssets(10 ** decimals(), MathUpgradeable.Rounding.Up);
+
+        _depositIntoStrategies(assets);
+
+        // assets after investment
+        uint256 investedAssets = vaultTVL() - oldTVL;
+
+        uint256 receivableShares =
+            investedAssets.mulDiv(10 ** decimals(), assetsPerShare, MathUpgradeable.Rounding.Down);
+
+        _mint(receiver, receivableShares);
+
+        emit Deposit(caller, receiver, investedAssets, receivableShares);
     }
 
     function _getWithdrawalFee(uint256 assets, address owner) internal view virtual override returns (uint256) {
