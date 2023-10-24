@@ -45,16 +45,14 @@ contract SlippageVault is VaultV2 {
         _checkNft(receiver);
         if (shares == 0) revert VaultErrors.ZeroShares();
 
-        _asset.safeTransferFrom(_msgSender(), address(this), assets);
-
         uint256 oldTVL = vaultTVL();
         uint256 assetsPerShare = _convertToAssets(10 ** decimals(), MathUpgradeable.Rounding.Up);
 
+        _asset.safeTransferFrom(_msgSender(), address(this), assets);
         _depositIntoStrategies(assets);
 
         // assets after investment
         uint256 investedAssets = vaultTVL() - oldTVL;
-
         uint256 receivableShares =
             investedAssets.mulDiv(10 ** decimals(), assetsPerShare, MathUpgradeable.Rounding.Down);
 
