@@ -21,4 +21,14 @@ contract DegenImplTest is TestPlus {
         address implAddr = address(uint160(uint256(implBytes)));
         console2.log("impl", implAddr);
     }
+
+    function testImplEth() public {
+        // The proxy was deployed at block 17239298
+        vm.createSelectFork("ethereum", 17_239_298 + 1);
+        address degenVault = 0x9d39ba71f30f44FB72e7b45151C27079C2cd8ECa;
+        bytes32 implBytes = vm.load(degenVault, _IMPLEMENTATION_SLOT);
+
+        address implAddr = address(uint160(uint256(implBytes)));
+        console2.log("impl", implAddr);
+    }
 }
