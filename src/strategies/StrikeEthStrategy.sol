@@ -155,6 +155,21 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
     }
 
     /*//////////////////////////////////////////////////////////////
+                              REBALANCING
+    //////////////////////////////////////////////////////////////*/
+
+    function rebalance(uint256 ethToSupply, uint256 ethToBorrow) external onlyRole(STRATEGIST_ROLE) {
+        if (ethToSupply > 0) {
+            cToken.mint{value: ethToSupply}();
+        }
+
+        if (ethToBorrow > 0) {
+            uint256 borrowRes = cToken.borrow(ethToBorrow);
+            if (borrowRes != 0) revert CompBorrowError(borrowRes);
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
                            VALUATION
     //////////////////////////////////////////////////////////////*/
 
