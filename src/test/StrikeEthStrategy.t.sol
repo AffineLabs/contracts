@@ -44,7 +44,7 @@ contract StrikeEthStrategyTest is TestPlus {
         strategists[0] = address(this);
         vault = AffineVault(address(deployL1Vault()));
 
-        staking = new MockStrikeEthStrategy(vault, ICToken(0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5), strategists);
+        staking = new MockStrikeEthStrategy(vault, ICToken(0xbEe9Cf658702527b0AcB2719c1FAA29EdC006a92), strategists);
         vm.prank(governance);
         vault.addStrategy(staking, 0);
     }
