@@ -95,7 +95,7 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
         cToken.mint{value: ethBorrowed}();
 
         // Borrow 70% of the ETH we just deposited
-        uint256 amountToBorrow = ethBorrowed.mulDivDown(7, 10);
+        uint256 amountToBorrow = ethBorrowed.mulDivDown(borrowBps, 10_000);
         uint256 borrowRes = cToken.borrow(amountToBorrow);
         if (borrowRes != 0) revert CompBorrowError(borrowRes);
 
@@ -210,6 +210,13 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
         leverage = _leverage;
     }
 
+    /// @notice The percentage of the supplied eth to borrowing when adding a position
+    uint256 borrowBps = 7000; // 70%
+
+    function setBorrowBps(uint256 _borrowBps) external onlyRole(STRATEGIST_ROLE) {
+        borrowBps = _borrowBps;
+    }
+
     function _claim() internal {
         ICToken[] memory cTokens = new ICToken[](1);
         cTokens[0] = cToken;
@@ -223,9 +230,8 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
     function claimAndSellRewards(uint256 minAssetsFromReward) external onlyRole(STRATEGIST_ROLE) {
         _claim();
 
-        address[] memory path = new address[](3);
+        address[] memory path = new address[](2);
         path[0] = address(COMP);
-        path[1] = address(WETH);
         path[2] = address(asset);
 
         uint256 compBalance = COMP.balanceOf(address(this));
