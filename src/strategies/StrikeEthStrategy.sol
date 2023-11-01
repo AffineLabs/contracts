@@ -8,6 +8,7 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ICToken} from "src/interfaces/compound/ICToken.sol";
 import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 import {AffineVault, Strategy} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
@@ -182,25 +183,23 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
     }
 
     /*//////////////////////////////////////////////////////////////
-                                 TRADES
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice The acceptable slippage on trades.
-    uint256 public slippageBps = 60;
-
-    /// @notice Set slippageBps.
-    function setSlippageBps(uint256 _slippageBps) external onlyRole(STRATEGIST_ROLE) {
-        slippageBps = _slippageBps;
-    }
-    /*//////////////////////////////////////////////////////////////
                                   COMPOUND
     //////////////////////////////////////////////////////////////*/
 
     /// @notice cEther address
     ICToken public immutable cToken;
 
+    /// @notice The COMPTROLLER
+    IComptroller public constant COMPTROLLER = IComptroller(0xe2e17b2CBbf48211FA7eB8A875360e5e39bA2602);
+
+    /// @notice The stike governance token.
+    ERC20 public constant COMP = ERC20(0x74232704659ef37c08995e386A2E26cc27a8d7B1);
+
     error CompBorrowError(uint256 errorCode);
     error CompRedeemError(uint256 errorCode);
+
+    /// @notice Uni ROUTER for swapping COMP to `asset`
+    IUniswapV2Router02 public constant ROUTER = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 
     /// @notice The leverage factor of the position multiplied by 100. E.g. 150 would be 1.5x leverage.
     uint256 public leverage = 333; // 3.33x
@@ -209,5 +208,35 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
     /// @param _leverage The new leverage.
     function setLeverage(uint256 _leverage) external onlyRole(STRATEGIST_ROLE) {
         leverage = _leverage;
+    }
+
+    function _claim() internal {
+        ICToken[] memory cTokens = new ICToken[](1);
+        cTokens[0] = cToken;
+        COMPTROLLER.claimComp(address(this), cTokens);
+    }
+
+    function claimRewards() external onlyRole(STRATEGIST_ROLE) {
+        _claim();
+    }
+
+    function claimAndSellRewards(uint256 minAssetsFromReward) external onlyRole(STRATEGIST_ROLE) {
+        _claim();
+
+        address[] memory path = new address[](3);
+        path[0] = address(COMP);
+        path[1] = address(WETH);
+        path[2] = address(asset);
+
+        uint256 compBalance = COMP.balanceOf(address(this));
+        if (compBalance > 0.01e18) {
+            ROUTER.swapExactTokensForTokens({
+                amountIn: compBalance,
+                amountOutMin: minAssetsFromReward,
+                path: path,
+                to: address(this),
+                deadline: block.timestamp
+            });
+        }
     }
 }
