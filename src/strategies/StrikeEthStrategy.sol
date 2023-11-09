@@ -24,6 +24,9 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
     /// @notice The wETH address.
     IWETH public constant WETH = IWETH(payable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2));
 
+    /// @notice max tvl bps
+    uint256 public constant MAX_BPS = 10_000;
+
     constructor(AffineVault _vault, ICToken _cToken, address[] memory strategists)
         AccessStrategy(_vault, strategists)
     {
@@ -40,7 +43,9 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
     /// @notice The different reasons for a flashloan.
     enum LoanType {
         invest,
-        divest
+        divest,
+        incLev,
+        decLev
     }
 
     error onlyBalancerVault();
@@ -56,19 +61,34 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
 
         uint256 ethBorrowed = amounts[0];
 
-        // Convert wETH to ETH
+        // Convert all wETH to ETH
         WETH.withdraw(ethBorrowed);
 
         (LoanType loan) = abi.decode(userData, (LoanType));
 
         if (loan == LoanType.divest) {
             _endPosition(ethBorrowed);
-        } else {
+        } else if (loan == LoanType.divest) {
             _addToPosition(ethBorrowed);
+        } else {
+            _rebalancePosition(ethBorrowed, loan);
         }
 
         // Payback wETH loan
         WETH.safeTransfer(address(BALANCER), ethBorrowed);
+    }
+
+    function _flashLoan(uint256 amount, LoanType loan) internal {
+        ERC20[] memory tokens = new ERC20[](1);
+        tokens[0] = WETH;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = amount;
+        BALANCER.flashLoan({
+            recipient: IFlashLoanRecipient(address(this)),
+            tokens: tokens,
+            amounts: amounts,
+            userData: abi.encode(loan)
+        });
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -77,16 +97,7 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
 
     /// @dev Add to leveraged position  upon investment from vault.
     function _afterInvest(uint256 amount) internal override {
-        ERC20[] memory tokens = new ERC20[](1);
-        tokens[0] = WETH;
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = amount.mulDivUp(leverage, 100);
-        BALANCER.flashLoan({
-            recipient: IFlashLoanRecipient(address(this)),
-            tokens: tokens,
-            amounts: amounts,
-            userData: abi.encode(LoanType.invest)
-        });
+        _flashLoan(amount.mulDivDown(borrowBps, MAX_BPS - borrowBps), LoanType.invest);
     }
 
     /// @dev Add to leveraged position. Deposit into compound and borrow to repay balancer loan.
@@ -95,12 +106,12 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
         cToken.mint{value: ethBorrowed}();
 
         // Borrow 70% of the ETH we just deposited
-        uint256 amountToBorrow = ethBorrowed.mulDivDown(borrowBps, 10_000);
+        uint256 amountToBorrow = ethBorrowed.mulDivUp(borrowBps, MAX_BPS);
         uint256 borrowRes = cToken.borrow(amountToBorrow);
         if (borrowRes != 0) revert CompBorrowError(borrowRes);
 
         // Convert ETH to wETH for balancer repayment
-        WETH.deposit{value: amountToBorrow}();
+        WETH.deposit{value: ethBorrowed}();
     }
 
     /// @dev We need this to receive ETH when calling wETH.withdraw()
@@ -108,21 +119,8 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
 
     /// @dev Unlock ETH collateral via flashloan, then repay balancer loan with unlocked collateral.
     function _divest(uint256 amount) internal override returns (uint256) {
-        ERC20[] memory tokens = new ERC20[](1);
-        tokens[0] = WETH;
-
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = _getDivestFlashLoanAmounts(amount);
-
         uint256 origAssets = WETH.balanceOf(address(this));
-
-        BALANCER.flashLoan({
-            recipient: IFlashLoanRecipient(address(this)),
-            tokens: tokens,
-            amounts: amounts,
-            userData: abi.encode(LoanType.divest)
-        });
-
+        _flashLoan(_getDivestFlashLoanAmounts(amount), LoanType.divest);
         // The loan has been paid, any other unlocked collateral belongs to user
         uint256 unlockedWeth = WETH.balanceOf(address(this)) - origAssets;
         WETH.safeTransfer(address(vault), Math.min(unlockedWeth, amount));
@@ -159,15 +157,31 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
                               REBALANCING
     //////////////////////////////////////////////////////////////*/
 
-    function rebalance(uint256 ethToSupply, uint256 ethToBorrow) external onlyRole(STRATEGIST_ROLE) {
-        if (ethToSupply > 0) {
-            cToken.mint{value: ethToSupply}();
-        }
+    function rebalance() external onlyRole(STRATEGIST_ROLE) {
+        uint256 debt = cToken.borrowBalanceCurrent(address(this));
+        uint256 collateral = cToken.balanceOfUnderlying(address(this));
 
-        if (ethToBorrow > 0) {
-            uint256 borrowRes = cToken.borrow(ethToBorrow);
-            if (borrowRes != 0) revert CompBorrowError(borrowRes);
+        uint256 expectedDebt = collateral.mulDivDown(borrowBps, MAX_BPS);
+
+        if (expectedDebt > debt) {
+            // inc lev
+            _flashLoan((expectedDebt - debt).mulDivDown(MAX_BPS, MAX_BPS - borrowBps), LoanType.incLev);
+        } else {
+            _flashLoan((debt - expectedDebt).mulDivDown(MAX_BPS, MAX_BPS - borrowBps), LoanType.decLev);
         }
+    }
+
+    function _rebalancePosition(uint256 ethBorrowed, LoanType loan) internal {
+        if (loan == LoanType.incLev) {
+            // inc lev
+            cToken.mint{value: ethBorrowed}();
+            cToken.borrow(ethBorrowed);
+        } else {
+            // dec lev
+            cToken.repayBorrow{value: ethBorrowed}();
+            cToken.redeemUnderlying(ethBorrowed);
+        }
+        WETH.deposit{value: ethBorrowed}();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -200,15 +214,6 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
 
     /// @notice Uni ROUTER for swapping COMP to `asset`
     IUniswapV2Router02 public constant ROUTER = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-
-    /// @notice The leverage factor of the position multiplied by 100. E.g. 150 would be 1.5x leverage.
-    uint256 public leverage = 333; // 3.33x
-
-    /// @notice Set the leverage factor.
-    /// @param _leverage The new leverage.
-    function setLeverage(uint256 _leverage) external onlyRole(STRATEGIST_ROLE) {
-        leverage = _leverage;
-    }
 
     /// @notice The percentage of the supplied eth to borrowing when adding a position
     uint256 borrowBps = 7000; // 70%

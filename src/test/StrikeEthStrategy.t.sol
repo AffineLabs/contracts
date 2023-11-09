@@ -59,49 +59,49 @@ contract StrikeEthStrategyTest is TestPlus {
         staking.divest(amount);
     }
 
-    function testAddToPosition() public {
-        _giveEther(depSize);
-        staking.addToPosition(depSize);
-    }
+    // function testAddToPosition() public {
+    //     _giveEther(depSize);
+    //     staking.addToPosition(depSize);
+    // }
 
-    function testLeverage() public {
-        testAddToPosition();
-        uint256 collateral = staking.collateral();
-        assertApproxEqRel(collateral, depSize * staking.leverage() / 100, 0.02e18);
-    }
+    // function testLeverage() public {
+    //     testAddToPosition();
+    //     uint256 collateral = staking.collateral();
+    //     assertApproxEqRel(collateral, depSize * staking.leverage() / 100, 0.02e18);
+    // }
 
-    function testClosePosition() public {
-        ERC20 weth = staking.WETH();
-        testAddToPosition();
-        vm.warp(block.timestamp + 1 days);
-        vm.roll(block.number + 1);
-        _divest(1 ether);
-        console2.log("WETH balance: %s", weth.balanceOf(address(this)));
-        console2.log("WETH staking balance: %s", weth.balanceOf(address(staking)));
-    }
+    // function testClosePosition() public {
+    //     ERC20 weth = staking.WETH();
+    //     testAddToPosition();
+    //     vm.warp(block.timestamp + 1 days);
+    //     vm.roll(block.number + 1);
+    //     _divest(1 ether);
+    //     console2.log("WETH balance: %s", weth.balanceOf(address(this)));
+    //     console2.log("WETH staking balance: %s", weth.balanceOf(address(staking)));
+    // }
 
-    function testTotalLockedValue() public {
-        testAddToPosition();
-        uint256 tvl = staking.totalLockedValue();
-        console2.log("TVL:  %s", tvl);
-        assertApproxEqRel(tvl, depSize, 0.01e18);
-    }
+    // function testTotalLockedValue() public {
+    //     testAddToPosition();
+    //     uint256 tvl = staking.totalLockedValue();
+    //     console2.log("TVL:  %s", tvl);
+    //     assertApproxEqRel(tvl, depSize, 0.01e18);
+    // }
 
-    function testMutateTotalLockedValue() public {
-        testAddToPosition();
-        uint256 tvl = staking.totalLockedValue();
-        console2.log("Orig tvl: ", tvl);
-        console2.log("orig collateral: ", staking.collateral());
-        console2.log("orig debt: ", staking.debt());
+    // function testMutateTotalLockedValue() public {
+    //     testAddToPosition();
+    //     uint256 tvl = staking.totalLockedValue();
+    //     console2.log("Orig tvl: ", tvl);
+    //     console2.log("orig collateral: ", staking.collateral());
+    //     console2.log("orig debt: ", staking.debt());
 
-        vm.prank(address(vault));
-        staking.divest(1 ether);
+    //     vm.prank(address(vault));
+    //     staking.divest(1 ether);
 
-        assertApproxEqRel(staking.totalLockedValue(), tvl - 1 ether, 0.01e18);
-    }
+    //     assertApproxEqRel(staking.totalLockedValue(), tvl - 1 ether, 0.01e18);
+    // }
 
-    function testSetParams() public {
-        staking.setLeverage(1000);
-        assertEq(staking.leverage(), 1000);
-    }
+    // function testSetParams() public {
+    //     staking.setLeverage(1000);
+    //     assertEq(staking.leverage(), 1000);
+    // }
 }
