@@ -68,7 +68,7 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
 
         if (loan == LoanType.divest) {
             _endPosition(ethBorrowed);
-        } else if (loan == LoanType.divest) {
+        } else if (loan == LoanType.invest) {
             _addToPosition(ethBorrowed);
         } else {
             _rebalancePosition(ethBorrowed, loan);
@@ -97,7 +97,7 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
 
     /// @dev Add to leveraged position  upon investment from vault.
     function _afterInvest(uint256 amount) internal override {
-        _flashLoan(amount.mulDivDown(borrowBps, MAX_BPS - borrowBps), LoanType.invest);
+        _flashLoan(amount.mulDivDown(MAX_BPS, MAX_BPS - borrowBps), LoanType.invest);
     }
 
     /// @dev Add to leveraged position. Deposit into compound and borrow to repay balancer loan.
@@ -111,7 +111,7 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
         if (borrowRes != 0) revert CompBorrowError(borrowRes);
 
         // Convert ETH to wETH for balancer repayment
-        WETH.deposit{value: ethBorrowed}();
+        WETH.deposit{value: amountToBorrow}();
     }
 
     /// @dev We need this to receive ETH when calling wETH.withdraw()
@@ -131,9 +131,11 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
     function _getDivestFlashLoanAmounts(uint256 wethToDivest) internal returns (uint256 ethNeeded) {
         // Proportion of tvl == proportion of debt to pay back
         uint256 tvl = totalLockedValue();
-        uint256 ethDebt = cToken.borrowBalanceCurrent(address(this));
+        ethNeeded = cToken.borrowBalanceCurrent(address(this));
 
-        ethNeeded = ethDebt.mulDivDown(wethToDivest, tvl);
+        if (wethToDivest < tvl) {
+            ethNeeded = ethNeeded.mulDivDown(wethToDivest, tvl);
+        }
     }
 
     function _endPosition(uint256 ethBorrowed) internal {
@@ -196,6 +198,11 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
         return collateral - debt;
     }
 
+    function getCollateralAndDebt() public returns (uint256 collateral, uint256 debt) {
+        debt = cToken.borrowBalanceCurrent(address(this));
+        collateral = cToken.balanceOfUnderlying(address(this));
+    }
+
     /*//////////////////////////////////////////////////////////////
                                   COMPOUND
     //////////////////////////////////////////////////////////////*/
@@ -216,9 +223,10 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
     IUniswapV2Router02 public constant ROUTER = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 
     /// @notice The percentage of the supplied eth to borrowing when adding a position
-    uint256 borrowBps = 7000; // 70%
+    uint256 public borrowBps = 7000; // 70%
 
     function setBorrowBps(uint256 _borrowBps) external onlyRole(STRATEGIST_ROLE) {
+        require(_borrowBps <= MAX_BPS, "SES: invalid BPS");
         borrowBps = _borrowBps;
     }
 
@@ -232,7 +240,7 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
         _claim();
     }
 
-    function claimAndSellRewards(uint256 minAssetsFromReward) external onlyRole(STRATEGIST_ROLE) {
+    function claimAndSellRewards(uint256 slippageBps, uint256 minAssetsToSwap) external onlyRole(STRATEGIST_ROLE) {
         _claim();
 
         address[] memory path = new address[](2);
@@ -240,14 +248,22 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
         path[2] = address(asset);
 
         uint256 compBalance = COMP.balanceOf(address(this));
-        if (compBalance > 0.01e18) {
-            ROUTER.swapExactTokensForTokens({
-                amountIn: compBalance,
-                amountOutMin: minAssetsFromReward,
-                path: path,
-                to: address(this),
-                deadline: block.timestamp
-            });
-        }
+        require(compBalance > 0.01e18, "SES: Small reward to swap.");
+
+        uint256[] memory amounts = ROUTER.getAmountsOut(compBalance, path);
+
+        require(amounts[1] >= minAssetsToSwap, "SES: small swapped amount.");
+
+        ROUTER.swapExactTokensForTokens({
+            amountIn: compBalance,
+            amountOutMin: amounts[1].mulDivUp(MAX_BPS - slippageBps, MAX_BPS),
+            path: path,
+            to: address(this),
+            deadline: block.timestamp
+        });
+
+        WETH.withdraw(WETH.balanceOf(address(this)));
+
+        cToken.mint{value: address(this).balance}();
     }
 }
