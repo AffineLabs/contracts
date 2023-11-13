@@ -6,6 +6,7 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {StrikeEthStrategy, ICToken, AffineVault, FixedPointMathLib} from "src/strategies/StrikeEthStrategy.sol";
+import {VaultV2} from "src/vaults/VaultV2.sol";
 
 import {console2} from "forge-std/console2.sol";
 
@@ -37,16 +38,20 @@ contract StrikeEthStrategyTest is TestPlus {
 
     receive() external payable {}
 
+    function _getVault() internal virtual returns (AffineVault) {
+        return AffineVault(address(deployL1Vault()));
+    }
+
     function setUp() public {
         vm.createSelectFork("ethereum", 18_544_000);
 
         address[] memory strategists = new address[](1);
         strategists[0] = address(this);
-        vault = AffineVault(address(deployL1Vault()));
+        vault = _getVault();
 
         staking = new MockStrikeEthStrategy(vault, ICToken(0xbEe9Cf658702527b0AcB2719c1FAA29EdC006a92), strategists);
         vm.prank(governance);
-        vault.addStrategy(staking, 0);
+        vault.addStrategy(staking, 10_000);
     }
 
     function _giveEther(uint256 amount) internal {
@@ -141,5 +146,46 @@ contract StrikeEthStrategyTest is TestPlus {
         console2.log("debt ratio ", r);
         console2.log("debt ", deb);
         console2.log("col ", col);
+    }
+}
+
+contract StrikeEthStrategyVaultTest is StrikeEthStrategyTest {
+    ERC20 public asset = ERC20((0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2));
+
+    uint256 public init_assets;
+    VaultV2 v2_vault;
+
+    function _getVault() internal virtual override returns (AffineVault) {
+        init_assets = 10 * (10 ** asset.decimals());
+        v2_vault = new VaultV2();
+        v2_vault.initialize(governance, address(asset), "TV", "TV");
+        return AffineVault(address(v2_vault));
+    }
+
+    function _giveWethToAlice() internal {
+        deal(address(asset), alice, init_assets);
+    }
+
+    function testDepositWithdraw() public {
+        _giveWethToAlice();
+        vm.startPrank(alice);
+        asset.approve(address(vault), type(uint256).max);
+        v2_vault.deposit(init_assets, alice);
+
+        assertApproxEqRel(vault.vaultTVL(), init_assets, 0.01e18);
+        vm.startPrank(governance);
+
+        v2_vault.depositIntoStrategies(init_assets);
+
+        assertApproxEqRel(vault.vaultTVL(), init_assets, 0.01e18);
+
+        assertApproxEqAbs(staking.totalLockedValue(), init_assets, 0.01e18);
+
+        assertEq(asset.balanceOf(address(alice)), 0);
+
+        vm.startPrank(alice);
+        v2_vault.withdraw(init_assets, alice, alice);
+
+        assertApproxEqRel(asset.balanceOf(alice), init_assets, 0.01e18);
     }
 }
