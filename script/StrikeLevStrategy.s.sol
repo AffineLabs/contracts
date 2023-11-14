@@ -30,7 +30,7 @@ library StrikeFinance {
         return 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     }
 
-    function deployStrikeLevStakedEth(AffineVault vault) internal returns (StrikeEthStrategy strategy) {
+    function deployStrikeLevEth(AffineVault vault) internal returns (StrikeEthStrategy strategy) {
         ICToken _aToken = ICToken(0xbEe9Cf658702527b0AcB2719c1FAA29EdC006a92);
         strategy = new StrikeEthStrategy(vault, _aToken, _getStrategists());
     }
@@ -50,7 +50,7 @@ contract Deploy is Script, Base {
 
         require(address(vault.asset()) == StrikeFinance._getEthMainNetWEthAddr(), "Invalid asset");
 
-        StrikeEthStrategy strategy = StrikeFinance.deployStrikeLevStakedEth(vault);
+        StrikeEthStrategy strategy = StrikeFinance.deployStrikeLevEth(vault);
 
         console2.log("strategy address %s", address(strategy));
 

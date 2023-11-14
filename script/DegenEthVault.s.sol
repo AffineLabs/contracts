@@ -7,7 +7,7 @@ import {Script, console2} from "forge-std/Script.sol";
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {DegenLevEthVault} from "src/vaults/custom/DegenLevEthVault.sol";
+import {DegenEthVault} from "src/vaults/custom/DegenEthVault.sol";
 import {Vault} from "src/vaults/Vault.sol";
 import {Base} from "./Base.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
@@ -31,22 +31,22 @@ library EthLeverage {
         return 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     }
 
-    function deployEthDegenStakedEth(address governance) internal returns (DegenLevEthVault vault) {
-        DegenLevEthVault _vault = new DegenLevEthVault();
+    function deployEthDegenEthVault(address governance) internal returns (DegenEthVault vault) {
+        DegenEthVault _vault = new DegenEthVault();
         // Initialize proxy with correct data
         bytes memory initData = abi.encodeCall(
             Vault.initialize,
             (
                 governance, // TODO: check before deploy in mainnet
                 _getEthMainNetWEthAddr(), // WETH
-                "Affine Degen Staked Eth Leverage",
-                "EthDegenLevStakedEth"
+                "Affine Degen Eth",
+                "EthDegenEth"
             )
         );
 
         ERC1967Proxy proxy = new ERC1967Proxy(address(_vault), initData);
 
-        vault = DegenLevEthVault(payable(address(proxy)));
+        vault = DegenEthVault(payable(address(proxy)));
         uint256 price = vault.detailedPrice().num;
         uint8 dec = vault.detailedPrice().decimals;
 
@@ -73,7 +73,7 @@ contract Deploy is Script, Base {
         console2.log("governance %s", governance);
         _start();
 
-        DegenLevEthVault vault = EthLeverage.deployEthDegenStakedEth(governance);
+        DegenEthVault vault = EthLeverage.deployEthDegenEthVault(governance);
 
         console2.log("vault address %s", address(vault));
     }

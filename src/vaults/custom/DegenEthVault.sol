@@ -3,4 +3,4 @@ pragma solidity =0.8.16;
 
 import {EthVaultV2} from "src/vaults/EthVaultV2.sol";
 
-contract DegenLevEthVault is EthVaultV2 {}
+contract DegenEthVault is EthVaultV2 {}
