@@ -35,6 +35,7 @@ contract StrikeEthStrategyTest is TestPlus {
     AffineVault vault;
 
     uint256 depSize = 10 ether;
+    ERC20 public constant STRIKE = ERC20(0x74232704659ef37c08995e386A2E26cc27a8d7B1);
 
     receive() external payable {}
 
@@ -187,5 +188,21 @@ contract StrikeEthStrategyVaultTest is StrikeEthStrategyTest {
         v2_vault.withdraw(init_assets, alice, alice);
 
         assertApproxEqRel(asset.balanceOf(alice), init_assets, 0.01e18);
+    }
+
+    function testSellReward() public {
+        testAddToPosition();
+        console2.log("TVL %s", staking.totalLockedValue());
+        vm.warp(block.timestamp + 1 days);
+        vm.roll(block.number + 1000);
+
+        staking.claimRewards();
+        console2.log("strike balance %s", STRIKE.balanceOf(address(staking)));
+
+        deal(address(STRIKE), address(staking), (10 ** STRIKE.decimals()) * 100);
+
+        staking.claimAndSellRewards(100, 0.1 ether);
+        console2.log("TVL %s", staking.totalLockedValue());
+        assertEq(STRIKE.balanceOf(address(staking)), 0);
     }
 }

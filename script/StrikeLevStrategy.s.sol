@@ -46,7 +46,7 @@ contract Deploy is Script, Base {
     function run() external {
         _start();
 
-        AffineVault vault = AffineVault(0x1196B60c9ceFBF02C9a3960883213f47257BecdB); //TODO change vault address with new one
+        AffineVault vault = AffineVault(0xF5c10746B8EE6B69A17f66eCD642d2Fb9df8fcE0);
 
         require(address(vault.asset()) == StrikeFinance._getEthMainNetWEthAddr(), "Invalid asset");
 

@@ -31,6 +31,7 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
         AccessStrategy(_vault, strategists)
     {
         cToken = _cToken;
+        COMP.safeApprove(address(ROUTER), type(uint256).max);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -233,7 +234,7 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
     function _claim() internal {
         ICToken[] memory cTokens = new ICToken[](1);
         cTokens[0] = cToken;
-        COMPTROLLER.claimComp(address(this), cTokens);
+        COMPTROLLER.claimStrike(address(this), cTokens);
     }
 
     function claimRewards() external onlyRole(STRATEGIST_ROLE) {
@@ -245,7 +246,7 @@ contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
 
         address[] memory path = new address[](2);
         path[0] = address(COMP);
-        path[2] = address(asset);
+        path[1] = address(asset);
 
         uint256 compBalance = COMP.balanceOf(address(this));
         require(compBalance > 0.01e18, "SES: Small reward to swap.");
