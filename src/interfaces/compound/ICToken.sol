@@ -3,6 +3,7 @@ pragma solidity =0.8.16;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/// @dev This is used for both CEtherand CErc20 tokens
 interface ICToken is IERC20 {
     function borrow(uint256) external returns (uint256);
 
@@ -14,6 +15,7 @@ interface ICToken is IERC20 {
     function repayBorrow() external payable;
 
     function mint(uint256 underlying) external payable returns (uint256);
+    function mint() external payable;
 
     function redeemUnderlying(uint256) external returns (uint256);
 

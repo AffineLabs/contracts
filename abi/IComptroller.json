@@ -21,6 +21,37 @@
     "inputs": [
       {
         "internalType": "address",
+        "name": "holder",
+        "type": "address"
+      }
+    ],
+    "name": "claimStrike",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "holder",
+        "type": "address"
+      },
+      {
+        "internalType": "contract ICToken[]",
+        "name": "cTokens",
+        "type": "address[]"
+      }
+    ],
+    "name": "claimStrike",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
         "name": "",
         "type": "address"
       }

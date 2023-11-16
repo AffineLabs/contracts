@@ -6,6 +6,10 @@ import {ICToken} from "./ICToken.sol";
 interface IComptroller {
     function claimComp(address holder, ICToken[] memory cTokens) external;
 
+    // @dev different for strike finance
+    function claimStrike(address holder) external;
+    function claimStrike(address holder, ICToken[] memory cTokens) external;
+
     function compAccrued(address) external view returns (uint256);
 
     function markets(address) external returns (bool, uint256);

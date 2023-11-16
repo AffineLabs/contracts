@@ -5,13 +5,7 @@ import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {
-    LidoLevL2,
-    IBalancerVault,
-    IFlashLoanRecipient,
-    AffineVault,
-    FixedPointMathLib
-} from "src/strategies/LidoLevL2.sol";
+import {LidoLevL2, AffineVault, FixedPointMathLib} from "src/strategies/LidoLevL2.sol";
 
 import {console2} from "forge-std/console2.sol";
 
