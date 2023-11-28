@@ -36,6 +36,8 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
         // Pay wETH debt in aave
         WETH.safeApprove(address(AAVE), type(uint256).max);
 
+        STETH.approve(address(CURVE), type(uint256).max);
+
         /* Get/Set aave information */
 
         aToken = ERC20(AAVE.getReserveData(address(WSTETH)).aTokenAddress);
@@ -109,13 +111,16 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
     function _addToPosition(uint256 ethBorrowed) internal {
         // withdraw eth from weth
         WETH.withdraw(ethBorrowed);
-        payable(address(WSTETH)).transfer(ethBorrowed);
+
+        (bool success,) = payable(address(WSTETH)).call{value: ethBorrowed}("");
+
+        require(success, "LLV3: WstEth failed");
 
         // Deposit wstETH in AAVE
         AAVE.deposit(address(WSTETH), WSTETH.balanceOf(address(this)), address(this), 0);
 
         // Borrow 90% of wstETH value in ETH using e-mode
-        uint256 ethToBorrow = ethBorrowed.mulDivUp(borrowBps, MAX_BPS);
+        uint256 ethToBorrow = ethBorrowed - WETH.balanceOf(address(this));
         AAVE.borrow(address(WETH), ethToBorrow, 2, 0, address(this));
     }
 
@@ -151,8 +156,10 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
     function _getDivestFlashLoanAmounts(uint256 wethToDivest) internal view returns (uint256 ethNeeded) {
         // Proportion of tvl == proportion of debt to pay back
         uint256 tvl = totalLockedValue();
-
-        ethNeeded = _debt().mulDivDown(wethToDivest, tvl);
+        ethNeeded = _debt();
+        if (tvl > wethToDivest) {
+            ethNeeded = _debt().mulDivDown(wethToDivest, tvl);
+        }
     }
 
     function _endPosition(uint256 ethBorrowed) internal {
@@ -169,25 +176,25 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
         // withdraw eth from wsteth
         WSTETH.unwrap(WSTETH.balanceOf(address(this)));
 
-        uint256 eth_received = CURVE.exchange({
-            x: uint256(1),
-            y: 0,
+        uint256 ethReceived = CURVE.exchange({
+            x: int128(1),
+            y: int128(0),
             dx: STETH.balanceOf(address(this)),
             min_dy: STETH.balanceOf(address(this)).slippageDown(slippageBps)
         });
         // convert eth to weth
-        WETH.deposit{value: eth_received}();
+        WETH.deposit{value: ethReceived}();
     }
 
     /*//////////////////////////////////////////////////////////////
                            VALUATION
     //////////////////////////////////////////////////////////////*/
 
-    function _debt() public view returns (uint256) {
+    function _debt() internal view returns (uint256) {
         return debtToken.balanceOf(address(this));
     }
 
-    function _collateral() public view returns (uint256) {
+    function _collateral() internal view returns (uint256) {
         return WSTETH.getStETHByWstETH(aToken.balanceOf(address(this)));
     }
 
@@ -196,51 +203,27 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
         return _collateral() - _debt();
     }
 
-    /// @notice The wstETH/ETH price feed. Note that is actually gives the ETH/wstETH ratio.
-    AggregatorV3Interface public constant WSTETH_ETH_FEED =
-        AggregatorV3Interface(0x806b4Ac04501c29769051e42783cF04dCE41440b);
-
     /*//////////////////////////////////////////////////////////////
                                   STAKED ETHER
     //////////////////////////////////////////////////////////////*/
 
     /// @notice The wETH address.
-    IWETH public constant WETH = IWETH(payable(0x4200000000000000000000000000000000000006));
+    IWETH public constant WETH = IWETH(payable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2));
 
     /// @notice The wstETH address (actually cbETH on Base).
-    IWSTETH public constant WSTETH = IWSTETH(0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22);
-    ERC20 public constant STETH = ERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
-
-    /// @dev Get the ETH/wstETH ratio.
-    function _getEthToWstEthRatio() internal view returns (uint256) {
-        (uint80 roundId, int256 price,, uint256 timestamp, uint80 answeredInRound) = WSTETH_ETH_FEED.latestRoundData();
-        require(price > 0, "LidoLevL2: price <= 0");
-        require(answeredInRound >= roundId, "LidoLevL2: stale data");
-        require(timestamp != 0, "LidoLevL2: round not done");
-        return uint256(price);
-    }
-
-    /// @dev Convert wstETH to ETH.
-    function _wstEthToEth(uint256 amountWstEth) internal view returns (uint256) {
-        return amountWstEth.mulWadDown(_getEthToWstEthRatio());
-    }
-
-    /// @dev Convert ETH to wstETH.
-    function _ethToWstEth(uint256 amountEth) internal view returns (uint256) {
-        // This is (ETH * 1e18) / price. The price feed gives the ETH/wstETH ratio, and we divide by price to get amount of wstETH.
-        // `divWad` is used because both both ETH and the price feed have 18 decimals (the decimals are retained after division).
-        return amountEth.divWadDown(_getEthToWstEthRatio());
-    }
+    IWSTETH public constant WSTETH = IWSTETH(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0); // eth
+    ERC20 public constant STETH = ERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84); // eth
 
     /*//////////////////////////////////////////////////////////////
                                  TRADES
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice The curve pool used for wstETH <=> ETH trades.
-    ICurvePool public constant CURVE = ICurvePool(0x11C1fBd4b3De66bC0565779b35171a6CF3E71f59);
+    /// @notice The curve pool used for stETH <=>  eth.
+    ICurvePool public constant CURVE = ICurvePool(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022); // eth address
 
     /// @notice The acceptable slippage on trades.
-    uint256 public slippageBps = 60;
+    uint256 public slippageBps = 20;
+    /// @dev max slippage on curve is around 10pbs for 10 eth
 
     /// @notice Set slippageBps.
     function setSlippageBps(uint256 _slippageBps) external onlyRole(STRATEGIST_ROLE) {
@@ -252,7 +235,7 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
 
     uint256 public constant MAX_BPS = 10_000;
     /// @notice amount to borrow after lending in the platform
-    uint256 public borrowBps = 9000; // default 90% for aave e-mode
+    uint256 public borrowBps = 8999; // default 90% for aave e-mode
 
     /// @notice Set the borrowing factor.
     /// @param _borrowBps The new borrow factor.
@@ -261,7 +244,7 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
     }
 
     /// @notice The Aave lending pool.
-    IPool public constant AAVE = IPool(0xA238Dd80C259a72e81d7e4664a9801593F98d1c5);
+    IPool public constant AAVE = IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2); // eth address
 
     /// @notice The debtToken for wETH.
     ERC20 public immutable debtToken;
