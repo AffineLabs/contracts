@@ -315,6 +315,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "getLTVRatio",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -384,6 +397,13 @@
       }
     ],
     "name": "invest",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "rebalance",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

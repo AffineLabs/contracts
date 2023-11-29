@@ -6,7 +6,9 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {LidoLevV3, AffineVault, FixedPointMathLib} from "src/strategies/LidoLevV3.sol";
+import {LidoLev} from "src/strategies/LidoLev.sol";
 import {VaultV2} from "src/vaults/VaultV2.sol";
+import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
 
 import {console2} from "forge-std/console2.sol";
 
@@ -124,5 +126,82 @@ contract LidoLevV3Test is TestPlus {
 
         assertApproxEqRel(asset.balanceOf(alice), init_assets / 2, 0.01e18);
         assertApproxEqRel(staking.totalLockedValue(), init_assets / 2, 0.01e18);
+    }
+}
+
+/// @dev test integration with existing vault
+contract LidoLevV3IntegrationTest is TestPlus {
+    uint256 init_assets;
+    AffineVault vault;
+    LidoLevV3 staking;
+
+    receive() external payable {}
+
+    ERC20 public asset = ERC20((0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2));
+
+    function _getVault() internal virtual returns (AffineVault) {
+        return AffineVault(0x1196B60c9ceFBF02C9a3960883213f47257BecdB);
+    }
+
+    function setUp() public {
+        // fork eth
+        // TODO: Fixed block number
+        vm.createSelectFork("ethereum", 18_600_000);
+
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+        vault = _getVault();
+
+        staking = new LidoLevV3(vault, strategists);
+    }
+
+    function testAddStrategyRebalance() public {
+        // make existing strategy tvl bps to zero
+        vm.startPrank(vault.governance());
+        uint256 oldTVL = vault.vaultTVL();
+        BaseStrategy[] memory strategy = new BaseStrategy[](1);
+        uint16[] memory tvlBps = new uint16[](1);
+
+        strategy[0] = BaseStrategy(0x1CB640332F9ADa32Da40053634Cc61335e935995);
+        tvlBps[0] = 0;
+
+        vault.updateStrategyAllocations(strategy, tvlBps);
+        vault.addStrategy(staking, 10_000);
+
+        // rebalance
+        vault.rebalance();
+        console2.log("base strategy tvl %s", strategy[0].totalLockedValue());
+        assertApproxEqRel(vault.vaultTVL(), oldTVL, 0.01e18);
+        // assertApproxEqRel(vault.vaultTVL(), staking.totalLockedValue(), 0.01e18);
+    }
+
+    function testInvestExistingStrategyAndWithdraw() public {
+        vm.startPrank(vault.governance());
+        uint256 oldTVL = vault.vaultTVL();
+        BaseStrategy[] memory strategy = new BaseStrategy[](1);
+        uint16[] memory tvlBps = new uint16[](1);
+
+        LidoLev oldStrat = LidoLev(payable(0x1CB640332F9ADa32Da40053634Cc61335e935995));
+        uint256 stratTVL = asset.balanceOf(address(oldStrat));
+        console2.log(
+            "Old strategy balance %s and TVL ", asset.balanceOf(address(oldStrat)), oldStrat.totalLockedValue()
+        );
+
+        oldStrat.sweep(asset);
+
+        asset.transfer(address(vault), stratTVL);
+
+        strategy[0] = BaseStrategy(0x1CB640332F9ADa32Da40053634Cc61335e935995);
+        tvlBps[0] = 0;
+
+        vault.updateStrategyAllocations(strategy, tvlBps);
+        vault.harvest(strategy);
+
+        vault.addStrategy(staking, 10_000);
+
+        vault.rebalance();
+        console2.log("base strategy tvl %s", strategy[0].totalLockedValue());
+        assertApproxEqRel(vault.vaultTVL(), oldTVL, 0.01e18);
+        assertApproxEqRel(vault.vaultTVL(), staking.totalLockedValue(), 0.01e18);
     }
 }

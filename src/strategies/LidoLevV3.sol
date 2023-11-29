@@ -58,11 +58,26 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
     enum LoanType {
         invest,
         divest,
-        upgrade
+        upgrade,
+        incLev,
+        decLev
     }
 
     error onlyBalancerVault();
+
     /// @notice Callback called by balancer vault after flashloan is initiated.
+    function _flashLoan(uint256 amount, LoanType loan, address recipient) internal {
+        ERC20[] memory tokens = new ERC20[](1);
+        tokens[0] = WETH;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = amount;
+        BALANCER.flashLoan({
+            recipient: IFlashLoanRecipient(address(this)),
+            tokens: tokens,
+            amounts: amounts,
+            userData: abi.encode(loan, recipient)
+        });
+    }
 
     function receiveFlashLoan(
         ERC20[] memory, /* tokens */
@@ -95,16 +110,7 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
 
     /// @dev Add to leveraged position  upon investment from vault.
     function _afterInvest(uint256 amount) internal override {
-        ERC20[] memory tokens = new ERC20[](1);
-        tokens[0] = WETH;
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = amount.mulDivDown(MAX_BPS, MAX_BPS - borrowBps);
-        BALANCER.flashLoan({
-            recipient: IFlashLoanRecipient(address(this)),
-            tokens: tokens,
-            amounts: amounts,
-            userData: abi.encode(LoanType.invest, address(0))
-        });
+        _flashLoan(amount.mulDivDown(MAX_BPS, MAX_BPS - borrowBps), LoanType.invest, address(0));
     }
 
     /// @dev Add to leveraged position. Trade ETH to wstETH, deposit in AAVE, and borrow to repay balancer loan.
@@ -115,7 +121,6 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
         (bool success,) = payable(address(WSTETH)).call{value: ethBorrowed}("");
 
         require(success, "LLV3: WstEth failed");
-
         // Deposit wstETH in AAVE
         AAVE.deposit(address(WSTETH), WSTETH.balanceOf(address(this)), address(this), 0);
 
@@ -131,21 +136,9 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
     function _divest(uint256 amount) internal override returns (uint256) {
         uint256 ethNeeded = _getDivestFlashLoanAmounts(amount);
 
-        ERC20[] memory tokens = new ERC20[](1);
-        tokens[0] = WETH;
-
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = ethNeeded;
-
         uint256 origAssets = WETH.balanceOf(address(this));
 
-        BALANCER.flashLoan({
-            recipient: IFlashLoanRecipient(address(this)),
-            tokens: tokens,
-            amounts: amounts,
-            userData: abi.encode(LoanType.divest, address(0))
-        });
-
+        _flashLoan(ethNeeded, LoanType.divest, address(0));
         // The loan has been paid, any other unlocked collateral belongs to user
         uint256 unlockedWeth = WETH.balanceOf(address(this)) - origAssets;
         WETH.safeTransfer(address(vault), Math.min(unlockedWeth, amount));
@@ -162,6 +155,12 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
         }
     }
 
+    function _convertStEthToWeth(uint256 amount, uint256 minAmount) internal {
+        uint256 ethReceived = CURVE.exchange({x: int128(1), y: int128(0), dx: amount, min_dy: minAmount});
+        // convert eth to weth
+        WETH.deposit{value: ethReceived}();
+    }
+
     function _endPosition(uint256 ethBorrowed) internal {
         // Proportion of collateral to unlock is same as proportion of debt to pay back (ethBorrowed / debt)
         // We need to calculate this number before paying back debt, since the fraction will change.
@@ -176,14 +175,42 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
         // withdraw eth from wsteth
         WSTETH.unwrap(WSTETH.balanceOf(address(this)));
 
-        uint256 ethReceived = CURVE.exchange({
-            x: int128(1),
-            y: int128(0),
-            dx: STETH.balanceOf(address(this)),
-            min_dy: STETH.balanceOf(address(this)).slippageDown(slippageBps)
-        });
-        // convert eth to weth
-        WETH.deposit{value: ethReceived}();
+        // convert stEth to eth
+        _convertStEthToWeth(STETH.balanceOf(address(this)), STETH.balanceOf(address(this)).slippageDown(slippageBps));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                              REBALANCING
+    //////////////////////////////////////////////////////////////*/
+
+    function rebalance() external onlyRole(STRATEGIST_ROLE) {
+        uint256 debt = _debt();
+        uint256 collateral = _collateral();
+        uint256 expectedDebt = collateral.mulDivDown(borrowBps, MAX_BPS);
+
+        if (expectedDebt > debt) {
+            // inc lev
+            _flashLoan((expectedDebt - debt).mulDivDown(MAX_BPS, MAX_BPS - borrowBps), LoanType.incLev, address(0));
+        } else {
+            _flashLoan((debt - expectedDebt).mulDivDown(MAX_BPS, MAX_BPS - borrowBps), LoanType.decLev, address(0));
+        }
+    }
+
+    function _rebalancePosition(uint256 ethBorrowed, LoanType loan) internal {
+        if (loan == LoanType.incLev) {
+            _addToPosition(ethBorrowed);
+        } else {
+            // repay
+            AAVE.repay(address(WETH), ethBorrowed, 2, address(this));
+            // get wsteth amount from eth
+            uint256 wstEthToRedeem = WSTETH.getWstETHByStETH(ethBorrowed).slippageUp(slippageBps);
+            // withdraw from aave
+            AAVE.withdraw(address(WSTETH), wstEthToRedeem, address(this));
+            // unwrap wsteth
+            WSTETH.unwrap(WSTETH.balanceOf(address(this)));
+            // conv steth to weth
+            _convertStEthToWeth(STETH.balanceOf(address(this)), ethBorrowed);
+        }
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -201,6 +228,10 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
     /// @notice The tvl function.
     function totalLockedValue() public view override returns (uint256) {
         return _collateral() - _debt();
+    }
+
+    function getLTVRatio() public view returns (uint256) {
+        return _debt().mulDivDown(MAX_BPS, _collateral());
     }
 
     /*//////////////////////////////////////////////////////////////
