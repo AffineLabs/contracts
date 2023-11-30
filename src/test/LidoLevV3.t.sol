@@ -22,7 +22,7 @@ contract LidoLevV3Test is TestPlus {
     ERC20 public asset = ERC20((0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2));
 
     function _getVault() internal virtual returns (AffineVault) {
-        init_assets = 1 * (10 ** asset.decimals());
+        init_assets = 10 * (10 ** asset.decimals());
         VaultV2 vault_v2 = new VaultV2();
         vault_v2.initialize(governance, address(asset), "TV", "TV");
         return AffineVault(address(vault_v2));
@@ -126,6 +126,22 @@ contract LidoLevV3Test is TestPlus {
 
         assertApproxEqRel(asset.balanceOf(alice), init_assets / 2, 0.01e18);
         assertApproxEqRel(staking.totalLockedValue(), init_assets / 2, 0.01e18);
+    }
+
+    function testSlippageBpsChange() public {
+        testInvestIntoStrategy();
+        console2.log(staking.getLTVRatio());
+        vm.startPrank(address(this));
+
+        uint256[6] memory borrowBps = [uint256(8000), 7000, 6000, 5000, 8900, 5000];
+
+        for (uint256 i = 0; i < borrowBps.length; i++) {
+            staking.setBorrowBps(borrowBps[i]);
+            staking.rebalance();
+            assertApproxEqRel(borrowBps[i], staking.getLTVRatio(), 0.01e18);
+            assertEq(asset.balanceOf(address(staking)), 0);
+            assertEq(address(staking).balance, 0);
+        }
     }
 }
 

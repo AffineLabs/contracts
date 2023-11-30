@@ -96,8 +96,10 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
             _endPosition(ethBorrowed);
         } else if (loan == LoanType.invest) {
             _addToPosition(ethBorrowed);
-        } else {
+        } else if (loan == LoanType.upgrade) {
             _payDebtAndTransferCollateral(LidoLevV3(payable(newStrategy)));
+        } else {
+            _rebalancePosition(ethBorrowed, loan);
         }
 
         // Payback wETH loan
@@ -210,6 +212,9 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
             WSTETH.unwrap(WSTETH.balanceOf(address(this)));
             // conv steth to weth
             _convertStEthToWeth(STETH.balanceOf(address(this)), ethBorrowed);
+            if (WETH.balanceOf(address(this)) > ethBorrowed) {
+                AAVE.repay(address(WETH), WETH.balanceOf(address(this)) - ethBorrowed, 2, address(this));
+            }
         }
     }
 
@@ -253,7 +258,7 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
     ICurvePool public constant CURVE = ICurvePool(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022); // eth address
 
     /// @notice The acceptable slippage on trades.
-    uint256 public slippageBps = 20;
+    uint256 public slippageBps = 10;
     /// @dev max slippage on curve is around 10pbs for 10 eth
 
     /// @notice Set slippageBps.
