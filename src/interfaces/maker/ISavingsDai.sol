@@ -17,6 +17,7 @@
 
 pragma solidity =0.8.16;
 
+/*  solhint-disable func-name-mixedcase, var-name-mixedcase */
 interface ISavingsDai {
     function totalSupply() external view returns (uint256);
     function balanceOf(address) external view returns (uint256);

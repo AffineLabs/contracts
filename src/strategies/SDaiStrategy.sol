@@ -9,7 +9,7 @@ import {AffineVault} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
 import {SlippageUtils} from "src/libs/SlippageUtils.sol";
 
-import {ICurvePool} from "src/interfaces/curve/ICurvePool.sol";
+import {ICurvePoolV2} from "src/interfaces/curve/ICurvePool.sol";
 import {ISavingsDai} from "src/interfaces/maker/ISavingsDai.sol";
 
 contract SDaiStrategy is AccessStrategy {
@@ -18,7 +18,7 @@ contract SDaiStrategy is AccessStrategy {
     using FixedPointMathLib for uint256;
     using SlippageUtils for uint256;
 
-    ICurvePool public constant CURVE = ICurvePool(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
+    ICurvePoolV2 public constant CURVE = ICurvePoolV2(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
     int128 public constant C_ASSET_IDX = 1; // USDC index
     int128 public constant C_DAI_IDX = 0; // DAI index
 
@@ -37,12 +37,15 @@ contract SDaiStrategy is AccessStrategy {
                               INVEST/DIVEST
     //////////////////////////////////////////////////////////////*/
 
-    function getSwapAmount(int128 from, int128 to, uint256 fromAmount) internal view returns (uint256) {
-        return CURVE.get_dy({x: from, y: to, dx: fromAmount});
+    function getSwapAmount(int128 from, int128 to, uint256 fromAmount) internal view returns (uint256 toAmount) {
+        toAmount = 0;
+        if (fromAmount > 0) {
+            toAmount = CURVE.get_dy({x: from, y: to, dx: fromAmount});
+        }
     }
 
-    function _swapDaiToAsset(uint256 daiAmount) internal returns (uint256 assetsReceived) {
-        assetsReceived = CURVE.exchange({
+    function _swapDaiToAsset(uint256 daiAmount) internal {
+        CURVE.exchange({
             x: C_DAI_IDX,
             y: C_ASSET_IDX,
             dx: daiAmount,
@@ -73,8 +76,9 @@ contract SDaiStrategy is AccessStrategy {
             amount < tvl ? SDAI.balanceOf(address(this)).mulDivDown(amount, tvl) : SDAI.balanceOf(address(this));
 
         uint256 receivedDai = SDAI.redeem(sDaiToWithdraw, address(this), address(this));
-
-        uint256 receivedAssets = _swapDaiToAsset(receivedDai);
+        uint256 prevAssets = asset.balanceOf(address(this));
+        _swapDaiToAsset(receivedDai);
+        uint256 receivedAssets = asset.balanceOf(address(this)) - prevAssets;
         asset.safeTransfer(address(vault), receivedAssets);
         return receivedAssets;
     }
@@ -82,7 +86,7 @@ contract SDaiStrategy is AccessStrategy {
     /*//////////////////////////////////////////////////////////////
                               SWAP SLIPPAGE
     //////////////////////////////////////////////////////////////*/
-    uint256 public slippageBps = 5; // swap slippage bps
+    uint256 public slippageBps = 10; // swap slippage bps
 
     function setSlippageBps(uint256 _slippageBps) external {
         require(_slippageBps <= 10_000, "SDS: Invalid Slippage Bps");

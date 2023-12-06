@@ -4,7 +4,7 @@ pragma solidity =0.8.16;
 // See https://curve.readthedocs.io/exchange-deposits.html#curve-stableswap-exchange-deposit-contracts
 /*  solhint-disable func-name-mixedcase, var-name-mixedcase */
 
-interface ICurvePool {
+interface ICurvePoolCommon {
     function lp_token() external view returns (address);
 
     function add_liquidity(uint256[2] memory depositAmounts, uint256 minMintAmount)
@@ -22,9 +22,17 @@ interface ICurvePool {
 
     function calc_withdraw_one_coin(uint256 _token_amount, int128 i) external view returns (uint256);
     function get_virtual_price() external view returns (uint256);
-    function exchange(int128 x, int128 y, uint256 dx, uint256 min_dy) external returns (uint256);
+
     function get_dy(int128 x, int128 y, uint256 dx) external view returns (uint256);
+}
+
+interface ICurvePool is ICurvePoolCommon {
+    function exchange(int128 x, int128 y, uint256 dx, uint256 min_dy) external returns (uint256);
     // `uint` is used on base
     function exchange(uint256 x, uint256 y, uint256 dx, uint256 min_dy) external returns (uint256);
 }
-/*  solhint-disable func-name-mixedcase, var-name-mixedcase */
+
+interface ICurvePoolV2 is ICurvePoolCommon {
+    // some curve pool don't have any return
+    function exchange(int128 x, int128 y, uint256 dx, uint256 min_dy) external;
+}

@@ -95,7 +95,7 @@
     "name": "CURVE",
     "outputs": [
       {
-        "internalType": "contract ICurvePool",
+        "internalType": "contract ICurvePoolV2",
         "name": "",
         "type": "address"
       }
