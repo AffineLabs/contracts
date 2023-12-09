@@ -607,11 +607,6 @@
         "type": "address"
       },
       {
-        "internalType": "address",
-        "name": "forwarder",
-        "type": "address"
-      },
-      {
         "internalType": "contract ERC20",
         "name": "_asset",
         "type": "address"

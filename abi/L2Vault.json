@@ -1159,11 +1159,6 @@
         "type": "address"
       },
       {
-        "internalType": "address",
-        "name": "forwarder",
-        "type": "address"
-      },
-      {
         "internalType": "uint8[2]",
         "name": "layerRatios",
         "type": "uint8[2]"

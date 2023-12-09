@@ -43,7 +43,6 @@ contract L2Vault is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, Base
         address _wormholeRouter,
         L2BridgeEscrow _bridgeEscrow,
         EmergencyWithdrawalQueue _emergencyWithdrawalQueue,
-        address forwarder,
         uint8[2] memory layerRatios,
         uint256[2] memory fees,
         uint256[2] memory ewqParams

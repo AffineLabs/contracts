@@ -47,7 +47,6 @@ contract TwoAssetBasket is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeabl
 
     function initialize(
         address _governance,
-        address forwarder,
         ERC20 _asset,
         ERC20[2] memory _tokens,
         uint256[2] memory _ratios,
