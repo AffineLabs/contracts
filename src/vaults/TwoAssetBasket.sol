@@ -12,22 +12,16 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
-import {BaseRelayRecipient} from "@opengsn/contracts/src/BaseRelayRecipient.sol";
-
 import {AffineGovernable} from "src/utils/AffineGovernable.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 import {Dollar, DollarMath} from "src/libs/DollarMath.sol";
 import {DetailedShare} from "src/utils/Detailed.sol";
 
-contract TwoAssetBasket is
-    ERC20Upgradeable,
-    UUPSUpgradeable,
-    PausableUpgradeable,
-    BaseRelayRecipient,
-    DetailedShare,
-    AffineGovernable
-{
+// TODO: Fix this in constructor
+/*  solhint-disable reason-string, no-unused-vars */
+
+contract TwoAssetBasket is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, DetailedShare, AffineGovernable {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -64,7 +58,6 @@ contract TwoAssetBasket is
         __Pausable_init();
 
         governance = _governance;
-        _setTrustedForwarder(forwarder);
         (btc, weth) = (_tokens[0], _tokens[1]);
         asset = _asset;
         ratios = _ratios;
@@ -82,26 +75,6 @@ contract TwoAssetBasket is
     /*//////////////////////////////////////////////////////////////
                            META-TRANSACTIONS
     //////////////////////////////////////////////////////////////*/
-
-    function versionRecipient() external pure override returns (string memory) {
-        return "1";
-    }
-
-    function _msgSender() internal view override(ContextUpgradeable, BaseRelayRecipient) returns (address) {
-        return BaseRelayRecipient._msgSender();
-    }
-
-    function _msgData() internal view override(ContextUpgradeable, BaseRelayRecipient) returns (bytes calldata) {
-        return BaseRelayRecipient._msgData();
-    }
-
-    /**
-     * @notice Set the trusted forwarder address
-     * @param forwarder The new forwarder address
-     */
-    function setTrustedForwarder(address forwarder) external onlyGovernance {
-        _setTrustedForwarder(forwarder);
-    }
 
     function decimals() public pure override returns (uint8) {
         return 18;

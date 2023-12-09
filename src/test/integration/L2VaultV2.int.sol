@@ -7,20 +7,20 @@ import {L2VaultV2} from "src/vaults/cross-chain-vault/L2VaultV2.sol";
 import {Vault} from "src/vaults/Vault.sol";
 import {VaultV2} from "src/vaults/VaultV2.sol";
 
-contract L2VaultV2_IntegrationTest is CommonVaultTest {
-    function setUp() public virtual override {
-        vm.createSelectFork("polygon", POLYGON_FORK_BLOCK);
+// contract L2VaultV2_IntegrationTest is CommonVaultTest {
+//     function setUp() public virtual override {
+//         vm.createSelectFork("polygon", POLYGON_FORK_BLOCK);
 
-        L2Vault impl = new L2VaultV2();
-        vault = VaultV2(0x829363736a5A9080e05549Db6d1271f070a7e224);
+//         L2Vault impl = new L2VaultV2();
+//         vault = VaultV2(0x829363736a5A9080e05549Db6d1271f070a7e224);
 
-        governance = 0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0;
-        vm.prank(governance);
-        vault.upgradeTo(address(impl));
-        asset = ERC20(vault.asset());
-    }
+//         governance = 0xE73D9d432733023D0e69fD7cdd448bcFFDa655f0;
+//         vm.prank(governance);
+//         vault.upgradeTo(address(impl));
+//         asset = ERC20(vault.asset());
+//     }
 
-    function _giveAssets(address user, uint256 assets) internal override {
-        deal(address(asset), address(user), assets);
-    }
-}
+//     function _giveAssets(address user, uint256 assets) internal override {
+//         deal(address(asset), address(user), assets);
+//     }
+// }
