@@ -21,6 +21,7 @@ import {VaultErrors} from "src/libs/VaultErrors.sol";
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
  * strategy liquidation.
  */
+
 abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable {
     using SafeTransferLib for ERC20;
 
@@ -461,7 +462,6 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable {
         if (block.timestamp >= lastHarvest + LOCK_INTERVAL) {
             return 0;
         }
-
         uint256 unlockedProfit = (maxLockedProfit * (block.timestamp - lastHarvest)) / LOCK_INTERVAL;
         return maxLockedProfit - unlockedProfit;
     }
