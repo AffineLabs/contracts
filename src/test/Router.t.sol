@@ -67,7 +67,7 @@ contract L1RouterTest is TestPlus {
     function setUp() public {
         forkEth();
         vault = Deploy.deployL2Vault();
-        router = new Router("", address(0), weth);
+        router = new Router("", weth);
         uint256 slot = stdstore.target(address(vault)).sig("asset()").find();
         bytes32 tokenAddr = bytes32(uint256(uint160(address(weth))));
         vm.store(address(vault), bytes32(slot), tokenAddr);

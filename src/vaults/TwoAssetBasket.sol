@@ -12,16 +12,22 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
+import {DummyRelay} from "src/vaults/cross-chain-vault/DummyRelay.sol";
+
 import {AffineGovernable} from "src/utils/AffineGovernable.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 import {Dollar, DollarMath} from "src/libs/DollarMath.sol";
 import {DetailedShare} from "src/utils/Detailed.sol";
 
-// TODO: Fix this in constructor
-/*  solhint-disable reason-string, no-unused-vars */
-
-contract TwoAssetBasket is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeable, DetailedShare, AffineGovernable {
+contract TwoAssetBasket is
+    ERC20Upgradeable,
+    UUPSUpgradeable,
+    PausableUpgradeable,
+    DummyRelay,
+    DetailedShare,
+    AffineGovernable
+{
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -72,8 +78,17 @@ contract TwoAssetBasket is ERC20Upgradeable, UUPSUpgradeable, PausableUpgradeabl
     }
 
     /*//////////////////////////////////////////////////////////////
-                           META-TRANSACTIONS
+                       DUMMY-META-TRANSACTION SUPPORT
     //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Set the trusted forwarder address
+     * @param forwarder The new forwarder address
+     * @dev this is kept to keep the storage layout unchanged and gov can reset this memory
+     */
+    function setTrustedForwarder(address forwarder) external onlyGovernance {
+        _setTrustedForwarder(forwarder);
+    }
 
     function decimals() public pure override returns (uint8) {
         return 18;

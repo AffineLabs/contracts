@@ -7,11 +7,6 @@
         "type": "string"
       },
       {
-        "internalType": "address",
-        "name": "forwarder",
-        "type": "address"
-      },
-      {
         "internalType": "contract IWETH",
         "name": "_weth",
         "type": "address"
