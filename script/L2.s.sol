@@ -31,6 +31,8 @@ import {Base} from "./Base.sol";
 import {SslpV3} from "./DeltaNeutralLpV3.s.sol";
 import {IWETH} from "src/interfaces/IWETH.sol";
 
+import {L2USDEarnVault} from "src/vaults/custom/L2USDEarnVault.sol";
+
 /*  solhint-disable reason-string, no-console */
 contract Deploy is Script, Base {
     ICREATE3Factory create3;
@@ -150,5 +152,14 @@ contract Deploy is Script, Base {
         _deployBasket(config);
 
         vm.stopBroadcast();
+    }
+
+    function deployL2Impl() public {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+        console2.log("deployer %s", deployer);
+        L2USDEarnVault impl = new L2USDEarnVault();
+
+        console2.log("L2 vault impl address %s", address(impl));
     }
 }

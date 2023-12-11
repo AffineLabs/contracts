@@ -39,9 +39,15 @@ contract CompoundV3Test is TestPlus {
 
         address[] memory strategists = new address[](1);
         strategists[0] = address(this);
-        strategy = new CompoundV3Strategy(
-           {_vault: AffineVault(address(vault)), _cToken: IComet(cTokenAddr), _rewards: rewards,  _comp: comp, _weth: weth ,  _router: router ,  strategists: strategists}
-        );
+        strategy = new CompoundV3Strategy({
+            _vault: AffineVault(address(vault)),
+            _cToken: IComet(cTokenAddr),
+            _rewards: rewards,
+            _comp: comp,
+            _weth: weth,
+            _router: router,
+            strategists: strategists
+        });
     }
 
     function depositOneUSDCToVault() internal {
