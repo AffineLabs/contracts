@@ -2,14 +2,12 @@
 pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {ERC721} from "solmate/src/tokens/ERC721.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import {MathUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
 import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
@@ -21,9 +19,6 @@ import {L2WormholeRouter} from "./wormhole/L2WormholeRouter.sol";
 import {IERC4626} from "src/interfaces/IERC4626.sol";
 import {EmergencyWithdrawalQueue} from "./EmergencyWithdrawalQueue.sol";
 import {VaultErrors} from "src/libs/VaultErrors.sol";
-
-// TODO: Fix this in constructor
-/*  solhint-disable reason-string, no-unused-vars */
 
 /**
  * @notice An L2 vault. This is a cross-chain vault, i.e. some funds deposited here will be moved to L1 for investment.
