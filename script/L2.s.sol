@@ -31,6 +31,8 @@ import {Base} from "./Base.sol";
 import {SslpV3} from "./DeltaNeutralLpV3.s.sol";
 import {IWETH} from "src/interfaces/IWETH.sol";
 
+import {L2USDEarnVault} from "src/vaults/custom/L2USDEarnVault.sol";
+
 /*  solhint-disable reason-string, no-console */
 contract Deploy is Script, Base {
     ICREATE3Factory create3;
@@ -44,8 +46,7 @@ contract Deploy is Script, Base {
         Base.L2Config memory config,
         L2WormholeRouter router,
         L2BridgeEscrow escrow,
-        EmergencyWithdrawalQueue queue,
-        Forwarder forwarder
+        EmergencyWithdrawalQueue queue
     ) internal returns (L2Vault vault) {
         // Deploy Vault
         L2Vault impl = new L2Vault();
@@ -56,17 +57,7 @@ contract Deploy is Script, Base {
 
         bytes memory initData = abi.encodeCall(
             L2Vault.initialize,
-            (
-                config.governance,
-                ERC20(config.usdc),
-                address(router),
-                escrow,
-                queue,
-                address(forwarder),
-                [9, 1],
-                fees,
-                ewqParams
-            )
+            (config.governance, ERC20(config.usdc), address(router), escrow, queue, [9, 1], fees, ewqParams)
         );
 
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
@@ -79,13 +70,12 @@ contract Deploy is Script, Base {
         require(vault.ewqMinFee() == config.ewqMinFee && vault.ewqMinAssets() == config.ewqMinAssets);
     }
 
-    function _deployBasket(Base.L2Config memory config, Forwarder forwarder) internal {
+    function _deployBasket(Base.L2Config memory config) internal {
         TwoAssetBasket basketImpl = new TwoAssetBasket();
         bytes memory basketInitData = abi.encodeCall(
             TwoAssetBasket.initialize,
             (
                 config.governance,
-                address(forwarder),
                 ERC20(config.usdc),
                 [ERC20(config.wbtc), ERC20(config.weth)],
                 [uint256(1), uint256(1)], // ratios
@@ -136,9 +126,8 @@ contract Deploy is Script, Base {
         L2BridgeEscrow escrow = L2BridgeEscrow(create3.getDeployed(deployer, escrowSalt));
         L2WormholeRouter router = L2WormholeRouter(create3.getDeployed(deployer, routerSalt));
         EmergencyWithdrawalQueue queue = EmergencyWithdrawalQueue(create3.getDeployed(deployer, ewqSalt));
-        Forwarder forwarder = new Forwarder();
 
-        L2Vault vault = _deployVault(config, router, escrow, queue, forwarder);
+        L2Vault vault = _deployVault(config, router, escrow, queue);
 
         // Deploy helper contracts (escrow, router, and ewq)
         create3.deploy(escrowSalt, abi.encodePacked(type(L2BridgeEscrow).creationCode, abi.encode(address(vault))));
@@ -156,12 +145,21 @@ contract Deploy is Script, Base {
         require(queue.vault() == vault);
 
         // Deploy Router
-        Router router4626 = new Router("affine-router-v1", address(forwarder), IWETH(address(0)));
-        require(router4626.trustedForwarder() == address(forwarder));
+        Router router4626 = new Router("affine-router-v1", IWETH(address(0)));
+        console2.log("Router add %s", address(router4626));
 
         // Deploy TwoAssetBasket
-        _deployBasket(config, forwarder);
+        _deployBasket(config);
 
         vm.stopBroadcast();
+    }
+
+    function deployL2Impl() public {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+        console2.log("deployer %s", deployer);
+        L2USDEarnVault impl = new L2USDEarnVault();
+
+        console2.log("L2 vault impl address %s", address(impl));
     }
 }

@@ -61,7 +61,7 @@ contract Deploy is Script, Base {
         console2.log("weth: %s", weth);
 
         _start();
-        Router router = new Router("affine-router-v2", address(0), IWETH(weth));
+        Router router = new Router("affine-router-v2", IWETH(weth));
         console2.log("router weth: %s", address(router.weth()));
     }
 }

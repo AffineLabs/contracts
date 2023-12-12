@@ -36,13 +36,7 @@ contract TestBeefyPearlWithStrategyVault is TestPlus {
     function setupBeefyPearlEpochStrategy() public {
         address[] memory strategists = new address[](1);
         strategists[0] = address(this);
-        strategy = new BeefyPearlEpochStrategy(
-            vault, 
-            beefy,
-            router,
-            token1,
-            strategists
-        );
+        strategy = new BeefyPearlEpochStrategy(vault, beefy, router, token1, strategists);
     }
 
     function setUp() public {

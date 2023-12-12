@@ -2,19 +2,17 @@
 pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {ERC721} from "solmate/src/tokens/ERC721.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import {MathUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
-import {BaseRelayRecipient} from "@opengsn/contracts/src/BaseRelayRecipient.sol";
-
 import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {DummyRelay} from "src/vaults/cross-chain-vault/DummyRelay.sol";
+
 import {L2BridgeEscrow} from "./escrow/L2BridgeEscrow.sol";
 import {DetailedShare} from "src/utils/Detailed.sol";
 import {L2WormholeRouter} from "./wormhole/L2WormholeRouter.sol";
@@ -27,12 +25,13 @@ import {VaultErrors} from "src/libs/VaultErrors.sol";
  * @dev This vault is ERC4626 compliant. See the EIP description here: https://eips.ethereum.org/EIPS/eip-4626.
  * @author Affine Devs. Inspired by OpenZeppelin and Rari-Capital.
  */
+
 contract L2Vault is
     ERC20Upgradeable,
     UUPSUpgradeable,
     PausableUpgradeable,
     BaseVault,
-    BaseRelayRecipient,
+    DummyRelay, // dummy relay to keep the storage layout unchanged.
     DetailedShare,
     IERC4626
 {
@@ -50,7 +49,6 @@ contract L2Vault is
         address _wormholeRouter,
         L2BridgeEscrow _bridgeEscrow,
         EmergencyWithdrawalQueue _emergencyWithdrawalQueue,
-        address forwarder,
         uint8[2] memory layerRatios,
         uint256[2] memory fees,
         uint256[2] memory ewqParams
@@ -69,7 +67,6 @@ contract L2Vault is
         lastTVLUpdate = uint128(block.timestamp);
 
         _grantRole(GUARDIAN_ROLE, _governance);
-        _setTrustedForwarder(forwarder);
 
         withdrawalFee = fees[0];
         managementFee = fees[1];
@@ -81,24 +78,13 @@ contract L2Vault is
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
     /*//////////////////////////////////////////////////////////////
-                        META-TRANSACTION SUPPORT
+                       DUMMY-META-TRANSACTION SUPPORT
     //////////////////////////////////////////////////////////////*/
-
-    function _msgSender() internal view override(ContextUpgradeable, BaseRelayRecipient) returns (address) {
-        return BaseRelayRecipient._msgSender();
-    }
-
-    function _msgData() internal view override(ContextUpgradeable, BaseRelayRecipient) returns (bytes calldata) {
-        return BaseRelayRecipient._msgData();
-    }
-
-    function versionRecipient() external pure override returns (string memory) {
-        return "1";
-    }
 
     /**
      * @notice Set the trusted forwarder address
      * @param forwarder The new forwarder address
+     * @dev this is kept to keep the storage layout unchanged and gov can reset this memory
      */
     function setTrustedForwarder(address forwarder) external onlyGovernance {
         _setTrustedForwarder(forwarder);

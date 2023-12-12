@@ -18,7 +18,7 @@ import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
 import {TestStrategy} from "./mocks/TestStrategy.sol";
 import {VaultErrors} from "src/libs/VaultErrors.sol";
 
-import "forge-std/console2.sol";
+import {console2} from "forge-std/console2.sol";
 
 contract MockNft is ERC721 {
     constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {}
@@ -47,7 +47,7 @@ contract CommonVaultTest is TestPlus {
     }
 
     function _getRemainingVaultTvlCap() internal virtual returns (uint256) {
-        return type(uint256).max;
+        return type(uint104).max;
     }
 
     function _giveAssets(address user, uint256 assets) internal virtual {
@@ -101,7 +101,8 @@ contract CommonVaultTest is TestPlus {
     );
 
     /// @notice Test redeeming after deposit.
-    function testDepositRedeem(uint64 amountAsset) public {
+    function testDepositRedeem(uint256 amountAsset) public {
+        // uint256 amountAsset = 34726741556481429907439559283666110;
         vm.assume(amountAsset > 99 && amountAsset <= _getRemainingVaultTvlCap());
         // Running into overflow issues on the call to vault.redeem
         address user = address(this);

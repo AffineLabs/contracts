@@ -28,7 +28,7 @@ contract BtcEthBasketTest is TestPlus {
         forkPolygon();
 
         basket = Deploy.deployTwoAssetBasket(usdc);
-        router = new Router("Alp", 0x52c8e413Ed9E961565D8D1de67e805E81b26C01b, IWETH(address(0)));
+        router = new Router("Alp", IWETH(address(0)));
         btc = basket.btc();
         weth = basket.weth();
     }

@@ -39,13 +39,7 @@ contract TestBeefyAeroStrategy is TestPlus {
     function setupBeefyStrategy() public virtual {
         address[] memory strategists = new address[](1);
         strategists[0] = address(this);
-        strategy = new BeefyAeroStrategy(
-            vault, 
-            beefy,
-            router,
-            token1,
-            strategists
-        );
+        strategy = new BeefyAeroStrategy(vault, beefy, router, token1, strategists);
     }
 
     function setUp() public virtual {

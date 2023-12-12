@@ -29,7 +29,7 @@ contract L2VaultTest is TestPlus {
     uint256 ewqMinFee;
     uint256 ewqMinAssets;
 
-    function setUp() public {
+    function setUp() public virtual {
         _deployVault();
         asset = MockERC20(vault.asset());
         vault.setMockRebalanceDelta(0);

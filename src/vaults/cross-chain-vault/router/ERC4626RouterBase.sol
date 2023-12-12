@@ -5,10 +5,9 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {IERC4626} from "src/interfaces/IERC4626.sol";
 import {Multicallable} from "solady/src/utils/Multicallable.sol";
-import {BaseRelayRecipient} from "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
 /// @title ERC4626 Router Base Contract
-abstract contract ERC4626RouterBase is Multicallable, BaseRelayRecipient {
+abstract contract ERC4626RouterBase is Multicallable {
     using SafeTransferLib for ERC20;
 
     error MinAmountError();
@@ -50,7 +49,7 @@ abstract contract ERC4626RouterBase is Multicallable, BaseRelayRecipient {
         virtual
         returns (uint256 sharesOut)
     {
-        if ((sharesOut = vault.withdraw(amount, to, _msgSender())) > maxSharesOut) {
+        if ((sharesOut = vault.withdraw(amount, to, msg.sender)) > maxSharesOut) {
             revert MaxSharesError();
         }
     }
@@ -61,7 +60,7 @@ abstract contract ERC4626RouterBase is Multicallable, BaseRelayRecipient {
         virtual
         returns (uint256 amountOut)
     {
-        if ((amountOut = vault.redeem(shares, to, _msgSender())) < minAmountOut) {
+        if ((amountOut = vault.redeem(shares, to, msg.sender)) < minAmountOut) {
             revert MinAmountError();
         }
     }

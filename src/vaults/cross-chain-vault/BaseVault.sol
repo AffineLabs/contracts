@@ -7,12 +7,9 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
-import {Multicallable} from "solady/src/utils/Multicallable.sol";
-
 import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
 import {AffineGovernable} from "src/utils/AffineGovernable.sol";
 import {BridgeEscrow} from "./escrow/BridgeEscrow.sol";
-import {WormholeRouter} from "./wormhole/WormholeRouter.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
 import {VaultErrors} from "src/libs/VaultErrors.sol";
 
@@ -21,6 +18,7 @@ import {VaultErrors} from "src/libs/VaultErrors.sol";
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
  * strategy liquidation.
  */
+
 abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable {
     using SafeTransferLib for ERC20;
 
@@ -461,7 +459,6 @@ abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable {
         if (block.timestamp >= lastHarvest + LOCK_INTERVAL) {
             return 0;
         }
-
         uint256 unlockedProfit = (maxLockedProfit * (block.timestamp - lastHarvest)) / LOCK_INTERVAL;
         return maxLockedProfit - unlockedProfit;
     }

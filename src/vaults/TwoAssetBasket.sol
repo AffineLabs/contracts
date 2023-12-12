@@ -9,10 +9,8 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
-import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
-import {BaseRelayRecipient} from "@opengsn/contracts/src/BaseRelayRecipient.sol";
+import {DummyRelay} from "src/vaults/cross-chain-vault/DummyRelay.sol";
 
 import {AffineGovernable} from "src/utils/AffineGovernable.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
@@ -24,7 +22,7 @@ contract TwoAssetBasket is
     ERC20Upgradeable,
     UUPSUpgradeable,
     PausableUpgradeable,
-    BaseRelayRecipient,
+    DummyRelay,
     DetailedShare,
     AffineGovernable
 {
@@ -53,7 +51,6 @@ contract TwoAssetBasket is
 
     function initialize(
         address _governance,
-        address forwarder,
         ERC20 _asset,
         ERC20[2] memory _tokens,
         uint256[2] memory _ratios,
@@ -64,7 +61,6 @@ contract TwoAssetBasket is
         __Pausable_init();
 
         governance = _governance;
-        _setTrustedForwarder(forwarder);
         (btc, weth) = (_tokens[0], _tokens[1]);
         asset = _asset;
         ratios = _ratios;
@@ -80,24 +76,13 @@ contract TwoAssetBasket is
     }
 
     /*//////////////////////////////////////////////////////////////
-                           META-TRANSACTIONS
+                       DUMMY-META-TRANSACTION SUPPORT
     //////////////////////////////////////////////////////////////*/
-
-    function versionRecipient() external pure override returns (string memory) {
-        return "1";
-    }
-
-    function _msgSender() internal view override(ContextUpgradeable, BaseRelayRecipient) returns (address) {
-        return BaseRelayRecipient._msgSender();
-    }
-
-    function _msgData() internal view override(ContextUpgradeable, BaseRelayRecipient) returns (bytes calldata) {
-        return BaseRelayRecipient._msgData();
-    }
 
     /**
      * @notice Set the trusted forwarder address
      * @param forwarder The new forwarder address
+     * @dev this is kept to keep the storage layout unchanged and gov can reset this memory
      */
     function setTrustedForwarder(address forwarder) external onlyGovernance {
         _setTrustedForwarder(forwarder);

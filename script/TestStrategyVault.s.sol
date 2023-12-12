@@ -43,23 +43,23 @@ library SSV {
         uint256 collateralToBorrowRatioBps
     ) internal returns (SSVDeltaNeutralLp strategy) {
         strategy = new SSVDeltaNeutralLp(
-        vault,
-        LendingInfo({
-            pool: ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9),
-            borrow: ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), // weth
-            priceFeed: AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419), // eth-usdc feed
-            assetToDepositRatioBps: assetToDepositRatioBps,
-            collateralToBorrowRatioBps: collateralToBorrowRatioBps
-        }),
-        LpInfo({
-            router: IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F),
-            masterChef: IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd), // MasterChef
-            masterChefPid: 1, // Masterchef PID for WETH/USDC
-            useMasterChefV2: false, // use MasterChefV2 interface
-            sushiToken: ERC20(0x6B3595068778DD592e39A122f4f5a5cF09C90fE2),
-            pool: IUniswapV3Pool(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640) // 5 bps pool (gets most volume)
-        }),
-        _getStrategists()
+            vault,
+            LendingInfo({
+                pool: ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9),
+                borrow: ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), // weth
+                priceFeed: AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419), // eth-usdc feed
+                assetToDepositRatioBps: assetToDepositRatioBps,
+                collateralToBorrowRatioBps: collateralToBorrowRatioBps
+            }),
+            LpInfo({
+                router: IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F),
+                masterChef: IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd), // MasterChef
+                masterChefPid: 1, // Masterchef PID for WETH/USDC
+                useMasterChefV2: false, // use MasterChefV2 interface
+                sushiToken: ERC20(0x6B3595068778DD592e39A122f4f5a5cF09C90fE2),
+                pool: IUniswapV3Pool(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640) // 5 bps pool (gets most volume)
+            }),
+            _getStrategists()
         );
     }
 
