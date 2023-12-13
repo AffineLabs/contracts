@@ -14,15 +14,15 @@ import {IConvexBooster, IConvexRewards} from "src/interfaces/convex.sol";
 
 library DeployLib {
     function deployMim3Crv(AffineVault vault) internal returns (ConvexStrategy strategy) {
-        strategy = new ConvexStrategy(
-            {_vault: vault, 
+        strategy = new ConvexStrategy({
+            _vault: vault,
             _assetIndex: 2,
-            _isMetaPool: true, 
+            _isMetaPool: true,
             _curvePool: ICurvePool(0x5a6A4D54456819380173272A5E8E9B9904BdF41B),
-            _zapper:I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359),
+            _zapper: I3CrvMetaPoolZap(0xA79828DF1850E8a3A3064576f380D90aECDD3359),
             _convexPid: 40,
             strategists: _getStrategists()
-            });
+        });
     }
 
     function _getStrategists() internal pure returns (address[] memory strategists) {

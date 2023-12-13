@@ -30,14 +30,7 @@ library BeefyLib {
         IBeefyVault beefy = IBeefyVault(0x2520D50bfD793D3C757900D81229422F70171969);
         StrategyVault vault = StrategyVault(0x684D1dbd30c67Fe7fF6D502A04e0E7076b4b9D46);
 
-        strategy = new BeefyEpochStrategy(
-            vault, 
-            pool,
-            zapper,
-            2,
-            beefy,
-            _getStrategists()
-        );
+        strategy = new BeefyEpochStrategy(vault, pool, zapper, 2, beefy, _getStrategists());
     }
 
     function deployBeefyPearlStrategy() internal returns (BeefyPearlEpochStrategy strategy) {
@@ -46,13 +39,7 @@ library BeefyLib {
         ERC20 token1 = ERC20(0x40379a439D4F6795B6fc9aa5687dB461677A2dBa); // usdr
         StrategyVault vault = StrategyVault(0x684D1dbd30c67Fe7fF6D502A04e0E7076b4b9D46);
 
-        strategy = new BeefyPearlEpochStrategy(
-            vault, 
-            beefy,
-            router,
-            token1,
-            _getStrategists()
-        );
+        strategy = new BeefyPearlEpochStrategy(vault, beefy, router, token1, _getStrategists());
     }
 
     function deployBeefyAeroStrategy() internal returns (BeefyAeroStrategy strategy) {
@@ -60,13 +47,7 @@ library BeefyLib {
         IBeefyVault beefy = IBeefyVault(0x8aeDd79BC918722d4948502b18deceaBeD60d044);
         ERC20 token1 = ERC20(0x9483ab65847A447e36d21af1CaB8C87e9712ff93); // wusdr
         VaultV2 vault = VaultV2(0xcb3f73F228B8980ec0766735b8F5551935556354);
-        strategy = new BeefyAeroStrategy(
-            vault, 
-            beefy,
-            router,
-            token1,
-            _getStrategists()
-        );
+        strategy = new BeefyAeroStrategy(vault, beefy, router, token1, _getStrategists());
     }
 }
 

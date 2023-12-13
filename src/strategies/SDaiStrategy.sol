@@ -14,7 +14,6 @@ import {ISavingsDai} from "src/interfaces/maker/ISavingsDai.sol";
 
 contract SDaiStrategy is AccessStrategy {
     using SafeTransferLib for ERC20;
-    using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
     using SlippageUtils for uint256;
 

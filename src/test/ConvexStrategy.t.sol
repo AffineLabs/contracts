@@ -30,15 +30,15 @@ contract ConvexStratTest is TestPlus {
         address[] memory strategists = new address[](1);
         strategists[0] = address(this);
 
-        strat = new ConvexStrategy(
-            {_vault: vault, 
+        strat = new ConvexStrategy({
+            _vault: vault,
             _assetIndex: 1,
-            _isMetaPool: false, 
+            _isMetaPool: false,
             _curvePool: ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2),
             _zapper: I3CrvMetaPoolZap(address(0)),
             _convexPid: 100,
             strategists: strategists
-            });
+        });
     }
 
     function setUp() public {

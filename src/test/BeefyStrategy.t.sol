@@ -39,7 +39,7 @@ contract TestBeefyStrategy is TestPlus {
         address[] memory strategists = new address[](1);
         strategists[0] = address(this);
         strategy = new BeefyStrategy(
-            vault, 
+            vault,
             pool,
             zapper,
             2, // assetIndex
