@@ -100,7 +100,7 @@ contract SDaiStrategy is AccessStrategy {
         return getSwapAmount(C_DAI_IDX, C_ASSET_IDX, daiAmount);
     }
 
-    function totalLockedValue() external virtual override returns (uint256) {
+    function totalLockedValue() public view override returns (uint256) {
         return _investedAssets();
     }
 }

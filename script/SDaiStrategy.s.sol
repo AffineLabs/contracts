@@ -33,4 +33,10 @@ contract Deploy is Script, Base {
 
         require(address(strategy.asset()) == address(vault.asset()), "Invalid asset");
     }
+
+    function invest() external {
+        _start();
+        TestSDaiStrategy strategy = TestSDaiStrategy(0xbE3f72A4EE3CCD083E931d3ae1EDeC4240cF762A);
+        console2.log("strategy bol %s", strategy.totalLockedValue());
+    }
 }
