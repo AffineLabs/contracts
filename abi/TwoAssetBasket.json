@@ -789,6 +789,19 @@
   {
     "inputs": [
       {
+        "internalType": "bytes",
+        "name": "users",
+        "type": "bytes"
+      }
+    ],
+    "name": "tearDown",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "contract ERC20",
         "name": "",
         "type": "address"
