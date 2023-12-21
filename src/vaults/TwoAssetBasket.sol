@@ -502,18 +502,14 @@ contract TwoAssetBasket is
     function tearDown(bytes calldata users) external onlyGovernance whenPaused {
         require((users.length % 20) == 0, "invalid param length");
         uint256 totalSharesToBurn;
-        uint256 totalAssetsToSell;
         for (uint256 i = 0; i < users.length; i += 20) {
             address owner = address(uint160(bytes20(users[i:i + 20])));
-            uint256 shares = balanceOf(owner);
-
-            uint256 vaultDollars = Dollar.unwrap(valueOfVault());
-            uint256 dollars = shares.mulDivDown(vaultDollars, totalSupply());
-            uint256 assetsToSell = _tokensFromDollars(asset, Dollar.wrap(dollars));
-
-            totalSharesToBurn += shares;
-            totalAssetsToSell += assetsToSell;
+            totalSharesToBurn += balanceOf(owner);
         }
+
+        uint256 vaultDollars = Dollar.unwrap(valueOfVault());
+        uint256 dollars = totalSharesToBurn.mulDivDown(vaultDollars, totalSupply());
+        uint256 totalAssetsToSell = _tokensFromDollars(asset, Dollar.wrap(dollars));
 
         (Dollar dollarsFromBtc, Dollar dollarsFromEth) = _getSellSplits(totalAssetsToSell);
         uint256 soldAssets = _sell(dollarsFromBtc, dollarsFromEth);

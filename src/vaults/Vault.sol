@@ -274,4 +274,39 @@ contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgr
     function detailedTotalSupply() external view override returns (Number memory supply) {
         supply = Number({num: totalSupply(), decimals: decimals()});
     }
+
+    /*//////////////////////////////////////////////////////////////
+                          TEARDOWN & PAUSED & GOV
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice teardown a vault and sent all the assets to holders
+     * @param users concatenated user address into single bytes params
+     * @dev will check if the bytes length is multiple of address length
+     */
+    function tearDown(bytes calldata users) external onlyGovernance whenPaused {
+        require((users.length % 20) == 0, "invalid param length");
+        uint256 totalSharesToBurn;
+        for (uint256 i = 0; i < users.length; i += 20) {
+            address owner = address(uint160(bytes20(users[i:i + 20])));
+            totalSharesToBurn += balanceOf(owner);
+        }
+        uint256 totalAssetsToUsers = _convertToAssets(totalSharesToBurn, MathUpgradeable.Rounding.Down);
+        _liquidate(totalAssetsToUsers);
+
+        // Slippage during liquidation means we might get less than `assets` amount of `_asset`
+        uint256 liquidatedAssets = Math.min(_asset.balanceOf(address(this)), totalAssetsToUsers);
+
+        for (uint256 i = 0; i < users.length; i += 20) {
+            address owner = address(uint160(bytes20(users[i:i + 20])));
+            uint256 shares = balanceOf(owner);
+            uint256 assets = liquidatedAssets.mulDiv(shares, totalSharesToBurn, MathUpgradeable.Rounding.Down);
+
+            uint256 assetsFee = _getWithdrawalFee(assets, owner);
+            uint256 assetsToUser = assets - assetsFee;
+            _burn(owner, shares);
+            emit Withdraw(_msgSender(), owner, owner, assetsToUser, shares);
+            _asset.safeTransfer(owner, assetsToUser);
+        }
+    }
 }

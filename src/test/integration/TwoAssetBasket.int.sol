@@ -551,6 +551,7 @@ contract TwoAssetBasketTearDownTest is TestPlus {
         for (uint256 i = 0; i < users.length; i++) {
             if (shouldReceive[i] > 1e6) {
                 assertApproxEqRel(shouldReceive[i], asset.balanceOf(users[i]) - oldAssets[i], 0.1e18);
+                assertTrue(vault.balanceOf(users[i]) == 0);
             }
         }
     }
