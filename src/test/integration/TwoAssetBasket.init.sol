@@ -6,12 +6,52 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
 import {console2} from "forge-std/console2.sol";
 
+contract TwoAssetBasket_UpgradeIntegrationStorageTest is TestPlus {
+    TwoAssetBasket vault;
+    ERC20 asset;
+
+    function setUp() public {
+        vm.createSelectFork("polygon", 51_364_628);
+
+        vault = TwoAssetBasket(0x1F9b1057cd93fb2d07d18810903B791b56acc2E1);
+        governance = vault.governance();
+        asset = ERC20(vault.asset());
+    }
+
+    function _upgrade() internal {
+        TwoAssetBasket impl = new TwoAssetBasket();
+        vm.prank(governance);
+        vault.upgradeTo(address(impl));
+    }
+
+    function testStorageValueCheck() public {
+        // check storage value from reading public functions
+        address vaultAsset = address(vault.asset());
+        string memory name = vault.name();
+        string memory symbol = vault.symbol();
+        uint256 totalSupply = vault.totalSupply();
+        address btc = address(vault.btc());
+        address weth = address(vault.weth());
+        address gov = vault.governance();
+
+        _upgrade();
+
+        assertTrue(vaultAsset == address(vault.asset()));
+        assertEq(name, vault.name());
+        assertEq(symbol, vault.symbol());
+        assertTrue(totalSupply == vault.totalSupply());
+        assertTrue(btc == address(vault.btc()));
+        assertTrue(weth == address(vault.weth()));
+        assertTrue(gov == address(vault.governance()));
+    }
+}
+
 contract TwoAssetBasketTearDownTest is TestPlus {
     TwoAssetBasket vault;
     ERC20 asset;
 
     function setUp() public {
-        vm.createSelectFork("polygon", 50_951_000);
+        vm.createSelectFork("polygon", 51_364_628);
 
         vault = TwoAssetBasket(0x1F9b1057cd93fb2d07d18810903B791b56acc2E1);
         governance = vault.governance();
@@ -28,7 +68,8 @@ contract TwoAssetBasketTearDownTest is TestPlus {
         _upgrade();
         vm.prank(governance);
         vault.pause();
-        address[448] memory users = [
+        address[452] memory users = [
+            0x0FBeABcaFCf817d47E10a7bCFC15ba194dbD4EEF,
             0x7b303Ed0c6B088E0c0D74f6227b11CF928301075,
             0x553222B267bC978ACa3C28493AEf72d924b264BD,
             0xc55ee0528a58e198cb815Dcd0c8Fa5D48585db96,
@@ -41,7 +82,6 @@ contract TwoAssetBasketTearDownTest is TestPlus {
             0x6b17d279dc4f544F7f3B93346827D5B51fa84b0C,
             0xf2DC787F600e1180bea8319A9CDb579F4a7D084e,
             0x11e8C073f377A8dab78B6897616efCbEA19dfd9f,
-            0x6E49A2696E07091E757037d27eB8db7702071ABe,
             0x91a0CaCb38470B50E3117F114762F605C06A1c08,
             0x6D23d81A9054999796e327D07A0Cd3364F1fBfF8,
             0xfb7A5DADe103Cd882587cDB2887eE9c5eAb1cE70,
@@ -131,11 +171,15 @@ contract TwoAssetBasketTearDownTest is TestPlus {
             0x1930b7F236d94E872A0b9DED104Ba092D85A3856,
             0xAD68138D11aA238D59386bA9639D8767636b6e85,
             0x1bb216120E8F939f520C610Bdc3C88aDAc4b06f7,
+            0x61A95082f763AD1C6D2891B66ff00De384918B15,
             0xDdAe9f1Ff3bfBc908DcB269F8c1A24aa711F0478,
+            0x32A538D59CB0485f742e296F1F0B192823feA671,
             0xF504943CC81c00E784d1477F7B307e90F1a0b2d8,
+            0x7E89adc861ca2ea9a054d03bB09056aDE3ccE260,
             0xD4135ABc925a49F82e64953CE4A29dDA5710E196,
             0x5a5d5e19EA0cf1A7Ee89f99BA6143C8682DFEcF3,
             0xa47d7e254565cE23114bbB450AC63ADCDeEF6AA5,
+            0xc0f8f0b91e4cACE6d460E2eFc8794e744aBE5E6D,
             0x7D3041492348A4b2D66DD1E7a3B42F93E7dA0004,
             0x990f814fD3262496Da6e15D3e6308e70997c2BBb,
             0x79Bdda65C706CBdA69C0AD4C8da1d3e91724f48D,
@@ -159,6 +203,7 @@ contract TwoAssetBasketTearDownTest is TestPlus {
             0x480d8600b0b2D0E2B772Eb68F25d32c7e6D91B7B,
             0xb4dA2aB44E2f418F3d5027E602e409aD9113C6bf,
             0x37b0352665BAe2C0A9Dd46ab909f1129A3FD5528,
+            0x6E49A2696E07091E757037d27eB8db7702071ABe,
             0xb0A198Fa79937C594000819312aA57D04a0E477f,
             0x96e1877e833a3297326178625028eab7FD57ff71,
             0xD554D2Bb67bE576913c5B8b0155aE1e2D6C5A496,
@@ -171,7 +216,6 @@ contract TwoAssetBasketTearDownTest is TestPlus {
             0x4450dB99260EC3140B4690F1c6bDd64d5d9644A9,
             0xff88287579C9fA12937c821AfAcFd47EE9e60dcE,
             0xcFB779CEaE93808163df90c18c41aE7566d7faF6,
-            0x0FBeABcaFCf817d47E10a7bCFC15ba194dbD4EEF,
             0xb122EEC4a3A051d90330ddB6C1b7577cef342313,
             0x66d5d99C831D0222e1E4EFb990B75Dd5cA145068,
             0x43Eac8263d817136f5bf406689718FBE7e4528E5,
@@ -479,12 +523,35 @@ contract TwoAssetBasketTearDownTest is TestPlus {
             0x60b771E420f62e2c28737aEaEc7d1E547b64C450
         ];
 
-        bytes memory data = abi.encodePacked(users[0]);
+        bytes memory data;
 
-        for (uint256 i = 1; i < users.length; i++) {
-            data = bytes.concat(data, abi.encodePacked(users[i]));
+        uint256[] memory oldAssets = new uint256[](users.length);
+        uint256[] memory shouldReceive = new uint256[](users.length);
+
+        uint256 price = vault.detailedPrice().num;
+        uint256 priceDecimals = vault.detailedPrice().decimals;
+
+        uint256 count = 0;
+
+        for (uint256 i = 0; i < users.length; i++) {
+            oldAssets[i] = asset.balanceOf(users[i]);
+            shouldReceive[i] = vault.balanceOf(users[i]) * price * (10 ** asset.decimals());
+            shouldReceive[i] /= ((10 ** vault.decimals()) * (10 ** priceDecimals));
+
+            if (shouldReceive[i] > 1e6) {
+                data = bytes.concat(data, abi.encodePacked(users[i]));
+                count++;
+            }
         }
         vm.prank(governance);
         vault.tearDown(data);
+
+        console2.log("vault tvl %s %s %s", vault.detailedTVL().num, vault.detailedTVL().decimals, count);
+
+        for (uint256 i = 0; i < users.length; i++) {
+            if (shouldReceive[i] > 1e6) {
+                assertApproxEqRel(shouldReceive[i], asset.balanceOf(users[i]) - oldAssets[i], 0.1e18);
+            }
+        }
     }
 }
