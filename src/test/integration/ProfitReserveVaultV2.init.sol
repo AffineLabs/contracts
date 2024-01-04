@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-import {CommonVaultTest, ERC20, TestPlus} from "src/test/CommonVault.t.sol";
+import {CommonVaultTest, ERC20, TestPlus, VaultV2} from "src/test/CommonVault.t.sol";
 import {Vault} from "src/vaults/Vault.sol";
 import {ProfitReserveVaultV2} from "src/vaults/ProfitReserveVaultV2.sol";
 
@@ -51,7 +51,7 @@ contract ProfResStEthLev_IntegrationTest is ProfitReserveVaultV2_IntegrationTest
 }
 
 abstract contract ReserveProfit_UpgradeIntegrationStorageTest is TestPlus {
-    ProfitReserveVaultV2 vault;
+    VaultV2 vault;
     ERC20 asset;
 
     function _fork() internal virtual {}
@@ -86,6 +86,8 @@ abstract contract ReserveProfit_UpgradeIntegrationStorageTest is TestPlus {
         address accessNft = address(vault.accessNft());
         uint256 accumulatedPerformanceFee = vault.accumulatedPerformanceFee();
         address _gov = vault.governance();
+        uint256 tvl = vault.vaultTVL();
+        // vault.profitReserveBps();
 
         _upgrade();
 
@@ -102,6 +104,7 @@ abstract contract ReserveProfit_UpgradeIntegrationStorageTest is TestPlus {
         assertEq(accessNft, address(vault.accessNft()));
         assertTrue(accumulatedPerformanceFee == vault.accumulatedPerformanceFee());
         assertEq(_gov, vault.governance());
+        assertEq(tvl, vault.vaultTVL());
     }
 }
 
