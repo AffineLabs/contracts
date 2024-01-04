@@ -5,12 +5,15 @@ import {Script, console2} from "forge-std/Script.sol";
 
 import {VaultV2} from "src/vaults/VaultV2.sol";
 import {EthVaultV2} from "src/vaults/EthVaultV2.sol";
+import {ProfitReserveEthVaultV2} from "src/vaults/ProfitReserveEthVaultV2.sol";
 
 /* solhint-disable reason-string, no-console */
 
 contract LevStakingV2Poly is VaultV2 {}
 
 contract LevStakingV2Eth is EthVaultV2 {}
+
+contract ProfitReserveLevEthStakingV2 is ProfitReserveEthVaultV2 {}
 
 contract Deploy is Script {
     function run() external {
@@ -26,6 +29,14 @@ contract Deploy is Script {
         vm.startBroadcast(deployer);
 
         LevStakingV2Eth vault = new LevStakingV2Eth();
+        console2.log("new implementation address: ", address(vault));
+    }
+
+    function runProfReLevEth() external {
+        (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
+        vm.startBroadcast(deployer);
+
+        ProfitReserveLevEthStakingV2 vault = new ProfitReserveLevEthStakingV2();
         console2.log("new implementation address: ", address(vault));
     }
 }
