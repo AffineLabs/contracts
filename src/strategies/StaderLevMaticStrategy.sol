@@ -14,7 +14,6 @@ import {WETH as IWMATIC} from "solmate/src/tokens/WETH.sol";
 import {AffineVault, Strategy} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
 import {IBalancerVault, IFlashLoanRecipient, IBalancerQueries} from "src/interfaces/balancer.sol";
-import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 import {SlippageUtils} from "src/libs/SlippageUtils.sol";
 import {IChildPool} from "src/interfaces/stader/IChildPool.sol";
 
@@ -51,7 +50,7 @@ contract StaderLevMaticStrategy is AccessStrategy, IFlashLoanRecipient, IAAVEFla
     IBalancerVault public constant BALANCER = IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
     // @notice handle query vault for out amount
     IBalancerQueries public constant BALANCER_QUERY = IBalancerQueries(0xE39B5e3B6D74016b2F6A9673D7d7493B6DF549d5);
-    bytes32 public POOL_ID = 0xcd78a20c597e367a4e478a2411ceb790604d7c8f000000000000000000000c22;
+    bytes32 public constant POOL_ID = 0xcd78a20c597e367a4e478a2411ceb790604d7c8f000000000000000000000c22;
 
     /// @notice The different reasons for a flashloan.
     enum LoanType {
@@ -346,7 +345,7 @@ contract StaderLevMaticStrategy is AccessStrategy, IFlashLoanRecipient, IAAVEFla
     //////////////////////////////////////////////////////////////*/
 
     /// @notice The acceptable slippage on trades.
-    uint256 public slippageBps = 100;
+    uint256 public slippageBps = 10;
     /// @dev max slippage on curve is around 10pbs for 10 eth
 
     /// @notice Set slippageBps.

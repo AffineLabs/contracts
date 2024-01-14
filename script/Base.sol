@@ -24,17 +24,18 @@ abstract contract Base is Script {
     }
 
     struct L2Config {
-        address aaveRegistry;
+        address governance;
+        address usdc;
+        address wormhole;
+        uint256 withdrawFee;
+        uint256 managementFee;
         uint256 ewqMinAssets;
         uint256 ewqMinFee;
-        Feeds feeds;
-        address governance;
-        uint256 managementFee;
-        address usdc;
         address wbtc;
         address weth;
-        uint256 withdrawFee;
-        address wormhole;
+        address wmatic;
+        Feeds feeds;
+        address aaveRegistry;
     }
 
     function _getConfigJson(bool mainnet, bool layer1) internal view returns (bytes memory) {
