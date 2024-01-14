@@ -6,15 +6,21 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
+import {IPoolAddressesProvider} from "@aave/core-v3/contracts/interfaces/IPoolAddressesProvider.sol";
+import {IFlashLoanReceiver as IAAVEFlashLoanReceiver} from
+    "@aave/core-v3/contracts/flashloan/interfaces/IFlashLoanReceiver.sol";
+import {WETH as IWMATIC} from "solmate/src/tokens/WETH.sol";
 
 import {AffineVault, Strategy} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
 import {IBalancerVault, IFlashLoanRecipient, IBalancerQueries} from "src/interfaces/balancer.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 import {SlippageUtils} from "src/libs/SlippageUtils.sol";
+import {IChildPool} from "src/interfaces/stader/IChildPool.sol";
 
-contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
+contract StaderLevMaticStrategy is AccessStrategy, IFlashLoanRecipient, IAAVEFlashLoanReceiver {
     using SafeTransferLib for ERC20;
+    using SafeTransferLib for IWMATIC;
     using FixedPointMathLib for uint256;
     using SlippageUtils for uint256;
 
@@ -25,16 +31,16 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
         WMATIC.safeApprove(address(AAVE), type(uint256).max);
 
         // Deposit wstETH in AAVE
-        STMATIC.safeApprove(address(BALANCER), type(uint256).max);
-        STMATIC.safeApprove(address(AAVE), type(uint256).max);
+        MATICX.safeApprove(address(BALANCER), type(uint256).max);
+        MATICX.safeApprove(address(AAVE), type(uint256).max);
 
         /* Get/Set aave information */
 
-        aToken = ERC20(AAVE.getReserveData(address(STMATIC)).aTokenAddress);
+        aToken = ERC20(AAVE.getReserveData(address(MATICX)).aTokenAddress);
         debtToken = ERC20(AAVE.getReserveData(address(WMATIC)).variableDebtTokenAddress);
 
         // This enables E-mode. It allows us to borrow at 90% of the value of our collateral.
-        AAVE.setUserEMode(1);
+        AAVE.setUserEMode(2); // 2 for matic correlation
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -45,7 +51,7 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
     IBalancerVault public constant BALANCER = IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
     // @notice handle query vault for out amount
     IBalancerQueries public constant BALANCER_QUERY = IBalancerQueries(0xE39B5e3B6D74016b2F6A9673D7d7493B6DF549d5);
-    bytes32 public POOL_ID = 0xf0ad209e2e969eaaa8c882aac71f02d8a047d5c2000200000000000000000b49;
+    bytes32 public POOL_ID = 0xcd78a20c597e367a4e478a2411ceb790604d7c8f000000000000000000000c22;
 
     /// @notice The different reasons for a flashloan.
     enum LoanType {
@@ -56,20 +62,58 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
         decLev
     }
 
+    /// @notice Flash Loan source
+    enum FLOrigin {
+        balancer,
+        aave
+    }
+
     error onlyBalancerVault();
 
-    /// @notice Callback called by balancer vault after flashloan is initiated.
-    function _flashLoan(uint256 amount, LoanType loan, address recipient) internal {
-        ERC20[] memory tokens = new ERC20[](1);
-        tokens[0] = WMATIC;
+    /// @notice Callback called by balancer vault after flash loan is initiated.
+    function _flashLoan(uint256 amount, LoanType loan, address recipient, FLOrigin origin) internal {
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = amount;
-        BALANCER.flashLoan({
-            recipient: IFlashLoanRecipient(address(this)),
-            tokens: tokens,
-            amounts: amounts,
-            userData: abi.encode(loan, recipient)
-        });
+
+        if (origin == FLOrigin.balancer) {
+            ERC20[] memory tokens = new ERC20[](1);
+            tokens[0] = WMATIC;
+            BALANCER.flashLoan({
+                recipient: IFlashLoanRecipient(address(this)),
+                tokens: tokens,
+                amounts: amounts,
+                userData: abi.encode(loan, recipient)
+            });
+        } else {
+            address[] memory tokens = new address[](1);
+            tokens[0] = address(WMATIC);
+
+            uint256[] memory modes = new uint256[](1);
+            modes[0] = 0;
+
+            AAVE.flashLoan({
+                receiverAddress: address(this),
+                assets: tokens,
+                amounts: amounts,
+                interestRateModes: modes,
+                onBehalfOf: address(this),
+                params: abi.encode(loan, recipient),
+                referralCode: 0
+            });
+        }
+    }
+
+    function _manageFlashLoan(uint256 amount, uint256 fee, LoanType loan, address newStrategy) internal {
+        if (loan == LoanType.divest) {
+            _endPosition(amount);
+        } else if (loan == LoanType.invest) {
+            _addToPosition(amount);
+        } else if (loan == LoanType.upgrade) {
+            _payDebtAndTransferCollateral(StaderLevMaticStrategy(payable(newStrategy)));
+        } else {
+            /// @dev separate out the fees
+            _rebalancePosition(amount - fee, loan);
+        }
     }
 
     function receiveFlashLoan(
@@ -80,23 +124,32 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
     ) external override {
         if (msg.sender != address(BALANCER)) revert onlyBalancerVault();
 
-        uint256 ethBorrowed = amounts[0];
-
         // There will only be a new strategy in the case of an upgrade.
         (LoanType loan, address newStrategy) = abi.decode(userData, (LoanType, address));
 
-        if (loan == LoanType.divest) {
-            _endPosition(ethBorrowed);
-        } else if (loan == LoanType.invest) {
-            _addToPosition(ethBorrowed);
-        } else if (loan == LoanType.upgrade) {
-            _payDebtAndTransferCollateral(LidoLevMaticStrategy(payable(newStrategy)));
-        } else {
-            _rebalancePosition(ethBorrowed, loan);
-        }
-
+        _manageFlashLoan(amounts[0], 0, loan, newStrategy);
         // Payback wETH loan
-        WMATIC.safeTransfer(address(BALANCER), ethBorrowed);
+        WMATIC.safeTransfer(address(BALANCER), amounts[0]);
+    }
+
+    function ADDRESSES_PROVIDER() external view override returns (IPoolAddressesProvider) {
+        return AAVE.ADDRESSES_PROVIDER();
+    }
+
+    function POOL() external pure override returns (IPool) {
+        return AAVE;
+    }
+
+    function executeOperation(
+        address[] calldata, /* assets */
+        uint256[] calldata amounts,
+        uint256[] calldata premiums,
+        address, /* initiator */
+        bytes calldata params
+    ) external override returns (bool) {
+        (LoanType loan, address newStrategy) = abi.decode(params, (LoanType, address));
+        _manageFlashLoan(amounts[0], premiums[0], loan, newStrategy);
+        return true;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -105,7 +158,7 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
 
     /// @dev Add to leveraged position  upon investment from vault.
     function _afterInvest(uint256 amount) internal override {
-        _flashLoan(amount.mulDivDown(MAX_BPS, MAX_BPS - borrowBps), LoanType.invest, address(0));
+        _flashLoan(amount.mulDivDown(MAX_BPS, MAX_BPS - borrowBps), LoanType.invest, address(0), FLOrigin.balancer);
     }
 
     function _getSwapAmount(address from, address to, uint256 fromAmount)
@@ -135,27 +188,25 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
         toAmount = BALANCER_QUERY.querySwap(swapInfo, fmInfo);
     }
 
-    function _swapMaticToStMatic(uint256 amount) internal returns (uint256) {
+    function _swapMaticToMaticX(uint256 amount) public returns (uint256) {
         IBalancerVault.SingleSwap memory swapInfo;
         IBalancerVault.FundManagement memory fmInfo;
 
         uint256 outAmount;
 
-        (outAmount, swapInfo, fmInfo) = _getSwapAmount(address(WMATIC), address(STMATIC), amount);
+        (outAmount, swapInfo, fmInfo) = _getSwapAmount(address(WMATIC), address(MATICX), amount);
 
-        uint256 minAmount = outAmount.slippageDown(slippageBps);
-
-        return BALANCER.swap(swapInfo, fmInfo, minAmount, block.timestamp);
+        uint256 minAmount = outAmount.slippageDown(5000);
+        uint256 ret = BALANCER.swap(swapInfo, fmInfo, minAmount, block.timestamp);
+        return ret;
     }
 
     /// @dev Add to leveraged position. Trade ETH to wstETH, deposit in AAVE, and borrow to repay balancer loan.
     function _addToPosition(uint256 loanAmount) internal {
-        // swap wmatic to stmatic
-
-        _swapMaticToStMatic(loanAmount);
-
+        WMATIC.withdraw(loanAmount);
+        STADER.swapMaticForMaticXViaInstantPool{value: loanAmount}();
         // Deposit wstETH in AAVE
-        AAVE.deposit(address(STMATIC), STMATIC.balanceOf(address(this)), address(this), 0);
+        AAVE.supply(address(MATICX), MATICX.balanceOf(address(this)), address(this), 0);
 
         // Borrow 90% of wstETH value in ETH using e-mode
         uint256 toBorrow = loanAmount - WMATIC.balanceOf(address(this));
@@ -170,8 +221,7 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
         uint256 flashLoanAmount = _getDivestFlashLoanAmounts(amount);
 
         uint256 origAssets = WMATIC.balanceOf(address(this));
-
-        _flashLoan(flashLoanAmount, LoanType.divest, address(0));
+        _flashLoan(flashLoanAmount, LoanType.divest, address(0), FLOrigin.aave);
         // The loan has been paid, any other unlocked collateral belongs to user
         uint256 unlockedAssets = WMATIC.balanceOf(address(this)) - origAssets;
         WMATIC.safeTransfer(address(vault), Math.min(unlockedAssets, amount));
@@ -179,7 +229,7 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
     }
 
     /// @dev Calculate the amount of ETH needed to flashloan to divest `wethToDivest` wETH.
-    function _getDivestFlashLoanAmounts(uint256 amountToDivest) internal returns (uint256 flashLoanAmount) {
+    function _getDivestFlashLoanAmounts(uint256 amountToDivest) internal view returns (uint256 flashLoanAmount) {
         // Proportion of tvl == proportion of debt to pay back
         uint256 tvl = totalLockedValue();
         flashLoanAmount = _debt();
@@ -188,13 +238,13 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
         }
     }
 
-    function _swapStMaticToMatic(uint256 amount) internal returns (uint256) {
+    function _swapMaticXToMatic(uint256 amount) internal returns (uint256) {
         IBalancerVault.SingleSwap memory swapInfo;
         IBalancerVault.FundManagement memory fmInfo;
 
         uint256 outAmount;
 
-        (outAmount, swapInfo, fmInfo) = _getSwapAmount(address(STMATIC), address(WMATIC), amount);
+        (outAmount, swapInfo, fmInfo) = _getSwapAmount(address(MATICX), address(WMATIC), amount);
 
         uint256 minAmount = outAmount.slippageDown(slippageBps);
 
@@ -210,9 +260,8 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
         AAVE.repay(address(WMATIC), loanAmount, 2, address(this));
 
         // Withdraw same proportion of collateral from aave
-        AAVE.withdraw(address(STMATIC), stMaticToRedeem, address(this));
-
-        _swapStMaticToMatic(STMATIC.balanceOf(address(this)));
+        AAVE.withdraw(address(MATICX), stMaticToRedeem, address(this));
+        _swapMaticXToMatic(MATICX.balanceOf(address(this)));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -226,9 +275,19 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
 
         if (expectedDebt > debt) {
             // inc lev
-            _flashLoan((expectedDebt - debt).mulDivDown(MAX_BPS, MAX_BPS - borrowBps), LoanType.incLev, address(0));
+            _flashLoan(
+                (expectedDebt - debt).mulDivDown(MAX_BPS, MAX_BPS - borrowBps),
+                LoanType.incLev,
+                address(0),
+                FLOrigin.balancer
+            );
         } else {
-            _flashLoan((debt - expectedDebt).mulDivDown(MAX_BPS, MAX_BPS - borrowBps), LoanType.decLev, address(0));
+            _flashLoan(
+                (debt - expectedDebt).mulDivDown(MAX_BPS, MAX_BPS - borrowBps),
+                LoanType.decLev,
+                address(0),
+                FLOrigin.aave
+            );
         }
     }
 
@@ -239,16 +298,12 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
             // repay
             AAVE.repay(address(WMATIC), loanAmount, 2, address(this));
             // get wsteth amount from eth
-            (uint256 stMaticAmount,,) = _getSwapAmount(address(WMATIC), address(STMATIC), loanAmount);
+            (uint256 stMaticAmount,,) = _getSwapAmount(address(WMATIC), address(MATICX), loanAmount);
             uint256 stMaticToRedeem = stMaticAmount.slippageUp(slippageBps);
             // withdraw from aave
-            AAVE.withdraw(address(STMATIC), stMaticToRedeem, address(this));
+            AAVE.withdraw(address(MATICX), stMaticToRedeem, address(this));
 
-            _swapStMaticToMatic(STMATIC.balanceOf(address(this)));
-
-            if (WMATIC.balanceOf(address(this)) > loanAmount) {
-                AAVE.repay(address(WMATIC), WMATIC.balanceOf(address(this)) - loanAmount, 2, address(this));
-            }
+            _swapMaticXToMatic(MATICX.balanceOf(address(this)));
         }
     }
 
@@ -260,17 +315,17 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
         return debtToken.balanceOf(address(this));
     }
 
-    function _collateral() internal returns (uint256) {
-        (uint256 outAmount,,) = _getSwapAmount(address(STMATIC), address(WMATIC), aToken.balanceOf(address(this)));
-        return outAmount;
+    function _collateral() internal view returns (uint256) {
+        (uint256 amount,,) = STADER.convertMaticXToMatic(aToken.balanceOf(address(this)));
+        return amount;
     }
 
     /// @notice The tvl function.
-    function totalLockedValue() public override returns (uint256) {
+    function totalLockedValue() public view override returns (uint256) {
         return _collateral() - _debt();
     }
 
-    function getLTVRatio() public returns (uint256) {
+    function getLTVRatio() public view returns (uint256) {
         return _debt().mulDivDown(MAX_BPS, _collateral());
     }
 
@@ -278,31 +333,33 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
                                   STAKED ETHER
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice The wETH address.
-    ERC20 public constant WMATIC = ERC20(payable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2));
+    /// @notice The wrapped matic address.
+    IWMATIC public constant WMATIC = IWMATIC(payable(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270));
 
-    /// @notice The wstETH address (actually cbETH on Base).
-    ERC20 public constant STMATIC = ERC20(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0); // eth
+    /// @notice Lev Assets Liquid Staking Matic MATICX
+    ERC20 public constant MATICX = ERC20(0xfa68FB4628DFF1028CFEc22b4162FCcd0d45efb6); // polygon
+    /// @notice stader proxy child pool
+    IChildPool public constant STADER = IChildPool(0xfd225C9e6601C9d38d8F98d8731BF59eFcF8C0E3); // polygon
 
     /*//////////////////////////////////////////////////////////////
                                  TRADES
     //////////////////////////////////////////////////////////////*/
 
     /// @notice The acceptable slippage on trades.
-    uint256 public slippageBps = 10;
+    uint256 public slippageBps = 100;
     /// @dev max slippage on curve is around 10pbs for 10 eth
 
     /// @notice Set slippageBps.
     function setSlippageBps(uint256 _slippageBps) external onlyRole(STRATEGIST_ROLE) {
         slippageBps = _slippageBps;
     }
-    /*//////////////////////////////////////////////////////////////
-                                  AAVE
-    //////////////////////////////////////////////////////////////*/
+    // /*//////////////////////////////////////////////////////////////
+    //                               AAVE
+    // //////////////////////////////////////////////////////////////*/
 
     uint256 public constant MAX_BPS = 10_000;
     /// @notice amount to borrow after lending in the platform
-    uint256 public borrowBps = 8999; // default 90% for aave e-mode
+    uint256 public borrowBps = 9000; // default 90% for aave e-mode
 
     /// @notice Set the borrowing factor.
     /// @param _borrowBps The new borrow factor.
@@ -311,7 +368,7 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
     }
 
     /// @notice The Aave lending pool.
-    IPool public constant AAVE = IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2); // eth address
+    IPool public constant AAVE = IPool(0x794a61358D6845594F94dc1DB02A252b5b4814aD); // polygon address
 
     /// @notice The debtToken for wETH.
     ERC20 public immutable debtToken;
@@ -319,9 +376,9 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
     /// @notice THe aToken for wstETH.
     ERC20 public immutable aToken;
 
-    /*//////////////////////////////////////////////////////////////
-                                UPGRADES
-    //////////////////////////////////////////////////////////////*/
+    // /*//////////////////////////////////////////////////////////////
+    //                             UPGRADES
+    // //////////////////////////////////////////////////////////////*/
 
     error NotAStrategy();
 
@@ -334,7 +391,7 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
      * this strategy did before the upgrade.
      * 3. The new strategy transfers the wETH it borrowed back to this strategy, so that the flashloan can be repaid.
      */
-    function upgradeTo(LidoLevMaticStrategy newStrategy) external onlyGovernance {
+    function upgradeTo(StaderLevMaticStrategy newStrategy) external onlyGovernance {
         _checkIfStrategy(newStrategy);
         ERC20[] memory tokens = new ERC20[](1);
         tokens[0] = WMATIC;
@@ -349,7 +406,7 @@ contract LidoLevMaticStrategy is AccessStrategy, IFlashLoanRecipient {
     }
 
     /// @dev Pay debt and transfer collateral to new strategy.
-    function _payDebtAndTransferCollateral(LidoLevMaticStrategy newStrategy) internal {
+    function _payDebtAndTransferCollateral(StaderLevMaticStrategy newStrategy) internal {
         // Pay debt in aave.
         uint256 debt = debtToken.balanceOf(address(this));
         AAVE.repay(address(WMATIC), debt, 2, address(this));
