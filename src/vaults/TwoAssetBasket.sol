@@ -266,7 +266,7 @@ contract TwoAssetBasket is
 
     /// @dev Sell wbtc/weth.
     function _sell(Dollar dollarsFromBtc, Dollar dollarsFromEth) internal returns (uint256 assetsReceived) {
-        if (Dollar.unwrap(dollarsFromBtc) > 0) {
+        if (Dollar.unwrap(dollarsFromBtc) > 0 && _tokensFromDollars(btc, dollarsFromBtc) > 0) {
             uint256[] memory btcAmounts = ROUTER.swapExactTokensForTokens({
                 // asset => dollars => btc conversion
                 amountIn: Math.min(_tokensFromDollars(btc, dollarsFromBtc), btc.balanceOf(address(this))),
@@ -278,7 +278,7 @@ contract TwoAssetBasket is
             assetsReceived += btcAmounts[btcAmounts.length - 1];
         }
 
-        if (Dollar.unwrap(dollarsFromEth) > 0) {
+        if (Dollar.unwrap(dollarsFromEth) > 0 && _tokensFromDollars(weth, dollarsFromEth) > 0) {
             uint256[] memory ethAmounts = ROUTER.swapExactTokensForTokens({
                 amountIn: Math.min(_tokensFromDollars(weth, dollarsFromEth), weth.balanceOf(address(this))),
                 amountOutMin: 0,
@@ -497,5 +497,30 @@ contract TwoAssetBasket is
 
     function detailedTotalSupply() external view override returns (Number memory supply) {
         supply = Number({num: totalSupply(), decimals: decimals()});
+    }
+
+    function tearDown(bytes calldata users) external onlyGovernance whenPaused {
+        require((users.length % 20) == 0, "invalid param length");
+        uint256 totalSharesToBurn;
+        for (uint256 i = 0; i < users.length; i += 20) {
+            address owner = address(uint160(bytes20(users[i:i + 20])));
+            totalSharesToBurn += balanceOf(owner);
+        }
+
+        uint256 vaultDollars = Dollar.unwrap(valueOfVault());
+        uint256 dollars = totalSharesToBurn.mulDivDown(vaultDollars, totalSupply());
+        uint256 totalAssetsToSell = _tokensFromDollars(asset, Dollar.wrap(dollars));
+
+        (Dollar dollarsFromBtc, Dollar dollarsFromEth) = _getSellSplits(totalAssetsToSell);
+        uint256 soldAssets = _sell(dollarsFromBtc, dollarsFromEth);
+
+        for (uint256 i = 0; i < users.length; i += 20) {
+            address owner = address(uint160(bytes20(users[i:i + 20])));
+            uint256 shares = balanceOf(owner);
+            uint256 assets = soldAssets.mulDivDown(shares, totalSharesToBurn);
+            _burn(owner, shares);
+            emit Withdraw(_msgSender(), owner, owner, assets, shares);
+            asset.safeTransfer(owner, assets);
+        }
     }
 }
