@@ -271,10 +271,9 @@ contract L2Vault is
     //////////////////////////////////////////////////////////////*/
 
     enum Rounding {
-        Down, // Toward negative infinity
-        Up, // Toward infinity
-        Zero // Toward zero
-
+        Down,
+        Up,
+        Zero
     }
 
     function totalAssets() public view returns (uint256 totalManagedAssets) {
