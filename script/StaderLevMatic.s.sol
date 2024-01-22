@@ -12,6 +12,7 @@ import {StaderLevMaticStrategy, IWMATIC} from "src/strategies/StaderLevMaticStra
 import {AffineVault} from "src/vaults/AffineVault.sol";
 
 import {Base} from "./Base.sol";
+import {Router, IWETH} from "src/vaults/cross-chain-vault/router/Router.sol";
 
 /* solhint-disable reason-string, no-console */
 
@@ -83,5 +84,11 @@ contract Deploy is Script, Base {
         strategy.invest(2 * 1e18);
 
         console2.log("TVL %s", strategy.totalLockedValue());
+    }
+
+    function routerDeploy() external {
+        _start();
+        Router router = new Router("affine-polygon-router", IWETH(wmatic));
+        console2.log("router weth: %s", address(router.weth()));
     }
 }
