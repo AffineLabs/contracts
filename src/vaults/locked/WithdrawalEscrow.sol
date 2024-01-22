@@ -52,7 +52,6 @@ contract WithdrawalEscrow {
      * @param user user address
      * @param shares amount of vault shares user requested to withdraw
      */
-
     function registerWithdrawalRequest(address user, uint256 shares) external onlyVault {
         // register shares of the user
 

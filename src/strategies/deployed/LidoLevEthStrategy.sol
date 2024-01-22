@@ -11,7 +11,6 @@ import {LidoLevV3} from "src/strategies/LidoLevV3.sol";
  * withdrawal requires curve to swap steth to eth
  * vault address: 0x1196B60c9ceFBF02C9a3960883213f47257BecdB
  */
-
 contract LidoLevEthStrategy is LidoLevV3 {
     constructor(AffineVault _vault, address[] memory strategists) LidoLevV3(_vault, strategists) {}
 }

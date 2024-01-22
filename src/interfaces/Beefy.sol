@@ -22,7 +22,6 @@ interface IBeefyVault is IERC20Metadata {
      * want to keep some of the system funds at hand in the vault, instead
      * of putting them to work.
      */
-
     function available() external view returns (uint256);
     /**
      * @dev Function for various UIs to display the current value of one of our yield tokens.

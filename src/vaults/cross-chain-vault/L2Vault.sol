@@ -25,7 +25,6 @@ import {VaultErrors} from "src/libs/VaultErrors.sol";
  * @dev This vault is ERC4626 compliant. See the EIP description here: https://eips.ethereum.org/EIPS/eip-4626.
  * @author Affine Devs. Inspired by OpenZeppelin and Rari-Capital.
  */
-
 contract L2Vault is
     ERC20Upgradeable,
     UUPSUpgradeable,
@@ -272,9 +271,9 @@ contract L2Vault is
     //////////////////////////////////////////////////////////////*/
 
     enum Rounding {
-        Down, // Toward negative infinity
-        Up, // Toward infinity
-        Zero // Toward zero
+        Down,
+        Up,
+        Zero
     }
 
     function totalAssets() public view returns (uint256 totalManagedAssets) {

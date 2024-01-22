@@ -18,7 +18,6 @@ import {VaultErrors} from "src/libs/VaultErrors.sol";
  * and removing strategies, investing in (and divesting from) strategies, harvesting gains/losses, and
  * strategy liquidation.
  */
-
 abstract contract BaseVault is AccessControlUpgradeable, AffineGovernable {
     using SafeTransferLib for ERC20;
 
