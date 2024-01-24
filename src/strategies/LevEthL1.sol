@@ -86,10 +86,6 @@ contract LevEthL1 is AccessStrategy {
     /*//////////////////////////////////////////////////////////////
                                DIVESTMENT
     //////////////////////////////////////////////////////////////*/
-    function liquidate(uint256 assets) external onlyRole(STRATEGIST_ROLE) {
-        _divest(assets);
-    }
-
 
     function afterReceive() external {
         require(msg.sender == address(escrow), "L1: only escrow");

@@ -28,6 +28,8 @@ contract LevEthL2 is AccessStrategy {
     constructor(AffineVault _vault, L2WormholeRouter _router, L2BaseBridgeEscrow _escrow, address[] memory strategists) AccessStrategy(_vault, strategists){
         wormholeRouter  = _router;
         escrow          = _escrow;
+
+        asset.approve(address(_escrow), type(uint256).max);
     }
 
     /*//////////////////////////////////////////////////////////////
