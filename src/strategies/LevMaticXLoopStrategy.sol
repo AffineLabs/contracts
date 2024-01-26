@@ -125,31 +125,24 @@ contract LevMaticXLoopStrategy is AccessStrategy {
     /// @dev Unlock wstETH collateral via flashloan, then repay balancer loan with unlocked collateral.
     function _divest(uint256 amount) internal override returns (uint256) {
         uint256 tvl = totalLockedValue();
-        uint256 repayAmount = amount < WMATIC.balanceOf(address(this))
-            ? WMATIC.balanceOf(address(this)).mulDivDown(amount, tvl)
-            : WMATIC.balanceOf(address(this));
+        uint256 repayAmount =
+            amount < tvl ? WMATIC.balanceOf(address(this)).mulDivDown(amount, tvl) : WMATIC.balanceOf(address(this));
+
+        uint256 postRes = WMATIC.balanceOf(address(this)) - repayAmount;
 
         AAVE.repay(address(WMATIC), repayAmount, 2, address(this));
         uint256 stMaticToRedeem;
         uint256 amountReceived;
-        for (uint256 i = 0; i < iCycle; i++) {
-            uint256 exCollateral = _collateral() - _debt().mulDivDown(MAX_BPS, borrowBps);
-            // handling case
-            uint256 toWithdraw = exCollateral.mulDivDown(amount, tvl);
-
-            (stMaticToRedeem,,) = STADER.convertMaticToMaticX(toWithdraw);
+        for (uint256 i = 1; i <= iCycle; i++) {
+            uint256 exCollateral = _collateral() - _debt().mulDivUp(MAX_BPS, borrowBps);
+            (stMaticToRedeem,,) = STADER.convertMaticToMaticX(exCollateral);
             AAVE.withdraw(address(MATICX), stMaticToRedeem, address(this));
             amountReceived = _swapMaticXToMatic(MATICX.balanceOf(address(this)));
-            AAVE.repay(address(WMATIC), amountReceived, 2, address(this));
+            if (i < iCycle) {
+                AAVE.repay(address(WMATIC), amountReceived, 2, address(this));
+            }
         }
-
-        uint256 maticToWithdraw = _collateral() - _debt() + WMATIC.balanceOf(address(this)) + amount - tvl;
-
-        (stMaticToRedeem,,) = STADER.convertMaticToMaticX(maticToWithdraw);
-        AAVE.withdraw(address(MATICX), stMaticToRedeem, address(this));
-
-        amountReceived = _swapMaticXToMatic(stMaticToRedeem);
-        uint256 unlockedAssets = Math.min(amountReceived, amount);
+        uint256 unlockedAssets = WMATIC.balanceOf(address(this)) - postRes;
         WMATIC.safeTransfer(address(vault), unlockedAssets);
         return unlockedAssets;
     }
@@ -186,7 +179,7 @@ contract LevMaticXLoopStrategy is AccessStrategy {
 
     /// @notice The tvl function.
     function totalLockedValue() public view override returns (uint256) {
-        return _collateral() - _debt();
+        return _collateral() - _debt() + WMATIC.balanceOf(address(this));
     }
 
     function getLTVRatio() public view returns (uint256) {
