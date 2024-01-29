@@ -143,18 +143,31 @@ contract LevMaticXLoopStrategyTest is TestPlus {
         assertApproxEqRel(staking.totalLockedValue(), init_assets / 2, 0.01e18);
     }
 
-    // function testSlippageBpsChange() public {
-    //     testInvestIntoStrategy();
-    //     vm.startPrank(address(this));
+    function testUpgradeStrategy() public {
+        testInvestIntoStrategy();
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
 
-    //     uint256[6] memory borrowBps = [uint256(8000), 7000, 6000, 5000, 8900, 5000];
+        LevMaticXLoopStrategy new_staking = new LevMaticXLoopStrategy(vault, strategists);
+        vm.startPrank(governance);
+        vault.addStrategy(new_staking, 0);
 
-    //     for (uint256 i = 0; i < borrowBps.length; i++) {
-    //         staking.setBorrowBps(borrowBps[i]);
-    //         staking.rebalance();
-    //         console2.log("TVL ratio %s", staking.getLTVRatio());
-    //         assertApproxEqRel(borrowBps[i], staking.getLTVRatio(), 0.05e18);
-    //         assertEq(address(staking).balance, 0);
-    //     }
-    // }
+        BaseStrategy[] memory strategyList = new BaseStrategy[](2);
+        strategyList[0] = BaseStrategy(address(staking));
+        strategyList[0] = BaseStrategy(address(new_staking));
+
+        uint16[] memory tvlBpsList = new uint16[](2);
+        tvlBpsList[0] = 0;
+        tvlBpsList[1] = 10_000;
+
+        uint256 prevTVL = staking.totalLockedValue();
+        assertEq(new_staking.totalLockedValue(), 0);
+
+        vault.updateStrategyAllocations(strategyList, tvlBpsList);
+
+        staking.upgradeTo(new_staking);
+
+        assertEq(new_staking.totalLockedValue(), prevTVL);
+        assertEq(staking.totalLockedValue(), 0);
+    }
 }

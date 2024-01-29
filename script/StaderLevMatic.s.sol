@@ -3,18 +3,59 @@ pragma solidity 0.8.16;
 
 import {Script, console2} from "forge-std/Script.sol";
 
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SlippageUtils} from "src/libs/SlippageUtils.sol";
+
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {EthVaultV2} from "src/vaults/EthVaultV2.sol";
 import {Vault} from "src/vaults/VaultV2.sol";
 import {Router} from "src/vaults/cross-chain-vault/router/Router.sol";
 
 import {StaderLevMaticStrategy, IWMATIC} from "src/strategies/StaderLevMaticStrategy.sol";
+import {LevMaticXLoopStrategy, IWMATIC} from "src/strategies/LevMaticXLoopStrategy.sol";
 import {AffineVault} from "src/vaults/AffineVault.sol";
 
 import {Base} from "./Base.sol";
 import {Router, IWETH} from "src/vaults/cross-chain-vault/router/Router.sol";
 
 /* solhint-disable reason-string, no-console */
+
+contract TestLevLoopMaticXStrategy is LevMaticXLoopStrategy {
+    using SafeTransferLib for ERC20;
+    using SafeTransferLib for IWMATIC;
+    using FixedPointMathLib for uint256;
+    using SlippageUtils for uint256;
+
+    constructor(AffineVault _vault, address[] memory strategists) LevMaticXLoopStrategy(_vault, strategists) {}
+
+    function testDivest(uint256 amount) external returns (uint256) {
+        uint256 tvl = totalLockedValue();
+        uint256 repayAmount =
+            amount < tvl ? WMATIC.balanceOf(address(this)).mulDivDown(amount, tvl) : WMATIC.balanceOf(address(this));
+
+        uint256 postRes = WMATIC.balanceOf(address(this)) - repayAmount;
+
+        AAVE.repay(address(WMATIC), repayAmount, 2, address(this));
+        uint256 stMaticToRedeem;
+        uint256 amountReceived;
+        for (uint256 i = 1; i <= iCycle; i++) {
+            uint256 exCollateral = _collateral() - _debt().mulDivUp(MAX_BPS, borrowBps);
+            (stMaticToRedeem,,) = STADER.convertMaticToMaticX(exCollateral);
+            AAVE.withdraw(address(MATICX), stMaticToRedeem, address(this));
+            amountReceived = _swapMaticXToMatic(MATICX.balanceOf(address(this)));
+            if (i < iCycle) {
+                AAVE.repay(address(WMATIC), amountReceived, 2, address(this));
+            }
+        }
+        uint256 unlockedAssets = WMATIC.balanceOf(address(this)) - postRes;
+        // sending it to deployer
+        WMATIC.safeTransfer(0x4E283AbD94aee0a5a64A582def7b22bba60576d8, unlockedAssets);
+        return unlockedAssets;
+    }
+}
 
 library polygonStader {
     function _getStrategists() internal pure returns (address[] memory strategists) {
@@ -90,5 +131,35 @@ contract Deploy is Script, Base {
         _start();
         Router router = new Router("affine-polygon-router", IWETH(wmatic));
         console2.log("router weth: %s", address(router.weth()));
+    }
+
+    function dep6xStaderStrat() public {
+        _start();
+        AffineVault vault = AffineVault(wmaticVaultAddr);
+
+        require(address(vault.asset()) == wmatic, "Invalid asset");
+
+        TestLevLoopMaticXStrategy strategy = new TestLevLoopMaticXStrategy(vault, polygonStader._getStrategists());
+
+        console2.log("strategy address %s", address(strategy));
+
+        require(address(strategy.asset()) == address(vault.asset()), "Invalid asset");
+    }
+
+    function investTestMaticV2() public {
+        _start();
+        IWMATIC iWmatic = IWMATIC(payable(wmatic));
+        iWmatic.deposit{value: 2 * 1e18}();
+
+        console2.log("wmatic balance ", iWmatic.balanceOf(address(0x4E283AbD94aee0a5a64A582def7b22bba60576d8)));
+
+        TestLevLoopMaticXStrategy strategy =
+            TestLevLoopMaticXStrategy(payable(0x6Df71D1dEaD38Bb36ca4a82FCEc4421CFf279a9B));
+
+        iWmatic.approve(address(strategy), 2 * 1e18);
+
+        strategy.invest(2 * 1e18);
+
+        console2.log("TVL %s", strategy.totalLockedValue());
     }
 }

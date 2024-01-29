@@ -17,7 +17,7 @@ import {IBalancerVault, IFlashLoanRecipient, IBalancerQueries} from "src/interfa
 import {SlippageUtils} from "src/libs/SlippageUtils.sol";
 import {IChildPool} from "src/interfaces/stader/IChildPool.sol";
 
-contract LevMaticXLoopStrategy is AccessStrategy {
+contract LevMaticXLoopStrategy is AccessStrategy, IFlashLoanRecipient {
     using SafeTransferLib for ERC20;
     using SafeTransferLib for IWMATIC;
     using FixedPointMathLib for uint256;
@@ -232,4 +232,82 @@ contract LevMaticXLoopStrategy is AccessStrategy {
 
     /// @notice THe aToken for wstETH.
     ERC20 public immutable aToken;
+
+    // /*//////////////////////////////////////////////////////////////
+    //                             UPGRADES
+    // //////////////////////////////////////////////////////////////*/
+
+    error NotAStrategy();
+    error onlyBalancerVault();
+
+    /**
+     * @notice Upgrade to a new strategy.
+     * @dev Transfer all of this strategy's assets to a new one, without any losses.
+     * 1. This strategy flashloans it's current aave debt from balancer, pays it, and transfers it's collateral to the
+     * new strategy.
+     * 2. This strategy calls `createAaveDebt` on the new strategy, such that new strategy has the same aave debt as
+     * this strategy did before the upgrade.
+     * 3. The new strategy transfers the wETH it borrowed back to this strategy, so that the flashloan can be repaid.
+     */
+    function receiveFlashLoan(
+        ERC20[] memory, /* tokens */
+        uint256[] memory amounts,
+        uint256[] memory, /* feeAmounts */
+        bytes memory userData
+    ) external override {
+        if (msg.sender != address(BALANCER)) revert onlyBalancerVault();
+
+        // There will only be a new strategy in the case of an upgrade.
+        (address newStrategy) = abi.decode(userData, (address));
+        _payDebtAndTransferCollateral(LevMaticXLoopStrategy(payable(newStrategy)));
+        // Payback wETH loan
+        WMATIC.safeTransfer(address(BALANCER), amounts[0]);
+    }
+
+    function upgradeTo(LevMaticXLoopStrategy newStrategy) external onlyGovernance {
+        _checkIfStrategy(newStrategy);
+
+        // transfer res assets to new strategy
+        WMATIC.safeTransfer(address(newStrategy), WMATIC.balanceOf(address(this)));
+
+        ERC20[] memory tokens = new ERC20[](1);
+        tokens[0] = WMATIC;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = debtToken.balanceOf(address(this));
+
+        BALANCER.flashLoan({
+            recipient: IFlashLoanRecipient(address(this)),
+            tokens: tokens,
+            amounts: amounts,
+            userData: abi.encode(address(newStrategy))
+        });
+    }
+
+    /// @dev Pay debt and transfer collateral to new strategy.
+    function _payDebtAndTransferCollateral(LevMaticXLoopStrategy newStrategy) internal {
+        // Pay debt in aave.
+        uint256 debt = debtToken.balanceOf(address(this));
+        AAVE.repay(address(WMATIC), debt, 2, address(this));
+
+        // Transfer collateral (aTokens) to new Strategy.
+        aToken.safeTransfer(address(newStrategy), aToken.balanceOf(address(this)));
+
+        // Make the new strategy borrow exactly the same amount as this strategy originally had in debt.
+        newStrategy.createAaveDebt(debt);
+    }
+
+    /// @notice Callback called by an old strategy that is moving its assets to this strategy. See `upgradeTo`.
+    function createAaveDebt(uint256 wethAmount) external {
+        _checkIfStrategy(Strategy(msg.sender));
+        AAVE.borrow(address(WMATIC), wethAmount, 2, 0, address(this));
+
+        // Transfer weth to calling strategy (old LidoLevL2) so that it can pay its flashloan.
+        WMATIC.safeTransfer(msg.sender, wethAmount);
+    }
+
+    /// @dev Check if the address is a valid strategy.
+    function _checkIfStrategy(Strategy strat) internal view {
+        (bool isActive,,) = vault.strategies(strat);
+        if (!isActive) revert NotAStrategy();
+    }
 }
