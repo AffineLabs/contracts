@@ -78,6 +78,7 @@ contract L1VaultBase is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         if(currBalance<amountRequested){
             uint256 amountToLiquidate = amountRequested - currBalance;
             parentVault.withdraw(amountToLiquidate, address(this), address(this)); 
+            totalStrategyHoldings -= amountToLiquidate;
         }
 
         // sell amount requested
