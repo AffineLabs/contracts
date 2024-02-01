@@ -22,6 +22,16 @@
   },
   {
     "inputs": [],
+    "name": "ReentrancyGuardReentrantCall",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "onlyAAVEVault",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "onlyBalancerVault",
     "type": "error"
   },
@@ -391,7 +401,7 @@
       },
       {
         "internalType": "address",
-        "name": "",
+        "name": "initiator",
         "type": "address"
       },
       {

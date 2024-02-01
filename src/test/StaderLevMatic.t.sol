@@ -157,4 +157,108 @@ contract StaderLevMaticTest is TestPlus {
             assertEq(address(staking).balance, 0);
         }
     }
+
+    function testMutexInvalidLoanOriginator() public {
+        testInvestIntoStrategy();
+
+        ERC20[] memory tokens = new ERC20[](1);
+        tokens[0] = WMATIC;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = init_assets * 9;
+        // check balancer flash loan
+        vm.expectRevert();
+        BALANCER.flashLoan({
+            recipient: IFlashLoanRecipient(address(staking)),
+            tokens: tokens,
+            amounts: amounts,
+            userData: abi.encode(StaderLevMaticStrategy.LoanType.upgrade, address(this))
+        });
+
+        vm.expectRevert();
+        address[] memory _tokens = new address[](1);
+        _tokens[0] = address(WMATIC);
+
+        uint256[] memory modes = new uint256[](1);
+        modes[0] = 0;
+        // check aave flash loan
+        AAVE.flashLoan({
+            receiverAddress: address(this),
+            assets: _tokens,
+            amounts: amounts,
+            interestRateModes: modes,
+            onBehalfOf: address(this),
+            params: abi.encode(StaderLevMaticStrategy.LoanType.upgrade, address(this)),
+            referralCode: 0
+        });
+    }
+
+    function testInvalidFlashLoan() public {
+        testInvestIntoStrategy();
+        vm.startPrank(address(this));
+        staking.setBorrowBps(9500);
+        vm.expectRevert();
+        staking.rebalance();
+        staking.setBorrowBps(700);
+        staking.rebalance();
+    }
+
+    function testUpgradeStrategy() public {
+        testInvestIntoStrategy();
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+
+        StaderLevMaticStrategy new_staking = new StaderLevMaticStrategy(vault, strategists);
+        vm.startPrank(governance);
+        vault.addStrategy(new_staking, 0);
+
+        BaseStrategy[] memory strategyList = new BaseStrategy[](2);
+        strategyList[0] = BaseStrategy(address(staking));
+        strategyList[0] = BaseStrategy(address(new_staking));
+
+        uint16[] memory tvlBpsList = new uint16[](2);
+        tvlBpsList[0] = 0;
+        tvlBpsList[1] = 10_000;
+
+        uint256 prevTVL = staking.totalLockedValue();
+        assertEq(new_staking.totalLockedValue(), 0);
+
+        vault.updateStrategyAllocations(strategyList, tvlBpsList);
+
+        staking.upgradeTo(new_staking);
+
+        assertEq(new_staking.totalLockedValue(), prevTVL);
+        assertEq(staking.totalLockedValue(), 0);
+    }
+
+    function testUpgradeWithInvalidStrategy() public {
+        testInvestIntoStrategy();
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+
+        StaderLevMaticStrategy new_staking = new StaderLevMaticStrategy(vault, strategists);
+
+        vm.expectRevert();
+        staking.upgradeTo(new_staking);
+    }
+
+    function testFlashLoanWithValidStrategy() public {
+        testInvestIntoStrategy();
+
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+        StaderLevMaticStrategy new_staking = new StaderLevMaticStrategy(vault, strategists);
+
+        ERC20[] memory tokens = new ERC20[](1);
+        tokens[0] = WMATIC;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = init_assets * 9;
+
+        vm.expectRevert("SLMS: Invalid FL origin");
+        BALANCER.flashLoan({
+            recipient: IFlashLoanRecipient(address(staking)),
+            tokens: tokens,
+            amounts: amounts,
+            userData: abi.encode(StaderLevMaticStrategy.LoanType.upgrade, address(new_staking))
+        });
+    }
 }

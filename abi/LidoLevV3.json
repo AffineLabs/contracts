@@ -22,6 +22,11 @@
   },
   {
     "inputs": [],
+    "name": "ReentrancyGuardReentrantCall",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "onlyBalancerVault",
     "type": "error"
   },

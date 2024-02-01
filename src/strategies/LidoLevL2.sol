@@ -16,6 +16,8 @@ import {ICurvePool} from "src/interfaces/curve/ICurvePool.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 import {SlippageUtils} from "src/libs/SlippageUtils.sol";
 
+/// @dev NB: has issue with upgrade. do not use before upgrade, see LidoLevV3 implementation
+
 contract LidoLevL2 is AccessStrategy, IFlashLoanRecipient {
     using SafeTransferLib for ERC20;
     using SafeTransferLib for IWETH;

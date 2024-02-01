@@ -8,6 +8,7 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
 
+import {ReentrancyGuard} from "src/utils/ReentrancyGuard.sol";
 import {AffineVault, Strategy} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
 import {IBalancerVault, IFlashLoanRecipient} from "src/interfaces/balancer.sol";
@@ -16,7 +17,7 @@ import {ICurvePool} from "src/interfaces/curve/ICurvePool.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 import {SlippageUtils} from "src/libs/SlippageUtils.sol";
 
-contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
+contract LidoLevV3 is AccessStrategy, ReentrancyGuard, IFlashLoanRecipient {
     using SafeTransferLib for ERC20;
     using SafeTransferLib for IWETH;
     using SafeTransferLib for IWSTETH;
@@ -66,7 +67,7 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
     error onlyBalancerVault();
 
     /// @notice Callback called by balancer vault after flashloan is initiated.
-    function _flashLoan(uint256 amount, LoanType loan, address recipient) internal {
+    function _flashLoan(uint256 amount, LoanType loan, address recipient) internal nonReentrant {
         ERC20[] memory tokens = new ERC20[](1);
         tokens[0] = WETH;
         uint256[] memory amounts = new uint256[](1);
@@ -86,6 +87,7 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
         bytes memory userData
     ) external override {
         if (msg.sender != address(BALANCER)) revert onlyBalancerVault();
+        require(_reentrancyGuardEntered(), "LLV3: Invalid FL origin");
 
         uint256 ethBorrowed = amounts[0];
 
@@ -305,20 +307,12 @@ contract LidoLevV3 is AccessStrategy, IFlashLoanRecipient {
      */
     function upgradeTo(LidoLevV3 newStrategy) external onlyGovernance {
         _checkIfStrategy(newStrategy);
-        ERC20[] memory tokens = new ERC20[](1);
-        tokens[0] = WETH;
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = debtToken.balanceOf(address(this));
-        BALANCER.flashLoan({
-            recipient: IFlashLoanRecipient(address(this)),
-            tokens: tokens,
-            amounts: amounts,
-            userData: abi.encode(LoanType.upgrade, address(newStrategy))
-        });
+        _flashLoan(debtToken.balanceOf(address(this)), LoanType.upgrade, address(newStrategy));
     }
 
     /// @dev Pay debt and transfer collateral to new strategy.
     function _payDebtAndTransferCollateral(LidoLevV3 newStrategy) internal {
+        _checkIfStrategy(newStrategy);
         // Pay debt in aave.
         uint256 debt = debtToken.balanceOf(address(this));
         AAVE.repay(address(WETH), debt, 2, address(this));
