@@ -241,7 +241,7 @@ contract StaderLevMaticTest is TestPlus {
         staking.upgradeTo(new_staking);
     }
 
-    function testFlashLoanWithValidStrategy() public {
+    function testFlashLoanWithValidStrategyBalancer() public {
         testInvestIntoStrategy();
 
         address[] memory strategists = new address[](1);
@@ -259,6 +259,32 @@ contract StaderLevMaticTest is TestPlus {
             tokens: tokens,
             amounts: amounts,
             userData: abi.encode(StaderLevMaticStrategy.LoanType.upgrade, address(new_staking))
+        });
+    }
+
+    function testFlashLoanWithValidStrategyAAVE() public {
+        testInvestIntoStrategy();
+
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+        StaderLevMaticStrategy new_staking = new StaderLevMaticStrategy(vault, strategists);
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = init_assets * 9;
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(WMATIC);
+
+        uint256[] memory modes = new uint256[](1);
+        modes[0] = 0;
+        vm.expectRevert("SLMS: Invalid FL origin");
+        AAVE.flashLoan({
+            receiverAddress: address(staking),
+            assets: tokens,
+            amounts: amounts,
+            interestRateModes: modes,
+            onBehalfOf: address(staking),
+            params: abi.encode(StaderLevMaticStrategy.LoanType.upgrade, address(new_staking)),
+            referralCode: 0
         });
     }
 }

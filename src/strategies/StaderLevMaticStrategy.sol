@@ -192,19 +192,6 @@ contract StaderLevMaticStrategy is AccessStrategy, ReentrancyGuard, IFlashLoanRe
         toAmount = BALANCER_QUERY.querySwap(swapInfo, fmInfo);
     }
 
-    function _swapMaticToMaticX(uint256 amount) public returns (uint256) {
-        IBalancerVault.SingleSwap memory swapInfo;
-        IBalancerVault.FundManagement memory fmInfo;
-
-        uint256 outAmount;
-
-        (outAmount, swapInfo, fmInfo) = _getSwapAmount(address(WMATIC), address(MATICX), amount);
-
-        uint256 minAmount = outAmount.slippageDown(5000);
-        uint256 ret = BALANCER.swap(swapInfo, fmInfo, minAmount, block.timestamp);
-        return ret;
-    }
-
     /// @dev Add to leveraged position. Trade ETH to wstETH, deposit in AAVE, and borrow to repay balancer loan.
     function _addToPosition(uint256 loanAmount) internal {
         WMATIC.withdraw(loanAmount);
