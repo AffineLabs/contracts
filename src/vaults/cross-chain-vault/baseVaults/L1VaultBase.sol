@@ -6,10 +6,10 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
-import {L1BridgeEscrowBase} from "../escrow/base/L1BridgeEscrowBase.sol";
+import {BaseVault} from "../lib/BaseVault.sol";
+import {L1BridgeEscrowBase} from "../bridgeescrow/L1BridgeEscrowBase.sol";
 import {L1WormholeRouter} from "../wormhole/L1WormholeRouter.sol";
-import {Vault} from "../../Vault.sol";
+import {Vault} from "../lib/Vault.sol";
 
 contract L1VaultBase is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     using SafeTransferLib for ERC20;
@@ -32,6 +32,7 @@ contract L1VaultBase is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         __Pausable_init();
         baseInitialize(_governance, _token, _wormholeRouter, _bridgeEscrow);
         parentVault = Vault(_parentVault);
+        _asset.safeApprove(address(parentVault), type(uint256).max);
     }
 
 
@@ -77,8 +78,8 @@ contract L1VaultBase is PausableUpgradeable, UUPSUpgradeable, BaseVault {
         uint256 currBalance = _asset.balanceOf(address(this));
         if(currBalance<amountRequested){
             uint256 amountToLiquidate = amountRequested - currBalance;
-            parentVault.withdraw(amountToLiquidate, address(this), address(this)); 
             totalStrategyHoldings -= amountToLiquidate;
+            parentVault.withdraw(amountToLiquidate, address(this), address(this)); 
         }
 
         // sell amount requested
@@ -101,19 +102,25 @@ contract L1VaultBase is PausableUpgradeable, UUPSUpgradeable, BaseVault {
      */
     event TransferToL2(uint256 assetsRequested, uint256 assetsSent);
 
-    // // function to withdraw eth from the contract
-    // function withdrawEth(uint256 _amount) external onlyGovernance{
-    //     payable(governance).transfer(_amount);
-    // }
+    // function to withdraw eth from the contract
+    function withdrawEth(uint256 _amount) external onlyGovernance{
+        payable(governance).transfer(_amount);
+    }
 
-    // // function to withdraw tokens from the contract
-    // function withdrawToken(address _token, uint256 _amount) external onlyGovernance{
-    //     ERC20(_token).safeTransfer(governance, _amount);
-    // }
+    // function to withdraw tokens from the contract
+    function withdrawToken(address _token, uint256 _amount) external onlyGovernance{
+        ERC20(_token).safeTransfer(governance, _amount);
+    }
+
+    function setParentVault(address _parentVault) external onlyGovernance {
+        parentVault = Vault(_parentVault);
+        _asset.safeApprove(address(parentVault), type(uint256).max);
+    }
 
     /// @notice Called by the bridgeEscrow after it transfers `asset` into this vault.
     function afterReceive() external {
-        require(msg.sender == address(bridgeEscrow), "L1: only escrow");
+        // TODO: Check first on mainnet
+        // require(msg.sender == address(bridgeEscrow), "L1: only escrow"); 
         received = true;
         // Whenever we receive funds from L2, immediately buy parent vault and increase totalStrategyHoldings
         uint256 balance = _asset.balanceOf(address(this));

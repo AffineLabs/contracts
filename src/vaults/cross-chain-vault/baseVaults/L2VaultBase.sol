@@ -10,15 +10,15 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {MathUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
-import {DummyRelay} from "src/vaults/cross-chain-vault/DummyRelay.sol";
+import {BaseVault} from "../lib/BaseVault.sol";
+import {DummyRelay} from "../lib/DummyRelay.sol";
 
-import {L2BridgeEscrowBase} from "../escrow/base/L2BridgeEscrowBase.sol";
-import {DetailedShare} from "src/utils/Detailed.sol";
+import {L2BridgeEscrowBase} from "../bridgeescrow/L2BridgeEscrowBase.sol";
+import {DetailedShare} from "../lib/Detailed.sol";
 import {L2WormholeRouter} from "../wormhole/L2WormholeRouter.sol";
-import {IERC4626} from "src/interfaces/IERC4626.sol";
-import {EmergencyWithdrawalQueue} from "../EmergencyWithdrawalQueue.sol";
-import {VaultErrors} from "src/libs/VaultErrors.sol";
+import {IERC4626} from "../lib/IERC4626.sol";
+import {EmergencyWithdrawalQueue} from "../lib/EmergencyWithdrawalQueue.sol";
+import {VaultErrors} from "../lib/VaultErrors.sol";
 
 /**
  * @notice An L2 vault. This is a cross-chain vault, i.e. some funds deposited here will be moved to L1 for investment.
@@ -61,7 +61,8 @@ contract L2VaultBase is
         emergencyWithdrawalQueue = _emergencyWithdrawalQueue;
         l1Ratio = layerRatios[0];
         l2Ratio = layerRatios[1];
-        rebalanceDelta = 1_000 * _asset.decimals();
+        // rebalanceDelta = 1_000 * _asset.decimals();
+        rebalanceDelta = 30000000000000000; // 0.03 ETH
         canTransferToL1 = true;
         canRequestFromL1 = true;
         lastTVLUpdate = uint128(block.timestamp);
@@ -73,6 +74,8 @@ contract L2VaultBase is
 
         ewqMinAssets = ewqParams[0];
         ewqMinFee = ewqParams[1];
+
+        l1TotalLockedValue = 47619047619047619; // TODO remove later
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
@@ -172,6 +175,8 @@ contract L2VaultBase is
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
         shares = previewDeposit(assets);
         _deposit(_msgSender(), receiver, assets, shares);
+        uint256 amountToReturn = MathUpgradeable.min(assets, _asset.balanceOf(address(this)));
+        _asset.safeTransfer(receiver, amountToReturn);
     }
 
     function mint(uint256 shares, address receiver) external whenNotPaused returns (uint256 assets) {
@@ -372,7 +377,7 @@ contract L2VaultBase is
     //////////////////////////////////////////////////////////////*/
 
     /// @notice TVL of L1 denominated in `asset` (e.g. USDC). This value will be updated by wormhole messages.
-    uint256 public l1TotalLockedValue;
+    uint256 public l1TotalLockedValue; // TODO: set to 0
 
     /// @notice Represents the amount of tvl (in `asset`) that should exist on L1
     uint8 public l1Ratio;
@@ -498,21 +503,21 @@ contract L2VaultBase is
         }
     }
 
-    // function transferToL1(uint256 amount, int64 _relayerFeePct) external onlyGovernance {
-    //     _liquidate(amount);
-    //     uint256 amountToSend = MathUpgradeable.min(_asset.balanceOf(address(this)), amount);
-    //     _transferToL1(amountToSend, _relayerFeePct);
-    // }
+    function transferToL1(uint256 amount, int64 _relayerFeePct) external onlyGovernance {
+        _liquidate(amount);
+        uint256 amountToSend = MathUpgradeable.min(_asset.balanceOf(address(this)), amount);
+        _transferToL1(amountToSend, _relayerFeePct);
+    }
 
-    // // function to withdraw eth from the contract
-    // function withdrawEth(uint256 _amount) external onlyGovernance{
-    //     payable(governance).transfer(_amount);
-    // }
+    // function to withdraw eth from the contract
+    function withdrawEth(uint256 _amount) external onlyGovernance{
+        payable(governance).transfer(_amount);
+    }
 
-    // // function to withdraw tokens from the contract
-    // function withdrawToken(address _token, uint256 _amount) external onlyGovernance{
-    //     ERC20(_token).safeTransfer(governance, _amount);
-    // }
+    // function to withdraw tokens from the contract
+    function withdrawToken(address _token, uint256 _amount) external onlyGovernance{
+        ERC20(_token).safeTransfer(governance, _amount);
+    }
 
     /// @dev Transfer assets to L1 via Across bridge
     function _transferToL1(uint256 amount, int64 _relayerFeePct) internal {
