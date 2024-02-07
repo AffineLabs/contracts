@@ -9,6 +9,7 @@ import {LidoLevV3, AffineVault, FixedPointMathLib} from "src/strategies/LidoLevV
 import {LidoLev} from "src/strategies/LidoLev.sol";
 import {VaultV2} from "src/vaults/VaultV2.sol";
 import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
+import {IBalancerVault, IFlashLoanRecipient} from "src/interfaces/balancer.sol";
 
 import {console2} from "forge-std/console2.sol";
 
@@ -20,6 +21,8 @@ contract LidoLevV3Test is TestPlus {
     receive() external payable {}
 
     ERC20 public asset = ERC20((0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2));
+    ERC20 public constant WETH = ERC20(payable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2));
+    IBalancerVault public constant BALANCER = IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
 
     function _getVault() internal virtual returns (AffineVault) {
         init_assets = 10 * (10 ** asset.decimals());
@@ -142,6 +145,101 @@ contract LidoLevV3Test is TestPlus {
             assertEq(asset.balanceOf(address(staking)), 0);
             assertEq(address(staking).balance, 0);
         }
+    }
+
+    function testMutexInvalidLoanOriginator() public {
+        testInvestIntoStrategy();
+
+        ERC20[] memory tokens = new ERC20[](1);
+        tokens[0] = WETH;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = init_assets * 9;
+
+        vm.expectRevert();
+        BALANCER.flashLoan({
+            recipient: IFlashLoanRecipient(address(staking)),
+            tokens: tokens,
+            amounts: amounts,
+            userData: abi.encode(LidoLevV3.LoanType.upgrade, address(this))
+        });
+
+        vm.expectRevert();
+        BALANCER.flashLoan({
+            recipient: IFlashLoanRecipient(address(staking)),
+            tokens: tokens,
+            amounts: amounts,
+            userData: abi.encode(LidoLevV3.LoanType.divest, address(this))
+        });
+    }
+
+    function testInvalidFlashLoan() public {
+        testInvestIntoStrategy();
+        vm.startPrank(address(this));
+        staking.setBorrowBps(9500);
+        vm.expectRevert();
+        staking.rebalance();
+        staking.setBorrowBps(700);
+        staking.rebalance();
+    }
+
+    function testUpgradeStrategy() public {
+        testInvestIntoStrategy();
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+
+        LidoLevV3 new_staking = new LidoLevV3(vault, strategists);
+        vm.startPrank(governance);
+        vault.addStrategy(new_staking, 0);
+
+        BaseStrategy[] memory strategyList = new BaseStrategy[](2);
+        strategyList[0] = BaseStrategy(address(staking));
+        strategyList[0] = BaseStrategy(address(new_staking));
+
+        uint16[] memory tvlBpsList = new uint16[](2);
+        tvlBpsList[0] = 0;
+        tvlBpsList[1] = 10_000;
+
+        uint256 prevTVL = staking.totalLockedValue();
+        assertEq(new_staking.totalLockedValue(), 0);
+
+        vault.updateStrategyAllocations(strategyList, tvlBpsList);
+
+        staking.upgradeTo(new_staking);
+
+        assertEq(new_staking.totalLockedValue(), prevTVL);
+        assertEq(staking.totalLockedValue(), 0);
+    }
+
+    function testUpgradeWithInvalidStrategy() public {
+        testInvestIntoStrategy();
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+
+        LidoLevV3 new_staking = new LidoLevV3(vault, strategists);
+
+        vm.expectRevert();
+        staking.upgradeTo(new_staking);
+    }
+
+    function testFlashLoanWithValidStrategy() public {
+        testInvestIntoStrategy();
+
+        address[] memory strategists = new address[](1);
+        strategists[0] = address(this);
+        LidoLevV3 new_staking = new LidoLevV3(vault, strategists);
+
+        ERC20[] memory tokens = new ERC20[](1);
+        tokens[0] = WETH;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = init_assets * 9;
+
+        vm.expectRevert("LLV3: Invalid FL origin");
+        BALANCER.flashLoan({
+            recipient: IFlashLoanRecipient(address(staking)),
+            tokens: tokens,
+            amounts: amounts,
+            userData: abi.encode(LidoLevV3.LoanType.upgrade, address(new_staking))
+        });
     }
 }
 

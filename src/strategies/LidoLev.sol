@@ -19,6 +19,8 @@ import {ICdpManager, IVat, IGemJoin, ICropper} from "src/interfaces/maker.sol";
 import {IComptroller, ICToken} from "src/interfaces/compound.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 
+/// @dev NB: has issue with upgrade. do not use before upgrade, see LidoLevV3 implementation
+
 contract LidoLev is AccessStrategy, IFlashLoanRecipient {
     using SafeTransferLib for ERC20;
     using SafeTransferLib for IWETH;
