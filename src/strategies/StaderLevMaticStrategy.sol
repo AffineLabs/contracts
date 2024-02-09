@@ -16,8 +16,9 @@ import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
 import {IBalancerVault, IFlashLoanRecipient, IBalancerQueries} from "src/interfaces/balancer.sol";
 import {SlippageUtils} from "src/libs/SlippageUtils.sol";
 import {IChildPool} from "src/interfaces/stader/IChildPool.sol";
+import {ReentrancyGuard} from "src/utils/ReentrancyGuard.sol";
 
-contract StaderLevMaticStrategy is AccessStrategy, IFlashLoanRecipient, IAAVEFlashLoanReceiver {
+contract StaderLevMaticStrategy is AccessStrategy, ReentrancyGuard, IFlashLoanRecipient, IAAVEFlashLoanReceiver {
     using SafeTransferLib for ERC20;
     using SafeTransferLib for IWMATIC;
     using FixedPointMathLib for uint256;
@@ -68,9 +69,10 @@ contract StaderLevMaticStrategy is AccessStrategy, IFlashLoanRecipient, IAAVEFla
     }
 
     error onlyBalancerVault();
+    error onlyAAVEVault();
 
     /// @notice Callback called by balancer vault after flash loan is initiated.
-    function _flashLoan(uint256 amount, LoanType loan, address recipient, FLOrigin origin) internal {
+    function _flashLoan(uint256 amount, LoanType loan, address recipient, FLOrigin origin) internal nonReentrant {
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = amount;
 
@@ -122,7 +124,7 @@ contract StaderLevMaticStrategy is AccessStrategy, IFlashLoanRecipient, IAAVEFla
         bytes memory userData
     ) external override {
         if (msg.sender != address(BALANCER)) revert onlyBalancerVault();
-
+        require(_reentrancyGuardEntered(), "SLMS: Invalid FL origin");
         // There will only be a new strategy in the case of an upgrade.
         (LoanType loan, address newStrategy) = abi.decode(userData, (LoanType, address));
 
@@ -143,9 +145,12 @@ contract StaderLevMaticStrategy is AccessStrategy, IFlashLoanRecipient, IAAVEFla
         address[] calldata, /* assets */
         uint256[] calldata amounts,
         uint256[] calldata premiums,
-        address, /* initiator */
+        address initiator,
         bytes calldata params
     ) external override returns (bool) {
+        if (msg.sender != address(AAVE)) revert onlyAAVEVault();
+        require(_reentrancyGuardEntered() && initiator == address(this), "SLMS: Invalid FL origin");
+
         (LoanType loan, address newStrategy) = abi.decode(params, (LoanType, address));
         _manageFlashLoan(amounts[0], premiums[0], loan, newStrategy);
         return true;
@@ -185,19 +190,6 @@ contract StaderLevMaticStrategy is AccessStrategy, IFlashLoanRecipient, IAAVEFla
         });
 
         toAmount = BALANCER_QUERY.querySwap(swapInfo, fmInfo);
-    }
-
-    function _swapMaticToMaticX(uint256 amount) public returns (uint256) {
-        IBalancerVault.SingleSwap memory swapInfo;
-        IBalancerVault.FundManagement memory fmInfo;
-
-        uint256 outAmount;
-
-        (outAmount, swapInfo, fmInfo) = _getSwapAmount(address(WMATIC), address(MATICX), amount);
-
-        uint256 minAmount = outAmount.slippageDown(5000);
-        uint256 ret = BALANCER.swap(swapInfo, fmInfo, minAmount, block.timestamp);
-        return ret;
     }
 
     /// @dev Add to leveraged position. Trade ETH to wstETH, deposit in AAVE, and borrow to repay balancer loan.
@@ -392,20 +384,12 @@ contract StaderLevMaticStrategy is AccessStrategy, IFlashLoanRecipient, IAAVEFla
      */
     function upgradeTo(StaderLevMaticStrategy newStrategy) external onlyGovernance {
         _checkIfStrategy(newStrategy);
-        ERC20[] memory tokens = new ERC20[](1);
-        tokens[0] = WMATIC;
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = debtToken.balanceOf(address(this));
-        BALANCER.flashLoan({
-            recipient: IFlashLoanRecipient(address(this)),
-            tokens: tokens,
-            amounts: amounts,
-            userData: abi.encode(LoanType.upgrade, address(newStrategy))
-        });
+        _flashLoan(debtToken.balanceOf(address(this)), LoanType.upgrade, address(newStrategy), FLOrigin.balancer);
     }
 
     /// @dev Pay debt and transfer collateral to new strategy.
     function _payDebtAndTransferCollateral(StaderLevMaticStrategy newStrategy) internal {
+        _checkIfStrategy(newStrategy);
         // Pay debt in aave.
         uint256 debt = debtToken.balanceOf(address(this));
         AAVE.repay(address(WMATIC), debt, 2, address(this));

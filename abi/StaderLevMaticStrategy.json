@@ -22,6 +22,16 @@
   },
   {
     "inputs": [],
+    "name": "ReentrancyGuardReentrantCall",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "onlyAAVEVault",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "onlyBalancerVault",
     "type": "error"
   },
@@ -257,25 +267,6 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "_swapMaticToMaticX",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "inputs": [],
     "name": "aToken",
     "outputs": [
@@ -391,7 +382,7 @@
       },
       {
         "internalType": "address",
-        "name": "",
+        "name": "initiator",
         "type": "address"
       },
       {
