@@ -69,7 +69,7 @@ contract LevMaticXLoopStrategy is AccessStrategy, IFlashLoanRecipient, Reentranc
 
     /// @dev Add to leveraged position  upon investment from vault.
     function _afterInvest(uint256 amount) internal override {
-        for (uint256 i = 0; i < iCycle; i++) {
+        for (uint256 i = 1; i <= iCycle; i++) {
             WMATIC.withdraw(amount);
             STADER.swapMaticForMaticXViaInstantPool{value: amount}();
             // Deposit wstETH in AAVE
@@ -77,7 +77,7 @@ contract LevMaticXLoopStrategy is AccessStrategy, IFlashLoanRecipient, Reentranc
 
             // Borrow 90% of wstETH value in ETH using e-mode
             uint256 toBorrow = amount.mulDivDown(borrowBps, MAX_BPS);
-            if (i < (iCycle - 1)) {
+            if (i < iCycle) {
                 AAVE.borrow(address(WMATIC), toBorrow, 2, 0, address(this));
                 amount = toBorrow;
             } else {
@@ -111,19 +111,6 @@ contract LevMaticXLoopStrategy is AccessStrategy, IFlashLoanRecipient, Reentranc
         });
 
         toAmount = BALANCER_QUERY.querySwap(swapInfo, fmInfo);
-    }
-
-    function _swapMaticToMaticX(uint256 amount) public returns (uint256) {
-        IBalancerVault.SingleSwap memory swapInfo;
-        IBalancerVault.FundManagement memory fmInfo;
-
-        uint256 outAmount;
-
-        (outAmount, swapInfo, fmInfo) = _getSwapAmount(address(WMATIC), address(MATICX), amount);
-
-        uint256 minAmount = outAmount.slippageDown(5000);
-        uint256 ret = BALANCER.swap(swapInfo, fmInfo, minAmount, block.timestamp);
-        return ret;
     }
 
     /// @dev We need this to receive ETH when calling wETH.withdraw()
