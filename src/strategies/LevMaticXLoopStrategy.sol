@@ -11,13 +11,15 @@ import {IFlashLoanReceiver as IAAVEFlashLoanReceiver} from
     "@aave/core-v3/contracts/flashloan/interfaces/IFlashLoanReceiver.sol";
 import {WETH as IWMATIC} from "solmate/src/tokens/WETH.sol";
 
+import {ReentrancyGuard} from "src/utils/ReentrancyGuard.sol";
+
 import {AffineVault, Strategy} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
 import {IBalancerVault, IFlashLoanRecipient, IBalancerQueries} from "src/interfaces/balancer.sol";
 import {SlippageUtils} from "src/libs/SlippageUtils.sol";
 import {IChildPool} from "src/interfaces/stader/IChildPool.sol";
 
-contract LevMaticXLoopStrategy is AccessStrategy, IFlashLoanRecipient {
+contract LevMaticXLoopStrategy is AccessStrategy, IFlashLoanRecipient, ReentrancyGuard {
     using SafeTransferLib for ERC20;
     using SafeTransferLib for IWMATIC;
     using FixedPointMathLib for uint256;
@@ -58,6 +60,7 @@ contract LevMaticXLoopStrategy is AccessStrategy, IFlashLoanRecipient {
 
     /// @dev investment cycle
     uint256 public iCycle = 10;
+    uint256 public resDebt;
 
     function setInvestmentCycle(uint256 _iCycle) external {
         require(_iCycle > 0, "LM6X: invalid loop.");
@@ -74,8 +77,12 @@ contract LevMaticXLoopStrategy is AccessStrategy, IFlashLoanRecipient {
 
             // Borrow 90% of wstETH value in ETH using e-mode
             uint256 toBorrow = amount.mulDivDown(borrowBps, MAX_BPS);
-            AAVE.borrow(address(WMATIC), toBorrow, 2, 0, address(this));
-            amount = toBorrow;
+            if (i < (iCycle - 1)) {
+                AAVE.borrow(address(WMATIC), toBorrow, 2, 0, address(this));
+                amount = toBorrow;
+            } else {
+                resDebt += toBorrow;
+            }
         }
     }
 
@@ -125,16 +132,16 @@ contract LevMaticXLoopStrategy is AccessStrategy, IFlashLoanRecipient {
     /// @dev Unlock wstETH collateral via flashloan, then repay balancer loan with unlocked collateral.
     function _divest(uint256 amount) internal override returns (uint256) {
         uint256 tvl = totalLockedValue();
-        uint256 repayAmount =
-            amount < tvl ? WMATIC.balanceOf(address(this)).mulDivDown(amount, tvl) : WMATIC.balanceOf(address(this));
+        uint256 repayAmount = amount < tvl ? resDebt.mulDivDown(amount, tvl) : resDebt;
 
-        uint256 postRes = WMATIC.balanceOf(address(this)) - repayAmount;
+        resDebt = resDebt - repayAmount;
 
-        AAVE.repay(address(WMATIC), repayAmount, 2, address(this));
+        uint256 preAssets = WMATIC.balanceOf(address(this));
+        // AAVE.repay(address(WMATIC), repayAmount, 2, address(this));
         uint256 stMaticToRedeem;
         uint256 amountReceived;
         for (uint256 i = 1; i <= iCycle; i++) {
-            uint256 exCollateral = _collateral() - _debt().mulDivUp(MAX_BPS, borrowBps);
+            uint256 exCollateral = _collateral() - (_debt() + resDebt).mulDivUp(MAX_BPS, borrowBps);
             (stMaticToRedeem,,) = STADER.convertMaticToMaticX(exCollateral);
             AAVE.withdraw(address(MATICX), stMaticToRedeem, address(this));
             amountReceived = _swapMaticXToMatic(MATICX.balanceOf(address(this)));
@@ -142,7 +149,8 @@ contract LevMaticXLoopStrategy is AccessStrategy, IFlashLoanRecipient {
                 AAVE.repay(address(WMATIC), amountReceived, 2, address(this));
             }
         }
-        uint256 unlockedAssets = WMATIC.balanceOf(address(this)) - postRes;
+        uint256 unlockedAssets = WMATIC.balanceOf(address(this)) - preAssets;
+
         WMATIC.safeTransfer(address(vault), unlockedAssets);
         return unlockedAssets;
     }
@@ -256,6 +264,7 @@ contract LevMaticXLoopStrategy is AccessStrategy, IFlashLoanRecipient {
         bytes memory userData
     ) external override {
         if (msg.sender != address(BALANCER)) revert onlyBalancerVault();
+        require(_reentrancyGuardEntered(), "LMLS: Invalid FL origin");
 
         // There will only be a new strategy in the case of an upgrade.
         (address newStrategy) = abi.decode(userData, (address));
@@ -264,7 +273,7 @@ contract LevMaticXLoopStrategy is AccessStrategy, IFlashLoanRecipient {
         WMATIC.safeTransfer(address(BALANCER), amounts[0]);
     }
 
-    function upgradeTo(LevMaticXLoopStrategy newStrategy) external onlyGovernance {
+    function upgradeTo(LevMaticXLoopStrategy newStrategy) external nonReentrant onlyGovernance {
         _checkIfStrategy(newStrategy);
 
         // transfer res assets to new strategy
@@ -285,6 +294,7 @@ contract LevMaticXLoopStrategy is AccessStrategy, IFlashLoanRecipient {
 
     /// @dev Pay debt and transfer collateral to new strategy.
     function _payDebtAndTransferCollateral(LevMaticXLoopStrategy newStrategy) internal {
+        _checkIfStrategy(newStrategy);
         // Pay debt in aave.
         uint256 debt = debtToken.balanceOf(address(this));
         AAVE.repay(address(WMATIC), debt, 2, address(this));
