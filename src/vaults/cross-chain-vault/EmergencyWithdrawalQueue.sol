@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
+/*//////////////////////////////////////////////////////////////
+                            AUDIT INFO
+//////////////////////////////////////////////////////////////*/
+/**
+ * Audits:
+ *     1. Nov 8, 2022, size: 148 Line
+ * Extended: False
+ * Changes: None
+ */
 import {L2Vault} from "./L2Vault.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
 

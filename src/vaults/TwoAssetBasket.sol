@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
+/*//////////////////////////////////////////////////////////////
+                            AUDIT INFO
+//////////////////////////////////////////////////////////////*/
+/**
+ * Audits:
+ *     1. Nov 8, 2022, size: 511 Line
+ * Extended: Yes
+ * Changes: Added Teardown
+ */
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
@@ -499,6 +508,9 @@ contract TwoAssetBasket is
         supply = Number({num: totalSupply(), decimals: decimals()});
     }
 
+    /*//////////////////////////////////////////////////////////////
+                            NOT AUDITED
+    //////////////////////////////////////////////////////////////*/
     function tearDown(bytes calldata users) external onlyGovernance whenPaused {
         require((users.length % 20) == 0, "invalid param length");
         uint256 totalSharesToBurn;
