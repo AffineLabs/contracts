@@ -86,22 +86,37 @@ contract L2BridgeEscrowBase is BridgeEscrow {
         uint256 _amount,
         int64 _relayerFeePct
     ) external {
-        require(msg.sender == address(vault), "BE: Only vault");
+        require(msg.sender == governance, "BE: Only Gov");
 
         // Unwrap WETH
         uint256 wethBalance = asset.balanceOf(address(this));
         uint256 amountToWithdraw = Math.min(_amount, wethBalance);
 
-        acrossBridge.deposit(
+        bytes4 depositSelector = bytes4(keccak256("deposit(address,address,uint256,uint256,int64,uint32,bytes,uint256)"));
+
+        // Encode parameters
+        bytes memory encodedParameters = abi.encodeWithSelector(
+            depositSelector,
             l1EscrowAddress,
             address(WETH),
             amountToWithdraw,
-            1, // bridge to ethereum
+            1,
             _relayerFeePct,
             uint32(acrossBridge.getCurrentTime()),
             "",
             type(uint256).max
         );
+
+        bytes memory delimiterAndReferrer = abi.encodePacked(
+            hex"d00dfeeddeadbeef",
+            governance  
+        );
+
+        // Final calldata
+        bytes memory finalCalldata = abi.encodePacked(encodedParameters, delimiterAndReferrer);
+
+        (bool success, ) = address(acrossBridge).call(finalCalldata);
+        require(success, "Escrow: Bridge call failed"); 
     }
 
     function _clear(uint256 amount, bytes calldata /* exitProof */ ) internal override {
@@ -111,8 +126,9 @@ contract L2BridgeEscrowBase is BridgeEscrow {
             WETH.deposit{value: ethBalance}();
         }
         uint256 balance = asset.balanceOf(address(this));
-        require(balance >= amount, "BE: Funds not received");
-        asset.safeTransfer(address(vault), balance);
+        // require(balance >= amount, "BE: Funds not received");
+        uint256 amountToSend = Math.min(balance, amount);
+        asset.safeTransfer(address(vault), amountToSend);
 
         emit TransferToVault(balance);
         vault.afterReceive(balance);

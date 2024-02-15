@@ -10,15 +10,15 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {MathUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
-import {BaseVault} from "../lib/BaseVault.sol";
-import {DummyRelay} from "../lib/DummyRelay.sol";
+import {BaseVaultV2} from "src/vaults/cross-chain-vault/BaseVaultV2.sol";
+import {DummyRelay} from "src/vaults/cross-chain-vault/DummyRelay.sol";
 
-import {L2BridgeEscrowBase} from "../bridgeescrow/L2BridgeEscrowBase.sol";
-import {DetailedShare} from "../lib/Detailed.sol";
+import {L2BridgeEscrowBase} from "src/vaults/cross-chain-vault/escrow/base/L2BridgeEscrowBase.sol";
+import {DetailedShare} from "src/utils/Detailed.sol";
 import {L2WormholeRouter} from "../wormhole/L2WormholeRouter.sol";
-import {IERC4626} from "../lib/IERC4626.sol";
-import {EmergencyWithdrawalQueue} from "../lib/EmergencyWithdrawalQueue.sol";
-import {VaultErrors} from "../lib/VaultErrors.sol";
+import {IERC4626} from "src/interfaces/IERC4626.sol";
+import {EmergencyWithdrawalQueue} from "../EmergencyWithdrawalQueue.sol";
+import {VaultErrors} from "src/libs/VaultErrors.sol";
 
 /**
  * @notice An L2 vault. This is a cross-chain vault, i.e. some funds deposited here will be moved to L1 for investment.
@@ -30,7 +30,7 @@ contract L2VaultBase is
     ERC20Upgradeable,
     UUPSUpgradeable,
     PausableUpgradeable,
-    BaseVault,
+    BaseVaultV2,
     DummyRelay, // dummy relay to keep the storage layout unchanged.
     DetailedShare,
     IERC4626
@@ -74,8 +74,6 @@ contract L2VaultBase is
 
         ewqMinAssets = ewqParams[0];
         ewqMinFee = ewqParams[1];
-
-        l1TotalLockedValue = 47619047619047619; // TODO remove later
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
@@ -97,8 +95,8 @@ contract L2VaultBase is
                              ERC4626 BASICS
     //////////////////////////////////////////////////////////////*/
 
-    /// @inheritdoc BaseVault
-    function asset() public view override(BaseVault, IERC4626) returns (address assetTokenAddress) {
+    /// @inheritdoc BaseVaultV2
+    function asset() public view override(BaseVaultV2, IERC4626) returns (address assetTokenAddress) {
         return address(_asset);
     }
 
@@ -154,20 +152,6 @@ contract L2VaultBase is
 
     uint256 constant SECS_PER_YEAR = 365 days;
 
-    /// @dev Collect management fees during calls to `harvest`.
-    function _assessFees() internal override {
-        // duration / SECS_PER_YEAR * feebps / MAX_BPS * totalSupply
-        uint256 duration = block.timestamp - lastHarvest;
-
-        uint256 feesBps = (duration * managementFee) / SECS_PER_YEAR;
-        uint256 numSharesToMint = (feesBps * totalSupply()) / MAX_BPS;
-
-        if (numSharesToMint == 0) {
-            return;
-        }
-        _mint(governance, numSharesToMint);
-    }
-
     /*//////////////////////////////////////////////////////////////
                                 DEPOSITS
     //////////////////////////////////////////////////////////////*/
@@ -193,14 +177,6 @@ contract L2VaultBase is
         emit Deposit(caller, receiver, assets, shares);
     }
 
-    /**
-     * @notice Deposit `asset` into strategies
-     * @param amount The amount of `asset` to deposit
-     */
-    function depositIntoStrategies(uint256 amount) external whenNotPaused onlyRole(HARVESTER) {
-        // Deposit entire balance of `_asset` into strategies
-        _depositIntoStrategies(amount);
-    }
 
     /*//////////////////////////////////////////////////////////////
                               WITHDRAWALS
@@ -244,7 +220,6 @@ contract L2VaultBase is
 
         // We must be able to repay all queued users and the current user.
         uint256 assetDemand = assets + ewq.totalDebt();
-        _liquidate(assetDemand);
 
         // The ewq does not need approval to burn shares.
         address caller = _msgSender();
@@ -281,9 +256,8 @@ contract L2VaultBase is
         Up, // Toward infinity
         Zero // Toward zero
     }
-
     function totalAssets() public view returns (uint256 totalManagedAssets) {
-        return vaultTVL() + l1TotalLockedValue - lockedProfit() - lockedTVL();
+        return vaultTVL() + l1TotalLockedValue - lockedTVL();
     }
 
     function convertToShares(uint256 assets) public view returns (uint256 shares) {
@@ -298,7 +272,6 @@ contract L2VaultBase is
         // The solution is inspired by YieldBox
         uint256 totalShares = totalSupply() + 1e8;
         uint256 _totalAssets = totalAssets() + 1;
-
         if (roundingDirection == Rounding.Up) {
             shares = assets.mulDivUp(totalShares, _totalAssets);
         } else {
@@ -377,7 +350,7 @@ contract L2VaultBase is
     //////////////////////////////////////////////////////////////*/
 
     /// @notice TVL of L1 denominated in `asset` (e.g. USDC). This value will be updated by wormhole messages.
-    uint256 public l1TotalLockedValue; // TODO: set to 0
+    uint256 public l1TotalLockedValue;
 
     /// @notice Represents the amount of tvl (in `asset`) that should exist on L1
     uint8 public l1Ratio;
@@ -480,7 +453,6 @@ contract L2VaultBase is
         // Set aside assets for the withdrawal queue
         uint256 l1IdealAmount =
             (l1Ratio * (vaultTVL() + l1TotalLockedValue - emergencyWithdrawalQueue.totalDebt())) / numSlices;
-
         bool invest;
         uint256 delta;
         if (l1IdealAmount >= l1TotalLockedValue) {
@@ -495,7 +467,6 @@ contract L2VaultBase is
     /// @dev Send/receive assets from L1
     function _l1L2Rebalance(bool invest, uint256 amount, int64 _relayerFeePct) internal {
         if (invest) {
-            _liquidate(amount);
             uint256 amountToSend = MathUpgradeable.min(_asset.balanceOf(address(this)), amount);
             _transferToL1(amountToSend, _relayerFeePct);
         } else {
@@ -504,7 +475,6 @@ contract L2VaultBase is
     }
 
     function transferToL1(uint256 amount, int64 _relayerFeePct) external onlyGovernance {
-        _liquidate(amount);
         uint256 amountToSend = MathUpgradeable.min(_asset.balanceOf(address(this)), amount);
         _transferToL1(amountToSend, _relayerFeePct);
     }

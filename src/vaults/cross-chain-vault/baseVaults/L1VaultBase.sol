@@ -6,12 +6,12 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import {BaseVault} from "../lib/BaseVault.sol";
-import {L1BridgeEscrowBase} from "../bridgeescrow/L1BridgeEscrowBase.sol";
+import {BaseVaultV2} from "src/vaults/cross-chain-vault/BaseVaultV2.sol";
+import {L1BridgeEscrowBase} from "src/vaults/cross-chain-vault/escrow/base/L1BridgeEscrowBase.sol";
 import {L1WormholeRouter} from "../wormhole/L1WormholeRouter.sol";
-import {Vault} from "../lib/Vault.sol";
+import {Vault} from "src/vaults/Vault.sol";
 
-contract L1VaultBase is PausableUpgradeable, UUPSUpgradeable, BaseVault {
+contract L1VaultBase is PausableUpgradeable, UUPSUpgradeable, BaseVaultV2 {
     using SafeTransferLib for ERC20;
 
     /*//////////////////////////////////////////////////////////////
@@ -119,17 +119,11 @@ contract L1VaultBase is PausableUpgradeable, UUPSUpgradeable, BaseVault {
 
     /// @notice Called by the bridgeEscrow after it transfers `asset` into this vault.
     function afterReceive() external {
-        // TODO: Check first on mainnet
-        // require(msg.sender == address(bridgeEscrow), "L1: only escrow"); 
+        require(msg.sender == address(bridgeEscrow), "L1: only escrow"); 
         received = true;
         // Whenever we receive funds from L2, immediately buy parent vault and increase totalStrategyHoldings
         uint256 balance = _asset.balanceOf(address(this));
         totalStrategyHoldings += balance;
         parentVault.deposit(balance, address(this));
-    }
-
-    /// @dev The L1Vault's profit does not need to unlock over time, because users to do not transact with it
-    function lockedProfit() public pure override returns (uint256) {
-        return 0;
     }
 }

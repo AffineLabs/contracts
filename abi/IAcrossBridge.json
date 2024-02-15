@@ -1,0 +1,114 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "originToken",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "destinationChainId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "int64",
+        "name": "relayerFeePct",
+        "type": "int64"
+      },
+      {
+        "internalType": "uint32",
+        "name": "quoteTimestamp",
+        "type": "uint32"
+      },
+      {
+        "internalType": "bytes",
+        "name": "message",
+        "type": "bytes"
+      },
+      {
+        "internalType": "uint256",
+        "name": "maxCount",
+        "type": "uint256"
+      }
+    ],
+    "name": "deposit",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "depositQuoteTimeBuffer",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getCurrentTime",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "deoisitor",
+        "type": "address"
+      },
+      {
+        "internalType": "int64",
+        "name": "updatedRelayerFeePct",
+        "type": "int64"
+      },
+      {
+        "internalType": "uint32",
+        "name": "depositId",
+        "type": "uint32"
+      },
+      {
+        "internalType": "address",
+        "name": "updatedRecipient",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "updatedMessage",
+        "type": "bytes"
+      },
+      {
+        "internalType": "bytes",
+        "name": "depositorSignature",
+        "type": "bytes"
+      }
+    ],
+    "name": "speedUpDeposit",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  }
+]

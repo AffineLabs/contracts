@@ -27,9 +27,13 @@ contract L1BridgeEscrowBase is BridgeEscrow {
     L1Vault public immutable vault;
 
     // TODO: change to mainnet address
-    IBaseBridge public baseBridge = IBaseBridge(payable(0x49f53e41452C74589E85cA1677426Ba426459e85));
+    // IBaseBridge public baseBridge = IBaseBridge(payable(0x49048044D57e1C92A77f79988d21Fa8fAF74E97e)); // mainnet
+    IBaseBridge public baseBridge = IBaseBridge(payable(0x49f53e41452C74589E85cA1677426Ba426459e85)); // testnet
     address public l2EscrowAddress;
-    IWETH public constant WETH = IWETH(payable(0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9));
+    // IWETH public constant WETH = IWETH(payable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2)); //mainnet
+    IWETH public constant WETH = IWETH(payable(0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9)); //testnet
+
+    // uint256 public maxAcrossFeePct = 1000;
 
     constructor(L1Vault _vault) BridgeEscrow(_vault) {
         vault = _vault;
@@ -87,14 +91,8 @@ contract L1BridgeEscrowBase is BridgeEscrow {
         if (ethBalance > 0) {
             WETH.deposit{value: ethBalance}();
         }
-        
-        uint256 balance = asset.balanceOf(address(this));
-        require(balance >= assets, "BE: Funds not received");
 
-        // // wrap ether
-        // uint256 amountToWrap = Math.min(balance, assets);
-        // WETH.deposit{value: amountToWrap}();
-        // uint256 balanceWeth = WETH.balanceOf(address(this));
+        uint256 balance = asset.balanceOf(address(this));
 
         uint256 amountToSend = Math.min(balance, assets);
         asset.safeTransfer(address(vault), amountToSend);
