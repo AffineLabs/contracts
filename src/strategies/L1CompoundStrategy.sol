@@ -19,7 +19,7 @@ import {ICToken} from "src/interfaces/compound/ICToken.sol";
 import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
-import {BaseStrategy} from "./BaseStrategy.sol";
+import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 
 contract L1CompoundStrategy is BaseStrategy, AccessControl {
     using SafeTransferLib for ERC20;

@@ -4,7 +4,7 @@ pragma solidity =0.8.16;
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
-import {BaseStrategy} from "./BaseStrategy.sol";
+import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 import {uncheckedInc} from "src/libs/Unchecked.sol";
 
 contract AccessStrategy is BaseStrategy, AccessControl {

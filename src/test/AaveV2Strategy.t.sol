@@ -9,7 +9,7 @@ import {Deploy} from "./Deploy.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/BridgeEscrow.sol";
-import {AaveV2Strategy, ILendingPool} from "src/strategies/AaveV2Strategy.sol";
+import {AaveV2Strategy, ILendingPool} from "src/strategies/audited/AaveV2Strategy.sol";
 
 /// @notice Test AAVE strategy
 contract AAVEStratTest is TestPlus {

@@ -8,7 +8,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {LidoLevV3, AffineVault, FixedPointMathLib} from "src/strategies/LidoLevV3.sol";
 import {LidoLev} from "src/strategies/LidoLev.sol";
 import {VaultV2} from "src/vaults/VaultV2.sol";
-import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
+import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 import {IBalancerVault, IFlashLoanRecipient} from "src/interfaces/balancer.sol";
 
 import {console2} from "forge-std/console2.sol";

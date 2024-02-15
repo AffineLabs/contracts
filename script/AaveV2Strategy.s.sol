@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import {Script, console2} from "forge-std/Script.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
-import {AaveV2Strategy, ILendingPool} from "src/strategies/AaveV2Strategy.sol";
+import {AaveV2Strategy, ILendingPool} from "src/strategies/audited/AaveV2Strategy.sol";
 
 /* solhint-disable reason-string, no-console */
 

@@ -8,7 +8,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
-import {BaseStrategy} from "./BaseStrategy.sol";
+import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 
 contract AaveV3Strategy is BaseStrategy {
     using SafeTransferLib for ERC20;

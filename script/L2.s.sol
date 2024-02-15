@@ -19,7 +19,7 @@ import {Router} from "src/vaults/cross-chain-vault/router/Router.sol";
 import {TwoAssetBasket} from "src/vaults/TwoAssetBasket.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 
-import {AaveV2Strategy} from "src/strategies/AaveV2Strategy.sol";
+import {AaveV2Strategy} from "src/strategies/audited/AaveV2Strategy.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {ILendingPoolAddressesProviderRegistry} from "src/interfaces/aave.sol";
 

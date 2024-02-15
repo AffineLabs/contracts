@@ -11,7 +11,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {Vault, ERC721, VaultErrors} from "src/vaults/Vault.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
-import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
+import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
 import {TestStrategy} from "./mocks/TestStrategy.sol";
 

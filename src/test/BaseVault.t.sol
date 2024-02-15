@@ -11,7 +11,7 @@ import {TestStrategy, TestStrategyDivestSlippage} from "./mocks/TestStrategy.sol
 
 import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/BridgeEscrow.sol";
 import {IWormhole} from "src/interfaces/IWormhole.sol";
-import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
+import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
 import {AffineVault} from "src/vaults/AffineVault.sol";
 
