@@ -16,7 +16,7 @@ import {ReentrancyGuard} from "src/utils/ReentrancyGuard.sol";
 import {AffineVault, Strategy} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
 import {IBalancerVault, IFlashLoanRecipient, IBalancerQueries} from "src/interfaces/balancer.sol";
-import {SlippageUtils} from "src/libs/SlippageUtils.sol";
+import {SlippageUtils} from "src/libs/audited/SlippageUtils.sol";
 import {IChildPool} from "src/interfaces/stader/IChildPool.sol";
 
 contract LevMaticXLoopStrategy is AccessStrategy, IFlashLoanRecipient, ReentrancyGuard {

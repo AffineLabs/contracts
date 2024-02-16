@@ -8,7 +8,7 @@ import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.s
 import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
 
 import {AffinePass} from "./AffinePass.sol";
-import {uncheckedInc} from "src/libs/Unchecked.sol";
+import {uncheckedInc} from "src/libs/audited/Unchecked.sol";
 
 contract AffinePassBridge is UUPSUpgradeable, CCIPReceiver, OwnableUpgradeable {
     /*//////////////////////////////////////////////////////////////

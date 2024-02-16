@@ -7,7 +7,7 @@ import {Deploy} from "./Deploy.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 
 import {IWormhole} from "src/interfaces/IWormhole.sol";
-import {Constants} from "src/libs/Constants.sol";
+import {Constants} from "src/libs/audited/Constants.sol";
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
 import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";

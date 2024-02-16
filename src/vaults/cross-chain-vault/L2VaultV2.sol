@@ -9,7 +9,7 @@ import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
 import {NftGate} from "src/vaults/NftGate.sol";
 import {HarvestStorage} from "src/vaults/HarvestStorage.sol";
 import {BaseStrategy as Strategy} from "src/strategies/audited/BaseStrategy.sol";
-import {uncheckedInc} from "src/libs/Unchecked.sol";
+import {uncheckedInc} from "src/libs/audited/Unchecked.sol";
 
 import {VaultErrors} from "src/libs/VaultErrors.sol";
 import {RebalanceStorage} from "src/vaults/cross-chain-vault/RebalanceStorage.sol";

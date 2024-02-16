@@ -9,7 +9,7 @@ import {Vault} from "src/vaults/Vault.sol";
 import {NftGate} from "src/vaults/NftGate.sol";
 import {HarvestStorage} from "src/vaults/HarvestStorage.sol";
 import {BaseStrategy as Strategy} from "src/strategies/audited/BaseStrategy.sol";
-import {uncheckedInc} from "src/libs/Unchecked.sol";
+import {uncheckedInc} from "src/libs/audited/Unchecked.sol";
 import {VaultErrors} from "src/libs/VaultErrors.sol";
 
 contract VaultV2 is Vault, NftGate, HarvestStorage {

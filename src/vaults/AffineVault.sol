@@ -9,7 +9,7 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
 import {AffineGovernable} from "src/utils/AffineGovernable.sol";
 import {BaseStrategy as Strategy} from "src/strategies/audited/BaseStrategy.sol";
-import {uncheckedInc} from "src/libs/Unchecked.sol";
+import {uncheckedInc} from "src/libs/audited/Unchecked.sol";
 
 /**
  * @notice A core contract to be inherited by the L1 and L2 vault contracts. This contract handles adding

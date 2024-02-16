@@ -23,7 +23,7 @@ import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "./AccessStrategy.sol";
 import {IMasterChef} from "src/interfaces/sushiswap/IMasterChef.sol";
-import {SlippageUtils} from "src/libs/SlippageUtils.sol";
+import {SlippageUtils} from "src/libs/audited/SlippageUtils.sol";
 
 struct LpInfo {
     IUniswapV2Router02 router; // lp router

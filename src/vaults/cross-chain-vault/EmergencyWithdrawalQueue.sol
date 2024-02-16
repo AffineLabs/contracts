@@ -11,7 +11,7 @@ pragma solidity =0.8.16;
  * Changes: None
  */
 import {L2Vault} from "./L2Vault.sol";
-import {uncheckedInc} from "src/libs/Unchecked.sol";
+import {uncheckedInc} from "src/libs/audited/Unchecked.sol";
 
 contract EmergencyWithdrawalQueue {
     /// @notice Address of Alpine vault.

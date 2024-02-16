@@ -13,7 +13,7 @@ import {IWormhole} from "src/interfaces/IWormhole.sol";
 import {L1WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L1WormholeRouter.sol";
 import {L2WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L2WormholeRouter.sol";
 import {WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/WormholeRouter.sol";
-import {Constants} from "src/libs/Constants.sol";
+import {Constants} from "src/libs/audited/Constants.sol";
 
 // This contract exists solely to test the internal view
 contract MockRouter is L2WormholeRouter {

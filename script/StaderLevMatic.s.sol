@@ -7,7 +7,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {SlippageUtils} from "src/libs/SlippageUtils.sol";
+import {SlippageUtils} from "src/libs/audited/SlippageUtils.sol";
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {EthVaultV2} from "src/vaults/EthVaultV2.sol";

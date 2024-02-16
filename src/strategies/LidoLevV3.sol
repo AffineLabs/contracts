@@ -15,7 +15,7 @@ import {IBalancerVault, IFlashLoanRecipient} from "src/interfaces/balancer.sol";
 import {IWSTETH} from "src/interfaces/lido/IWSTETH.sol";
 import {ICurvePool} from "src/interfaces/curve/ICurvePool.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
-import {SlippageUtils} from "src/libs/SlippageUtils.sol";
+import {SlippageUtils} from "src/libs/audited/SlippageUtils.sol";
 
 contract LidoLevV3 is AccessStrategy, ReentrancyGuard, IFlashLoanRecipient {
     using SafeTransferLib for ERC20;

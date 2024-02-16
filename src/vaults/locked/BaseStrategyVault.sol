@@ -10,7 +10,7 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {AffineGovernable} from "src/utils/AffineGovernable.sol";
 import {BaseStrategy as Strategy} from "src/strategies/audited/BaseStrategy.sol";
 import {WithdrawalEscrow} from "./WithdrawalEscrow.sol";
-import {uncheckedInc} from "src/libs/Unchecked.sol";
+import {uncheckedInc} from "src/libs/audited/Unchecked.sol";
 
 /**
  * @notice A single-strategy vault.
