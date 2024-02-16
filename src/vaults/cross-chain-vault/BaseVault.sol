@@ -17,7 +17,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
 import {BaseStrategy as Strategy} from "src/strategies/audited/BaseStrategy.sol";
-import {AffineGovernable} from "src/utils/AffineGovernable.sol";
+import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
 import {BridgeEscrow} from "./escrow/BridgeEscrow.sol";
 import {uncheckedInc} from "src/libs/audited/Unchecked.sol";
 import {VaultErrors} from "src/libs/VaultErrors.sol";

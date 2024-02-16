@@ -12,7 +12,7 @@ pragma solidity =0.8.16;
  */
 import {IWormhole} from "src/interfaces/IWormhole.sol";
 import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
-import {AffineGovernable} from "src/utils/AffineGovernable.sol";
+import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
 
 abstract contract WormholeRouter is AffineGovernable {
     /// @notice The vault that sends/receives messages.
