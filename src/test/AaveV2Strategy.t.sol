@@ -8,7 +8,7 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
-import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/BridgeEscrow.sol";
+import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/audited/BridgeEscrow.sol";
 import {AaveV2Strategy, ILendingPool} from "src/strategies/audited/AaveV2Strategy.sol";
 
 /// @notice Test AAVE strategy

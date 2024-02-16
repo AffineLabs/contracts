@@ -9,7 +9,7 @@ import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
 import {ICREATE3Factory} from "src/interfaces/ICreate3Factory.sol";
 import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
 import {IWormhole} from "src/interfaces/IWormhole.sol";
-import {L1BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/L1BridgeEscrow.sol";
+import {L1BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/audited/L1BridgeEscrow.sol";
 import {L1WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L1WormholeRouter.sol";
 
 import {L1CompoundStrategy} from "src/strategies/L1CompoundStrategy.sol";

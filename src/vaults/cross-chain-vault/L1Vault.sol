@@ -17,7 +17,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {BaseVault} from "./BaseVault.sol";
 import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
-import {L1BridgeEscrow} from "./escrow/L1BridgeEscrow.sol";
+import {L1BridgeEscrow} from "./escrow/audited/L1BridgeEscrow.sol";
 import {L1WormholeRouter} from "./wormhole/L1WormholeRouter.sol";
 
 contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {

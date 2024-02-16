@@ -9,9 +9,9 @@ import {MockERC20} from "./mocks/MockERC20.sol";
 import "./mocks/index.sol";
 
 import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
-import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/BridgeEscrow.sol";
-import {L2BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/L2BridgeEscrow.sol";
-import {L1BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/L1BridgeEscrow.sol";
+import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/audited/BridgeEscrow.sol";
+import {L2BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/audited/L2BridgeEscrow.sol";
+import {L1BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/audited/L1BridgeEscrow.sol";
 import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
 
 /// @notice Test functionalities of l2 bridge escrow contract.

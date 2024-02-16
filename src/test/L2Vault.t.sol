@@ -9,7 +9,7 @@ import {AffineVault} from "src/vaults/AffineVault.sol";
 import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
 import {L2WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L2WormholeRouter.sol";
 import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
-import {L2BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/L2BridgeEscrow.sol";
+import {L2BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/audited/L2BridgeEscrow.sol";
 import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/EmergencyWithdrawalQueue.sol";
 import {VaultErrors} from "src/libs/VaultErrors.sol";
 
