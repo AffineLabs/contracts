@@ -10,9 +10,9 @@ import {Deploy} from "./Deploy.sol";
 import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
 import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
 import {IWormhole} from "src/interfaces/IWormhole.sol";
-import {L1WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L1WormholeRouter.sol";
-import {L2WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L2WormholeRouter.sol";
-import {WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/WormholeRouter.sol";
+import {L1WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/audited/L1WormholeRouter.sol";
+import {L2WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/audited/L2WormholeRouter.sol";
+import {WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/audited/WormholeRouter.sol";
 import {Constants} from "src/libs/audited/Constants.sol";
 
 // This contract exists solely to test the internal view

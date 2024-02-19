@@ -11,7 +11,7 @@ import {CREATE3Factory} from "src/test/CREATE3Factory.sol";
 import {IWormhole} from "src/interfaces/IWormhole.sol";
 import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
 import {L2BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/audited/L2BridgeEscrow.sol";
-import {L2WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/L2WormholeRouter.sol";
+import {L2WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/audited/L2WormholeRouter.sol";
 import {Forwarder} from "src/vaults/cross-chain-vault/Forwarder.sol";
 import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/EmergencyWithdrawalQueue.sol";
 
