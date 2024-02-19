@@ -4,10 +4,10 @@ pragma solidity =0.8.16;
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {L2Vault} from "src/vaults/cross-chain-vault/audited/L2Vault.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/audited/BaseVault.sol";
 import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
-import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
+import {L1Vault} from "src/vaults/cross-chain-vault/audited/L1Vault.sol";
 import {L2BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/audited/L2BridgeEscrow.sol";
 import {L1BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/audited/L1BridgeEscrow.sol";
 import {TwoAssetBasket} from "src/vaults/TwoAssetBasket.sol";
@@ -16,7 +16,7 @@ import {IWormhole} from "src/interfaces/IWormhole.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 import {L1WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/audited/L1WormholeRouter.sol";
 import {L2WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/audited/L2WormholeRouter.sol";
-import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/EmergencyWithdrawalQueue.sol";
+import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/audited/EmergencyWithdrawalQueue.sol";
 import {Create3Deployer} from "./Create3Deployer.sol";
 import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 

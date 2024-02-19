@@ -5,7 +5,7 @@ import {Script, console2} from "forge-std/Script.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
-import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
+import {L1Vault} from "src/vaults/cross-chain-vault/audited/L1Vault.sol";
 import {ICREATE3Factory} from "src/interfaces/ICreate3Factory.sol";
 import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
 import {IWormhole} from "src/interfaces/IWormhole.sol";

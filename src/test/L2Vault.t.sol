@@ -6,11 +6,11 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
-import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
+import {L2Vault} from "src/vaults/cross-chain-vault/audited/L2Vault.sol";
 import {L2WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/audited/L2WormholeRouter.sol";
 import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 import {L2BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/audited/L2BridgeEscrow.sol";
-import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/EmergencyWithdrawalQueue.sol";
+import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/audited/EmergencyWithdrawalQueue.sol";
 import {VaultErrors} from "src/libs/VaultErrors.sol";
 
 import {Deploy} from "./Deploy.sol";

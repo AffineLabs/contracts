@@ -9,8 +9,8 @@ import {Deploy} from "./Deploy.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {ConvertLib} from "./ConvertLib.sol";
 
-import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
-import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/EmergencyWithdrawalQueue.sol";
+import {L2Vault} from "src/vaults/cross-chain-vault/audited/L2Vault.sol";
+import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/audited/EmergencyWithdrawalQueue.sol";
 
 /// @notice Test functionalities of emergency withdrawal queue.
 contract EmergencyWithdrawalQueueTest is TestPlus {

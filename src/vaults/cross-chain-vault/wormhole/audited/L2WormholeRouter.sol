@@ -11,7 +11,7 @@ pragma solidity =0.8.16;
  * Changes: None
  */
 import {IWormhole} from "src/interfaces/IWormhole.sol";
-import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
+import {L2Vault} from "src/vaults/cross-chain-vault/audited/L2Vault.sol";
 import {WormholeRouter} from "./WormholeRouter.sol";
 import {Constants} from "src/libs/audited/Constants.sol";
 

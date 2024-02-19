@@ -12,7 +12,7 @@ import {Vault, ERC721, VaultErrors} from "src/vaults/Vault.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/audited/BaseVault.sol";
 import {TestStrategy} from "./mocks/TestStrategy.sol";
 
 contract MockNft is ERC721 {

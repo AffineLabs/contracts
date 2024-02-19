@@ -14,7 +14,7 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
 import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
 import {BridgeEscrow} from "./BridgeEscrow.sol";
-import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
+import {L1Vault} from "src/vaults/cross-chain-vault/audited/L1Vault.sol";
 
 contract L1BridgeEscrow is BridgeEscrow {
     using SafeTransferLib for ERC20;

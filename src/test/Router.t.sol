@@ -8,7 +8,7 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 
-import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
+import {L2Vault} from "src/vaults/cross-chain-vault/audited/L2Vault.sol";
 import {TwoAssetBasket} from "src/vaults/TwoAssetBasket.sol";
 import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 import {Deploy} from "./Deploy.sol";
@@ -17,7 +17,7 @@ import {IERC4626} from "src/interfaces/IERC4626.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 
 import {IWETH} from "src/interfaces/IWETH.sol";
-import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
+import {L1Vault} from "src/vaults/cross-chain-vault/audited/L1Vault.sol";
 import {Router} from "src/vaults/cross-chain-vault/router/audited/Router.sol";
 
 /// @notice Test functionalities of the router contract.

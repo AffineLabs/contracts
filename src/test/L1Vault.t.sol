@@ -9,11 +9,11 @@ import {MockERC20} from "./mocks/MockERC20.sol";
 import {IWormhole} from "src/interfaces/IWormhole.sol";
 import {Constants} from "src/libs/audited/Constants.sol";
 import {AffineVault} from "src/vaults/AffineVault.sol";
-import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
-import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
+import {L2Vault} from "src/vaults/cross-chain-vault/audited/L2Vault.sol";
+import {L1Vault} from "src/vaults/cross-chain-vault/audited/L1Vault.sol";
 import {L1WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/audited/L1WormholeRouter.sol";
 import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
-import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/EmergencyWithdrawalQueue.sol";
+import {EmergencyWithdrawalQueue} from "src/vaults/cross-chain-vault/audited/EmergencyWithdrawalQueue.sol";
 import {TestStrategy} from "./BaseVault.t.sol";
 import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
 

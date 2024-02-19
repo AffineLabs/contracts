@@ -18,7 +18,7 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
 import {BaseStrategy as Strategy} from "src/strategies/audited/BaseStrategy.sol";
 import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
-import {BridgeEscrow} from "./escrow/audited/BridgeEscrow.sol";
+import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/audited/BridgeEscrow.sol";
 import {uncheckedInc} from "src/libs/audited/Unchecked.sol";
 import {VaultErrors} from "src/libs/VaultErrors.sol";
 

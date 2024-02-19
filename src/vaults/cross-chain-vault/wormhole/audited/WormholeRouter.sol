@@ -11,7 +11,7 @@ pragma solidity =0.8.16;
  * Changes: None
  */
 import {IWormhole} from "src/interfaces/IWormhole.sol";
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/audited/BaseVault.sol";
 import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
 
 abstract contract WormholeRouter is AffineGovernable {
