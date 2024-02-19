@@ -12,14 +12,14 @@ import {SlippageUtils} from "src/libs/audited/SlippageUtils.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {EthVaultV2} from "src/vaults/EthVaultV2.sol";
 import {Vault} from "src/vaults/VaultV2.sol";
-import {Router} from "src/vaults/cross-chain-vault/router/Router.sol";
+import {Router} from "src/vaults/cross-chain-vault/router/audited/Router.sol";
 
 import {StaderLevMaticStrategy, IWMATIC} from "src/strategies/StaderLevMaticStrategy.sol";
 import {LevMaticXLoopStrategy, IWMATIC} from "src/strategies/LevMaticXLoopStrategy.sol";
 import {AffineVault} from "src/vaults/AffineVault.sol";
 
 import {Base} from "./Base.sol";
-import {Router, IWETH} from "src/vaults/cross-chain-vault/router/Router.sol";
+import {Router, IWETH} from "src/vaults/cross-chain-vault/router/audited/Router.sol";
 
 /* solhint-disable reason-string, no-console */
 
