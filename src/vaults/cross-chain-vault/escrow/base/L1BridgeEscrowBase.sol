@@ -20,6 +20,7 @@ contract L1BridgeEscrowBase is BridgeEscrow {
     L1Vault public immutable vault;
 
     IBaseBridge public baseBridge;
+    uint64 constant BASE_GAS_LIMIT = 100000;
     // IBaseBridge public baseBridge = IBaseBridge(payable(0x49f53e41452C74589E85cA1677426Ba426459e85)); // testnet
     address public l2EscrowAddress;
     IWETH public constant WETH = IWETH(payable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2)); //mainnet
@@ -62,7 +63,7 @@ contract L1BridgeEscrowBase is BridgeEscrow {
         baseBridge.depositTransaction{value: amountToBridge}(
             l2EscrowAddress,
             amountToBridge,
-            100000,
+            BASE_GAS_LIMIT,
             false,
             "0x01"
         );

@@ -472,17 +472,8 @@ contract L2VaultBase is
 
     function transferToL1(uint256 amount, int64 _relayerFeePct) external onlyGovernance {
         uint256 amountToSend = MathUpgradeable.min(_asset.balanceOf(address(this)), amount);
+        //TODO: deduct relayerfeepct from amount to send
         _transferToL1(amountToSend, _relayerFeePct);
-    }
-
-    // function to withdraw eth from the contract
-    function withdrawEth(uint256 _amount) external onlyGovernance{
-        payable(governance).transfer(_amount);
-    }
-
-    // function to withdraw tokens from the contract
-    function withdrawToken(address _token, uint256 _amount) external onlyGovernance{
-        ERC20(_token).safeTransfer(governance, _amount);
     }
 
     /// @dev Transfer assets to L1 via Across bridge

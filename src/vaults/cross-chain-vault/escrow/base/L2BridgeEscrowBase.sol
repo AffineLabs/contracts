@@ -20,12 +20,15 @@ contract L2BridgeEscrowBase is BridgeEscrow {
 
     IAcrossBridge public acrossBridge;
     address public l1EscrowAddress;
-    IWETH public constant WETH = IWETH(payable(0x4200000000000000000000000000000000000006));
+    IWETH public WETH;
+    uint256 public constant L1_CHAIN_ID = 1;
 
-    constructor(L2Vault _vault) BridgeEscrow(_vault) {
+    constructor(L2Vault _vault, address _acrossAddress) BridgeEscrow(_vault) {
         vault = _vault;
+        address vaultAsset = vault.asset();
+        WETH = IWETH(payable(vaultAsset));
         asset.safeApprove(address(acrossBridge), type(uint256).max);
-        acrossBridge = IAcrossBridge(payable(0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64));
+        acrossBridge = IAcrossBridge(payable(_acrossAddress));
     }
 
     fallback() external payable {}
@@ -73,13 +76,13 @@ contract L2BridgeEscrowBase is BridgeEscrow {
             l1EscrowAddress,
             address(WETH),
             amountToWithdraw,
-            1,
+            L1_CHAIN_ID,
             _relayerFeePct,
             uint32(acrossBridge.getCurrentTime()),
             "",
             type(uint256).max
         );
-
+        // "d00dfeeddeadbeef+{GOVERNANCE}" at the end of the calldata
         bytes memory delimiterAndReferrer = abi.encodePacked(
             hex"d00dfeeddeadbeef",
             governance  
@@ -98,6 +101,7 @@ contract L2BridgeEscrowBase is BridgeEscrow {
         if (ethBalance > 0) {
             WETH.deposit{value: ethBalance}();
         }
+        // TODO: require amount to be more than balance
         uint256 balance = asset.balanceOf(address(this));
         // require(balance >= amount, "BE: Funds not received");
         uint256 amountToSend = Math.min(balance, amount);

@@ -102,21 +102,16 @@ contract L1VaultBase is PausableUpgradeable, UUPSUpgradeable, BaseVaultV2 {
      */
     event TransferToL2(uint256 assetsRequested, uint256 assetsSent);
 
-    // function to withdraw eth from the contract
-    function withdrawEth(uint256 _amount) external onlyGovernance{
-        payable(governance).transfer(_amount);
-    }
-
-    function setParentVault(address _parentVault) external onlyGovernance {
-        Vault temp =  Vault(_parentVault);
-        require(temp.asset() == address(_asset), "L1: asset mismatch");
-        require(temp.governance() == governance, "L1: governance mismatch");
+    function setParentVault(address parentVaultAddress) external onlyGovernance {
+        Vault _parentVault =  Vault(parentVaultAddress);
+        require(_parentVault.asset() == address(_asset), "L1: asset mismatch");
+        require(_parentVault.governance() == governance, "L1: governance mismatch");
         // withdraw funds from old parent vault
         uint256 shareBalance = parentVault.balanceOf(address(this));
         if(shareBalance>0){
             parentVault.redeem(shareBalance, address(this), address(this));
         }
-        parentVault = Vault(_parentVault);
+        parentVault = Vault(parentVaultAddress);
         _asset.safeApprove(address(parentVault), type(uint256).max);
         uint256 balance = _asset.balanceOf(address(this));
         parentVault.deposit(balance, address(this));

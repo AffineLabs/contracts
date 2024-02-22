@@ -5,6 +5,11 @@
         "internalType": "contract L2Vault",
         "name": "_vault",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_acrossAddress",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -26,6 +31,19 @@
   {
     "stateMutability": "payable",
     "type": "fallback"
+  },
+  {
+    "inputs": [],
+    "name": "L1_CHAIN_ID",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [],

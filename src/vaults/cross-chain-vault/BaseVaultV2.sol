@@ -79,12 +79,16 @@ abstract contract BaseVaultV2 is AccessControlUpgradeable, AffineGovernable {
         wormholeRouter = _router;
     }
 
-    function sweep() external onlyGovernance {
-        uint256 balance = _asset.balanceOf(address(this));
-        _asset.safeTransfer(governance, balance);
+    function sweep(address _token) external onlyGovernance {
+        uint256 balance = ERC20(_token).balanceOf(address(this));
+        ERC20(_token).safeTransfer(governance, balance);
     }
 
-    
+    function sweepEth() external onlyGovernance {
+        uint256 balance = address(this).balance;
+        payable(governance).transfer(balance);
+    }
+
     /**
      * @notice Update the address of the bridge escrow.
      * @param _escrow The new escrow.
