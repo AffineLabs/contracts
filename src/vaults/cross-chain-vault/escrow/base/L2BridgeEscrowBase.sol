@@ -8,32 +8,8 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {BridgeEscrow} from "../BridgeEscrow.sol";
 import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
+import {IAcrossBridge} from "src/interfaces/IAcrossBridge.sol";
 
-interface IAcrossBridge {
-     function deposit(
-        address recipient,
-        address originToken,
-        uint256 amount,
-        uint256 destinationChainId,
-        int64 relayerFeePct,
-        uint32 quoteTimestamp,
-        bytes calldata message,
-        uint256 maxCount
-    ) external payable;
-
-    function speedUpDeposit(
-        address deoisitor,
-        int64 updatedRelayerFeePct,
-        uint32 depositId,
-        address updatedRecipient,
-        bytes calldata updatedMessage,
-        bytes calldata depositorSignature
-    ) external payable;
-
-    function getCurrentTime() external view returns (uint256);
-
-    function depositQuoteTimeBuffer() external view returns (uint32);
-}
 
 contract L2BridgeEscrowBase is BridgeEscrow {
     using SafeTransferLib for ERC20;
@@ -42,43 +18,40 @@ contract L2BridgeEscrowBase is BridgeEscrow {
     /// @notice The L2Vault.
     L2Vault public vault;
 
-    IAcrossBridge public acrossBridge = IAcrossBridge(payable(0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64));
+    IAcrossBridge public acrossBridge;
     address public l1EscrowAddress;
     IWETH public constant WETH = IWETH(payable(0x4200000000000000000000000000000000000006));
 
     constructor(L2Vault _vault) BridgeEscrow(_vault) {
         vault = _vault;
         asset.safeApprove(address(acrossBridge), type(uint256).max);
+        acrossBridge = IAcrossBridge(payable(0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64));
     }
 
     fallback() external payable {}
     
     receive() external payable {}
 
-    function setVault(address _vaultAddress) external {
-        require(msg.sender == governance, "BE: Only Governance");
-        vault = L2Vault(_vaultAddress);
+    modifier onlyGovernance() {
+        require(msg.sender == governance, "Only Governance.");
+        _;
     }
 
     // function to withdraw eth from the contract
-    function withdrawEth(uint256 _amount) external {
-        require(msg.sender == governance, "BE: Only Governance");
+    function withdrawEth(uint256 _amount) external onlyGovernance {
         payable(governance).transfer(_amount);
     }
 
     // function to withdraw tokens from the contract
-    function withdrawToken(address _token, uint256 _amount) external {
-        require(msg.sender == governance, "BE: Only Governance");
+    function withdrawToken(address _token, uint256 _amount) external onlyGovernance {
         ERC20(_token).safeTransfer(governance, _amount);
     }
 
-    function setAcrossBridge(address _acrossBridgeAddress) external {
-        require(msg.sender == governance, "BE: Only Governance");
+    function setAcrossBridge(address _acrossBridgeAddress) external onlyGovernance {
         acrossBridge = IAcrossBridge(_acrossBridgeAddress);
     }
 
-    function setL1Escrow(address _l1EscrowAddress) external {
-        require(msg.sender == governance, "BE: Only Governance");
+    function setL1Escrow(address _l1EscrowAddress) external onlyGovernance{
         l1EscrowAddress = _l1EscrowAddress;
     }
 
@@ -86,7 +59,7 @@ contract L2BridgeEscrowBase is BridgeEscrow {
         uint256 _amount,
         int64 _relayerFeePct
     ) external {
-        require(msg.sender == governance, "BE: Only Gov");
+        require(msg.sender == address(vault), "BE: Only vault");
 
         // Unwrap WETH
         uint256 wethBalance = asset.balanceOf(address(this));

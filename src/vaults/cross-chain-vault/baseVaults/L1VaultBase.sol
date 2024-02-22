@@ -107,14 +107,19 @@ contract L1VaultBase is PausableUpgradeable, UUPSUpgradeable, BaseVaultV2 {
         payable(governance).transfer(_amount);
     }
 
-    // function to withdraw tokens from the contract
-    function withdrawToken(address _token, uint256 _amount) external onlyGovernance{
-        ERC20(_token).safeTransfer(governance, _amount);
-    }
-
     function setParentVault(address _parentVault) external onlyGovernance {
+        Vault temp =  Vault(_parentVault);
+        require(temp.asset() == address(_asset), "L1: asset mismatch");
+        require(temp.governance() == governance, "L1: governance mismatch");
+        // withdraw funds from old parent vault
+        uint256 shareBalance = parentVault.balanceOf(address(this));
+        if(shareBalance>0){
+            parentVault.redeem(shareBalance, address(this), address(this));
+        }
         parentVault = Vault(_parentVault);
         _asset.safeApprove(address(parentVault), type(uint256).max);
+        uint256 balance = _asset.balanceOf(address(this));
+        parentVault.deposit(balance, address(this));
     }
 
     /// @notice Called by the bridgeEscrow after it transfers `asset` into this vault.

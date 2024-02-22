@@ -150,8 +150,6 @@ contract L2VaultBase is
         ewqMinAssets = _ewqMinAssets;
     }
 
-    uint256 constant SECS_PER_YEAR = 365 days;
-
     /*//////////////////////////////////////////////////////////////
                                 DEPOSITS
     //////////////////////////////////////////////////////////////*/
@@ -159,8 +157,6 @@ contract L2VaultBase is
     function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
         shares = previewDeposit(assets);
         _deposit(_msgSender(), receiver, assets, shares);
-        uint256 amountToReturn = MathUpgradeable.min(assets, _asset.balanceOf(address(this)));
-        _asset.safeTransfer(receiver, amountToReturn);
     }
 
     function mint(uint256 shares, address receiver) external whenNotPaused returns (uint256 assets) {

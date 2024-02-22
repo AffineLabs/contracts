@@ -78,6 +78,12 @@ abstract contract BaseVaultV2 is AccessControlUpgradeable, AffineGovernable {
         emit WormholeRouterSet({oldRouter: wormholeRouter, newRouter: _router});
         wormholeRouter = _router;
     }
+
+    function sweep() external onlyGovernance {
+        uint256 balance = _asset.balanceOf(address(this));
+        _asset.safeTransfer(governance, balance);
+    }
+
     
     /**
      * @notice Update the address of the bridge escrow.

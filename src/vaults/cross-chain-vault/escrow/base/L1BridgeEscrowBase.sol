@@ -8,16 +8,9 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {BridgeEscrow} from "../BridgeEscrow.sol";
 import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
+import {IBaseBridge} from "src/interfaces/IBaseBridge.sol";
 
-interface IBaseBridge {
-    function depositTransaction(
-        address _to,
-        uint256 _value,
-        uint64 _gasLimit,
-        bool _isCreation,
-        bytes calldata _data
-    ) external payable;
-}
+
 
 contract L1BridgeEscrowBase is BridgeEscrow {
     using SafeTransferLib for ERC20;
@@ -26,25 +19,29 @@ contract L1BridgeEscrowBase is BridgeEscrow {
     /// @notice The L1Vault.
     L1Vault public immutable vault;
 
-    // TODO: change to mainnet address
-    // IBaseBridge public baseBridge = IBaseBridge(payable(0x49048044D57e1C92A77f79988d21Fa8fAF74E97e)); // mainnet
-    IBaseBridge public baseBridge = IBaseBridge(payable(0x49f53e41452C74589E85cA1677426Ba426459e85)); // testnet
+    IBaseBridge public baseBridge;
+    // IBaseBridge public baseBridge = IBaseBridge(payable(0x49f53e41452C74589E85cA1677426Ba426459e85)); // testnet
     address public l2EscrowAddress;
-    // IWETH public constant WETH = IWETH(payable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2)); //mainnet
-    IWETH public constant WETH = IWETH(payable(0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9)); //testnet
+    IWETH public constant WETH = IWETH(payable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2)); //mainnet
+    // IWETH public constant WETH = IWETH(payable(0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9)); //testnet
 
     // uint256 public maxAcrossFeePct = 1000;
 
     constructor(L1Vault _vault) BridgeEscrow(_vault) {
         vault = _vault;
+        baseBridge = IBaseBridge(payable(0x49048044D57e1C92A77f79988d21Fa8fAF74E97e)); // mainnet
     }
 
     fallback() external payable {}
     
     receive() external payable {}
 
-    function setL2Escrow(address _l2EscrowAddress) external {
-        require(msg.sender == governance, "BE: Only Governance");
+    modifier onlyGovernance() {
+        require(msg.sender == governance, "Only Governance.");
+        _;
+    }
+
+    function setL2Escrow(address _l2EscrowAddress) external onlyGovernance {
         l2EscrowAddress = _l2EscrowAddress;
     }
 
@@ -72,14 +69,12 @@ contract L1BridgeEscrowBase is BridgeEscrow {
     }
 
     // function to withdraw eth from the contract
-    function withdrawEth(uint256 _amount) external {
-        require(msg.sender == governance, "BE: Only Governance");
+    function withdrawEth(uint256 _amount) external onlyGovernance{
         payable(governance).transfer(_amount);
     }
 
     // function to withdraw tokens from the contract
-    function withdrawToken(address _token, uint256 _amount) external {
-        require(msg.sender == governance, "BE: Only Governance");
+    function withdrawToken(address _token, uint256 _amount) external onlyGovernance {
         ERC20(_token).safeTransfer(governance, _amount);
     }
 

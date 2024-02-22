@@ -347,6 +347,13 @@
   },
   {
     "inputs": [],
+    "name": "sweep",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "totalStrategyHoldings",
     "outputs": [
       {
