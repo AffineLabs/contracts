@@ -7,7 +7,7 @@ import {WormholeRouter} from "./WormholeRouter.sol";
 import {Constants} from "src/libs/Constants.sol";
 
 contract L2WormholeRouter is WormholeRouter {
-    function otherLayerWormholeId() public pure override returns (uint16) {
+    function otherLayerWormholeId() public pure virtual override returns (uint16) {
         return 2;
     }
 
@@ -41,7 +41,7 @@ contract L2WormholeRouter is WormholeRouter {
     }
 
     /// @notice Receive `message` with L1Vault's tvl data.
-    function receiveTVL(bytes calldata message) external {
+    function receiveTVL(bytes calldata message) external virtual {
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(message);
         require(valid, reason);
         _validateWormholeMessageEmitter(vm);

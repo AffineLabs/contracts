@@ -12,6 +12,7 @@ import {MathUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/Ma
 
 import {BaseVaultV2} from "src/vaults/cross-chain-vault/BaseVaultV2.sol";
 import {DummyRelay} from "src/vaults/cross-chain-vault/DummyRelay.sol";
+import {L2WormholeRouterV2} from "../wormhole/L2WormholeRouterV2.sol";
 
 import {L2BridgeEscrowBase} from "src/vaults/cross-chain-vault/escrow/base/L2BridgeEscrowBase.sol";
 import {DetailedShare} from "src/utils/Detailed.sol";
@@ -407,13 +408,15 @@ contract L2VaultBase is
         return _maxLockedTVL - unlockedTVL;
     }
 
-    /**
-     * @notice Receive a tvl message from the womhole router.
-     * @param tvl The L1 tvl.
-     * @param received True if L1 has received our last transfer.
-     */
-    function receiveTVL(uint256 tvl, bool received, int64 _relayerFeePct) external {
+    // /**
+    //  * @notice Receive a tvl message from the womhole router.
+    //  * @param tvl The L1 tvl.
+    //  * @param received True if L1 has received our last transfer.
+    //  */
+    function receiveTVL(bytes calldata message, int64 _relayerFeePct) external {
         if (_msgSender() != wormholeRouter) revert VaultErrors.OnlyWormholeRouter();
+
+        (bool received, uint256 tvl) = L2WormholeRouterV2(wormholeRouter).validateTVLMessage(message);
 
         // If L1 has received the last transfer we sent it, unlock the L2->L1 bridge
         if (received && !canTransferToL1) {

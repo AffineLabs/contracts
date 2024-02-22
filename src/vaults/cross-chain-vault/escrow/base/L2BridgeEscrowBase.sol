@@ -101,9 +101,8 @@ contract L2BridgeEscrowBase is BridgeEscrow {
         if (ethBalance > 0) {
             WETH.deposit{value: ethBalance}();
         }
-        // TODO: require amount to be more than balance
         uint256 balance = asset.balanceOf(address(this));
-        // require(balance >= amount, "BE: Funds not received");
+        require(balance >= amount, "BE: Funds not received");
         uint256 amountToSend = Math.min(balance, amount);
         asset.safeTransfer(address(vault), amountToSend);
 

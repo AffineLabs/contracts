@@ -1244,14 +1244,9 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "tvl",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bool",
-        "name": "received",
-        "type": "bool"
+        "internalType": "bytes",
+        "name": "message",
+        "type": "bytes"
       },
       {
         "internalType": "int64",

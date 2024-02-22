@@ -119,8 +119,6 @@ abstract contract BaseVaultV2 is AccessControlUpgradeable, AffineGovernable {
     /// @notice Role with authority to call "harvest", i.e. update this vault's tvl
     bytes32 public constant HARVESTER = keccak256("HARVESTER");
 
-
-
     /*//////////////////////////////////////////////////////////////
                                STRATEGIES
     //////////////////////////////////////////////////////////////*/
