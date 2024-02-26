@@ -1,0 +1,42 @@
+[
+  {
+    "inputs": [],
+    "name": "AlreadyApprovedToken",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "CannotDepositForZeroAddress",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "DepositAmountCannotBeZero",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidWithdrawalAmount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NonZeroTokenBalance",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotApprovedToken",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "TokenNotAllowedForStaking",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "WithdrawAmountCannotBeZero",
+    "type": "error"
+  }
+]
