@@ -39,7 +39,24 @@ contract AffineReStaking is UUPSUpgradeable, AccessControlUpgradeable, PausableU
     // token amount from user
     mapping(address => mapping(address => uint256)) public balance;
 
+    // event id for each event
     uint256 private eventId;
+
+    // paused deposit
+    uint256 public depositPaused;
+
+    modifier depositNotPaused() {
+        require(depositPaused == 0, "AR: deposit paused");
+        _;
+    }
+
+    function pauseDeposit() external onlyGovernance {
+        depositPaused = 1;
+    }
+
+    function resumeDeposit() external onlyGovernance {
+        depositPaused = 0;
+    }
 
     // Approve token for deposit
     function approveToken(address _token) external onlyGovernance {
@@ -58,7 +75,7 @@ contract AffineReStaking is UUPSUpgradeable, AccessControlUpgradeable, PausableU
     event Deposit(uint256 indexed eventId, address indexed depositor, address indexed token, uint256 amount);
     // deposit token for
 
-    function depositFor(address _token, address _for, uint256 _amount) external whenNotPaused {
+    function depositFor(address _token, address _for, uint256 _amount) external whenNotPaused depositNotPaused {
         if (_amount == 0) revert ReStakingErrors.DepositAmountCannotBeZero();
         if (_for == address(0)) revert ReStakingErrors.CannotDepositForZeroAddress();
         if (!hasRole(APPROVED_TOKEN, _token)) revert ReStakingErrors.TokenNotAllowedForStaking();
@@ -70,7 +87,7 @@ contract AffineReStaking is UUPSUpgradeable, AccessControlUpgradeable, PausableU
         ERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
     }
 
-    function depositETHFor(address _for) external payable whenNotPaused {
+    function depositETHFor(address _for) external payable whenNotPaused depositNotPaused {
         if (msg.value == 0) revert ReStakingErrors.DepositAmountCannotBeZero();
         if (_for == address(0)) revert ReStakingErrors.CannotDepositForZeroAddress();
         if (hasRole(APPROVED_TOKEN, address(WETH))) revert ReStakingErrors.TokenNotAllowedForStaking();
@@ -101,10 +118,5 @@ contract AffineReStaking is UUPSUpgradeable, AccessControlUpgradeable, PausableU
     /// @notice Unpause the contract
     function unpause() external onlyGovernance {
         _unpause();
-    }
-
-    // sweeping contract
-    function sweep(address _token) external whenPaused onlyGovernance {
-        ERC20(_token).safeTransfer(governance, ERC20(_token).balanceOf(address(this)));
     }
 }

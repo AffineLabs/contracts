@@ -386,6 +386,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "depositPaused",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -486,6 +499,13 @@
   },
   {
     "inputs": [],
+    "name": "pauseDeposit",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "paused",
     "outputs": [
       {
@@ -524,6 +544,13 @@
       }
     ],
     "name": "renounceRole",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "resumeDeposit",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -576,19 +603,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_token",
-        "type": "address"
-      }
-    ],
-    "name": "sweep",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
