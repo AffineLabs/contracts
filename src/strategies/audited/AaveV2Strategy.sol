@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
+/*//////////////////////////////////////////////////////////////
+                            AUDIT INFO
+//////////////////////////////////////////////////////////////*/
+/**
+ * Audits:
+ *     1. Nov 8, 2022, size: 74 Line
+ * Extended: False
+ * Changes: None
+ */
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -8,7 +17,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ILendingPool} from "src/interfaces/aave.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
-import {BaseStrategy} from "./BaseStrategy.sol";
+import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 
 contract AaveV2Strategy is BaseStrategy {
     using SafeTransferLib for ERC20;

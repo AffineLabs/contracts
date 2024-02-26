@@ -4,8 +4,8 @@ pragma solidity =0.8.16;
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
-import {BaseStrategy} from "./BaseStrategy.sol";
-import {uncheckedInc} from "src/libs/Unchecked.sol";
+import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
+import {uncheckedInc} from "src/libs/audited/Unchecked.sol";
 
 contract AccessStrategy is BaseStrategy, AccessControl {
     bytes32 public constant STRATEGIST_ROLE = keccak256("STRATEGIST");

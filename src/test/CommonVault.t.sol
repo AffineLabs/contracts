@@ -13,8 +13,8 @@ import {Vault, ERC721} from "src/vaults/Vault.sol";
 import {VaultV2} from "src/vaults/VaultV2.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
-import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/audited/BaseVault.sol";
 import {TestStrategy} from "./mocks/TestStrategy.sol";
 import {VaultErrors} from "src/libs/VaultErrors.sol";
 

@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.16;
 
+/*//////////////////////////////////////////////////////////////
+                            AUDIT INFO
+//////////////////////////////////////////////////////////////*/
+/**
+ * Audits:
+ *     1. Nov 8, 2022, size: 22 Line
+ * Extended: False
+ */
 library Constants {
     // Message types
     // Messages received by L1

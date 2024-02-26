@@ -2,7 +2,7 @@
 pragma solidity =0.8.16;
 
 import {ERC721} from "solmate/src/tokens/ERC721.sol";
-import {AffineGovernable} from "src/utils/AffineGovernable.sol";
+import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
 
 abstract contract HarvestStorage is AffineGovernable {
     uint128 public performanceFeeBps;

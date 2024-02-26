@@ -6,7 +6,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {TestPlus} from "src/test/TestPlus.sol";
 import {Deploy} from "./Deploy.sol";
 
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/audited/BaseVault.sol";
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {LockedWithdrawalEscrow} from "src/vaults/LockedWithdrawal.sol";
 

@@ -10,7 +10,7 @@ import {MockERC20} from "./mocks/MockERC20.sol";
 
 import {TestStrategy} from "./mocks/TestStrategy.sol";
 
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/audited/BaseVault.sol";
 import {AffineVault} from "src/vaults/AffineVault.sol";
 
 /// @notice Test general functionalities of strategies.

@@ -6,8 +6,8 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
-import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
-import {uncheckedInc} from "src/libs/Unchecked.sol";
+import {BaseStrategy as Strategy} from "src/strategies/audited/BaseStrategy.sol";
+import {uncheckedInc} from "src/libs/audited/Unchecked.sol";
 
 contract RebalanceModule {
     uint256 constant MAX_BPS = 10_000;

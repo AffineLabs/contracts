@@ -1,11 +1,20 @@
 //SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
+/*//////////////////////////////////////////////////////////////
+                            AUDIT INFO
+//////////////////////////////////////////////////////////////*/
+/**
+ * Audits:
+ *     1. Nov 8, 2022, size: 48 Line
+ * Extended: False
+ * Changes: None
+ */
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
 import {BridgeEscrow} from "./BridgeEscrow.sol";
-import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
+import {L2Vault} from "src/vaults/cross-chain-vault/audited/L2Vault.sol";
 
 interface IChildERC20 {
     function withdraw(uint256 amount) external;

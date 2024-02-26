@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
+/*//////////////////////////////////////////////////////////////
+                            AUDIT INFO
+//////////////////////////////////////////////////////////////*/
+/**
+ * Audits:
+ *     1. Nov 8, 2022, size: 31 Line
+ * Extended: False
+ */
 type Dollar is uint256;
 
 library DollarMath {

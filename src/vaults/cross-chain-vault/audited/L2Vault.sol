@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
+/*//////////////////////////////////////////////////////////////
+                            AUDIT INFO
+//////////////////////////////////////////////////////////////*/
+/**
+ * Audits:
+ *     1. Nov 8, 2022, size: 562 Line
+ * Extended: False
+ * Changes: Dropped relayer
+ */
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
@@ -10,12 +19,12 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {MathUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
-import {BaseVault} from "src/vaults/cross-chain-vault/BaseVault.sol";
+import {BaseVault} from "src/vaults/cross-chain-vault/audited/BaseVault.sol";
 import {DummyRelay} from "src/vaults/cross-chain-vault/DummyRelay.sol";
 
-import {L2BridgeEscrow} from "./escrow/L2BridgeEscrow.sol";
-import {DetailedShare} from "src/utils/Detailed.sol";
-import {L2WormholeRouter} from "./wormhole/L2WormholeRouter.sol";
+import {L2BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/audited/L2BridgeEscrow.sol";
+import {DetailedShare} from "src/utils/audited/Detailed.sol";
+import {L2WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/audited/L2WormholeRouter.sol";
 import {IERC4626} from "src/interfaces/IERC4626.sol";
 import {EmergencyWithdrawalQueue} from "./EmergencyWithdrawalQueue.sol";
 import {VaultErrors} from "src/libs/VaultErrors.sol";

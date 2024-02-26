@@ -8,7 +8,7 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
-import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
+import {L1Vault} from "src/vaults/cross-chain-vault/audited/L1Vault.sol";
 import {ICToken} from "src/interfaces/compound/ICToken.sol";
 import {IComptroller} from "src/interfaces/compound/IComptroller.sol";
 import {L1CompoundStrategy} from "src/strategies/L1CompoundStrategy.sol";

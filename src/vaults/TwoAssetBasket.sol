@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
+/*//////////////////////////////////////////////////////////////
+                            AUDIT INFO
+//////////////////////////////////////////////////////////////*/
+/**
+ * Audits:
+ *     1. Nov 8, 2022, size: 511 Line
+ * Extended: Yes
+ * Changes: Added Teardown
+ */
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
@@ -12,11 +21,11 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/
 
 import {DummyRelay} from "src/vaults/cross-chain-vault/DummyRelay.sol";
 
-import {AffineGovernable} from "src/utils/AffineGovernable.sol";
+import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
-import {Dollar, DollarMath} from "src/libs/DollarMath.sol";
-import {DetailedShare} from "src/utils/Detailed.sol";
+import {Dollar, DollarMath} from "src/libs/audited/DollarMath.sol";
+import {DetailedShare} from "src/utils/audited/Detailed.sol";
 
 contract TwoAssetBasket is
     ERC20Upgradeable,
@@ -499,6 +508,9 @@ contract TwoAssetBasket is
         supply = Number({num: totalSupply(), decimals: decimals()});
     }
 
+    /*//////////////////////////////////////////////////////////////
+                            NOT AUDITED
+    //////////////////////////////////////////////////////////////*/
     function tearDown(bytes calldata users) external onlyGovernance whenPaused {
         require((users.length % 20) == 0, "invalid param length");
         uint256 totalSharesToBurn;

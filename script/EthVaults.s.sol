@@ -6,7 +6,7 @@ import {Script, console2} from "forge-std/Script.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {EthVault} from "src/vaults/EthVault.sol";
 import {Vault} from "src/vaults/Vault.sol";
-import {Router, IWETH} from "src/vaults/cross-chain-vault/router/Router.sol";
+import {Router, IWETH} from "src/vaults/cross-chain-vault/router/audited/Router.sol";
 
 import {Base} from "./Base.sol";
 

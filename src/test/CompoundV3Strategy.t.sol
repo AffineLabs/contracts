@@ -8,7 +8,7 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Deploy} from "./Deploy.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
-import {L1Vault} from "src/vaults/cross-chain-vault/L1Vault.sol";
+import {L1Vault} from "src/vaults/cross-chain-vault/audited/L1Vault.sol";
 import {CompoundV3Strategy, IComet, IRewards, IUniswapV2Router02} from "src/strategies/CompoundV3Strategy.sol";
 
 /// @notice Test compound strategy

@@ -1,16 +1,25 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
+/*//////////////////////////////////////////////////////////////
+                            AUDIT INFO
+//////////////////////////////////////////////////////////////*/
+/**
+ * Audits:
+ *     1. Nov 8, 2022, size: 511 Line
+ * Extended: No
+ * Changes: Dropped Multicall
+ */
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
-import {BaseStrategy as Strategy} from "src/strategies/BaseStrategy.sol";
-import {AffineGovernable} from "src/utils/AffineGovernable.sol";
-import {BridgeEscrow} from "./escrow/BridgeEscrow.sol";
-import {uncheckedInc} from "src/libs/Unchecked.sol";
+import {BaseStrategy as Strategy} from "src/strategies/audited/BaseStrategy.sol";
+import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
+import {BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/audited/BridgeEscrow.sol";
+import {uncheckedInc} from "src/libs/audited/Unchecked.sol";
 import {VaultErrors} from "src/libs/VaultErrors.sol";
 
 /**

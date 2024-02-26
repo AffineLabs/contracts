@@ -17,7 +17,7 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
-import {DetailedShare} from "src/utils/Detailed.sol";
+import {DetailedShare} from "src/utils/audited/Detailed.sol";
 import {VaultErrors} from "src/libs/VaultErrors.sol";
 
 contract Vault is UUPSUpgradeable, AffineVault, ERC4626Upgradeable, PausableUpgradeable, DetailedShare {

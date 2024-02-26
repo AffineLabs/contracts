@@ -13,7 +13,7 @@ import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUn
 import {AffineVault, Strategy} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
 import {IBalancerVault, IFlashLoanRecipient} from "src/interfaces/balancer.sol";
-import {SlippageUtils} from "src/libs/SlippageUtils.sol";
+import {SlippageUtils} from "src/libs/audited/SlippageUtils.sol";
 
 contract StrikeEthStrategy is AccessStrategy, IFlashLoanRecipient {
     using SafeTransferLib for ERC20;

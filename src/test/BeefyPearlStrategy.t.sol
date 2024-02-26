@@ -14,7 +14,7 @@ import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 import {BeefyPearlStrategy} from "src/strategies/BeefyPearlStrategy.sol";
 import {BeefyEpochStrategy} from "src/strategies/BeefyEpochStrategy.sol";
 
-import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
+import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 import {IRouter, IPair} from "src/interfaces/IPearl.sol";
 
 import {IBeefyVault} from "src/interfaces/Beefy.sol";

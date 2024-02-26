@@ -10,7 +10,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {StrategyVault, VaultErrors} from "src/vaults/locked/StrategyVault.sol";
 import {StrategyVaultV2} from "src/vaults/locked/StrategyVaultV2.sol";
-import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
+import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 import {WithdrawalEscrow} from "src/vaults/locked/WithdrawalEscrow.sol";
 import {Vault} from "src/vaults/Vault.sol";
 

@@ -15,7 +15,7 @@ import {IUniPositionValue} from "src/interfaces/IUniPositionValue.sol";
 
 import {AffineVault} from "src/vaults/AffineVault.sol";
 import {AccessStrategy} from "./AccessStrategy.sol";
-import {SlippageUtils} from "src/libs/SlippageUtils.sol";
+import {SlippageUtils} from "src/libs/audited/SlippageUtils.sol";
 
 contract DeltaNeutralLpV3 is AccessStrategy {
     using SafeTransferLib for ERC20;

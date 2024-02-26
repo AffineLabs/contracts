@@ -8,7 +8,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {LevMaticXLoopStrategy, AffineVault, FixedPointMathLib} from "src/strategies/LevMaticXLoopStrategy.sol";
 import {LidoLev} from "src/strategies/LidoLev.sol";
 import {VaultV2} from "src/vaults/VaultV2.sol";
-import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
+import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 
 import {IBalancerVault, IFlashLoanRecipient, IBalancerQueries} from "src/interfaces/balancer.sol";
 import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";

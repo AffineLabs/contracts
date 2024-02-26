@@ -13,7 +13,7 @@ import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 import {BeefyStrategy} from "src/strategies/BeefyStrategy.sol";
 import {BeefyEpochStrategy} from "src/strategies/BeefyEpochStrategy.sol";
 
-import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
+import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 import {ICurvePool, I3CrvMetaPoolZap} from "src/interfaces/curve.sol";
 
 import {IBeefyVault} from "src/interfaces/Beefy.sol";

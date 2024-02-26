@@ -10,7 +10,7 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
-import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
+import {L2Vault} from "src/vaults/cross-chain-vault/audited/L2Vault.sol";
 import {EthVaults} from "script/EthVaults.s.sol";
 import {Vault} from "src/vaults/Vault.sol";
 import {DeltaNeutralLpV3} from "src/strategies/DeltaNeutralLpV3.sol";

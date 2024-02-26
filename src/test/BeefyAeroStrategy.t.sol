@@ -13,7 +13,7 @@ import {Vault} from "src/vaults/Vault.sol";
 import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 import {BeefyAeroStrategy} from "src/strategies/BeefyAeroStrategy.sol";
 
-import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
+import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 import {IAeroRouter, IAeroPool} from "src/interfaces/aerodrome.sol";
 
 import {IBeefyVault} from "src/interfaces/Beefy.sol";

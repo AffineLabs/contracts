@@ -2,7 +2,7 @@
 pragma solidity =0.8.16;
 
 import {CommonVaultTest, ERC20, TestPlus} from "src/test/CommonVault.t.sol";
-import {L2Vault} from "src/vaults/cross-chain-vault/L2Vault.sol";
+import {L2Vault} from "src/vaults/cross-chain-vault/audited/L2Vault.sol";
 import {L2VaultV2} from "src/vaults/cross-chain-vault/L2VaultV2.sol";
 import {Vault} from "src/vaults/Vault.sol";
 import {VaultV2} from "src/vaults/VaultV2.sol";

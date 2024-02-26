@@ -3,7 +3,7 @@ pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {MockERC20} from "./MockERC20.sol";
-import {BaseStrategy} from "src/strategies/BaseStrategy.sol";
+import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 import {AccessStrategy} from "src/strategies/AccessStrategy.sol";
 import {StrategyVault} from "src/vaults/locked/StrategyVault.sol";
 import {AffineVault} from "src/vaults/AffineVault.sol";

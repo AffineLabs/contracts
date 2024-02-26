@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
+/*//////////////////////////////////////////////////////////////
+                            AUDIT INFO
+//////////////////////////////////////////////////////////////*/
+/**
+ * Audits:
+ *     1. Nov 8, 2022, size: 125 Line
+ * Extended: False
+ */
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -9,8 +17,8 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {BaseVault} from "./BaseVault.sol";
 import {IRootChainManager} from "src/interfaces/IRootChainManager.sol";
-import {L1BridgeEscrow} from "./escrow/L1BridgeEscrow.sol";
-import {L1WormholeRouter} from "./wormhole/L1WormholeRouter.sol";
+import {L1BridgeEscrow} from "src/vaults/cross-chain-vault/escrow/audited/L1BridgeEscrow.sol";
+import {L1WormholeRouter} from "src/vaults/cross-chain-vault/wormhole/audited/L1WormholeRouter.sol";
 
 contract L1Vault is PausableUpgradeable, UUPSUpgradeable, BaseVault {
     using SafeTransferLib for ERC20;

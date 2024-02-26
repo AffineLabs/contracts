@@ -3,7 +3,7 @@ pragma solidity =0.8.16;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
-import {uncheckedInc} from "src/libs/Unchecked.sol";
+import {uncheckedInc} from "src/libs/audited/Unchecked.sol";
 
 /* solhint-disable avoid-low-level-calls */
 contract SmartWallet is AccessControl {
