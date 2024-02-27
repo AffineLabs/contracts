@@ -13,6 +13,8 @@ import {Deploy} from "./Deploy.sol";
 import {AffineReStaking} from "src/vaults/restaking/AffineReStaking.sol";
 import {ReStakingErrors} from "src/libs/ReStakingErrors.sol";
 
+import {console2} from "forge-std/console2.sol";
+
 contract AffineReStakingV2 is AffineReStaking {
     function version() external pure returns (uint256) {
         return 100;
@@ -90,5 +92,59 @@ contract AffineReStakingTest is TestPlus {
 
         assertEq(reStaking.balance(address(ezEth), alice), init_assets);
         assertEq(AffineReStakingV2(address(reStaking)).version(), uint256(100));
+    }
+
+    function testDepositEthWithoutApproval() public {
+        // get ether
+        console2.log("eth balance ", alice.balance);
+        vm.deal(alice, 10 ether);
+        console2.log("eth balance ", alice.balance);
+
+        vm.prank(alice);
+        vm.expectRevert(ReStakingErrors.TokenNotAllowedForStaking.selector);
+        reStaking.depositETHFor{value: 10 ether}(alice);
+        console2.log("eth balance ", alice.balance);
+        assertEq(alice.balance, 10 ether);
+    }
+
+    function testDepositEthWithApproval() public {
+        // approve weth
+        vm.prank(governance);
+        reStaking.approveToken(address(weth));
+        // get ether
+        console2.log("eth balance ", alice.balance);
+        vm.deal(alice, 10 ether);
+        console2.log("eth balance ", alice.balance);
+
+        vm.prank(alice);
+        reStaking.depositETHFor{value: 10 ether}(alice);
+        console2.log("eth balance ", alice.balance);
+
+        // check alice eth balance
+        assertEq(alice.balance, 0);
+        // check weth balance of contract
+        assertEq(weth.balanceOf(address(reStaking)), 10 ether);
+        // check alice balance in contract
+        assertEq(reStaking.balance(address(weth), alice), 10 ether);
+    }
+
+    function testFailWithdrawAfterPaused() public {
+        testDeposit();
+        // pause
+        vm.startPrank(governance);
+        reStaking.pause();
+        vm.startPrank(alice);
+        reStaking.withdraw(address(ezEth), reStaking.balance(address(ezEth), alice));
+    }
+
+    function testWithdrawWhenDepositPaused() public {
+        testDeposit();
+        // pause
+        vm.startPrank(governance);
+        reStaking.pauseDeposit();
+        vm.startPrank(alice);
+        reStaking.withdraw(address(ezEth), reStaking.balance(address(ezEth), alice));
+
+        assertEq(ezEth.balanceOf(alice), init_assets);
     }
 }

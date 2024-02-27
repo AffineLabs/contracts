@@ -45,7 +45,7 @@ contract AffineReStaking is UUPSUpgradeable, AccessControlUpgradeable, PausableU
     // paused deposit
     uint256 public depositPaused;
 
-    modifier depositNotPaused() {
+    modifier whenDepositNotPaused() {
         require(depositPaused == 0, "AR: deposit paused");
         _;
     }
@@ -75,7 +75,7 @@ contract AffineReStaking is UUPSUpgradeable, AccessControlUpgradeable, PausableU
     event Deposit(uint256 indexed eventId, address indexed depositor, address indexed token, uint256 amount);
     // deposit token for
 
-    function depositFor(address _token, address _for, uint256 _amount) external whenNotPaused depositNotPaused {
+    function depositFor(address _token, address _for, uint256 _amount) external whenNotPaused whenDepositNotPaused {
         if (_amount == 0) revert ReStakingErrors.DepositAmountCannotBeZero();
         if (_for == address(0)) revert ReStakingErrors.CannotDepositForZeroAddress();
         if (!hasRole(APPROVED_TOKEN, _token)) revert ReStakingErrors.TokenNotAllowedForStaking();
@@ -87,10 +87,10 @@ contract AffineReStaking is UUPSUpgradeable, AccessControlUpgradeable, PausableU
         ERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
     }
 
-    function depositETHFor(address _for) external payable whenNotPaused depositNotPaused {
+    function depositETHFor(address _for) external payable whenNotPaused whenDepositNotPaused {
         if (msg.value == 0) revert ReStakingErrors.DepositAmountCannotBeZero();
         if (_for == address(0)) revert ReStakingErrors.CannotDepositForZeroAddress();
-        if (hasRole(APPROVED_TOKEN, address(WETH))) revert ReStakingErrors.TokenNotAllowedForStaking();
+        if (!hasRole(APPROVED_TOKEN, address(WETH))) revert ReStakingErrors.TokenNotAllowedForStaking();
 
         balance[address(WETH)][_for] += msg.value;
         emit Deposit(++eventId, _for, address(WETH), msg.value);
