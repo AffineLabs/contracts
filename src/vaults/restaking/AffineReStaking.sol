@@ -22,6 +22,8 @@ contract AffineReStaking is UUPSUpgradeable, AccessControlUpgradeable, PausableU
         governance = _governance;
         WETH = IWETH(_weth);
 
+        __AccessControl_init();
+        __Pausable_init();
         // All roles use the default admin role
         // Governance has the admin role and all roles
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
@@ -67,8 +69,6 @@ contract AffineReStaking is UUPSUpgradeable, AccessControlUpgradeable, PausableU
     // Revoke token
     function revokeToken(address _token) external onlyGovernance {
         if (!hasRole(APPROVED_TOKEN, _token)) revert ReStakingErrors.NotApprovedToken();
-        if (ERC20(_token).balanceOf(address(this)) > 0) revert ReStakingErrors.NonZeroTokenBalance();
-
         _revokeRole(APPROVED_TOKEN, _token);
     }
 

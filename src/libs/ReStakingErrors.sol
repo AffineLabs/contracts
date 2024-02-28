@@ -3,7 +3,6 @@ pragma solidity =0.8.16;
 
 library ReStakingErrors {
     error AlreadyApprovedToken();
-    error NonZeroTokenBalance();
     error NotApprovedToken();
     error DepositAmountCannotBeZero();
     error CannotDepositForZeroAddress();
