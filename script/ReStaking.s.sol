@@ -31,24 +31,4 @@ contract Deploy is Script {
         require(address(reStaking.governance()) == governance, "Invalid gov");
         require(address(reStaking.WETH()) == weth, "invalid weth");
     }
-
-    function deployReStakingForkedNet() public {
-        _start();
-
-        address weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-        address governance = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
-        address ezEth = 0xbf5495Efe5DB9ce00f80364C8B423567e58d2110;
-
-        AffineReStaking impl = new AffineReStaking();
-
-        bytes memory initData = abi.encodeCall(AffineReStaking.initialize, (governance, weth));
-        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
-        AffineReStaking reStaking = AffineReStaking(address(proxy));
-        console2.log("ReStaking Add %s", address(reStaking));
-
-        require(address(reStaking.governance()) == governance, "Invalid gov");
-        require(address(reStaking.WETH()) == weth, "invalid weth");
-
-        reStaking.approveToken(ezEth);
-    }
 }

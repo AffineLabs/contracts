@@ -28,6 +28,18 @@ contract AffineReStaking is UUPSUpgradeable, AccessControlUpgradeable, PausableU
         // Governance has the admin role and all roles
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
         _grantRole(GUARDIAN_ROLE, governance);
+        _setRoleAdmin(APPROVED_TOKEN, bytes32(abi.encodePacked(governance)));
+
+        // pre-approved token
+
+        _grantRole(APPROVED_TOKEN, 0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee); //weEth
+        _grantRole(APPROVED_TOKEN, 0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7); //rsEth
+        _grantRole(APPROVED_TOKEN, 0xbf5495Efe5DB9ce00f80364C8B423567e58d2110); //ezEth
+        _grantRole(APPROVED_TOKEN, 0x628eBC64A38269E031AFBDd3C5BA857483B5d048); //lsEth
+        _grantRole(APPROVED_TOKEN, 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0); //wstEth
+        _grantRole(APPROVED_TOKEN, 0xFAe103DC9cf190eD75350761e95403b7b8aFa6c0); //rswEth
+        _grantRole(APPROVED_TOKEN, 0xf951E335afb289353dc249e82926178EaC7DEd78); //swEth
+        _grantRole(APPROVED_TOKEN, address(WETH)); // weth
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}

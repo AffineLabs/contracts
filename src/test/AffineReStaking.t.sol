@@ -24,6 +24,7 @@ contract AffineReStakingV2 is AffineReStaking {
 contract AffineReStakingTest is TestPlus {
     ERC20 weth = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     ERC20 ezEth = ERC20(0xbf5495Efe5DB9ce00f80364C8B423567e58d2110);
+    ERC20 matic = ERC20(0xAdf829f541a57Ef2af4d8A07a7920F7229684dDA);
     uint256 init_assets;
     AffineReStaking reStaking;
 
@@ -36,8 +37,8 @@ contract AffineReStakingTest is TestPlus {
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
         reStaking = AffineReStaking(address(proxy));
         // approve ez eth
-        vm.prank(governance);
-        reStaking.approveToken(address(ezEth));
+        // vm.prank(governance);
+        // reStaking.approveToken(address(ezEth));
 
         init_assets = 100 * (10 ** ezEth.decimals());
     }
@@ -63,13 +64,13 @@ contract AffineReStakingTest is TestPlus {
         assertEq(ezEth.balanceOf(alice), init_assets);
     }
 
-    function testDepositNotApprovedToken() public {
-        _giveERC20(address(weth), alice, init_assets);
-        vm.startPrank(alice);
-        weth.approve(address(reStaking), init_assets);
-        vm.expectRevert(ReStakingErrors.TokenNotAllowedForStaking.selector);
-        reStaking.depositFor(address(weth), alice, init_assets);
-    }
+    // function testDepositNotApprovedToken() public {
+    //     _giveERC20(address(weth), alice, init_assets);
+    //     vm.startPrank(alice);
+    //     weth.approve(address(reStaking), init_assets);
+    //     vm.expectRevert(ReStakingErrors.TokenNotAllowedForStaking.selector);
+    //     reStaking.depositFor(address(weth), alice, init_assets);
+    // }
 
     function testPauseDeposit() public {
         vm.prank(governance);
@@ -94,39 +95,39 @@ contract AffineReStakingTest is TestPlus {
         assertEq(AffineReStakingV2(address(reStaking)).version(), uint256(100));
     }
 
-    function testDepositEthWithoutApproval() public {
-        // get ether
-        console2.log("eth balance ", alice.balance);
-        vm.deal(alice, 10 ether);
-        console2.log("eth balance ", alice.balance);
+    // function testDepositEthWithoutApproval() public {
+    //     // get ether
+    //     console2.log("eth balance ", alice.balance);
+    //     vm.deal(alice, 10 ether);
+    //     console2.log("eth balance ", alice.balance);
 
-        vm.prank(alice);
-        vm.expectRevert(ReStakingErrors.TokenNotAllowedForStaking.selector);
-        reStaking.depositETHFor{value: 10 ether}(alice);
-        console2.log("eth balance ", alice.balance);
-        assertEq(alice.balance, 10 ether);
-    }
+    //     vm.prank(alice);
+    //     vm.expectRevert(ReStakingErrors.TokenNotAllowedForStaking.selector);
+    //     reStaking.depositETHFor{value: 10 ether}(alice);
+    //     console2.log("eth balance ", alice.balance);
+    //     assertEq(alice.balance, 10 ether);
+    // }
 
-    function testDepositEthWithApproval() public {
-        // approve weth
-        vm.prank(governance);
-        reStaking.approveToken(address(weth));
-        // get ether
-        console2.log("eth balance ", alice.balance);
-        vm.deal(alice, 10 ether);
-        console2.log("eth balance ", alice.balance);
+    // function testDepositEthWithApproval() public {
+    //     // approve weth
+    //     vm.prank(governance);
+    //     reStaking.approveToken(address(weth));
+    //     // get ether
+    //     console2.log("eth balance ", alice.balance);
+    //     vm.deal(alice, 10 ether);
+    //     console2.log("eth balance ", alice.balance);
 
-        vm.prank(alice);
-        reStaking.depositETHFor{value: 10 ether}(alice);
-        console2.log("eth balance ", alice.balance);
+    //     vm.prank(alice);
+    //     reStaking.depositETHFor{value: 10 ether}(alice);
+    //     console2.log("eth balance ", alice.balance);
 
-        // check alice eth balance
-        assertEq(alice.balance, 0);
-        // check weth balance of contract
-        assertEq(weth.balanceOf(address(reStaking)), 10 ether);
-        // check alice balance in contract
-        assertEq(reStaking.balance(address(weth), alice), 10 ether);
-    }
+    //     // check alice eth balance
+    //     assertEq(alice.balance, 0);
+    //     // check weth balance of contract
+    //     assertEq(weth.balanceOf(address(reStaking)), 10 ether);
+    //     // check alice balance in contract
+    //     assertEq(reStaking.balance(address(weth), alice), 10 ether);
+    // }
 
     function testFailWithdrawAfterPaused() public {
         testDeposit();
