@@ -31,3 +31,21 @@ contract BaseAaveStratTest is AAVEStratTest {
         strat = address(new AaveV3Strategy(vault, IPool(_lendingPool())));
     }
 }
+
+contract BaseAaveStratL2Test is AAVEStratTest {
+    function _fork() internal override {
+        vm.createSelectFork("polygon", 54_537_000);
+    }
+
+    function _usdc() internal override returns (address) {
+        return 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+    }
+
+    function _lendingPool() internal override returns (address) {
+        return 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
+    }
+
+    function _deployStrategy() internal override returns (address strat) {
+        strat = address(new AaveV3Strategy(vault, IPool(_lendingPool())));
+    }
+}
