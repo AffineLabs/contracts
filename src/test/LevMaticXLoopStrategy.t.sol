@@ -73,7 +73,7 @@ contract LevMaticXLoopStrategyTest is TestPlus {
         vm.startPrank(address(vault));
         staking.divest(staking.totalLockedValue());
 
-        // assertEq(staking.totalLockedValue(), 0);
+        assertEq(staking.totalLockedValue(), 0);
         assertApproxEqRel(vault.vaultTVL(), init_assets, 0.01e18);
         console2.log("TVL %s, init Assets %s", vault.vaultTVL(), init_assets);
     }
@@ -84,7 +84,7 @@ contract LevMaticXLoopStrategyTest is TestPlus {
         vm.startPrank(address(vault));
         staking.divest(init_assets);
 
-        // assertEq(staking.totalLockedValue(), 0);
+        assertEq(staking.totalLockedValue(), 0);
         assertApproxEqRel(vault.vaultTVL(), init_assets, 0.01e18);
     }
 
@@ -92,10 +92,13 @@ contract LevMaticXLoopStrategyTest is TestPlus {
         testInvestIntoStrategy();
 
         vm.startPrank(address(vault));
-        staking.divest(staking.totalLockedValue() / 2);
+        uint256 sTVL = staking.totalLockedValue();
+        uint256 toDivest = sTVL / 2;
 
-        assertApproxEqAbs(staking.totalLockedValue(), init_assets / 2, 0.01e18);
-        assertApproxEqRel(vault.vaultTVL(), init_assets / 2, 0.01e18);
+        staking.divest(toDivest);
+
+        assertApproxEqAbs(staking.totalLockedValue(), sTVL - toDivest, 0.001e18);
+        assertApproxEqRel(vault.vaultTVL(), toDivest, 0.01e18);
     }
 
     function testDepositToVault() public {
@@ -112,7 +115,7 @@ contract LevMaticXLoopStrategyTest is TestPlus {
 
         VaultV2(address(vault)).depositIntoStrategies(init_assets);
 
-        assertApproxEqRel(staking.totalLockedValue(), init_assets, 0.01e18);
+        assertApproxEqRel(staking.totalLockedValue(), init_assets, 0.001e18);
     }
 
     function testWithdrawFromVault() public {
@@ -121,12 +124,12 @@ contract LevMaticXLoopStrategyTest is TestPlus {
         vm.startPrank(alice);
 
         assertEq(asset.balanceOf(alice), 0);
-        assertApproxEqRel(staking.totalLockedValue(), init_assets, 0.01e18);
+        assertApproxEqRel(staking.totalLockedValue(), init_assets, 0.001e18);
 
         VaultV2(address(vault)).withdraw(init_assets, alice, alice);
 
         assertApproxEqRel(asset.balanceOf(alice), init_assets, 0.01e18);
-        // assertApproxEqRel(staking.totalLockedValue(), 0, 0.01e18);
+        assertEq(staking.totalLockedValue(), 0);
     }
 
     function testWithdrawHalfFromVault() public {
@@ -135,7 +138,7 @@ contract LevMaticXLoopStrategyTest is TestPlus {
         vm.startPrank(alice);
 
         assertEq(asset.balanceOf(alice), 0);
-        assertApproxEqRel(staking.totalLockedValue(), init_assets, 0.01e18);
+        assertApproxEqRel(staking.totalLockedValue(), init_assets, 0.001e18);
 
         VaultV2(address(vault)).withdraw(init_assets / 2, alice, alice);
 
