@@ -54,6 +54,10 @@ contract LevMaticXLoopStrategyTest is TestPlus {
         vault.addStrategy(staking, 10_000);
     }
 
+    function _getPricePerShare() internal returns (uint256) {
+        return VaultV2(address(vault)).detailedPrice().num;
+    }
+
     function testInvestIntoStrategy() public {
         deal(address(asset), alice, init_assets);
 
@@ -102,6 +106,7 @@ contract LevMaticXLoopStrategyTest is TestPlus {
     }
 
     function testDepositToVault() public {
+        uint256 prevPricePerShare = _getPricePerShare();
         deal(address(asset), alice, init_assets);
 
         vm.startPrank(alice);
@@ -116,9 +121,11 @@ contract LevMaticXLoopStrategyTest is TestPlus {
         VaultV2(address(vault)).depositIntoStrategies(init_assets);
 
         assertApproxEqRel(staking.totalLockedValue(), init_assets, 0.001e18);
+        assertApproxEqRel(prevPricePerShare, _getPricePerShare(), 0.0001e18);
     }
 
     function testWithdrawFromVault() public {
+        uint256 prevPricePerShare = _getPricePerShare();
         testDepositToVault();
 
         vm.startPrank(alice);
@@ -130,9 +137,11 @@ contract LevMaticXLoopStrategyTest is TestPlus {
 
         assertApproxEqRel(asset.balanceOf(alice), init_assets, 0.01e18);
         assertEq(staking.totalLockedValue(), 0);
+        assertApproxEqRel(prevPricePerShare, _getPricePerShare(), 0.0001e18);
     }
 
     function testWithdrawHalfFromVault() public {
+        uint256 prevPricePerShare = _getPricePerShare();
         testDepositToVault();
 
         vm.startPrank(alice);
@@ -144,6 +153,7 @@ contract LevMaticXLoopStrategyTest is TestPlus {
 
         assertApproxEqRel(asset.balanceOf(alice), init_assets / 2, 0.01e18);
         assertApproxEqRel(staking.totalLockedValue(), init_assets / 2, 0.01e18);
+        assertApproxEqRel(prevPricePerShare, _getPricePerShare(), 0.0001e18);
     }
 
     function testUpgradeStrategy() public {
