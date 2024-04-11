@@ -2,6 +2,8 @@
 pragma solidity =0.8.16;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {WETH as IWMATIC} from "solmate/src/tokens/WETH.sol";
@@ -43,7 +45,7 @@ contract LevMaticXLoopStrategy is StaderLevMaticStrategy {
         uint256 postTVL = amount < tvl ? tvl - amount : 0;
 
         uint256 preAssets = WMATIC.balanceOf(address(this));
-        // AAVE.repay(address(WMATIC), repayAmount, 2, address(this));
+
         uint256 stMaticToRedeem;
         uint256 amountReceived;
 
@@ -71,7 +73,7 @@ contract LevMaticXLoopStrategy is StaderLevMaticStrategy {
 
         uint256 unlockedAssets = WMATIC.balanceOf(address(this)) - preAssets;
 
-        WMATIC.safeTransfer(address(vault), unlockedAssets);
+        WMATIC.safeTransfer(address(vault), Math.min(unlockedAssets, amount));
 
         return unlockedAssets;
     }
