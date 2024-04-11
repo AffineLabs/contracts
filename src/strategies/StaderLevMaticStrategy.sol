@@ -317,7 +317,7 @@ contract StaderLevMaticStrategy is AccessStrategy, ReentrancyGuard, IFlashLoanRe
     }
 
     function getLTVRatio() public view returns (uint256) {
-        return _debt().mulDivDown(MAX_BPS, _collateral());
+        return _collateral() > 0 ? _debt().mulDivDown(MAX_BPS, _collateral()) : 0;
     }
 
     /*//////////////////////////////////////////////////////////////

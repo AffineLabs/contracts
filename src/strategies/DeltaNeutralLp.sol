@@ -410,7 +410,7 @@ contract DeltaNeutralLp is AccessStrategy {
                 // When amountOut is very small the conversion may truncate to zero. Set a floor of one whole token
                 amountInMaximum: Math.max(
                     _borrowToAsset(borrowPrice, borrowToBuy).slippageUp(slippageToleranceBps), 10 ** ERC20(asset).decimals()
-                    ),
+                ),
                 sqrtPriceLimitX96: 0
             });
 

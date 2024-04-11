@@ -68,7 +68,9 @@ library polygonStader {
         EthVaultV2 impl = new EthVaultV2();
 
         // Initialize proxy with correct data
-        bytes memory initData = abi.encodeCall(Vault.initialize, (governance, wmatic, "Stader Lev Matic", "LevMaticX"));
+        bytes memory initData =
+            abi.encodeCall(Vault.initialize, (governance, wmatic, "Stader 6x Lev Matic", "6xLevMatic"));
+        console2.logBytes(initData);
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
 
         // Check that values were set correctly.
@@ -133,13 +135,26 @@ contract Deploy is Script, Base {
         console2.log("router weth: %s", address(router.weth()));
     }
 
-    function dep6xStaderStrat() public {
+    function depTest6xStaderStrat() public {
         _start();
         AffineVault vault = AffineVault(wmaticVaultAddr);
 
         require(address(vault.asset()) == wmatic, "Invalid asset");
 
         TestLevLoopMaticXStrategy strategy = new TestLevLoopMaticXStrategy(vault, polygonStader._getStrategists());
+
+        console2.log("strategy address %s", address(strategy));
+
+        require(address(strategy.asset()) == address(vault.asset()), "Invalid asset");
+    }
+
+    function dep6xStaderStrat() public {
+        _start();
+        AffineVault vault = AffineVault(0x78589e94401647C1b9A807feb7EAA162e9e65bBD);
+
+        require(address(vault.asset()) == wmatic, "Invalid asset");
+
+        LevMaticXLoopStrategy strategy = new LevMaticXLoopStrategy(vault, polygonStader._getStrategists());
 
         console2.log("strategy address %s", address(strategy));
 
