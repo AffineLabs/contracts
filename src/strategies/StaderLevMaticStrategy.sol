@@ -161,7 +161,7 @@ contract StaderLevMaticStrategy is AccessStrategy, ReentrancyGuard, IFlashLoanRe
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Add to leveraged position  upon investment from vault.
-    function _afterInvest(uint256 amount) internal override {
+    function _afterInvest(uint256 amount) internal virtual override {
         _flashLoan(amount.mulDivDown(MAX_BPS, MAX_BPS - borrowBps), LoanType.invest, address(0), FLOrigin.balancer);
     }
 
@@ -208,7 +208,7 @@ contract StaderLevMaticStrategy is AccessStrategy, ReentrancyGuard, IFlashLoanRe
     receive() external payable {}
 
     /// @dev Unlock wstETH collateral via flashloan, then repay balancer loan with unlocked collateral.
-    function _divest(uint256 amount) internal override returns (uint256) {
+    function _divest(uint256 amount) internal virtual override returns (uint256) {
         uint256 flashLoanAmount = _getDivestFlashLoanAmounts(amount);
 
         uint256 origAssets = WMATIC.balanceOf(address(this));
@@ -259,7 +259,7 @@ contract StaderLevMaticStrategy is AccessStrategy, ReentrancyGuard, IFlashLoanRe
                               REBALANCING
     //////////////////////////////////////////////////////////////*/
 
-    function rebalance() external onlyRole(STRATEGIST_ROLE) {
+    function rebalance() external virtual onlyRole(STRATEGIST_ROLE) {
         uint256 debt = _debt();
         uint256 collateral = _collateral();
         uint256 expectedDebt = collateral.mulDivDown(borrowBps, MAX_BPS);
@@ -317,7 +317,7 @@ contract StaderLevMaticStrategy is AccessStrategy, ReentrancyGuard, IFlashLoanRe
     }
 
     function getLTVRatio() public view returns (uint256) {
-        return _debt().mulDivDown(MAX_BPS, _collateral());
+        return _collateral() > 0 ? _debt().mulDivDown(MAX_BPS, _collateral()) : 0;
     }
 
     /*//////////////////////////////////////////////////////////////
