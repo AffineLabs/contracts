@@ -88,20 +88,64 @@ contract UltraLRT is
     }
 
     /*//////////////////////////////////////////////////////////////
-                            DEPOSIT
+                            DEPOSIT ETH
     //////////////////////////////////////////////////////////////*/
+
+    function depositETH(address receiver) external payable whenNotPaused whenDepositNotPaused returns (uint256) {
+        //TODO if (msg.value == 0) revert ReStakingErrors.DepositAmountCannotBeZero();
+        //TODO if (_for == address(0)) revert ReStakingErrors.CannotDepositForZeroAddress();
+        //TODO if (!hasRole(APPROVED_TOKEN, address(WETH))) revert ReStakingErrors.TokenNotAllowedForStaking();
+
+        uint256 assets = STETH.submit{value: msg.value}(address(this)); //TODO check for referral
+        // emit Deposit(++eventId, _for, address(WETH), msg.value);
+
+        uint256 shares = previewDeposit(assets);
+
+        _mint(receiver, shares);
+
+        emit Deposit(_msgSender(), receiver, assets, shares);
+
+        return shares;
+    }
+
+    function deposit(uint256 assets, address receiver)
+        public
+        override
+        whenNotPaused
+        whenDepositNotPaused
+        returns (uint256)
+    {
+        require(assets <= maxDeposit(receiver), "ERC4626: deposit more than max");
+
+        uint256 shares = previewDeposit(assets);
+        _deposit(_msgSender(), receiver, assets, shares);
+
+        return shares;
+    }
 
     /*//////////////////////////////////////////////////////////////
                             WITHDRAWALS
     //////////////////////////////////////////////////////////////*/
 
+    function withdraw() external {
+        // TO check for assets and do withdrawal request
+    }
+
     /*//////////////////////////////////////////////////////////////
                             DELEGATOR 
     //////////////////////////////////////////////////////////////*/
 
+    function createDelegator() external {}
+
+    function dropDelegator() external {}
+
     /*//////////////////////////////////////////////////////////////
                             TVL
     //////////////////////////////////////////////////////////////*/
+
+    // TODO -- calculate tvl
+    // get assets
+    // get shares
 
     /*//////////////////////////////////////////////////////////////
                                   FEES
