@@ -1,7 +1,7 @@
 [
   {
     "inputs": [],
-    "name": "APPROVED_TOKEN",
+    "name": "GUARDIAN_ROLE",
     "outputs": [
       {
         "internalType": "bytes32",
@@ -14,12 +14,12 @@
   },
   {
     "inputs": [],
-    "name": "GUARDIAN_ROLE",
+    "name": "MAX_BPS",
     "outputs": [
       {
-        "internalType": "bytes32",
+        "internalType": "uint256",
         "name": "",
-        "type": "bytes32"
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -40,7 +40,46 @@
   },
   {
     "inputs": [],
+    "name": "delegatorAssets",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "depositPaused",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "managementFee",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "withdrawalFee",
     "outputs": [
       {
         "internalType": "uint256",

@@ -11,7 +11,10 @@ import {IERC20MetadataUpgradeable} from
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {IERC20MetadataUpgradeable} from
     "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
+import {IERC20MetadataUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 // storage contract
 import {UltraLRTStorage} from "src/vaults/restaking/UltraLRTStorage.sol";
 
@@ -123,12 +126,78 @@ contract UltraLRT is
         return shares;
     }
 
+    function mint(uint256 shares, address receiver)
+        public
+        override
+        whenNotPaused
+        whenDepositNotPaused
+        returns (uint256)
+    {
+        require(shares <= maxMint(receiver), "ERC4626: mint more than max");
+
+        uint256 assets = previewMint(shares);
+        _deposit(_msgSender(), receiver, assets, shares);
+
+        return assets;
+    }
+
     /*//////////////////////////////////////////////////////////////
                             WITHDRAWALS
     //////////////////////////////////////////////////////////////*/
 
-    function withdraw() external {
-        // TO check for assets and do withdrawal request
+    /**
+     * @dev See {IERC4262-withdraw}.
+     */
+    function withdraw(uint256 assets, address receiver, address owner)
+        public
+        override
+        whenNotPaused
+        returns (uint256)
+    {
+        require(assets <= maxWithdraw(owner), "ERC4626: withdraw more than max");
+
+        uint256 shares = previewWithdraw(assets);
+        _withdraw(_msgSender(), receiver, owner, assets, shares);
+
+        return shares;
+    }
+
+    /**
+     * @dev See {IERC4262-redeem}.
+     */
+    function redeem(uint256 shares, address receiver, address owner) public override whenNotPaused returns (uint256) {
+        require(shares <= maxRedeem(owner), "ERC4626: redeem more than max");
+
+        uint256 assets = previewRedeem(shares);
+        _withdraw(_msgSender(), receiver, owner, assets, shares);
+
+        return assets;
+    }
+
+    /**
+     * @dev Withdraw/redeem common workflow.
+     */
+    function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
+        internal
+        override
+    {
+        if (caller != owner) {
+            _spendAllowance(owner, caller, shares);
+        }
+
+        // If _asset is ERC777, `transfer` can trigger a reentrancy AFTER the transfer happens through the
+        // `tokensReceived` hook. On the other hand, the `tokensToSend` hook, that is triggered before the transfer,
+        // calls the vault, which is assumed not malicious.
+        //
+        // Conclusion: we need to do the transfer after the burn so that any reentrancy would happen after the
+        // shares are burned and after the assets are transfered, which is a valid state.
+
+        // TODO: calculate fees
+
+        _burn(owner, shares);
+        SafeERC20Upgradeable.safeTransfer(IERC20MetadataUpgradeable(asset()), receiver, assets);
+
+        emit Withdraw(caller, receiver, owner, assets, shares);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -147,14 +216,13 @@ contract UltraLRT is
     // get assets
     // get shares
 
+    function totalAssets() public view override returns (uint256) {
+        return ERC20(asset()).balanceOf(address(this)) + delegatorAssets;
+    }
+
     /*//////////////////////////////////////////////////////////////
                                   FEES
     //////////////////////////////////////////////////////////////*/
-
-    /// @notice Fee charged to vault over a year, number is in bps
-    uint256 public managementFee;
-    /// @notice  Fee charged on redemption of shares, number is in bps
-    uint256 public withdrawalFee;
 
     event ManagementFeeSet(uint256 oldFee, uint256 newFee);
     event WithdrawalFeeSet(uint256 oldFee, uint256 newFee);
