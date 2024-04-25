@@ -17,6 +17,7 @@ import {IERC20MetadataUpgradeable} from
     "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 // storage contract
 import {UltraLRTStorage} from "src/vaults/restaking/UltraLRTStorage.sol";
+import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
 
 // governance contract
 import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
@@ -52,6 +53,7 @@ contract UltraLRT is
         // Governance has the admin role and all roles
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
         _grantRole(GUARDIAN_ROLE, governance);
+        _grantRole(HARVESTER, governance);
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
@@ -194,10 +196,49 @@ contract UltraLRT is
 
         // TODO: calculate fees
 
+        if (!canWithdraw(assets)) {
+            // do withdrawal request
+            _transfer(_msgSender(), address(escrow), shares);
+            escrow.registerWithdrawalRequest(receiver, shares);
+            return;
+        }
         _burn(owner, shares);
         SafeERC20Upgradeable.safeTransfer(IERC20MetadataUpgradeable(asset()), receiver, assets);
 
         emit Withdraw(caller, receiver, owner, assets, shares);
+    }
+
+    function canWithdraw(uint256 assets) public view returns (bool) {
+        if (_msgSender() == address(escrow)) {
+            return true;
+        }
+        uint256 escrowDebt = address(escrow) == address(0) ? 0 : escrow.totalDebt();
+        return escrowDebt == 0 && ERC20(asset()).balanceOf(address(this)) >= assets;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            ESCROW 
+    //////////////////////////////////////////////////////////////*/
+
+    function setWithdrawalEscrow(WithdrawalEscrowV2 _escrow) external onlyGovernance {
+        require(address(escrow) == address(0) || escrow.totalDebt() == 0, "ULRT: Clear escrow debt.");
+        require(address(_escrow.vault()) == address(this), "ULRT: Invalid escrow vault.");
+
+        escrow = _escrow;
+    }
+
+    function endEpoch() external onlyRole(HARVESTER) {
+        escrow.endEpoch();
+    }
+
+    function resolveDebt() external onlyRole(HARVESTER) {
+        while (escrow.resolvingEpoch() < escrow.currentEpoch()) {
+            uint256 debtShare = escrow.getDebtToResolve();
+            uint256 assets = previewRedeem(debtShare);
+            if (ERC20(asset()).balanceOf(address(this)) >= assets) {
+                escrow.resolveDebtShares();
+            }
+        }
     }
 
     /*//////////////////////////////////////////////////////////////

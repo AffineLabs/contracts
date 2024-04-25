@@ -43,6 +43,11 @@ contract WithdrawalEscrowV2 {
         _;
     }
 
+    modifier onlyGovernance() {
+        require(msg.sender == address(vault.governance()), "WE: Must be gov");
+        _;
+    }
+
     /**
      * @notice Withdrawal Request event
      * @param user user address
@@ -170,5 +175,9 @@ contract WithdrawalEscrowV2 {
             assets += withdrawableAssets(user, epochs[i]);
         }
         return assets;
+    }
+
+    function sweep(address _asset) external onlyGovernance {
+        ERC20(_asset).safeTransfer(vault.governance(), ERC20(_asset).balanceOf(address(this)));
     }
 }
