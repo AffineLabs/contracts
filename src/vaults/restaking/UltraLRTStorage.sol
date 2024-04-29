@@ -32,6 +32,17 @@ abstract contract UltraLRTStorage {
     /// @notice  Fee charged on redemption of shares, number is in bps
     uint256 public withdrawalFee;
 
+    /**
+     * @notice A timestamp representing when the most recent harvest occurred.
+     * @dev Since the time since the last harvest is used to calculate management fees, this is set
+     * to `block.timestamp` (instead of 0) during initialization.
+     */
+    uint256 public lastHarvest;
+    /// @notice The amount of profit *originally* locked after harvesting from a strategy
+    uint256 public maxLockedProfit;
+    /// @notice Amount of time in seconds that profit takes to fully unlock. See lockedProfit().
+    uint256 public constant LOCK_INTERVAL = 24 hours;
+
     // delegator array
     IDelegator[MAX_DELEGATOR] public delegatorQueue;
     mapping(address => DelegatorInfo) public delegatorMap;

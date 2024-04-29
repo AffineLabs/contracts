@@ -9,7 +9,7 @@ interface IDelegator {
     // vault will check the availability of liquid assets
     function checkAssetAvailability(uint256 assets) external view returns (bool);
     // vault withdraw liquid assets call by vault
-    function withdraw(uint256 assets) external returns (uint256);
+    function withdraw() external returns (uint256);
     // vault delegate assets to delegator
     function delegate(uint256 assets) external;
     // get delegator tvl

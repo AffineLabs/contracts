@@ -252,6 +252,8 @@ contract UltraLRT is
     function dropDelegator() external {}
 
     function harvest() external onlyRole(HARVESTER) {
+        require(block.timestamp > lastHarvest + LOCK_INTERVAL, "Profit unlocking");
+
         uint256 newDelegatorAssets;
         for (uint8 i = 0; i < delegatorCount; i++) {
             uint256 currentDelegatorTVL = delegatorQueue[i].tvl();
@@ -261,6 +263,12 @@ contract UltraLRT is
         }
 
         // TODO: incremental distribution of assets
+        if (delegatorAssets < newDelegatorAssets) {
+            maxLockedProfit = newDelegatorAssets - delegatorAssets;
+        } else {
+            maxLockedProfit = 0;
+        }
+        lastHarvest = block.timestamp;
         delegatorAssets = newDelegatorAssets;
     }
 
@@ -291,6 +299,19 @@ contract UltraLRT is
         delegator.delegate(amount);
     }
 
+    /**
+     * @notice Current locked profit amount.
+     * @dev Profit unlocks uniformly over `LOCK_INTERVAL` seconds after the last harvest
+     */
+    function lockedProfit() public view virtual returns (uint256) {
+        if (block.timestamp >= lastHarvest + LOCK_INTERVAL) {
+            return 0;
+        }
+
+        uint256 unlockedProfit = (maxLockedProfit * (block.timestamp - lastHarvest)) / LOCK_INTERVAL;
+        return maxLockedProfit - unlockedProfit;
+    }
+
     /*//////////////////////////////////////////////////////////////
                             TVL
     //////////////////////////////////////////////////////////////*/
@@ -300,7 +321,7 @@ contract UltraLRT is
     // get shares
 
     function totalAssets() public view override returns (uint256) {
-        return ERC20(asset()).balanceOf(address(this)) + delegatorAssets;
+        return ERC20(asset()).balanceOf(address(this)) + delegatorAssets - lockedProfit();
     }
 
     /*//////////////////////////////////////////////////////////////
