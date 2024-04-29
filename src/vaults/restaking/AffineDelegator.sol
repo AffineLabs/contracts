@@ -1,17 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-// interface Delegator {
-// 	address currentOperator;
-// 	// address newOperator; 
-// 	function delegateToCurrentOperator();
-// 	function withdrawFromDelegator();
-// 	function redelegate(newOperator);
-// 	function requestWithdrawal();
-// 	function completeWithdrawalRequest();
-// }
 interface IDelegationManager {
     function delegateTo(address, bytes calldata, uint256, bytes32) external;
+    function queueWithdrawals(QueuedWithdrawalParams[] calldata) external;
+    function completeQueuedWithdrawals(WithdrawalInfo[] calldata, address[] calldata, uint256, bool) external;
 }
 
 struct WithdrawalInfo {
@@ -32,8 +25,11 @@ struct QueuedWithdrawalParams {
 
 interface IStrategyManager {
     function depositIntoStrategy(address, address, uint256) external;
-    function queueWithdrawals(QueuedWithdrawalParams[] calldata) external;
-    function completeQueuedWithdrawals(WithdrawalInfo[] calldata, address[] calldata, uint256, bool) external;
+}
+
+interface IStrategy {
+    function underlyingToShares(uint256) external view returns (uint256);
+    function sharesToUnderlying(uint256) external view returns (uint256);
 }
 
 
@@ -44,10 +40,8 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/
 
 // governance contract
 import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
-
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {IWETH} from "src/interfaces/IWETH.sol";
-
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
 contract AffineDelegator is UUPSUpgradeable, AccessControlUpgradeable, PausableUpgradeable, AffineGovernable {
@@ -68,10 +62,9 @@ contract AffineDelegator is UUPSUpgradeable, AccessControlUpgradeable, PausableU
         currentOperator = _operator;
         strategyManager = 0x70f44C13944d49a236E3cD7a94f48f5daB6C619b;
         delegationManager = 0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A;
-        stEthStrategy = 0x93c4b944D05dfe6df7645A86cd2206016c51564D;
+        stEthStrategy = IStrategy(0x93c4b944D05dfe6df7645A86cd2206016c51564D);
 
         // pre-approved token
-
         _grantRole(APPROVED_TOKEN, 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84); //stEth
     }
 
@@ -89,22 +82,22 @@ contract AffineDelegator is UUPSUpgradeable, AccessControlUpgradeable, PausableU
     address public currentOperator;
     address public strategyManager;
     address public delegationManager;
-    address public stEthStrategy;
+    IStrategy public stEthStrategy;
     address public harvester;
     address public vault;
-    uint256 public queuedWithdrawalAmount;
+    uint256 public withdrawableAmount;
     uint256 public tvl;
     bool public isDelegated;
     ERC20 public stETH = ERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
 
-    function delegateToCurrentOperator() external {
-        require(hasRole(GUARDIAN_ROLE, msg.sender), "AffineDelegator: Not a guardian");
+    function delegate() external {
+        require(hasRole(HARVESTER_ROLE, msg.sender) || msg.sender == vault, "AffineDelegator: Not a harvester or vault");
         // balance of stETH
         uint256 balanceOfStETH = stETH.balanceOf(address(this));
         // approve to strategy manager
         stETH.approve(strategyManager, balanceOfStETH);
         // deposit into strategy
-        IStrategyManager(strategyManager).depositIntoStrategy(stEthStrategy, address(stETH), balanceOfStETH);
+        IStrategyManager(strategyManager).depositIntoStrategy(address(stEthStrategy), address(stETH), balanceOfStETH);
         tvl += balanceOfStETH;
         if (isDelegated == false) {
             // delegate to operator
@@ -112,35 +105,29 @@ contract AffineDelegator is UUPSUpgradeable, AccessControlUpgradeable, PausableU
             isDelegated = true;
         }
     }
-    
-    function setVault(address _vault) external {
-        require(hasRole(GUARDIAN_ROLE, msg.sender), "AffineDelegator: Not a guardian");
-        vault = _vault;
-    }
 
-    function requestWithdrawal(uint256 shares) external {
+    function requestWithdrawal(uint256 assets) external {
         require(hasRole(HARVESTER_ROLE, msg.sender), "AffineDelegator: Not a harvester");
         // request withdrawal
         QueuedWithdrawalParams[] memory params = new QueuedWithdrawalParams[](1);
-        // TODO: need to convert assets to shares
-        params[0] = QueuedWithdrawalParams(stEthStrategy, shares, harvester);
-        IStrategyManager(strategyManager).queueWithdrawals(params);
-        queuedWithdrawalAmount += shares;
+        uint256 shares = stEthStrategy.underlyingToShares(assets);
+        params[0] = QueuedWithdrawalParams(address(stEthStrategy), shares, harvester);
+        IDelegationManager(delegationManager).queueWithdrawals(params);
     }
 
+
     function completeWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo) external {
-        require(hasRole(HARVESTER_ROLE, msg.sender), "AffineDelegator: Not a harvestor");
+        require(hasRole(HARVESTER_ROLE, msg.sender) || msg.sender == vault, "AffineDelegator: Not a harvestor");
         uint256 balanceOfStETH = stETH.balanceOf(address(this));
         // complete withdrawal request
         address[] memory stEthAddresses = new address[](1);
         stEthAddresses[0] = address(stETH);
-        IStrategyManager(strategyManager).completeQueuedWithdrawals(withdrawalInfo, stEthAddresses, 0, true);
+        IDelegationManager(delegationManager).completeQueuedWithdrawals(withdrawalInfo, stEthAddresses, 0, true);
         uint256 balanceOfStETHAfter = stETH.balanceOf(address(this));
         uint256 withdrawnTokens = balanceOfStETH - balanceOfStETHAfter;
-        stETH.safeTransfer(vault, withdrawnTokens);
-        queuedWithdrawalAmount -= withdrawnTokens;
-        tvl -= withdrawnTokens;
+        withdrawableAmount += withdrawnTokens;
     }
+
     // vault
     function delegate(uint256 amount) external {
         require( msg.sender == vault, "AffineDelegator: Not vault");
@@ -149,39 +136,20 @@ contract AffineDelegator is UUPSUpgradeable, AccessControlUpgradeable, PausableU
         // approve to strategy manager
         stETH.approve(strategyManager, amount);
         // deposit into strategy
-        IStrategyManager(strategyManager).depositIntoStrategy(stEthStrategy, address(stETH), amount);
+        IStrategyManager(strategyManager).depositIntoStrategy(address(stEthStrategy), address(stETH), amount);
         tvl += amount;
     }
 
-    function vaultInitiateWithdrawal(uint256 shares) external {
-        require( msg.sender == vault, "AffineDelegator: Not vault");
-        // request withdrawal
-        QueuedWithdrawalParams[] memory params = new QueuedWithdrawalParams[](1);
-        // populate params
-        // TODO: need to convert assets to shares
-        params[0] = QueuedWithdrawalParams(stEthStrategy, shares, vault);
-        IStrategyManager(strategyManager).queueWithdrawals(params);
-        queuedWithdrawalAmount += shares;
-    }
-
-    function vaultCompleteWithdrawal(WithdrawalInfo[] calldata withdrawalInfo) external {
-        require( msg.sender == vault, "AffineDelegator: Not vault");
-        // uint256 balanceOfStETH = stETH.balanceOf(address(this));
-        // complete withdrawal request
-        address[] memory stEthAddresses = new address[](1);
-        stEthAddresses[0] = address(stETH);
-        IStrategyManager(strategyManager).completeQueuedWithdrawals(withdrawalInfo, stEthAddresses, 0, true);
-        // uint256 balanceOfStETHAfter = stETH.balanceOf(address(this));
-        // uint256 withdrawnTokens = balanceOfStETH - balanceOfStETHAfter;
-        // stETH.safeTransfer(vault, withdrawnTokens);
-
-        // TODO; need to convert shares to assets
-        queuedWithdrawalAmount -= withdrawalInfo[0].shares[0];
-        tvl -= withdrawalInfo[0].shares[0];
-    }
-
     function checkAssetsAvailibity() external view returns (uint256) {
-        return queuedWithdrawalAmount;
+        return withdrawableAmount;
+    }
+
+    function withdraw(uint256 amount) external {
+        require(msg.sender == vault, "AffineDelegator: Not vault");
+        require(amount <= withdrawableAmount, "AffineDelegator: Not enough assets");
+        stETH.safeTransfer(vault, amount);
+        withdrawableAmount -= amount;
+        tvl -= amount;
     }
 
     function setHarvester(address _harvester) external {
@@ -190,15 +158,14 @@ contract AffineDelegator is UUPSUpgradeable, AccessControlUpgradeable, PausableU
         _grantRole(HARVESTER_ROLE, _harvester);
     }
 
-
     function setOperator(address _operator) external {
         require(hasRole(GUARDIAN_ROLE, msg.sender), "AffineDelegator: Not a guardian");
         currentOperator = _operator;
     }
 
-    // function delegateToCurrentOperator() external {
-    //     require(hasRole(GUARDIAN_ROLE, msg.sender), "AffineDelegator: Not a guardian");
-    //     strategy[msg.sender][currentOperator] = currentOperator;
-    // }
+    function setVault(address _vault) external {
+        require(hasRole(GUARDIAN_ROLE, msg.sender), "AffineDelegator: Not a guardian");
+        vault = _vault;
+    }
 
 }
