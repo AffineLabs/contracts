@@ -28,6 +28,8 @@ import {ReStakingErrors} from "src/libs/ReStakingErrors.sol";
 
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
+import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
+
 contract UltraLRT is
     ERC4626Upgradeable,
     UUPSUpgradeable,
@@ -248,6 +250,46 @@ contract UltraLRT is
     function createDelegator() external {}
 
     function dropDelegator() external {}
+
+    function harvest() external onlyRole(HARVESTER) {
+        uint256 newDelegatorAssets;
+        for (uint8 i = 0; i < delegatorCount; i++) {
+            uint256 currentDelegatorTVL = delegatorQueue[i].tvl();
+            // TODO map utilization
+            delegatorMap[address(delegatorQueue[i])].balance = uint248(currentDelegatorTVL);
+            newDelegatorAssets += currentDelegatorTVL;
+        }
+
+        // TODO: incremental distribution of assets
+        delegatorAssets = newDelegatorAssets;
+    }
+
+    function collectDelegatorDebt() external onlyRole(HARVESTER) {
+        uint256 currentDelegatorAssets = delegatorAssets;
+
+        for (uint8 i = 0; i < delegatorCount; i++) {
+            IDelegator delegator = delegatorQueue[i];
+            uint256 prevTVL = delegatorMap[address(delegator)].balance;
+            delegator.completeWithdrawalRequest();
+            uint256 newTVL = delegator.tvl();
+            delegatorMap[address(delegator)].balance = uint248(newTVL);
+            currentDelegatorAssets -= (prevTVL > newTVL ? prevTVL - newTVL : 0);
+        }
+
+        delegatorAssets = currentDelegatorAssets;
+    }
+
+    function delegateToDelegator(address _delegator, uint256 amount) external onlyRole(HARVESTER) {
+        IDelegator delegator = IDelegator(_delegator);
+        uint256 availableAssets = ERC20(asset()).balanceOf(address(this));
+
+        require(delegatorMap[_delegator].isActive, "Inactive delegator");
+        require(availableAssets <= amount, "invalid assets");
+
+        // delegate
+        ERC20(asset()).approve(address(this), amount);
+        delegator.delegate(amount);
+    }
 
     /*//////////////////////////////////////////////////////////////
                             TVL

@@ -368,6 +368,19 @@
   },
   {
     "inputs": [],
+    "name": "MAX_DELEGATOR",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "STETH",
     "outputs": [
       {
@@ -479,6 +492,13 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "collectDelegatorDebt",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -561,6 +581,24 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_delegator",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "delegateToDelegator",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "delegatorAssets",
     "outputs": [
@@ -568,6 +606,49 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "delegatorMap",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "isActive",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint248",
+        "name": "balance",
+        "type": "uint248"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "delegatorQueue",
+    "outputs": [
+      {
+        "internalType": "contract IDelegator",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -702,6 +783,13 @@
       }
     ],
     "name": "grantRole",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "harvest",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
