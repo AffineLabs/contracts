@@ -297,6 +297,9 @@ contract UltraLRT is
         // delegate
         ERC20(asset()).approve(address(this), amount);
         delegator.delegate(amount);
+
+        delegatorMap[_delegator].balance += uint248(amount);
+        delegatorAssets += amount;
     }
 
     /**
