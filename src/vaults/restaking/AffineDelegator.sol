@@ -37,53 +37,31 @@ interface IStrategy {
     function sharesToUnderlying(uint256) external view returns (uint256);
 }
 
-// upgrading contracts
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-
 // governance contract
 import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
-contract AffineDelegator is UUPSUpgradeable, AccessControlUpgradeable, PausableUpgradeable, AffineGovernable {
+contract AffineDelegator is AffineGovernable {
     using SafeTransferLib for ERC20;
 
-    function initialize(address _governance, address _vault) external initializer {
+    constructor(address _governance, address _vault, address _operator) {
         governance = _governance;
-
-        __AccessControl_init();
-        __Pausable_init();
         // All roles use the default admin role
         // Governance has the admin role and all roles
-        _grantRole(DEFAULT_ADMIN_ROLE, governance);
-        _grantRole(GUARDIAN_ROLE, governance);
-        _grantRole(HARVESTER_ROLE, governance);
-        _setRoleAdmin(APPROVED_TOKEN, bytes32(abi.encodePacked(governance)));
-        currentOperator = 0xDbEd88D83176316fc46797B43aDeE927Dc2ff2F5; // P2P
+        currentOperator = _operator; // P2P
         strategyManager = 0x858646372CC42E1A627fcE94aa7A7033e7CF075A;
         delegationManager = 0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A;
-        stEthStrategy = IStrategy(0x1BeE69b7dFFfA4E2d53C2a2Df135C388AD25dCD2);
+        stEthStrategy = IStrategy(0x93c4b944D05dfe6df7645A86cd2206016c51564D);
         vault = _vault;
-        stETH = ERC20(0xae78736Cd615f374D3085123A210448E74Fc6393);
+        stETH = ERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
 
         stETH.approve(strategyManager, type(uint256).max);
-
-        // pre-approved token
-        _grantRole(APPROVED_TOKEN, 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84); //stEth
     }
-    function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
     mapping(address => mapping(address => address)) public strategy;
 
     mapping(address => address) tokenStrategyMapping;
-    // Guardian role
-    bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN");
-     // Guardian role
-    bytes32 public constant HARVESTER_ROLE = keccak256("HARVESTER");
-    // Token approval
-    bytes32 public constant APPROVED_TOKEN = keccak256("APPROVED_TOKEN");
 
     address public currentOperator;
     address public strategyManager;
@@ -97,21 +75,22 @@ contract AffineDelegator is UUPSUpgradeable, AccessControlUpgradeable, PausableU
     ERC20 public stETH;
 
     function delegate(uint256 amount) external {
-        require(hasRole(HARVESTER_ROLE, msg.sender) || msg.sender == vault, "AffineDelegator: Not a harvester or vault");
+        require(msg.sender == harvester || msg.sender == vault, "AffineDelegator: Not a harvester or vault");
         // take stETH from vault
         stETH.safeTransferFrom(vault, address(this), amount);
 
         // deposit into strategy
         // IDelegationManager(delegationManager).delegateTo(currentOperator, "", 0, 0x0000000000000000000000000000000000000000000000000000000000000000);
         IStrategyManager(strategyManager).depositIntoStrategy(address(stEthStrategy), address(stETH), amount);
-        tvl += amount;
+        uint256 shares = stEthStrategy.underlyingToShares(amount);
+        tvl += shares;
         if (!isDelegated) {
             _delegateToOperator();
         }
     }
 
     function requestWithdrawal(uint256 assets) external {
-        require(hasRole(HARVESTER_ROLE, msg.sender) || msg.sender == vault, "AffineDelegator: Not a harvester");
+        require(msg.sender == harvester || msg.sender == vault, "AffineDelegator: Not a harvester");
         // request withdrawal
         QueuedWithdrawalParams[] memory params = new QueuedWithdrawalParams[](1);
         uint256[] memory shares = new uint256[](1);
@@ -123,14 +102,13 @@ contract AffineDelegator is UUPSUpgradeable, AccessControlUpgradeable, PausableU
     }
 
     function completeWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo) external {
-        require(hasRole(HARVESTER_ROLE, msg.sender) || msg.sender == vault, "AffineDelegator: Not a harvestor");
+        require(msg.sender == harvester|| msg.sender == vault, "AffineDelegator: Not a harvestor");
         uint256 balanceOfStETH = stETH.balanceOf(address(this));
         // complete withdrawal request
         address[][] memory stEthAddresses = new address[][](1);
         address[] memory x = new address[](1);
         x[0] = address(stETH);
         stEthAddresses[0] = x;
-        
 
         uint256[] memory timeIndex = new uint256[](1);
         timeIndex[0] = 0;
@@ -147,18 +125,13 @@ contract AffineDelegator is UUPSUpgradeable, AccessControlUpgradeable, PausableU
     function withdraw() external {
         require(msg.sender == vault, "AffineDelegator: Not vault");
         stETH.safeTransfer(vault, withdrawableAmount);
-        tvl -= withdrawableAmount;
+        uint256 shares = stEthStrategy.underlyingToShares(withdrawableAmount);
+        tvl -= shares;
         withdrawableAmount = 0;
     }
 
     function setHarvester(address _harvester) external onlyGovernance {
-        _revokeRole(HARVESTER_ROLE, harvester);
         harvester = _harvester;
-        _grantRole(HARVESTER_ROLE, _harvester);
-    }
-
-    function setOperator(address _operator) external onlyGovernance {
-        currentOperator = _operator;
     }
 
     function setVault(address _vault) external onlyGovernance {
