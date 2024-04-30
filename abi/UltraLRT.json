@@ -486,6 +486,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "beacon",
+    "outputs": [
+      {
+        "internalType": "contract DelegatorBeacon",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -550,7 +563,13 @@
     "type": "function"
   },
   {
-    "inputs": [],
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_operator",
+        "type": "address"
+      }
+    ],
     "name": "createDelegator",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -724,7 +743,13 @@
     "type": "function"
   },
   {
-    "inputs": [],
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_delegator",
+        "type": "address"
+      }
+    ],
     "name": "dropDelegator",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -878,6 +903,11 @@
       {
         "internalType": "address",
         "name": "vaultAsset",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_delegatorImpl",
         "type": "address"
       },
       {

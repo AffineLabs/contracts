@@ -3,15 +3,13 @@ pragma solidity =0.8.16;
 
 interface IDelegator {
     // vault request to withdraw assets
-    function requestWithdrawal(uint256 assets) external returns (uint256);
-    // harvester sends assets to vault to resolve debt from vault
-    function completeWithdrawalRequest() external;
+    function requestWithdrawal(uint256 assets) external;
     // vault will check the availability of liquid assets
     function checkAssetAvailability(uint256 assets) external view returns (bool);
     // vault withdraw liquid assets call by vault
-    function withdraw() external returns (uint256);
+    function delegate(uint256 amount) external;
     // vault delegate assets to delegator
-    function delegate(uint256 assets) external;
+    function withdraw() external;
     // get delegator tvl
-    function tvl() external returns (uint256);
+    function totalLockedValue() external returns (uint256);
 }

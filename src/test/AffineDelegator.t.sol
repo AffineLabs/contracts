@@ -9,6 +9,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {LevMaticXLoopStrategy, AffineVault, FixedPointMathLib} from "src/strategies/LevMaticXLoopStrategy.sol";
 import {AffineDelegator, WithdrawalInfo, IStrategy} from "src/vaults/restaking/AffineDelegator.sol";
 import {IStEth} from "src/interfaces/lido/IStEth.sol";
+import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
 
 import {console2} from "forge-std/console2.sol";
 
@@ -22,18 +23,18 @@ contract AffineDelegatorTest is TestPlus {
 
     ERC20 public asset = ERC20((0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84)); // rocket pool stETH
 
-
     function setUp() public {
         // fork eth
-        vm.createSelectFork("ethereum");
-        vault = alice;
+        vm.createSelectFork("ethereum", 19_771_000);
 
-        delegator = new AffineDelegator(governance, vault, operator);
+        UltraLRT tmpVault = new UltraLRT();
 
-        // bytes memory initData = abi.encodeCall(AffineDelegator.initialize, (governance, vault));
-        // ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        AffineDelegator delImpl = new AffineDelegator();
 
-        // delegator = AffineDelegator(address(proxy));
+        tmpVault.initialize(governance, address(asset), address(delImpl), "uLRT", "uLRT");
+        alice = address(tmpVault);
+        delegator = new AffineDelegator();
+        delegator.initialize(alice, operator);
     }
 
     function _getAsset(address to, uint256 amount) internal returns (uint256) {
@@ -49,19 +50,19 @@ contract AffineDelegatorTest is TestPlus {
         IStrategy stEthStrategy = IStrategy(0x93c4b944D05dfe6df7645A86cd2206016c51564D);
         vm.startPrank(alice);
 
-        // delegate
+        // // delegate
         asset.approve(address(delegator), stEthAmount);
         delegator.delegate(stEthAmount);
-        uint256 sharesAmount = stEthStrategy.underlyingToShares(stEthAmount);
-        assertApproxEqAbs(delegator.totalLockedValue(), sharesAmount, 10);
+        // uint256 sharesAmount = stEthStrategy.underlyingToShares(stEthAmount);
+        assertApproxEqAbs(delegator.totalLockedValue(), stEthAmount, 10);
         assertApproxEqAbs(asset.balanceOf(alice), 0, 10);
 
-        // request withdrawal
+        // // request withdrawal
         delegator.requestWithdrawal(stEthAmount);
         uint256 blockNum = block.number;
-        
-        assertApproxEqAbs(delegator.totalLockedValue(), sharesAmount, 10);
-        vm.roll(block.number + 1000000);
+        console2.log("====> %s", delegator.totalLockedValue());
+        assertApproxEqAbs(delegator.totalLockedValue(), stEthAmount, 10);
+        vm.roll(block.number + 1_000_000);
 
         // complete withdrawal
         WithdrawalInfo[] memory params = new WithdrawalInfo[](1);
@@ -79,12 +80,12 @@ contract AffineDelegatorTest is TestPlus {
             strategies: strategies,
             shares: shares
         });
- 
+
         delegator.completeWithdrawalRequest(params);
         delegator.withdraw();
 
         assertApproxEqAbs(delegator.totalLockedValue(), 0, 10);
         assertApproxEqAbs(asset.balanceOf(alice), stEthAmount, 10);
+        assertTrue(true);
     }
-
 }

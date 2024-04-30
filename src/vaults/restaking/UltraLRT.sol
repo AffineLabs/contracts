@@ -2,6 +2,8 @@
 pragma solidity =0.8.16;
 
 // upgrading contracts
+import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
@@ -29,6 +31,8 @@ import {ReStakingErrors} from "src/libs/ReStakingErrors.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
 import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
+import {AffineDelegator} from "src/vaults/restaking/AffineDelegator.sol";
+import {DelegatorBeacon} from "src/vaults/restaking/DelegatorBeacon.sol";
 
 contract UltraLRT is
     ERC4626Upgradeable,
@@ -38,10 +42,13 @@ contract UltraLRT is
     AffineGovernable,
     UltraLRTStorage
 {
-    function initialize(address _governance, address vaultAsset, string memory _name, string memory _symbol)
-        external
-        initializer
-    {
+    function initialize(
+        address _governance,
+        address vaultAsset,
+        address _delegatorImpl,
+        string memory _name,
+        string memory _symbol
+    ) external initializer {
         governance = _governance;
 
         // init token
@@ -56,6 +63,9 @@ contract UltraLRT is
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
         _grantRole(GUARDIAN_ROLE, governance);
         _grantRole(HARVESTER, governance);
+
+        //
+        beacon = new DelegatorBeacon(_delegatorImpl, governance);
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
@@ -246,17 +256,48 @@ contract UltraLRT is
     /*//////////////////////////////////////////////////////////////
                             DELEGATOR 
     //////////////////////////////////////////////////////////////*/
+    // todo check a valid operator address
+    function createDelegator(address _operator) external onlyGovernance {
+        require(delegatorCount < MAX_DELEGATOR, "Max Delegator");
+        BeaconProxy bProxy = new BeaconProxy(
+            address(beacon), abi.encodeWithSelector(AffineDelegator.initialize.selector, address(this), _operator)
+        );
+        delegatorQueue[delegatorCount] = IDelegator(address(bProxy));
 
-    function createDelegator() external {}
+        DelegatorInfo memory info;
+        info.balance = 0;
+        info.isActive = true;
+        delegatorMap[address(bProxy)] = info;
 
-    function dropDelegator() external {}
+        delegatorCount = delegatorCount + 1;
+    }
+
+    function dropDelegator(address _delegator) external onlyGovernance {
+        require(IDelegator(_delegator).totalLockedValue() == 0, "delegator non-zero tvl");
+
+        DelegatorInfo memory info = delegatorMap[_delegator];
+
+        require(info.isActive, "Inactive delegator");
+        require(info.balance == 0, "Require harvest");
+        info.isActive = false;
+        for (uint8 i = 0; i < delegatorCount; i++) {
+            if (address(delegatorQueue[i]) == _delegator) {
+                delegatorQueue[i] = delegatorQueue[delegatorCount - 1];
+                delegatorQueue[delegatorCount - 1] = IDelegator(address(0));
+                delegatorCount = delegatorCount - 1;
+
+                delegatorMap[_delegator] = info;
+                break;
+            }
+        }
+    }
 
     function harvest() external onlyRole(HARVESTER) {
         require(block.timestamp > lastHarvest + LOCK_INTERVAL, "Profit unlocking");
 
         uint256 newDelegatorAssets;
         for (uint8 i = 0; i < delegatorCount; i++) {
-            uint256 currentDelegatorTVL = delegatorQueue[i].tvl();
+            uint256 currentDelegatorTVL = delegatorQueue[i].totalLockedValue();
             // TODO map utilization
             delegatorMap[address(delegatorQueue[i])].balance = uint248(currentDelegatorTVL);
             newDelegatorAssets += currentDelegatorTVL;
@@ -278,8 +319,8 @@ contract UltraLRT is
         for (uint8 i = 0; i < delegatorCount; i++) {
             IDelegator delegator = delegatorQueue[i];
             uint256 prevTVL = delegatorMap[address(delegator)].balance;
-            delegator.completeWithdrawalRequest();
-            uint256 newTVL = delegator.tvl();
+            delegator.withdraw();
+            uint256 newTVL = delegator.totalLockedValue();
             delegatorMap[address(delegator)].balance = uint248(newTVL);
             currentDelegatorAssets -= (prevTVL > newTVL ? prevTVL - newTVL : 0);
         }

@@ -79,6 +79,19 @@
   },
   {
     "inputs": [],
+    "name": "beacon",
+    "outputs": [
+      {
+        "internalType": "contract DelegatorBeacon",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "delegatorAssets",
     "outputs": [
       {

@@ -4,6 +4,7 @@ pragma solidity =0.8.16;
 import {IStEth} from "src/interfaces/lido/IStEth.sol";
 import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
 import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
+import {DelegatorBeacon} from "src/vaults/restaking/DelegatorBeacon.sol";
 
 abstract contract UltraLRTStorage {
     struct DelegatorInfo {
@@ -17,13 +18,15 @@ abstract contract UltraLRTStorage {
 
     uint256 public constant MAX_BPS = 10_000;
 
-    uint256 public constant MAX_DELEGATOR = 100;
+    uint256 public constant MAX_DELEGATOR = 50;
 
     uint256 public depositPaused;
 
     IStEth public constant STETH = IStEth(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
 
     WithdrawalEscrowV2 public escrow;
+
+    DelegatorBeacon public beacon;
 
     uint256 public delegatorAssets;
 

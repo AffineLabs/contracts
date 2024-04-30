@@ -17,6 +17,7 @@ import {TestStrategy} from "./mocks/TestStrategy.sol";
 
 import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
 import {IStEth} from "src/interfaces/lido/IStEth.sol";
+import {AffineDelegator} from "src/vaults/restaking/AffineDelegator.sol";
 
 import {console2} from "forge-std/console2.sol";
 
@@ -27,10 +28,13 @@ contract UltraLRTTest is TestPlus {
     uint256 initAssets;
 
     function setUp() public {
-        vm.createSelectFork("ethereum");
+        vm.createSelectFork("ethereum", 19_770_000);
         vault = new UltraLRT();
 
-        vault.initialize(governance, address(asset), "uLRT", "uLRT");
+        AffineDelegator delegator = new AffineDelegator();
+
+        // d
+        vault.initialize(governance, address(asset), address(delegator), "uLRT", "uLRT");
         initAssets = 10 ** asset.decimals();
         initAssets *= 100;
     }
