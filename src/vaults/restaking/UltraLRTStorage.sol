@@ -51,7 +51,7 @@ abstract contract UltraLRTStorage {
     uint256 delegatorCount;
 
     modifier whenDepositNotPaused() {
-        require(depositPaused == 1, "Deposit Paused.");
+        require(depositPaused == 0, "Deposit Paused.");
         _;
     }
 }
