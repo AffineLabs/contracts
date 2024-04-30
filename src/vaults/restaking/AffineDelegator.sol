@@ -110,20 +110,6 @@ contract AffineDelegator is UUPSUpgradeable, AccessControlUpgradeable, PausableU
         }
     }
 
-    function _delegateToOperator() internal {
-        // require(hasRole(HARVESTER_ROLE, msg.sender) || msg.sender == vault, "AffineDelegator: Not a harvester or vault");
-        // delegate to operator
-            // delegate to operator
-        ApproverSignatureAndExpiryParams memory params = ApproverSignatureAndExpiryParams("", 0);
-        IDelegationManager(delegationManager).delegateTo(
-            currentOperator, 
-            params,
-            0x0000000000000000000000000000000000000000000000000000000000000000
-        );
-        isDelegated = true;
-    }
-
-
     function requestWithdrawal(uint256 assets) external {
         require(hasRole(HARVESTER_ROLE, msg.sender) || msg.sender == vault, "AffineDelegator: Not a harvester");
         // request withdrawal
@@ -157,9 +143,6 @@ contract AffineDelegator is UUPSUpgradeable, AccessControlUpgradeable, PausableU
         withdrawableAmount += withdrawnTokens;
     }
 
-    // function checkAssetsAvailibity() external view returns (uint256) {
-    //     return withdrawableAmount;
-    // }
 
     function withdraw() external {
         require(msg.sender == vault, "AffineDelegator: Not vault");
@@ -168,24 +151,33 @@ contract AffineDelegator is UUPSUpgradeable, AccessControlUpgradeable, PausableU
         withdrawableAmount = 0;
     }
 
-    function setHarvester(address _harvester) external {
-        require(hasRole(GUARDIAN_ROLE, msg.sender), "AffineDelegator: Not a guardian");
+    function setHarvester(address _harvester) external onlyGovernance {
+        _revokeRole(HARVESTER_ROLE, harvester);
         harvester = _harvester;
         _grantRole(HARVESTER_ROLE, _harvester);
     }
 
-    function setOperator(address _operator) external {
-        require(hasRole(GUARDIAN_ROLE, msg.sender), "AffineDelegator: Not a guardian");
+    function setOperator(address _operator) external onlyGovernance {
         currentOperator = _operator;
     }
 
-    function setVault(address _vault) external {
-        require(hasRole(GUARDIAN_ROLE, msg.sender), "AffineDelegator: Not a guardian");
+    function setVault(address _vault) external onlyGovernance {
         vault = _vault;
     }
 
     function totalLockedValue() external view returns (uint256) {
         return tvl;
+    }
+
+    function _delegateToOperator() internal {
+        // delegate to operator
+        ApproverSignatureAndExpiryParams memory params = ApproverSignatureAndExpiryParams("", 0);
+        IDelegationManager(delegationManager).delegateTo(
+            currentOperator, 
+            params,
+            0x0000000000000000000000000000000000000000000000000000000000000000
+        );
+        isDelegated = true;
     }
 
 }

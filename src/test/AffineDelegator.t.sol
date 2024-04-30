@@ -38,25 +38,26 @@ contract AffineDelegatorTest is TestPlus {
         deal(address(asset), alice, init_assets);
         IStrategy stEthStrategy = IStrategy(0x1BeE69b7dFFfA4E2d53C2a2Df135C388AD25dCD2);
         vm.startPrank(alice);
+
+        // delegate
         asset.approve(address(delegator), init_assets);
         delegator.delegate(init_assets);
         assertEq(delegator.totalLockedValue(), init_assets);
         assertEq(asset.balanceOf(alice), 0);
-        // vm.roll(block.number + 10000);
-        delegator.requestWithdrawal(init_assets);
+        
 
-        // record block num into a var
+        // request withdrawal
+        delegator.requestWithdrawal(init_assets);
         uint256 blockNum = block.number;
         assertEq(delegator.totalLockedValue(), init_assets);
         vm.roll(block.number + 1000000);
 
+        // complete withdrawal
         WithdrawalInfo[] memory params = new WithdrawalInfo[](1);
-        uint256 sharesx = stEthStrategy.underlyingToShares(init_assets);
         uint256[] memory shares = new uint256[](1);
-        shares[0] = sharesx;
-        // shares[0] = 1;
+        shares[0] = stEthStrategy.underlyingToShares(init_assets);
         address[] memory strategies = new address[](1);
-        strategies[0] = 0x1BeE69b7dFFfA4E2d53C2a2Df135C388AD25dCD2;
+        strategies[0] = address(stEthStrategy);
 
         params[0] = WithdrawalInfo({
             staker: address(delegator),
