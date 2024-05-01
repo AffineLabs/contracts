@@ -105,7 +105,15 @@ contract UltraLRT is
                             DEPOSIT ETH
     //////////////////////////////////////////////////////////////*/
 
-    function depositETH(address receiver) external payable whenNotPaused whenDepositNotPaused returns (uint256) {
+    event Referral(address indexed depositor, uint256 referralId);
+
+    function depositETH(address receiver, uint256 _referrerId)
+        external
+        payable
+        whenNotPaused
+        whenDepositNotPaused
+        returns (uint256)
+    {
         //TODO if (msg.value == 0) revert ReStakingErrors.DepositAmountCannotBeZero();
         //TODO if (_for == address(0)) revert ReStakingErrors.CannotDepositForZeroAddress();
         //TODO if (!hasRole(APPROVED_TOKEN, address(WETH))) revert ReStakingErrors.TokenNotAllowedForStaking();
@@ -118,8 +126,13 @@ contract UltraLRT is
         _mint(receiver, shares);
 
         emit Deposit(_msgSender(), receiver, assets, shares);
-
+        emit Referral(receiver, _referrerId);
         return shares;
+    }
+
+    function deposit(uint256 assets, address receiver, uint256 _referrerId) public returns (uint256 shares) {
+        shares = deposit(assets, receiver);
+        emit Referral(receiver, _referrerId);
     }
 
     function deposit(uint256 assets, address receiver)
@@ -135,6 +148,11 @@ contract UltraLRT is
         _deposit(_msgSender(), receiver, assets, shares);
 
         return shares;
+    }
+
+    function mint(uint256 shares, address receiver, uint256 _referrerId) public returns (uint256 assets) {
+        assets = mint(shares, receiver);
+        emit Referral(receiver, _referrerId);
     }
 
     function mint(uint256 shares, address receiver)
