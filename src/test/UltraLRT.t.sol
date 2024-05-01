@@ -18,13 +18,17 @@ import {TestStrategy} from "./mocks/TestStrategy.sol";
 import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
 import {IStEth} from "src/interfaces/lido/IStEth.sol";
 import {AffineDelegator} from "src/vaults/restaking/AffineDelegator.sol";
+import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
+import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
+import {AffineDelegator, WithdrawalInfo, IStrategy} from "src/vaults/restaking/AffineDelegator.sol";
 
 import {console2} from "forge-std/console2.sol";
 
 contract UltraLRTTest is TestPlus {
     UltraLRT vault;
     ERC20 asset = ERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
-
+    address operator = 0xDbEd88D83176316fc46797B43aDeE927Dc2ff2F5;
+    IStrategy stEthStrategy = IStrategy(0x93c4b944D05dfe6df7645A86cd2206016c51564D);
     uint256 initAssets;
 
     function setUp() public {
@@ -70,4 +74,88 @@ contract UltraLRTTest is TestPlus {
         assertEq(asset.balanceOf(alice), assets);
         assertEq(vault.totalSupply(), 0);
     }
+
+    function testCreateDelegator() public {
+        testDeposit();
+        assertEq(vault.delegatorCount(), 0);
+        vm.prank(governance);
+        vault.createDelegator(operator);
+        assertEq(vault.delegatorCount(), 1);
+    }
+
+    function testDelegateToDelegator() public {
+        testCreateDelegator();
+        IDelegator delegator = vault.delegatorQueue(0);
+        console2.log("delegator %s", address(delegator));
+
+        uint256 assets = vault.totalAssets();
+        vm.prank(governance);
+        vault.delegateToDelegator(address(delegator), assets);
+
+        assertApproxEqAbs(vault.totalAssets(), assets, 100);
+
+        assertApproxEqAbs(delegator.totalLockedValue(), assets, 100);
+
+        // can withdraw should be false
+        assertTrue(!vault.canWithdraw(100_000_000));
+    }
+
+    function testSetWithdrawalQueue() public {
+        testDelegateToDelegator();
+        IDelegator delegator = vault.delegatorQueue(0);
+        // withdrawal queue
+        WithdrawalEscrowV2 escrow = new WithdrawalEscrowV2(vault);
+
+        vm.prank(governance);
+        vault.setWithdrawalEscrow(escrow);
+
+        uint256 vaultShares = vault.balanceOf(alice);
+        uint256 assets = vault.convertToAssets(vaultShares);
+        // 99999999999999999997 asset
+        // shares 96834476546864619822
+
+        uint256 reqAssets = delegator.totalLockedValue();
+        vm.prank(alice);
+        uint256 blockNumber = block.number;
+
+        vault.withdraw(assets, alice, alice);
+
+        vm.prank(governance);
+        vault.endEpoch();
+
+        // prep for withdraw
+        vm.roll(block.number + 1_000_000);
+
+        // complete withdrawal
+        WithdrawalInfo[] memory params = new WithdrawalInfo[](1);
+        uint256[] memory shares = new uint256[](1);
+        shares[0] = stEthStrategy.underlyingToShares(reqAssets);
+        address[] memory strategies = new address[](1);
+        strategies[0] = address(stEthStrategy);
+
+        params[0] = WithdrawalInfo({
+            staker: address(delegator),
+            delegatedTo: operator,
+            withdrawer: address(delegator),
+            nonce: 0,
+            startBlock: uint32(blockNumber),
+            strategies: strategies,
+            shares: shares
+        });
+        vm.prank(governance);
+        AffineDelegator(address(delegator)).completeWithdrawalRequest(params);
+
+        vm.prank(governance);
+        vault.collectDelegatorDebt();
+        vm.prank(governance);
+        vault.harvest();
+
+        vm.prank(governance);
+        vault.resolveDebt();
+
+        escrow.redeem(alice, 0);
+        assertApproxEqAbs(asset.balanceOf(address(alice)), assets, 100);
+    }
 }
+
+//WithdrawalQueued(withdrawalRoot: 0xfec77fcbceddd1bc400d8b6365989ea8226370f47a4dfc6eb39f992880c0f339, withdrawal: Withdrawal({ staker: 0x037eDa3aDB1198021A9b2e88C22B464fD38db3f3, delegatedTo: 0xDbEd88D83176316fc46797B43aDeE927Dc2ff2F5, withdrawer: 0x037eDa3aDB1198021A9b2e88C22B464fD38db3f3, nonce: 0, startBlock: 19770000 [1.977e7], strategies: [0x93c4b944D05dfe6df7645A86cd2206016c51564D], shares: [96834476546864619822 [9.683e19]] }))

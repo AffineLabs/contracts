@@ -20,6 +20,9 @@ abstract contract UltraLRTStorage {
 
     uint256 public constant MAX_DELEGATOR = 50;
 
+    // buffer we ignore while resolving shares due to transfer glitch in steth
+    uint256 public constant ST_ETH_TRANSFER_BUFFER = 1000;
+
     uint256 public depositPaused;
 
     IStEth public constant STETH = IStEth(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
@@ -51,7 +54,7 @@ abstract contract UltraLRTStorage {
     mapping(address => DelegatorInfo) public delegatorMap;
 
     //active delegator count
-    uint256 delegatorCount;
+    uint256 public delegatorCount;
 
     modifier whenDepositNotPaused() {
         require(depositPaused == 0, "Deposit Paused.");

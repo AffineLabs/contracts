@@ -118,7 +118,11 @@ contract AffineDelegator is Initializable, AffineGovernable {
 
     function completeWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo) external {
         // TODO directly check harvester role from vault.
-        require(msg.sender == harvester || msg.sender == vault, "AffineDelegator: Not a harvester");
+        // UltraLRT(vault).hasRole(UltraLRT(vault).HARVESTER(), msg.sender)
+        require(
+            UltraLRT(vault).hasRole(UltraLRT(vault).HARVESTER(), msg.sender) || msg.sender == vault,
+            "AffineDelegator: Not a harvester"
+        );
         // complete withdrawal request
         address[][] memory stEthAddresses = new address[][](1);
         address[] memory x = new address[](1);
@@ -150,9 +154,16 @@ contract AffineDelegator is Initializable, AffineGovernable {
         vault = _vault;
     }
 
-    function totalLockedValue() external view returns (uint256) {
-        return stEthStrategy.userUnderlyingView(address(this)) + stEthStrategy.sharesToUnderlyingView(queuedShares)
-            + stETH.balanceOf(address(this));
+    function totalLockedValue() public view returns (uint256) {
+        return withdrawableAssets() + queuedAssets();
+    }
+
+    function withdrawableAssets() public view returns (uint256) {
+        return stEthStrategy.userUnderlyingView(address(this));
+    }
+
+    function queuedAssets() public view returns (uint256) {
+        return stEthStrategy.sharesToUnderlyingView(queuedShares) + stETH.balanceOf(address(this));
     }
 
     function _delegateToOperator() internal {

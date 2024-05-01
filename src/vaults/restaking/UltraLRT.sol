@@ -11,7 +11,7 @@ import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC2
 import {IERC20MetadataUpgradeable} from
     "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 // storage contract
 import {UltraLRTStorage} from "src/vaults/restaking/UltraLRTStorage.sol";
 import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
@@ -209,13 +209,18 @@ contract UltraLRT is
             // do withdrawal request
             _transfer(_msgSender(), address(escrow), shares);
             escrow.registerWithdrawalRequest(receiver, shares);
+            // do immediate withdrawal request for user
+            _liquidationRequest(assets);
             return;
         }
         _burn(owner, shares);
-        // SafeERC20Upgradeable.safeTransfer(IERC20MetadataUpgradeable(asset()), receiver, assets);
-        ERC20(asset()).safeTransfer(receiver, assets);
 
-        emit Withdraw(caller, receiver, owner, assets, shares);
+        uint256 assetsToReceive = Math.min(ERC20(asset()).balanceOf(address(this)), assets);
+
+        require(assetsToReceive + ST_ETH_TRANSFER_BUFFER >= assets, "Invalid withdrawal");
+        ERC20(asset()).safeTransfer(receiver, assetsToReceive);
+
+        emit Withdraw(caller, receiver, owner, assetsToReceive, shares);
     }
 
     function canWithdraw(uint256 assets) public view returns (bool) {
@@ -223,7 +228,7 @@ contract UltraLRT is
             return true;
         }
         uint256 escrowDebt = address(escrow) == address(0) ? 0 : escrow.totalDebt();
-        return escrowDebt == 0 && ERC20(asset()).balanceOf(address(this)) >= assets;
+        return escrowDebt == 0 && (ERC20(asset()).balanceOf(address(this)) + ST_ETH_TRANSFER_BUFFER) >= assets;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -241,11 +246,36 @@ contract UltraLRT is
         escrow.endEpoch();
     }
 
+    function liquidationRequest(uint256 assets) external onlyRole(HARVESTER) {
+        _liquidationRequest(assets);
+    }
+
+    function _liquidationRequest(uint256 assets) internal {
+        for (uint256 i = 0; i < delegatorCount; i++) {
+            IDelegator delegator = delegatorQueue[i];
+            uint256 assetsToRequest = Math.min(delegator.withdrawableAssets(), assets);
+            _delegatorWithdrawRequest(delegator, assetsToRequest);
+            if (assetsToRequest == assets) {
+                break;
+            }
+            assets -= assetsToRequest;
+        }
+    }
+
+    function delegatorWithdrawRequest(IDelegator delegator, uint256 assets) external onlyRole(HARVESTER) {
+        _delegatorWithdrawRequest(delegator, assets);
+    }
+
+    function _delegatorWithdrawRequest(IDelegator delegator, uint256 assets) internal {
+        require(assets <= delegator.withdrawableAssets(), "Invalid assets");
+        delegator.requestWithdrawal(assets);
+    }
+
     function resolveDebt() external onlyRole(HARVESTER) {
-        while (escrow.resolvingEpoch() < escrow.currentEpoch()) {
+        if (escrow.resolvingEpoch() < escrow.currentEpoch()) {
             uint256 debtShare = escrow.getDebtToResolve();
             uint256 assets = previewRedeem(debtShare);
-            if (ERC20(asset()).balanceOf(address(this)) >= assets) {
+            if ((ERC20(asset()).balanceOf(address(this)) + ST_ETH_TRANSFER_BUFFER) >= assets) {
                 escrow.resolveDebtShares();
             }
         }
@@ -334,11 +364,11 @@ contract UltraLRT is
         require(availableAssets <= amount, "invalid assets");
 
         // delegate
-        ERC20(asset()).approve(address(this), amount);
+        ERC20(asset()).approve(_delegator, amount);
         delegator.delegate(amount);
 
         delegatorMap[_delegator].balance += uint248(amount);
-        delegatorAssets += amount;
+        delegatorAssets += uint248(amount);
     }
 
     /**

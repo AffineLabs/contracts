@@ -79,6 +79,19 @@
   },
   {
     "inputs": [],
+    "name": "ST_ETH_TRANSFER_BUFFER",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "beacon",
     "outputs": [
       {
@@ -93,6 +106,19 @@
   {
     "inputs": [],
     "name": "delegatorAssets",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "delegatorCount",
     "outputs": [
       {
         "internalType": "uint256",

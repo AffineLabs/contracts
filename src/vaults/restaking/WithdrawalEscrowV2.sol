@@ -75,6 +75,7 @@ contract WithdrawalEscrowV2 {
 
     function endEpoch() external onlyVault {
         require(epochInfo[currentEpoch].shares > 0, "WEV2: No Debt.");
+
         currentEpoch = currentEpoch + 1;
         // TODO: epoch end event
     }
@@ -92,11 +93,12 @@ contract WithdrawalEscrowV2 {
     function resolveDebtShares() external onlyVault {
         require(resolvingEpoch < currentEpoch, "WEV2: No debt.");
 
-        uint256 assets =
-            vault.redeem({shares: epochInfo[resolvingEpoch].shares, receiver: address(this), owner: address(this)});
+        uint256 preAssets = asset.balanceOf(address(this));
+        vault.redeem({shares: epochInfo[resolvingEpoch].shares, receiver: address(this), owner: address(this)});
 
+        uint256 currentAssets = asset.balanceOf(address(this));
         totalDebt -= epochInfo[resolvingEpoch].shares;
-        epochInfo[currentEpoch].assets = uint128(assets);
+        epochInfo[resolvingEpoch].assets = uint128(currentAssets - preAssets);
 
         resolvingEpoch += 1;
     }

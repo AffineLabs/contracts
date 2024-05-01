@@ -12,4 +12,7 @@ interface IDelegator {
     function withdraw() external;
     // get delegator tvl
     function totalLockedValue() external returns (uint256);
+
+    function withdrawableAssets() external view returns (uint256);
+    function queuedAssets() external view returns (uint256);
 }
