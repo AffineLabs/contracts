@@ -21,7 +21,7 @@ contract AffineDelegatorTest is TestPlus {
 
     receive() external payable {}
 
-    ERC20 public asset = ERC20((0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84)); // rocket pool stETH
+    ERC20 public asset = ERC20((0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84)); // stETH
 
     function setUp() public {
         // fork eth
@@ -81,7 +81,10 @@ contract AffineDelegatorTest is TestPlus {
             shares: shares
         });
 
+        vm.startPrank(governance);
         delegator.completeWithdrawalRequest(params);
+        
+        vm.startPrank(alice);
         delegator.withdraw();
 
         assertApproxEqAbs(delegator.totalLockedValue(), 0, 10);
