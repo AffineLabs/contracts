@@ -180,6 +180,30 @@
         "type": "address"
       },
       {
+        "internalType": "uint256[]",
+        "name": "epochs",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "redeemMultiEpoch",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "totalAssets",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
         "internalType": "uint256",
         "name": "shares",
         "type": "uint256"

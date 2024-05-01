@@ -103,13 +103,19 @@ contract WithdrawalEscrowV2 {
         resolvingEpoch += 1;
     }
 
+    function redeemMultiEpoch(address user, uint256[] calldata epochs) public returns (uint256 totalAssets) {
+        for (uint8 i = 0; i < epochs.length; i++) {
+            totalAssets += redeem(user, epochs[i]);
+        }
+    }
     /**
      * @notice Redeem withdrawal request
      * @param user address
      * @param epoch withdrawal request epoch
      * @return received assets
      */
-    function redeem(address user, uint256 epoch) external returns (uint256) {
+
+    function redeem(address user, uint256 epoch) public returns (uint256) {
         // Should be a resolved epoch
         require(canWithdraw(epoch), "WE: epoch not resolved.");
 

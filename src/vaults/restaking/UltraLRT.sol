@@ -105,6 +105,14 @@ contract UltraLRT is
                             DEPOSIT ETH
     //////////////////////////////////////////////////////////////*/
 
+    function pauseDeposit() external onlyGovernance {
+        depositPaused = 1;
+    }
+
+    function unpauseDeposit() external onlyGovernance {
+        depositPaused = 0;
+    }
+
     event Referral(address indexed depositor, uint256 referralId);
 
     function depositETH(address receiver, uint256 _referrerId)
