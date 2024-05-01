@@ -53,7 +53,7 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
 
-contract AffineDelegator is Initializable, AccessControl, AffineGovernable {
+contract AffineDelegator is Initializable, AffineGovernable {
     using SafeTransferLib for ERC20;
 
     function initialize(address _vault, address _operator) external initializer {
@@ -69,16 +69,11 @@ contract AffineDelegator is Initializable, AccessControl, AffineGovernable {
         stETH = ERC20(UltraLRT(vault).asset());
 
         stETH.approve(strategyManager, type(uint256).max);
-
-        _grantRole(DEFAULT_ADMIN_ROLE, governance);
-        _grantRole(HARVESTER_ROLE, governance);
     }
 
     bytes32 public constant HARVESTER_ROLE = keccak256("HARVESTER");
 
     mapping(address => mapping(address => address)) public strategy;
-
-    mapping(address => address) tokenStrategyMapping;
 
     address public currentOperator;
     address public strategyManager;

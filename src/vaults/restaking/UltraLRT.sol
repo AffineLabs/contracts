@@ -11,12 +11,7 @@ import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC2
 import {IERC20MetadataUpgradeable} from
     "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {IERC20MetadataUpgradeable} from
-    "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
-import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-import {IERC20MetadataUpgradeable} from
-    "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 // storage contract
 import {UltraLRTStorage} from "src/vaults/restaking/UltraLRTStorage.sol";
 import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
@@ -42,6 +37,8 @@ contract UltraLRT is
     AffineGovernable,
     UltraLRTStorage
 {
+    using SafeTransferLib for ERC20;
+
     function initialize(
         address _governance,
         address vaultAsset,
@@ -215,7 +212,8 @@ contract UltraLRT is
             return;
         }
         _burn(owner, shares);
-        SafeERC20Upgradeable.safeTransfer(IERC20MetadataUpgradeable(asset()), receiver, assets);
+        // SafeERC20Upgradeable.safeTransfer(IERC20MetadataUpgradeable(asset()), receiver, assets);
+        ERC20(asset()).safeTransfer(receiver, assets);
 
         emit Withdraw(caller, receiver, owner, assets, shares);
     }

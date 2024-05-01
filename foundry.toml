@@ -4,7 +4,7 @@ libs = ['lib', 'node_modules']
 block_timestamp = 1
 verbosity = 3
 solc_version = "0.8.16"
-optimizer_runs = 1
+optimizer_runs = 10000
 fs_permissions = [{ access = "read-write", path = "./"}]
 
 [profile.default.fuzz]
