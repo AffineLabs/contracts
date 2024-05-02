@@ -9,4 +9,17 @@ library ReStakingErrors {
     error TokenNotAllowedForStaking();
     error WithdrawAmountCannotBeZero();
     error InvalidWithdrawalAmount();
+    error ExceedsDepositLimit();
+    error ExceedsMintLimit();
+    error ExceedsWithdrawLimit();
+    error ExceedsRedeemLimit();
+    error InsufficientLiquidAssets();
+    error ExistingEscrowDebt();
+    error InvalidEscrowVault();
+    error ExceedsDelegatorWithdrawableAssets();
+    error ExceedsMaxDelegatorLimit();
+    error NonZeroEmptyDelegatorTVL();
+    error InactiveDelegator();
+    error RequireHarvest();
+    error ProfitUnlocking();
 }

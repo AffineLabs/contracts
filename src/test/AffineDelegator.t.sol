@@ -83,7 +83,7 @@ contract AffineDelegatorTest is TestPlus {
 
         vm.startPrank(governance);
         delegator.completeWithdrawalRequest(params);
-        
+
         vm.startPrank(alice);
         delegator.withdraw();
 

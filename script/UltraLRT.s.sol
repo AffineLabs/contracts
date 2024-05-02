@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
+/* solhint-disable reason-string, no-console */
+
 import {Script, console2} from "forge-std/Script.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
@@ -18,6 +20,7 @@ contract Deploy is Script {
     address operator = 0xDbEd88D83176316fc46797B43aDeE927Dc2ff2F5;
     IStrategy stEthStrategy = IStrategy(0x93c4b944D05dfe6df7645A86cd2206016c51564D);
     uint256 initAssets;
+
     function run() external {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
