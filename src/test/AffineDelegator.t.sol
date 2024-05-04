@@ -4,6 +4,7 @@ pragma solidity =0.8.16;
 import {TestPlus} from "./TestPlus.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {LevMaticXLoopStrategy, AffineVault, FixedPointMathLib} from "src/strategies/LevMaticXLoopStrategy.sol";
@@ -57,17 +58,19 @@ contract AffineDelegatorTest is TestPlus {
         assertApproxEqAbs(delegator.totalLockedValue(), stEthAmount, 10);
         assertApproxEqAbs(asset.balanceOf(alice), 0, 10);
 
+        uint256 withdrawableStEthShares =
+            Math.min(stEthStrategy.underlyingToShares(stEthAmount), stEthStrategy.shares(address(delegator)));
         // // request withdrawal
         delegator.requestWithdrawal(stEthAmount);
         uint256 blockNum = block.number;
-        console2.log("====> %s", delegator.totalLockedValue());
+        // console2.log("====> %s", delegator.totalLockedValue());
         assertApproxEqAbs(delegator.totalLockedValue(), stEthAmount, 10);
         vm.roll(block.number + 1_000_000);
 
         // complete withdrawal
         WithdrawalInfo[] memory params = new WithdrawalInfo[](1);
         uint256[] memory shares = new uint256[](1);
-        shares[0] = stEthStrategy.underlyingToShares(stEthAmount);
+        shares[0] = withdrawableStEthShares;
         address[] memory strategies = new address[](1);
         strategies[0] = address(stEthStrategy);
 

@@ -15,7 +15,7 @@ import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 import {BaseVault} from "src/vaults/cross-chain-vault/audited/BaseVault.sol";
 import {TestStrategy} from "./mocks/TestStrategy.sol";
 
-import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
+import {UltraLRT, Math} from "src/vaults/restaking/UltraLRT.sol";
 import {IStEth} from "src/interfaces/lido/IStEth.sol";
 import {AffineDelegator} from "src/vaults/restaking/AffineDelegator.sol";
 import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
@@ -114,7 +114,10 @@ contract UltraLRTTest is TestPlus {
         // 99999999999999999997 asset
         // shares 96834476546864619822
 
-        uint256 reqAssets = delegator.totalLockedValue();
+        uint256 reqAssets = delegator.withdrawableAssets();
+
+        uint256 withdrawableStEthShares =
+            Math.min(stEthStrategy.underlyingToShares(reqAssets), stEthStrategy.shares(address(delegator)));
         vm.prank(alice);
         uint256 blockNumber = block.number;
 
@@ -129,7 +132,7 @@ contract UltraLRTTest is TestPlus {
         // complete withdrawal
         WithdrawalInfo[] memory params = new WithdrawalInfo[](1);
         uint256[] memory shares = new uint256[](1);
-        shares[0] = stEthStrategy.underlyingToShares(reqAssets);
+        shares[0] = withdrawableStEthShares;
         address[] memory strategies = new address[](1);
         strategies[0] = address(stEthStrategy);
 

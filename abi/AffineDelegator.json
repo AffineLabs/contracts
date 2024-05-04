@@ -189,7 +189,7 @@
     "name": "stETH",
     "outputs": [
       {
-        "internalType": "contract ERC20",
+        "internalType": "contract IStEth",
         "name": "",
         "type": "address"
       }

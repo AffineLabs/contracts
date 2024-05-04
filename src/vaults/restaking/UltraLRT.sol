@@ -3,7 +3,6 @@ pragma solidity =0.8.16;
 
 // upgrading contracts
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
-
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
@@ -12,6 +11,8 @@ import {IERC20MetadataUpgradeable} from
     "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 // storage contract
 import {UltraLRTStorage} from "src/vaults/restaking/UltraLRTStorage.sol";
 import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
@@ -20,18 +21,12 @@ import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
 import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
-
-import {ReStakingErrors} from "src/libs/ReStakingErrors.sol";
-
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
+import {ReStakingErrors} from "src/libs/ReStakingErrors.sol";
 import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
 import {AffineDelegator} from "src/vaults/restaking/AffineDelegator.sol";
 import {DelegatorBeacon} from "src/vaults/restaking/DelegatorBeacon.sol";
-
-import {ReStakingErrors} from "src/libs/ReStakingErrors.sol";
-
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract UltraLRT is
     ERC4626Upgradeable,
