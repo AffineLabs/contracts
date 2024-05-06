@@ -286,14 +286,13 @@ contract UltraLRT is
     }
 
     function _liquidationRequest(uint256 assets) internal {
-        for (uint256 i = 0; i < delegatorCount; i++) {
+        for (uint256 i = 0; i < delegatorCount && assets > 0; i++) {
             IDelegator delegator = delegatorQueue[i];
-            uint256 assetsToRequest = Math.min(delegator.withdrawableAssets(), assets);
-            _delegatorWithdrawRequest(delegator, assetsToRequest);
-            if (assetsToRequest == assets) {
-                break;
+            if (delegator.withdrawableAssets() > 0) {
+                uint256 assetsToRequest = Math.min(delegator.withdrawableAssets(), assets);
+                _delegatorWithdrawRequest(delegator, assetsToRequest);
+                assets -= assetsToRequest;
             }
-            assets -= assetsToRequest;
         }
     }
 

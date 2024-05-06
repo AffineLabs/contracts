@@ -30,17 +30,35 @@ contract UltraLRTTest is TestPlus {
     address operator = 0xDbEd88D83176316fc46797B43aDeE927Dc2ff2F5;
     IStrategy stEthStrategy = IStrategy(0x93c4b944D05dfe6df7645A86cd2206016c51564D);
     uint256 initAssets;
+    WithdrawalEscrowV2 escrow;
 
     function setUp() public {
         vm.createSelectFork("ethereum", 19_770_000);
-        vault = new UltraLRT();
+        // ultra LRT impl
+        UltraLRT impl = new UltraLRT();
+        // delegator implementation
+        AffineDelegator delegatorImpl = new AffineDelegator();
+        // initialization data
+        bytes memory initData =
+            abi.encodeCall(UltraLRT.initialize, (governance, address(asset), address(delegatorImpl), "uLRT", "uLRT"));
+        // proxy
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        // upgradeable vault
+        vault = UltraLRT(address(proxy));
 
-        AffineDelegator delegator = new AffineDelegator();
-
-        // d
-        vault.initialize(governance, address(asset), address(delegator), "uLRT", "uLRT");
         initAssets = 10 ** asset.decimals();
         initAssets *= 100;
+
+        // add withdrawal escrow
+        escrow = new WithdrawalEscrowV2(vault);
+        vm.prank(governance);
+        vault.setWithdrawalEscrow(escrow);
+
+        // create 3 delegator
+        for (uint8 i = 0; i < 3; i++) {
+            vm.prank(governance);
+            vault.createDelegator(operator);
+        }
     }
 
     function _getAsset(address to, uint256 amount) internal returns (uint256) {
@@ -77,14 +95,15 @@ contract UltraLRTTest is TestPlus {
 
     function testCreateDelegator() public {
         testDeposit();
-        assertEq(vault.delegatorCount(), 0);
+        uint256 oldDelegatorCount = vault.delegatorCount();
+
         vm.prank(governance);
         vault.createDelegator(operator);
-        assertEq(vault.delegatorCount(), 1);
+        assertEq(vault.delegatorCount(), oldDelegatorCount + 1);
     }
 
     function testDelegateToDelegator() public {
-        testCreateDelegator();
+        testDeposit();
         IDelegator delegator = vault.delegatorQueue(0);
         console2.log("delegator %s", address(delegator));
 
@@ -100,11 +119,34 @@ contract UltraLRTTest is TestPlus {
         assertTrue(!vault.canWithdraw(100_000_000));
     }
 
+    function testDropDelegator() public {
+        testDelegateToDelegator();
+        uint256 oldDelegatorCount = vault.delegatorCount();
+        // drop a random validator
+        vm.prank(governance);
+        vm.expectRevert();
+        vault.dropDelegator(alice);
+        assertEq(oldDelegatorCount, vault.delegatorCount());
+
+        // drop last validator
+        address _del = address(vault.delegatorQueue(oldDelegatorCount - 1));
+        vm.prank(governance);
+        vault.dropDelegator(_del);
+        assertEq(oldDelegatorCount - 1, vault.delegatorCount());
+
+        // drop non zero tvl validator
+
+        _del = address(vault.delegatorQueue(0));
+        vm.prank(governance);
+        vm.expectRevert();
+        vault.dropDelegator(_del);
+    }
+
     function testPauseAndUnpause() public {
         uint256 stEth = _getAsset(alice, initAssets);
         vm.prank(governance);
         vault.pause();
-        
+
         // Test deposit when paused
         vm.prank(alice);
         asset.approve(address(vault), stEth);
@@ -141,11 +183,11 @@ contract UltraLRTTest is TestPlus {
     function startsWith(string memory str, string memory prefix) internal pure returns (bool) {
         bytes memory strBytes = bytes(str);
         bytes memory prefixBytes = bytes(prefix);
-        if(prefixBytes.length > strBytes.length) {
+        if (prefixBytes.length > strBytes.length) {
             return false;
         }
-        for(uint i = 0; i < prefixBytes.length; i++) {
-            if(strBytes[i] != prefixBytes[i]) {
+        for (uint256 i = 0; i < prefixBytes.length; i++) {
+            if (strBytes[i] != prefixBytes[i]) {
                 return false;
             }
         }
@@ -154,12 +196,11 @@ contract UltraLRTTest is TestPlus {
 
     function testPermissionedFunctions() public {
         uint256 stEth = _getAsset(alice, initAssets);
-        
+
         testDelegateToDelegator();
         IDelegator delegator = vault.delegatorQueue(0);
 
         vm.prank(bob); // bob is not a harvester or governance
-
 
         // Test endEpoch
         try vault.endEpoch() {
@@ -190,15 +231,9 @@ contract UltraLRTTest is TestPlus {
         }
     }
 
-
     function testSetWithdrawalQueue() public {
         testDelegateToDelegator();
         IDelegator delegator = vault.delegatorQueue(0);
-        // withdrawal queue
-        WithdrawalEscrowV2 escrow = new WithdrawalEscrowV2(vault);
-
-        vm.prank(governance);
-        vault.setWithdrawalEscrow(escrow);
 
         uint256 vaultShares = vault.balanceOf(alice);
         uint256 assets = vault.convertToAssets(vaultShares);
@@ -251,5 +286,3 @@ contract UltraLRTTest is TestPlus {
         assertApproxEqAbs(asset.balanceOf(address(alice)), assets, 100);
     }
 }
-
-//WithdrawalQueued(withdrawalRoot: 0xfec77fcbceddd1bc400d8b6365989ea8226370f47a4dfc6eb39f992880c0f339, withdrawal: Withdrawal({ staker: 0x037eDa3aDB1198021A9b2e88C22B464fD38db3f3, delegatedTo: 0xDbEd88D83176316fc46797B43aDeE927Dc2ff2F5, withdrawer: 0x037eDa3aDB1198021A9b2e88C22B464fD38db3f3, nonce: 0, startBlock: 19770000 [1.977e7], strategies: [0x93c4b944D05dfe6df7645A86cd2206016c51564D], shares: [96834476546864619822 [9.683e19]] }))
