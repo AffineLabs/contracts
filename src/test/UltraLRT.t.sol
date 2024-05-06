@@ -100,6 +100,97 @@ contract UltraLRTTest is TestPlus {
         assertTrue(!vault.canWithdraw(100_000_000));
     }
 
+    function testPauseAndUnpause() public {
+        uint256 stEth = _getAsset(alice, initAssets);
+        vm.prank(governance);
+        vault.pause();
+        
+        // Test deposit when paused
+        vm.prank(alice);
+        asset.approve(address(vault), stEth);
+        try vault.deposit(stEth, alice) {
+            assertTrue(false, "Deposit should fail when paused");
+        } catch Error(string memory reason) {
+            assertEq(reason, "Pausable: paused");
+        }
+
+        // Test withdraw when paused
+        try vault.withdraw(stEth, alice, alice) {
+            assertTrue(false, "Withdraw should fail when paused");
+        } catch Error(string memory reason) {
+            assertEq(reason, "Pausable: paused");
+        }
+
+        // Unpause
+        vm.prank(governance);
+        vault.unpause();
+
+        // Test deposit when unpaused
+        vm.prank(alice);
+        vault.deposit(stEth, alice);
+        assertEq(vault.balanceOf(alice), stEth * 1e8, "Deposit failed after unpausing");
+
+        // Test withdraw when unpaused
+        uint256 shares = vault.balanceOf(alice);
+        uint256 assets = vault.convertToAssets(shares);
+        vm.prank(alice);
+        vault.withdraw(assets, alice, alice);
+        assertEq(asset.balanceOf(alice), assets, "Withdraw failed after unpausing");
+    }
+
+    function startsWith(string memory str, string memory prefix) internal pure returns (bool) {
+        bytes memory strBytes = bytes(str);
+        bytes memory prefixBytes = bytes(prefix);
+        if(prefixBytes.length > strBytes.length) {
+            return false;
+        }
+        for(uint i = 0; i < prefixBytes.length; i++) {
+            if(strBytes[i] != prefixBytes[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function testPermissionedFunctions() public {
+        uint256 stEth = _getAsset(alice, initAssets);
+        
+        testDelegateToDelegator();
+        IDelegator delegator = vault.delegatorQueue(0);
+
+        vm.prank(bob); // bob is not a harvester or governance
+
+
+        // Test endEpoch
+        try vault.endEpoch() {
+            assertTrue(false, "endEpoch should fail when not called by harvester or governance");
+        } catch Error(string memory reason) {
+            assertTrue(startsWith(reason, "AccessControl"), "Error reason does not start with 'AccessControl'");
+        }
+
+        // Test liquidationRequest
+        try vault.liquidationRequest(stEth) {
+            assertTrue(false, "liquidationRequest should fail when not called by harvester or governance");
+        } catch Error(string memory reason) {
+            assertTrue(startsWith(reason, "AccessControl"), "Error reason does not start with 'AccessControl'");
+        }
+
+        // Test delegatorWithdrawRequest
+        try vault.delegatorWithdrawRequest(delegator, stEth) {
+            assertTrue(false, "delegatorWithdrawRequest should fail when not called by harvester or governance");
+        } catch Error(string memory reason) {
+            assertTrue(startsWith(reason, "AccessControl"), "Error reason does not start with 'AccessControl'");
+        }
+
+        // Test resolveDebt
+        try vault.resolveDebt() {
+            assertTrue(false, "resolveDebt should fail when not called by harvester or governance");
+        } catch Error(string memory reason) {
+            assertTrue(startsWith(reason, "AccessControl:"), "Error reason does not start with 'AccessControl'");
+        }
+    }
+
+
     function testSetWithdrawalQueue() public {
         testDelegateToDelegator();
         IDelegator delegator = vault.delegatorQueue(0);
