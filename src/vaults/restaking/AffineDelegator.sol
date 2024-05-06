@@ -60,11 +60,12 @@ contract AffineDelegator is Initializable, AffineGovernable {
      * @dev Delegate & restake stETH to operator on Eigenlayer
      */
     function delegate(uint256 amount) external onlyVault {
+        uint256 balance = stETH.balanceOf(address(this));
         // take stETH from vault
         stETH.transferFrom(address(vault), address(this), amount);
-
+        uint256 transferred = stETH.balanceOf(address(this)) - balance;
         // deposit into strategy
-        strategyManager.depositIntoStrategy(address(stEthStrategy), address(stETH), stETH.balanceOf(address(this)));
+        strategyManager.depositIntoStrategy(address(stEthStrategy), address(stETH), transferred);
 
         // delegate to operator if not already
         if (!isDelegated) {
