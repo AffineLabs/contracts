@@ -37,10 +37,10 @@ contract AffineDelegator is Initializable, AffineGovernable {
     }
 
     address public currentOperator;
-    IStrategyManager public immutable strategyManager = IStrategyManager(0x858646372CC42E1A627fcE94aa7A7033e7CF075A); // StrategyManager for Eigenlayer
-    IDelegationManager public immutable delegationManager =
+    IStrategyManager public constant strategyManager = IStrategyManager(0x858646372CC42E1A627fcE94aa7A7033e7CF075A); // StrategyManager for Eigenlayer
+    IDelegationManager public constant delegationManager =
         IDelegationManager(0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A); // DelegationManager for Eigenlayer
-    IStrategy public immutable stEthStrategy = IStrategy(0x93c4b944D05dfe6df7645A86cd2206016c51564D); // stETH strategy on Eigenlayer
+    IStrategy public constant stEthStrategy = IStrategy(0x93c4b944D05dfe6df7645A86cd2206016c51564D); // stETH strategy on Eigenlayer
     UltraLRT public vault;
     IStEth public stETH;
     uint256 public queuedShares;
