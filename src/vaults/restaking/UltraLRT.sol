@@ -290,17 +290,13 @@ contract UltraLRT is
             IDelegator delegator = delegatorQueue[i];
             if (delegator.withdrawableAssets() > 0) {
                 uint256 assetsToRequest = Math.min(delegator.withdrawableAssets(), assets);
-                _delegatorWithdrawRequest(delegator, assetsToRequest);
+                delegator.requestWithdrawal(assetsToRequest);
                 assets -= assetsToRequest;
             }
         }
     }
 
     function delegatorWithdrawRequest(IDelegator delegator, uint256 assets) external onlyRole(HARVESTER) {
-        _delegatorWithdrawRequest(delegator, assets);
-    }
-
-    function _delegatorWithdrawRequest(IDelegator delegator, uint256 assets) internal {
         if (assets > delegator.withdrawableAssets()) revert ReStakingErrors.ExceedsDelegatorWithdrawableAssets();
         delegator.requestWithdrawal(assets);
     }
@@ -332,7 +328,6 @@ contract UltraLRT is
         info.balance = 0;
         info.isActive = true;
         delegatorMap[address(bProxy)] = info;
-
         delegatorCount = delegatorCount + 1;
     }
 
