@@ -15,14 +15,19 @@ import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 import {BaseVault} from "src/vaults/cross-chain-vault/audited/BaseVault.sol";
 import {TestStrategy} from "./mocks/TestStrategy.sol";
 
-import {UltraLRT, Math} from "src/vaults/restaking/UltraLRT.sol";
+import {UltraLRT, Math, DelegatorBeacon} from "src/vaults/restaking/UltraLRT.sol";
 import {IStEth} from "src/interfaces/lido/IStEth.sol";
 import {AffineDelegator} from "src/vaults/restaking/AffineDelegator.sol";
 import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
 import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
 import {AffineDelegator, WithdrawalInfo, IStrategy} from "src/vaults/restaking/AffineDelegator.sol";
-
 import {console2} from "forge-std/console2.sol";
+
+contract TmpDelegator is AffineDelegator {
+    function version() public pure returns (uint256) {
+        return 100;
+    }
+}
 
 contract UltraLRTTest is TestPlus {
     UltraLRT vault;
@@ -305,5 +310,118 @@ contract UltraLRTTest is TestPlus {
 
         vm.prank(alice);
         vault.deposit(stEth, alice);
+    }
+
+    function testDepositPause() public {
+        uint256 stEth = _getAsset(alice, initAssets);
+        vm.prank(alice);
+        asset.approve(address(vault), stEth);
+
+        vm.prank(alice);
+        vault.deposit(stEth, alice);
+
+        // unpause
+        vm.prank(governance);
+        vault.pauseDeposit();
+
+        vm.startPrank(alice);
+        vm.expectRevert();
+        vault.deposit(stEth, alice);
+        vault.redeem(vault.balanceOf(alice), alice, alice);
+    }
+
+    function testHarvest() public {
+        uint256 stEth = _getAsset(alice, initAssets);
+        vm.startPrank(alice);
+        asset.approve(address(vault), stEth);
+        vault.deposit(stEth, alice);
+
+        vm.startPrank(governance);
+        vault.delegateToDelegator(address(vault.delegatorQueue(0)), stEth / 2);
+        vault.delegateToDelegator(address(vault.delegatorQueue(0)), asset.balanceOf(address(vault)));
+
+        uint256 currentTVL = vault.totalAssets();
+        vm.stopPrank();
+
+        _getAsset(address(vault.delegatorQueue(0)), initAssets);
+        _getAsset(address(vault.delegatorQueue(1)), initAssets);
+
+        vm.startPrank(governance);
+        vault.harvest();
+
+        vm.expectRevert();
+        vault.harvest();
+
+        assertApproxEqAbs(vault.totalAssets(), stEth, 100);
+
+        vm.warp(block.timestamp + 24 * 3600);
+        assertApproxEqAbs(vault.totalAssets(), stEth * 3, 100);
+    }
+
+    function testUpgradeBeacon() public {
+        DelegatorBeacon beacon = DelegatorBeacon(vault.beacon());
+        TmpDelegator impl = new TmpDelegator();
+        vm.prank(vault.governance());
+
+        beacon.update(address(impl));
+
+        assertEq(TmpDelegator(address(vault.delegatorQueue(0))).version(), 100);
+    }
+
+    function testWithdrawalQueueWithDelegatorUpgrade() public {
+        testDelegateToDelegator();
+        IDelegator delegator = vault.delegatorQueue(0);
+
+        testUpgradeBeacon();
+
+        uint256 vaultShares = vault.balanceOf(alice);
+        uint256 assets = vault.convertToAssets(vaultShares);
+        // 99999999999999999997 asset
+        // shares 96834476546864619822
+
+        uint256 reqAssets = delegator.withdrawableAssets();
+
+        uint256 withdrawableStEthShares =
+            Math.min(stEthStrategy.underlyingToShares(reqAssets), stEthStrategy.shares(address(delegator)));
+        vm.prank(alice);
+        uint256 blockNumber = block.number;
+
+        vault.withdraw(assets, alice, alice);
+
+        vm.prank(governance);
+        vault.endEpoch();
+
+        // prep for withdraw
+        vm.roll(block.number + 1_000_000);
+
+        // complete withdrawal
+        WithdrawalInfo[] memory params = new WithdrawalInfo[](1);
+        uint256[] memory shares = new uint256[](1);
+        shares[0] = withdrawableStEthShares;
+        address[] memory strategies = new address[](1);
+        strategies[0] = address(stEthStrategy);
+
+        params[0] = WithdrawalInfo({
+            staker: address(delegator),
+            delegatedTo: operator,
+            withdrawer: address(delegator),
+            nonce: 0,
+            startBlock: uint32(blockNumber),
+            strategies: strategies,
+            shares: shares
+        });
+        vm.prank(governance);
+        AffineDelegator(address(delegator)).completeWithdrawalRequest(params);
+
+        vm.prank(governance);
+        vault.collectDelegatorDebt();
+        vm.prank(governance);
+        vault.harvest();
+
+        vm.prank(governance);
+        vault.resolveDebt();
+
+        escrow.redeem(alice, 0);
+        assertApproxEqAbs(asset.balanceOf(address(alice)), assets, 100);
     }
 }
