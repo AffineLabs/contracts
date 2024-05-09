@@ -285,4 +285,25 @@ contract UltraLRTTest is TestPlus {
         escrow.redeem(alice, 0);
         assertApproxEqAbs(asset.balanceOf(address(alice)), assets, 100);
     }
+
+    function testPause() public {
+        uint256 stEth = _getAsset(alice, initAssets);
+        vm.prank(alice);
+        asset.approve(address(vault), stEth);
+
+        // pause
+        vm.prank(governance);
+        vault.pause();
+
+        vm.prank(alice);
+        vm.expectRevert("Pausable: paused");
+        vault.deposit(stEth, alice);
+
+        // unpause
+        vm.prank(governance);
+        vault.unpause();
+
+        vm.prank(alice);
+        vault.deposit(stEth, alice);
+    }
 }

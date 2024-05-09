@@ -82,13 +82,16 @@ contract AffineDelegator is Initializable, AffineGovernable {
 
         uint256[] memory shares = new uint256[](1);
         shares[0] = Math.min(stEthStrategy.underlyingToShares(assets), stEthStrategy.shares(address(this)));
-        queuedShares += shares[0];
 
-        address[] memory strategies = new address[](1);
-        strategies[0] = address(stEthStrategy);
-        params[0] = QueuedWithdrawalParams(strategies, shares, address(this));
+        // in any case if converted shares is zero will revert the ops.
+        if (shares[0] > 0) {
+            queuedShares += shares[0];
+            address[] memory strategies = new address[](1);
+            strategies[0] = address(stEthStrategy);
+            params[0] = QueuedWithdrawalParams(strategies, shares, address(this));
 
-        delegationManager.queueWithdrawals(params);
+            delegationManager.queueWithdrawals(params);
+        }
     }
 
     /**
@@ -115,7 +118,6 @@ contract AffineDelegator is Initializable, AffineGovernable {
      * @dev Withdraw stETH from delegator to vault
      */
     function withdraw() external onlyVault {
-        // stETH.safeTransfer(address(vault), stETH.balanceOf(address(this)));
         stETH.transferShares(address(vault), stETH.sharesOf(address(this)));
     }
 
