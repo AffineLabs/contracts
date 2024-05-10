@@ -244,6 +244,7 @@ contract UltraLRT is
             escrow.registerWithdrawalRequest(receiver, shares);
             // do immediate withdrawal request for user
             _liquidationRequest(assets);
+            emit Withdraw(caller, receiver, owner, assets, shares);
             return;
         }
         _burn(owner, shares);
