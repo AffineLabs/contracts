@@ -23,6 +23,7 @@ abstract contract UltraLRTStorage {
     // buffer we ignore while resolving shares due to transfer glitch in steth
     uint256 public constant ST_ETH_TRANSFER_BUFFER = 1000;
 
+    // only pausing the deposits in case of limit reached
     uint256 public depositPaused;
 
     IStEth public constant STETH = IStEth(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
