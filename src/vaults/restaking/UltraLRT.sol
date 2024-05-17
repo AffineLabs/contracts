@@ -20,13 +20,9 @@ import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
 // governance contract
 import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
 
-import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
-
 import {ReStakingErrors} from "src/libs/ReStakingErrors.sol";
 import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
 import {AffineDelegator} from "src/vaults/restaking/AffineDelegator.sol";
-import {DelegatorBeacon} from "src/vaults/restaking/DelegatorBeacon.sol";
 
 contract UltraLRT is
     ERC4626Upgradeable,
@@ -37,12 +33,10 @@ contract UltraLRT is
     ReentrancyGuard,
     UltraLRTStorage
 {
-    using SafeTransferLib for ERC20;
-
     function initialize(
         address _governance,
         address _asset,
-        address _delegatorImpl,
+        address _delegatorBeacon,
         string memory _name,
         string memory _symbol
     ) external initializer {
@@ -62,7 +56,7 @@ contract UltraLRT is
         _grantRole(HARVESTER, governance);
 
         // beacon proxy
-        beacon = new DelegatorBeacon(_delegatorImpl, governance);
+        beacon = _delegatorBeacon;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
@@ -88,7 +82,7 @@ contract UltraLRT is
     /// @dev E.g. if the asset has 18 decimals, and initialSharesPerAsset is 1e8, then the vault has 26 decimals. And
     /// "one" `asset` will be worth "one" share (where "one" means 10 ** token.decimals()).
     function decimals() public view virtual override(ERC20Upgradeable, IERC20MetadataUpgradeable) returns (uint8) {
-        return ERC20(asset()).decimals() + _initialShareDecimals();
+        return IERC20MetadataUpgradeable(asset()).decimals() + _initialShareDecimals();
     }
 
     /// @notice The amount of shares to mint per wei of `asset` at genesis.
@@ -113,34 +107,6 @@ contract UltraLRT is
         depositPaused = 0;
     }
 
-    event Referral(address indexed depositor, uint256 referralId);
-
-    function depositETH(address receiver, uint256 _referrerId)
-        external
-        payable
-        whenNotPaused
-        whenDepositNotPaused
-        nonReentrant
-        returns (uint256)
-    {
-        if (msg.value == 0) revert ReStakingErrors.DepositAmountCannotBeZero();
-
-        uint256 assets = STETH.submit{value: msg.value}(address(this)); //TODO check for referral
-
-        uint256 shares = previewDeposit(assets);
-
-        _mint(receiver, shares);
-
-        emit Deposit(_msgSender(), receiver, assets, shares);
-        emit Referral(receiver, _referrerId);
-        return shares;
-    }
-
-    function deposit(uint256 assets, address receiver, uint256 _referrerId) public returns (uint256 shares) {
-        shares = deposit(assets, receiver);
-        emit Referral(receiver, _referrerId);
-    }
-
     function deposit(uint256 assets, address receiver)
         public
         override
@@ -155,11 +121,6 @@ contract UltraLRT is
         _deposit(_msgSender(), receiver, assets, shares);
 
         return shares;
-    }
-
-    function mint(uint256 shares, address receiver, uint256 _referrerId) public returns (uint256 assets) {
-        assets = mint(shares, receiver);
-        emit Referral(receiver, _referrerId);
     }
 
     function mint(uint256 shares, address receiver)
@@ -253,7 +214,7 @@ contract UltraLRT is
 
         if (assetsToReceive + ST_ETH_TRANSFER_BUFFER < assets) revert ReStakingErrors.InsufficientLiquidAssets();
 
-        ERC20(asset()).safeTransfer(receiver, assetsToReceive);
+        IERC20MetadataUpgradeable(asset()).transfer(receiver, assetsToReceive);
 
         emit Withdraw(caller, receiver, owner, assetsToReceive, shares);
     }
@@ -321,7 +282,7 @@ contract UltraLRT is
         if (delegatorCount >= MAX_DELEGATOR) revert ReStakingErrors.ExceedsMaxDelegatorLimit();
 
         BeaconProxy bProxy = new BeaconProxy(
-            address(beacon), abi.encodeWithSelector(AffineDelegator.initialize.selector, address(this), _operator)
+            beacon, abi.encodeWithSelector(AffineDelegator.initialize.selector, address(this), _operator)
         );
         delegatorQueue[delegatorCount] = IDelegator(address(bProxy));
 
@@ -398,7 +359,7 @@ contract UltraLRT is
         if (vaultAssets() < amount) revert ReStakingErrors.InsufficientLiquidAssets();
 
         // delegate
-        ERC20(asset()).approve(_delegator, amount);
+        IERC20MetadataUpgradeable(asset()).approve(_delegator, amount);
         delegator.delegate(amount);
 
         info.balance += uint248(amount);
@@ -432,23 +393,18 @@ contract UltraLRT is
     }
 
     function vaultAssets() public view returns (uint256) {
-        return ERC20(asset()).balanceOf(address(this));
+        return IERC20MetadataUpgradeable(asset()).balanceOf(address(this));
     }
 
     /*//////////////////////////////////////////////////////////////
                                   FEES
     //////////////////////////////////////////////////////////////*/
 
-    event ManagementFeeSet(uint256 oldFee, uint256 newFee);
-    event WithdrawalFeeSet(uint256 oldFee, uint256 newFee);
-
     function setManagementFee(uint256 feeBps) external onlyGovernance {
-        emit ManagementFeeSet({oldFee: managementFee, newFee: feeBps});
         managementFee = feeBps;
     }
 
     function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
-        emit WithdrawalFeeSet({oldFee: withdrawalFee, newFee: feeBps});
         withdrawalFee = feeBps;
     }
 }

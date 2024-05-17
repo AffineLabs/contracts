@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract DelegatorBeacon is Ownable {
     UpgradeableBeacon immutable beacon;

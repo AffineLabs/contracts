@@ -4,7 +4,7 @@ pragma solidity =0.8.16;
 import {IStEth} from "src/interfaces/lido/IStEth.sol";
 import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
 import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
-import {DelegatorBeacon} from "src/vaults/restaking/DelegatorBeacon.sol";
+import {ReStakingErrors} from "src/libs/ReStakingErrors.sol";
 
 abstract contract UltraLRTStorage {
     struct DelegatorInfo {
@@ -30,7 +30,7 @@ abstract contract UltraLRTStorage {
 
     WithdrawalEscrowV2 public escrow;
 
-    DelegatorBeacon public beacon;
+    address public beacon;
 
     uint256 public delegatorAssets;
 
@@ -58,7 +58,7 @@ abstract contract UltraLRTStorage {
     uint256 public delegatorCount;
 
     modifier whenDepositNotPaused() {
-        require(depositPaused == 0, "Deposit Paused.");
+        if (depositPaused != 0) revert ReStakingErrors.DepositPaused();
         _;
     }
 }

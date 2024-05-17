@@ -15,7 +15,8 @@ import {BaseStrategy} from "src/strategies/audited/BaseStrategy.sol";
 import {BaseVault} from "src/vaults/cross-chain-vault/audited/BaseVault.sol";
 import {TestStrategy} from "./mocks/TestStrategy.sol";
 
-import {UltraLRT, Math, DelegatorBeacon} from "src/vaults/restaking/UltraLRT.sol";
+import {UltraLRT, Math} from "src/vaults/restaking/UltraLRT.sol";
+import {DelegatorBeacon} from "src/vaults/restaking/DelegatorBeacon.sol";
 import {IStEth} from "src/interfaces/lido/IStEth.sol";
 import {AffineDelegator} from "src/vaults/restaking/AffineDelegator.sol";
 import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
@@ -43,9 +44,11 @@ contract UltraLRTTest is TestPlus {
         UltraLRT impl = new UltraLRT();
         // delegator implementation
         AffineDelegator delegatorImpl = new AffineDelegator();
+
+        DelegatorBeacon beacon = new DelegatorBeacon(address(delegatorImpl), governance);
         // initialization data
         bytes memory initData =
-            abi.encodeCall(UltraLRT.initialize, (governance, address(asset), address(delegatorImpl), "uLRT", "uLRT"));
+            abi.encodeCall(UltraLRT.initialize, (governance, address(asset), address(beacon), "uLRT", "uLRT"));
         // proxy
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
         // upgradeable vault
