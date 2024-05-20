@@ -32,6 +32,8 @@ abstract contract UltraLRTStorage {
 
     address public beacon;
 
+    address public delegatorFactory;
+
     uint256 public delegatorAssets;
 
     /// @notice Fee charged to vault over a year, number is in bps

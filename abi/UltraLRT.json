@@ -51,6 +51,11 @@
   },
   {
     "inputs": [],
+    "name": "InvalidDelegatorFactory",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidEscrowVault",
     "type": "error"
   },
@@ -702,6 +707,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "delegatorFactory",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -1345,6 +1363,19 @@
       }
     ],
     "name": "revokeRole",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_factory",
+        "type": "address"
+      }
+    ],
+    "name": "setDelegatorFactory",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

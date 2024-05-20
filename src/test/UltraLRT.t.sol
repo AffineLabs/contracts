@@ -22,6 +22,8 @@ import {AffineDelegator} from "src/vaults/restaking/AffineDelegator.sol";
 import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
 import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
 import {AffineDelegator, WithdrawalInfo, IStrategy} from "src/vaults/restaking/AffineDelegator.sol";
+import {DelegatorFactory} from "src/vaults/restaking/DelegatorFactory.sol";
+
 import {console2} from "forge-std/console2.sol";
 
 contract TmpDelegator is AffineDelegator {
@@ -53,6 +55,12 @@ contract UltraLRTTest is TestPlus {
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
         // upgradeable vault
         vault = UltraLRT(address(proxy));
+
+        // set delegator factory
+        DelegatorFactory dFactory = new DelegatorFactory(address(vault));
+
+        vm.prank(governance);
+        vault.setDelegatorFactory(address(dFactory));
 
         initAssets = 10 ** asset.decimals();
         initAssets *= 100;

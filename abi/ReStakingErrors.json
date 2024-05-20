@@ -66,6 +66,11 @@
   },
   {
     "inputs": [],
+    "name": "InvalidDelegatorFactory",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidEscrowVault",
     "type": "error"
   },

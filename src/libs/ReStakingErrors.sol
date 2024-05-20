@@ -23,4 +23,5 @@ library ReStakingErrors {
     error RequireHarvest();
     error ProfitUnlocking();
     error DepositPaused();
+    error InvalidDelegatorFactory();
 }

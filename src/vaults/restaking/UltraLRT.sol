@@ -2,7 +2,6 @@
 pragma solidity =0.8.16;
 
 // upgrading contracts
-import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
@@ -22,7 +21,7 @@ import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
 
 import {ReStakingErrors} from "src/libs/ReStakingErrors.sol";
 import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
-import {AffineDelegator} from "src/vaults/restaking/AffineDelegator.sol";
+import {IDelegatorFactory} from "src/vaults/restaking/DelegatorFactory.sol";
 
 contract UltraLRT is
     ERC4626Upgradeable,
@@ -60,6 +59,12 @@ contract UltraLRT is
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
+
+    function setDelegatorFactory(address _factory) external onlyGovernance {
+        if (IDelegatorFactory(_factory).vault() != address(this)) revert ReStakingErrors.InvalidDelegatorFactory();
+
+        delegatorFactory = _factory;
+    }
 
     /// @notice Pause the contract
     function pause() external onlyRole(GUARDIAN_ROLE) {
@@ -280,16 +285,16 @@ contract UltraLRT is
     // todo check a valid operator address
     function createDelegator(address _operator) external onlyGovernance {
         if (delegatorCount >= MAX_DELEGATOR) revert ReStakingErrors.ExceedsMaxDelegatorLimit();
+        if (delegatorFactory == address(0)) revert ReStakingErrors.InvalidDelegatorFactory();
 
-        BeaconProxy bProxy = new BeaconProxy(
-            beacon, abi.encodeWithSelector(AffineDelegator.initialize.selector, address(this), _operator)
-        );
-        delegatorQueue[delegatorCount] = IDelegator(address(bProxy));
+        address newDelegator = IDelegatorFactory(delegatorFactory).createDelegator(_operator);
+
+        delegatorQueue[delegatorCount] = IDelegator(newDelegator);
 
         DelegatorInfo memory info;
         info.balance = 0;
         info.isActive = true;
-        delegatorMap[address(bProxy)] = info;
+        delegatorMap[newDelegator] = info;
         delegatorCount = delegatorCount + 1;
     }
 
