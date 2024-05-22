@@ -46,20 +46,18 @@ contract AffineDelegator is Initializable, AffineGovernable {
     uint256 public queuedShares;
     bool public isDelegated;
 
-    modifier onlyHarvester() {
-        require(vault.hasRole(vault.HARVESTER(), msg.sender), "AffineDelegator: Not a harvester");
-        _;
-    }
-
-    modifier onlyVault() {
-        require(msg.sender == address(vault), "AffineDelegator: Not vault");
+    modifier onlyVaultOrHarvester() {
+        require(
+            vault.hasRole(vault.HARVESTER(), msg.sender) || msg.sender == address(vault),
+            "AffineDelegator: Not a vault or harvester"
+        );
         _;
     }
 
     /**
      * @dev Delegate & restake stETH to operator on Eigenlayer
      */
-    function delegate(uint256 amount) external onlyVault {
+    function delegate(uint256 amount) external onlyVaultOrHarvester {
         uint256 balance = stETH.balanceOf(address(this));
         // take stETH from vault
         stETH.transferFrom(address(vault), address(this), amount);
@@ -76,7 +74,7 @@ contract AffineDelegator is Initializable, AffineGovernable {
     /**
      * @dev Request withdrawal from eigenlayer
      */
-    function requestWithdrawal(uint256 assets) external onlyVault {
+    function requestWithdrawal(uint256 assets) external onlyVaultOrHarvester {
         // request withdrawal
         QueuedWithdrawalParams[] memory params = new QueuedWithdrawalParams[](1);
 
@@ -97,8 +95,20 @@ contract AffineDelegator is Initializable, AffineGovernable {
     /**
      * @dev Complete withdrawal request from eigenlayer
      */
-    function completeWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo) external onlyHarvester {
+    function completeWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo) external onlyVaultOrHarvester {
         // complete withdrawal request
+        _processWithdrawalRequest(withdrawalInfo, true);
+    }
+
+    function completeExternalWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo)
+        external
+        onlyVaultOrHarvester
+    {
+        // complete withdrawal request
+        _processWithdrawalRequest(withdrawalInfo, false);
+    }
+
+    function _processWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo, bool isQueuedShares) internal {
         address[][] memory stEthAddresses = new address[][](1);
         address[] memory subAddresses = new address[](1);
         subAddresses[0] = address(stETH);
@@ -111,13 +121,15 @@ contract AffineDelegator is Initializable, AffineGovernable {
         receiveAsTokens[0] = true;
         delegationManager.completeQueuedWithdrawals(withdrawalInfo, stEthAddresses, timeIndex, receiveAsTokens);
 
-        queuedShares -= withdrawalInfo[0].shares[0];
+        if (isQueuedShares) {
+            queuedShares -= withdrawalInfo[0].shares[0];
+        }
     }
 
     /**
      * @dev Withdraw stETH from delegator to vault
      */
-    function withdraw() external onlyVault {
+    function withdraw() external onlyVaultOrHarvester {
         stETH.transferShares(address(vault), stETH.sharesOf(address(this)));
     }
 
