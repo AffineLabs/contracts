@@ -22,6 +22,7 @@ import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
 import {ReStakingErrors} from "src/libs/ReStakingErrors.sol";
 import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
 import {IDelegatorFactory} from "src/vaults/restaking/DelegatorFactory.sol";
+import {IDelegatorBeacon} from "src/vaults/restaking/DelegatorBeacon.sol";
 
 contract UltraLRT is
     ERC4626Upgradeable,
@@ -55,6 +56,8 @@ contract UltraLRT is
         _grantRole(HARVESTER, governance);
 
         // beacon proxy
+        /// @dev check for the owner of the beacon: Invalid beacon
+        require(IDelegatorBeacon(_delegatorBeacon).owner() == governance, "ULRT: IB");
         beacon = _delegatorBeacon;
     }
 
@@ -209,7 +212,7 @@ contract UltraLRT is
             _transfer(_msgSender(), address(escrow), shares);
             escrow.registerWithdrawalRequest(receiver, shares);
             // do immediate withdrawal request for user
-            _liquidationRequest(assets);
+            // _liquidationRequest(assets);
             emit Withdraw(caller, receiver, owner, assets, shares);
             return;
         }

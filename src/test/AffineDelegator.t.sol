@@ -11,6 +11,7 @@ import {LevMaticXLoopStrategy, AffineVault, FixedPointMathLib} from "src/strateg
 import {AffineDelegator, WithdrawalInfo, IStrategy} from "src/vaults/restaking/AffineDelegator.sol";
 import {IStEth} from "src/interfaces/lido/IStEth.sol";
 import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
+import {DelegatorBeacon} from "src/vaults/restaking/DelegatorBeacon.sol";
 
 import {console2} from "forge-std/console2.sol";
 import {Vm} from "forge-std/Vm.sol";
@@ -35,7 +36,9 @@ contract AffineDelegatorTest is TestPlus {
 
         AffineDelegator delImpl = new AffineDelegator();
 
-        tmpVault.initialize(governance, address(asset), address(delImpl), "uLRT", "uLRT");
+        DelegatorBeacon beacon = new DelegatorBeacon(address(delImpl), governance);
+
+        tmpVault.initialize(governance, address(asset), address(beacon), "uLRT", "uLRT");
         alice = address(tmpVault);
         delegator = new AffineDelegator();
         delegator.initialize(alice, operator);
@@ -101,7 +104,7 @@ contract AffineDelegatorTest is TestPlus {
     function testZeroShareWithdrawal() public {
         // deal(address(asset), alice, init_assets);
         uint256 stEthAmount = _getAsset(alice, init_assets);
-        IStrategy stEthStrategy = IStrategy(0x93c4b944D05dfe6df7645A86cd2206016c51564D);
+        // IStrategy stEthStrategy = IStrategy(0x93c4b944D05dfe6df7645A86cd2206016c51564D);
         vm.startPrank(alice);
 
         // // delegate

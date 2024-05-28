@@ -41,7 +41,7 @@ contract UltraLRTTest is TestPlus {
     WithdrawalEscrowV2 escrow;
 
     function setUp() public {
-        vm.createSelectFork("ethereum", 19_770_000);
+        vm.createSelectFork("ethereum");
         // ultra LRT impl
         UltraLRT impl = new UltraLRT();
         // delegator implementation
@@ -268,6 +268,9 @@ contract UltraLRTTest is TestPlus {
         vm.prank(governance);
         vault.endEpoch();
 
+        vm.prank(governance);
+        vault.liquidationRequest(assets);
+
         // prep for withdraw
         vm.roll(block.number + 1_000_000);
 
@@ -401,6 +404,9 @@ contract UltraLRTTest is TestPlus {
 
         vm.prank(governance);
         vault.endEpoch();
+
+        vm.prank(governance);
+        vault.liquidationRequest(assets);
 
         // prep for withdraw
         vm.roll(block.number + 1_000_000);

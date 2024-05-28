@@ -4,6 +4,10 @@ pragma solidity =0.8.16;
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
+interface IDelegatorBeacon {
+    function owner() external returns (address);
+}
+
 contract DelegatorBeacon is Ownable {
     UpgradeableBeacon immutable beacon;
 
