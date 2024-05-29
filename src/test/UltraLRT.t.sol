@@ -32,6 +32,12 @@ contract TmpDelegator is AffineDelegator {
     }
 }
 
+contract TmpUltraLRT is UltraLRT {
+    function test() public returns (uint256) {
+        return 100;
+    }
+}
+
 contract UltraLRTTest is TestPlus {
     UltraLRT vault;
     ERC20 asset = ERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
@@ -41,7 +47,7 @@ contract UltraLRTTest is TestPlus {
     WithdrawalEscrowV2 escrow;
 
     function setUp() public {
-        vm.createSelectFork("ethereum");
+        vm.createSelectFork("ethereum", 19_771_000);
         // ultra LRT impl
         UltraLRT impl = new UltraLRT();
         // delegator implementation
@@ -96,6 +102,17 @@ contract UltraLRTTest is TestPlus {
         assertEq(vault.balanceOf(alice), stEth * 1e8);
     }
 
+    function testMint() public {
+        uint256 stEth = _getAsset(alice, initAssets);
+        vm.prank(alice);
+        asset.approve(address(vault), stEth);
+        uint256 sharesToMint = vault.previewDeposit(stEth);
+        vm.prank(alice);
+        vault.mint(sharesToMint, alice);
+
+        assertEq(vault.balanceOf(alice), sharesToMint);
+    }
+
     function testWithdrawFull() public {
         testDeposit();
         uint256 shares = vault.balanceOf(alice);
@@ -107,6 +124,33 @@ contract UltraLRTTest is TestPlus {
         // alice st eth balance
         assertEq(asset.balanceOf(alice), assets);
         assertEq(vault.totalSupply(), 0);
+    }
+
+    function testRedeem() public {
+        testDeposit();
+        uint256 shares = vault.balanceOf(alice);
+        uint256 assets = vault.convertToAssets(shares);
+
+        vm.prank(alice);
+        vault.redeem(shares, alice, alice);
+
+        // alice st eth balance
+        assertEq(asset.balanceOf(alice), assets);
+        assertEq(vault.totalSupply(), 0);
+    }
+
+    function testWithdrawAndRedeemOverMax() public {
+        testDeposit();
+        uint256 shares = vault.balanceOf(alice);
+        uint256 assets = vault.convertToAssets(shares);
+
+        vm.expectRevert();
+        vm.prank(alice);
+        vault.withdraw(assets + 1, alice, alice);
+
+        vm.expectRevert();
+        vm.prank(alice);
+        vault.redeem(shares + 1, alice, alice);
     }
 
     function testCreateDelegator() public {
@@ -344,7 +388,16 @@ contract UltraLRTTest is TestPlus {
         vault.redeem(vault.balanceOf(alice), alice, alice);
     }
 
-    function testHarvest() public {
+    function testMultipleHarvest() public {
+        vm.prank(governance);
+        vault.harvest();
+        // should revert before 24 hours
+        vm.expectRevert();
+        vm.prank(governance);
+        vault.harvest();
+    }
+
+    function testProfitHarvest() public {
         uint256 stEth = _getAsset(alice, initAssets);
         vm.startPrank(alice);
         asset.approve(address(vault), stEth);
@@ -370,6 +423,87 @@ contract UltraLRTTest is TestPlus {
 
         vm.warp(block.timestamp + 24 * 3600);
         assertApproxEqAbs(vault.totalAssets(), stEth * 3, 100);
+    }
+
+    function testLossHarvest() public {
+        uint256 stEth = _getAsset(alice, initAssets);
+        vm.startPrank(alice);
+        asset.approve(address(vault), stEth);
+        vault.deposit(stEth, alice);
+
+        vm.startPrank(governance);
+        vault.delegateToDelegator(address(vault.delegatorQueue(0)), stEth / 2);
+        vault.delegateToDelegator(address(vault.delegatorQueue(1)), asset.balanceOf(address(vault)));
+
+        uint256 currentTVL = vault.totalAssets();
+        vm.stopPrank();
+
+        // withdraw 10% of shares to incur loss
+        uint256 toWithdrawPerDelegator = stEth / 10;
+
+        uint256 withdrawableStEthShares = stEthStrategy.underlyingToShares(toWithdrawPerDelegator);
+
+        vm.prank(governance);
+
+        //
+        IDelegator d1 = vault.delegatorQueue(0);
+        IDelegator d2 = vault.delegatorQueue(1);
+        vm.prank(governance);
+        vault.delegatorWithdrawRequest(d1, toWithdrawPerDelegator);
+        vm.prank(governance);
+        vault.delegatorWithdrawRequest(d2, toWithdrawPerDelegator);
+
+        uint256 blockNumber = block.number;
+        // withdraw from
+
+        vm.roll(block.number + 1_000_000);
+
+        // complete withdrawal
+        WithdrawalInfo[] memory params = new WithdrawalInfo[](1);
+        uint256[] memory shares = new uint256[](1);
+        shares[0] = withdrawableStEthShares;
+        address[] memory strategies = new address[](1);
+        strategies[0] = address(stEthStrategy);
+
+        params[0] = WithdrawalInfo({
+            staker: address(d1),
+            delegatedTo: operator,
+            withdrawer: address(d1),
+            nonce: 0,
+            startBlock: uint32(blockNumber),
+            strategies: strategies,
+            shares: shares
+        });
+        // withdraw from delegator 0
+        vm.prank(governance);
+        AffineDelegator(address(d1)).completeWithdrawalRequest(params);
+
+        // withdraw from delegator 1
+        params[0].staker = address(d2);
+        params[0].withdrawer = address(d2);
+
+        vm.prank(governance);
+        AffineDelegator(address(d2)).completeWithdrawalRequest(params);
+
+        console2.log(asset.balanceOf(address(d1)));
+        console2.log(asset.balanceOf(address(d2)));
+
+        uint256 d1Assets = asset.balanceOf(address(d1));
+        uint256 d2Assets = asset.balanceOf(address(d2));
+
+        vm.prank(address(d1));
+        asset.transfer(address(this), d1Assets);
+        vm.prank(address(d2));
+        asset.transfer(address(this), d2Assets);
+
+        console2.log("tvl %s", vault.totalAssets());
+        assertApproxEqAbs(vault.totalAssets(), stEth, 100);
+
+        // harvest loss
+        vm.prank(governance);
+        vault.harvest();
+
+        assertApproxEqAbs(vault.totalAssets(), stEth - d1Assets - d2Assets, 100);
     }
 
     function testUpgradeBeacon() public {
@@ -440,5 +574,20 @@ contract UltraLRTTest is TestPlus {
 
         escrow.redeem(alice, 0);
         assertApproxEqAbs(asset.balanceOf(address(alice)), assets, 100);
+    }
+
+    function testUpgradeVault() public {
+        TmpUltraLRT newImpl = new TmpUltraLRT();
+
+        address preGov = vault.governance();
+
+        vm.expectRevert();
+        TmpUltraLRT(address(vault)).test();
+
+        vm.prank(governance);
+        vault.upgradeTo(address(newImpl));
+
+        assertEq(TmpUltraLRT(address(vault)).test(), 100);
+        assertEq(vault.governance(), preGov);
     }
 }
