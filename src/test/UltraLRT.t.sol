@@ -113,6 +113,13 @@ contract UltraLRTTest is TestPlus {
         assertEq(vault.balanceOf(alice), sharesToMint);
     }
 
+    function testDepositMintOverMax() public {
+        vm.expectRevert();
+        vault.deposit(type(uint256).max + 10, alice);
+        vm.expectRevert();
+        vault.mint(type(uint256).max + 10, alice);
+    }
+
     function testWithdrawFull() public {
         testDeposit();
         uint256 shares = vault.balanceOf(alice);
@@ -151,6 +158,46 @@ contract UltraLRTTest is TestPlus {
         vm.expectRevert();
         vm.prank(alice);
         vault.redeem(shares + 1, alice, alice);
+    }
+
+    function testWithdrawAndRedeemByAllowance() public {
+        testDeposit();
+        uint256 shares = vault.balanceOf(alice);
+        uint256 assets = vault.convertToAssets(shares);
+        vm.prank(alice);
+        vault.approve(bob, shares);
+
+        vm.prank(bob);
+        vault.withdraw(assets / 2, bob, alice);
+        assertApproxEqAbs(asset.balanceOf(bob), assets / 2, 100);
+        assertApproxEqAbs(vault.balanceOf(alice), shares / 2, 100);
+
+        uint256 remShares = vault.balanceOf(alice);
+
+        vm.prank(bob);
+        vault.redeem(remShares, bob, alice);
+
+        assertApproxEqAbs(asset.balanceOf(bob), assets, 100);
+        assertApproxEqAbs(vault.balanceOf(alice), 0, 100);
+    }
+
+    function testStEthTransferIssueBuffer() public {
+        testDeposit();
+        uint256 shares = vault.balanceOf(alice);
+        uint256 assets = vault.convertToAssets(shares);
+
+        IDelegator d0 = vault.delegatorQueue(0);
+
+        vm.prank(governance);
+        vault.delegateToDelegator(address(d0), 500);
+
+        assertTrue(vault.canWithdraw(assets));
+        vm.prank(alice);
+        vault.withdraw(assets, alice, alice);
+
+        assertEq(vault.balanceOf(alice), 0);
+        assertApproxEqAbs(asset.balanceOf(alice), assets, 1000);
+        // assertTrue((assets - asset.balanceOf(alice)) > 500);
     }
 
     function testCreateDelegator() public {
