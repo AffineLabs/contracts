@@ -258,6 +258,7 @@ contract UltraLRTTest is TestPlus {
 
         // can withdraw should be false
         assertTrue(!vault.canWithdraw(100_000_000));
+        assertApproxEqAbs(vault.vaultAssets(), 0, 100);
     }
 
     function testDropDelegator() public {
@@ -746,5 +747,78 @@ contract UltraLRTTest is TestPlus {
         vm.expectRevert();
         vm.prank(governance);
         vault.setWithdrawalEscrow(dummyEscrow);
+    }
+
+    function testDelegatorWithdrawReq() public {
+        testDelegateToDelegator();
+
+        IDelegator d0 = vault.delegatorQueue(0);
+        uint256 assets = d0.withdrawableAssets();
+        // without harvester
+        vm.expectRevert();
+        vault.delegatorWithdrawRequest(d0, assets);
+
+        // request more
+        vm.expectRevert();
+        vm.prank(governance);
+        vault.delegatorWithdrawRequest(d0, assets + 100);
+
+        // request full
+        vm.prank(governance);
+        vault.delegatorWithdrawRequest(d0, assets);
+
+        assertApproxEqAbs(d0.withdrawableAssets(), 0, 100);
+    }
+
+    function testLiquidationRequest() public {
+        testDelegateToDelegator();
+
+        uint256 assets = vault.totalAssets();
+
+        vm.expectRevert();
+        vault.liquidationRequest(assets);
+
+        vm.prank(governance);
+        vault.liquidationRequest(assets);
+
+        assertApproxEqAbs(vault.delegatorQueue(0).withdrawableAssets(), 0, 100);
+    }
+
+    function testCollectDelegatorDebt() public {
+        vm.expectRevert();
+        vault.collectDelegatorDebt();
+
+        testDelegateToDelegator();
+        IDelegator d0 = vault.delegatorQueue(0);
+
+        uint256 assets = _getAsset(address(d0), initAssets);
+
+        assertApproxEqAbs(asset.balanceOf(address(d0)), assets, 100);
+
+        vm.prank(governance);
+        vault.collectDelegatorDebt();
+
+        assertApproxEqAbs(asset.balanceOf(address(d0)), 0, 100);
+    }
+
+    function testDelegateToInactiveDelegator() public {
+        testDeposit();
+
+        uint256 assets = vault.vaultAssets();
+
+        IDelegator d0 = vault.delegatorQueue(0);
+        IDelegator d1 = vault.delegatorQueue(1);
+        IDelegator d2 = vault.delegatorQueue(2);
+
+        vm.prank(governance);
+        vault.dropDelegator(address(d0));
+
+        vm.prank(governance);
+        vm.expectRevert();
+        vault.delegateToDelegator(address(d0), assets);
+
+        assertEq(address(d2), address(vault.delegatorQueue(0)));
+        assertEq(address(d1), address(vault.delegatorQueue(1)));
+        assertEq(address(0), address(vault.delegatorQueue(2)));
     }
 }
