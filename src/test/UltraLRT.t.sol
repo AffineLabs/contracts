@@ -179,6 +179,19 @@ contract UltraLRTTest is TestPlus {
 
         assertApproxEqAbs(asset.balanceOf(bob), assets, 100);
         assertApproxEqAbs(vault.balanceOf(alice), 0, 100);
+
+        // test more than allowance
+        testDeposit();
+        shares = vault.balanceOf(alice);
+        assets = vault.convertToAssets(shares);
+
+        vm.prank(alice);
+        vault.approve(bob, shares / 10);
+
+        // withdraw more than allowance
+        vm.expectRevert();
+        vm.prank(bob);
+        vault.redeem(shares / 10 + 1, bob, alice);
     }
 
     function testStEthTransferIssueBuffer() public {
@@ -204,6 +217,12 @@ contract UltraLRTTest is TestPlus {
         testDeposit();
         uint256 oldDelegatorCount = vault.delegatorCount();
 
+        vm.expectRevert();
+        vault.createDelegator(operator);
+
+        vm.expectRevert();
+        vault.createDelegator(address(0));
+
         vm.prank(governance);
         vault.createDelegator(operator);
         assertEq(vault.delegatorCount(), oldDelegatorCount + 1);
@@ -215,6 +234,21 @@ contract UltraLRTTest is TestPlus {
         console2.log("delegator %s", address(delegator));
 
         uint256 assets = vault.totalAssets();
+
+        // delegate with non-approved address
+        vm.expectRevert();
+        vault.delegateToDelegator(address(delegator), assets);
+
+        // delegate to invalid address
+        vm.expectRevert();
+        vm.prank(governance);
+        vault.delegateToDelegator(address(this), assets);
+
+        // delegate more than assets
+        vm.expectRevert();
+        vm.prank(governance);
+        vault.delegateToDelegator(address(this), 2 * assets);
+
         vm.prank(governance);
         vault.delegateToDelegator(address(delegator), assets);
 
@@ -466,10 +500,13 @@ contract UltraLRTTest is TestPlus {
         vm.expectRevert();
         vault.harvest();
 
+        assertApproxEqAbs(vault.lockedProfit(), 2 * initAssets, 100);
+
         assertApproxEqAbs(vault.totalAssets(), stEth, 100);
 
         vm.warp(block.timestamp + 24 * 3600);
         assertApproxEqAbs(vault.totalAssets(), stEth * 3, 100);
+        assertEq(vault.lockedProfit(), 0);
     }
 
     function testLossHarvest() public {
@@ -631,10 +668,83 @@ contract UltraLRTTest is TestPlus {
         vm.expectRevert();
         TmpUltraLRT(address(vault)).test();
 
+        vm.expectRevert();
+        vault.upgradeTo(address(newImpl));
+
         vm.prank(governance);
         vault.upgradeTo(address(newImpl));
 
         assertEq(TmpUltraLRT(address(vault)).test(), 100);
         assertEq(vault.governance(), preGov);
+    }
+
+    function testSetManagementFees() public {
+        vm.expectRevert();
+        vault.setManagementFee(1000);
+        vm.prank(governance);
+        vault.setManagementFee(1000);
+        assertEq(vault.managementFee(), 1000);
+    }
+
+    function testSetWithdrawalFees() public {
+        vm.expectRevert();
+        vault.setWithdrawalFee(1000);
+        vm.prank(governance);
+        vault.setWithdrawalFee(1000);
+        assertEq(vault.withdrawalFee(), 1000);
+    }
+
+    function testSetDelegatorFactory() public {
+        DelegatorFactory dFactory = new DelegatorFactory(address(vault));
+        DelegatorFactory faultyFactory = new DelegatorFactory(address(alice));
+
+        vm.expectRevert();
+        vault.setDelegatorFactory(address(dFactory));
+
+        vm.expectRevert();
+        vault.setDelegatorFactory(address(faultyFactory));
+
+        vm.prank(governance);
+        vault.setDelegatorFactory(address(dFactory));
+
+        assertEq(address(dFactory), vault.delegatorFactory());
+    }
+
+    function testSetWithdrawalEscrow() public {
+        // dummy vault
+        UltraLRT dummyVault = new UltraLRT();
+        dummyVault.initialize(governance, address(asset), address(vault.beacon()), "uLRT", "uLRT");
+        WithdrawalEscrowV2 dummyEscrow = new WithdrawalEscrowV2(dummyVault);
+
+        // replace with invalid vault one
+        vm.expectRevert();
+        vm.prank(governance);
+        vault.setWithdrawalEscrow(dummyEscrow);
+
+        // replace with address zero
+        vm.expectRevert();
+        vm.prank(governance);
+        vault.setWithdrawalEscrow(WithdrawalEscrowV2(address(0)));
+
+        // replace with valid ones
+
+        dummyEscrow = new WithdrawalEscrowV2(vault);
+        vm.prank(governance);
+        vault.setWithdrawalEscrow(dummyEscrow);
+
+        assertEq(address(dummyEscrow), address(vault.escrow()));
+
+        // replace escrow having debt
+
+        testDelegateToDelegator();
+        // withdraw
+        uint256 shares = vault.balanceOf(alice);
+        vm.prank(alice);
+        vault.redeem(shares, alice, alice);
+
+        dummyEscrow = new WithdrawalEscrowV2(vault);
+        vm.expectRevert();
+        vm.prank(governance);
+        vault.setWithdrawalEscrow(dummyEscrow);
     }
 }
