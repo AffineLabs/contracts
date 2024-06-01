@@ -115,9 +115,9 @@ contract UltraLRTTest is TestPlus {
 
     function testDepositMintOverMax() public {
         vm.expectRevert();
-        vault.deposit(type(uint256).max + 10, alice);
+        vault.deposit(type(uint256).max, alice);
         vm.expectRevert();
-        vault.mint(type(uint256).max + 10, alice);
+        vault.mint(type(uint256).max, alice);
     }
 
     function testWithdrawFull() public {
@@ -226,6 +226,14 @@ contract UltraLRTTest is TestPlus {
         vm.prank(governance);
         vault.createDelegator(operator);
         assertEq(vault.delegatorCount(), oldDelegatorCount + 1);
+
+        // create max delegator
+        vm.startPrank(governance);
+        while (vault.delegatorCount() < vault.MAX_DELEGATOR()) {
+            vault.createDelegator(operator);
+        }
+        vm.expectRevert();
+        vault.createDelegator(operator);
     }
 
     function testDelegateToDelegator() public {
@@ -259,6 +267,10 @@ contract UltraLRTTest is TestPlus {
         // can withdraw should be false
         assertTrue(!vault.canWithdraw(100_000_000));
         assertApproxEqAbs(vault.vaultAssets(), 0, 100);
+
+        vm.prank(governance);
+        vm.expectRevert();
+        vault.delegateToDelegator(address(delegator), assets);
     }
 
     function testDropDelegator() public {
@@ -455,7 +467,7 @@ contract UltraLRTTest is TestPlus {
     function testDepositPause() public {
         uint256 stEth = _getAsset(alice, initAssets);
         vm.prank(alice);
-        asset.approve(address(vault), stEth);
+        asset.approve(address(vault), 3 * stEth);
 
         vm.prank(alice);
         vault.deposit(stEth, alice);
@@ -464,10 +476,25 @@ contract UltraLRTTest is TestPlus {
         vm.prank(governance);
         vault.pauseDeposit();
 
-        vm.startPrank(alice);
+        console2.log("Deposit pause %s", vault.depositPaused());
+
+        assertApproxEqAbs(asset.balanceOf(alice), 0, 10);
+        vm.prank(alice);
         vm.expectRevert();
         vault.deposit(stEth, alice);
-        vault.redeem(vault.balanceOf(alice), alice, alice);
+        assertApproxEqAbs(asset.balanceOf(alice), 0, 10);
+
+        uint256 shares = vault.balanceOf(alice);
+        vm.prank(alice);
+        vault.redeem(shares, alice, alice);
+        assertApproxEqAbs(asset.balanceOf(alice), stEth, 10);
+        stEth = _getAsset(alice, initAssets);
+        // // unpause deposit
+        vm.prank(governance);
+        vault.unpauseDeposit();
+        vm.startPrank(alice);
+        asset.approve(address(vault), stEth);
+        vault.deposit(stEth, alice);
     }
 
     function testMultipleHarvest() public {
@@ -697,12 +724,14 @@ contract UltraLRTTest is TestPlus {
 
     function testSetDelegatorFactory() public {
         DelegatorFactory dFactory = new DelegatorFactory(address(vault));
+
         DelegatorFactory faultyFactory = new DelegatorFactory(address(alice));
 
         vm.expectRevert();
         vault.setDelegatorFactory(address(dFactory));
 
         vm.expectRevert();
+        vm.prank(governance);
         vault.setDelegatorFactory(address(faultyFactory));
 
         vm.prank(governance);
@@ -820,5 +849,91 @@ contract UltraLRTTest is TestPlus {
         assertEq(address(d2), address(vault.delegatorQueue(0)));
         assertEq(address(d1), address(vault.delegatorQueue(1)));
         assertEq(address(0), address(vault.delegatorQueue(2)));
+    }
+
+    function testViewOnlyFunctions() public {
+        assertEq(vault.maxDeposit(alice), type(uint128).max);
+        assertEq(vault.decimals(), 26);
+        assertEq(vault.initialSharesPerAsset(), 10 ** 8);
+    }
+
+    function testResolveDebt() public {
+        testDelegateToDelegator();
+
+        IDelegator delegator = vault.delegatorQueue(0);
+
+        uint256 vaultShares = vault.balanceOf(alice);
+        uint256 assets = vault.convertToAssets(vaultShares);
+        // 99999999999999999997 asset
+        // shares 96834476546864619822
+
+        uint256 reqAssets = delegator.withdrawableAssets();
+
+        uint256 withdrawableStEthShares =
+            Math.min(stEthStrategy.underlyingToShares(reqAssets), stEthStrategy.shares(address(delegator)));
+        vm.prank(alice);
+        uint256 blockNumber = block.number;
+
+        vault.withdraw(assets, alice, alice);
+
+        vm.prank(governance);
+        vault.endEpoch();
+
+        vm.prank(governance);
+        vault.liquidationRequest(assets);
+
+        // prep for withdraw
+        vm.roll(block.number + 1_000_000);
+
+        // complete withdrawal
+        WithdrawalInfo[] memory params = new WithdrawalInfo[](1);
+        uint256[] memory shares = new uint256[](1);
+        shares[0] = withdrawableStEthShares;
+        address[] memory strategies = new address[](1);
+        strategies[0] = address(stEthStrategy);
+
+        params[0] = WithdrawalInfo({
+            staker: address(delegator),
+            delegatedTo: operator,
+            withdrawer: address(delegator),
+            nonce: 0,
+            startBlock: uint32(blockNumber),
+            strategies: strategies,
+            shares: shares
+        });
+        vm.prank(governance);
+        AffineDelegator(address(delegator)).completeWithdrawalRequest(params);
+
+        // no assets
+        vm.expectRevert();
+        vault.resolveDebt();
+
+        vm.prank(governance);
+        vault.collectDelegatorDebt();
+        vm.prank(governance);
+        vault.harvest();
+
+        assertApproxEqAbs(asset.balanceOf(address(vault)), assets, 10_000);
+
+        vm.expectRevert();
+        vault.resolveDebt();
+
+        vm.prank(governance);
+        vault.resolveDebt();
+        assertApproxEqAbs(asset.balanceOf(address(vault.escrow())), assets, 1000);
+        //TODO: add error for it, should work but won't resolve
+        vm.prank(governance);
+        vault.resolveDebt();
+    }
+
+    function testInitializeVaultWithInvalidBeacon() public {
+        UltraLRT dummyVault = new UltraLRT();
+
+        AffineDelegator delegatorImpl = new AffineDelegator();
+
+        DelegatorBeacon beacon = new DelegatorBeacon(address(delegatorImpl), address(this));
+        // initialization data
+        vm.expectRevert();
+        dummyVault.initialize(governance, address(asset), address(beacon), "uLRT", "uLRT");
     }
 }

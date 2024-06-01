@@ -63,6 +63,21 @@ contract UltraLRT is
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
+    /**
+     * @dev See {IERC4262-maxDeposit}.
+     */
+    function maxDeposit(address) public view virtual override returns (uint256) {
+        bool isCollateralized = totalAssets() > 0 || totalSupply() == 0;
+        return isCollateralized ? type(uint128).max : 0;
+    }
+
+    /**
+     * @dev See {IERC4262-maxMint}.
+     */
+    function maxMint(address) public view virtual override returns (uint256) {
+        return type(uint128).max;
+    }
+
     function setDelegatorFactory(address _factory) external onlyGovernance {
         if (IDelegatorFactory(_factory).vault() != address(this)) revert ReStakingErrors.InvalidDelegatorFactory();
 
@@ -77,10 +92,6 @@ contract UltraLRT is
     /// @notice Unpause the contract
     function unpause() external onlyRole(GUARDIAN_ROLE) {
         _unpause();
-    }
-
-    function maxDeposit(address) public view virtual override returns (uint256) {
-        return type(uint256).max;
     }
 
     /*//////////////////////////////////////////////////////////////
