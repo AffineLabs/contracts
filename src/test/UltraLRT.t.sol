@@ -216,12 +216,9 @@ contract UltraLRTTest is TestPlus {
     function testCreateDelegator() public {
         testDeposit();
         uint256 oldDelegatorCount = vault.delegatorCount();
-
+        // no gov
         vm.expectRevert();
         vault.createDelegator(operator);
-
-        vm.expectRevert();
-        vault.createDelegator(address(0));
 
         vm.prank(governance);
         vault.createDelegator(operator);
@@ -234,6 +231,13 @@ contract UltraLRTTest is TestPlus {
         }
         vm.expectRevert();
         vault.createDelegator(operator);
+
+        // test
+        UltraLRT dummy = new UltraLRT();
+        dummy.initialize(governance, address(asset), address(vault.beacon()), "uLRT", "uLRT");
+
+        vm.expectRevert();
+        dummy.createDelegator(operator);
     }
 
     function testDelegateToDelegator() public {
@@ -294,6 +298,12 @@ contract UltraLRTTest is TestPlus {
         vm.prank(governance);
         vm.expectRevert();
         vault.dropDelegator(_del);
+
+        AffineDelegator del = new AffineDelegator();
+
+        vm.prank(governance);
+        vm.expectRevert();
+        vault.dropDelegator(address(del));
     }
 
     function testPauseAndUnpause() public {
@@ -811,6 +821,10 @@ contract UltraLRTTest is TestPlus {
         vault.liquidationRequest(assets);
 
         assertApproxEqAbs(vault.delegatorQueue(0).withdrawableAssets(), 0, 100);
+        // do another liquidation request
+        vm.prank(governance);
+        vault.liquidationRequest(assets);
+        assertApproxEqAbs(vault.delegatorQueue(0).withdrawableAssets(), 0, 100);
     }
 
     function testCollectDelegatorDebt() public {
@@ -905,6 +919,7 @@ contract UltraLRTTest is TestPlus {
         AffineDelegator(address(delegator)).completeWithdrawalRequest(params);
 
         // no assets
+        vm.prank(governance);
         vm.expectRevert();
         vault.resolveDebt();
 
@@ -915,6 +930,7 @@ contract UltraLRTTest is TestPlus {
 
         assertApproxEqAbs(asset.balanceOf(address(vault)), assets, 10_000);
 
+        // not a harvester
         vm.expectRevert();
         vault.resolveDebt();
 
