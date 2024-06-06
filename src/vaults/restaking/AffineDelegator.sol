@@ -24,26 +24,11 @@ import {
  * @title AffineDelegator
  * @dev Delegator contract for stETH on Eigenlayer
  */
-contract AffineDelegator is Initializable, AffineGovernable {
+abstract contract AffineDelegator {
     using SafeTransferLib for ERC20;
 
-    function initialize(address _vault, address _operator) external initializer {
-        vault = UltraLRT(_vault);
-        governance = vault.governance();
-        currentOperator = _operator; // P2P operator
-        stETH = IStEth(vault.asset());
-        stETH.approve(address(strategyManager), type(uint256).max);
-    }
-
-    address public currentOperator;
-    IStrategyManager public constant strategyManager = IStrategyManager(0x858646372CC42E1A627fcE94aa7A7033e7CF075A); // StrategyManager for Eigenlayer
-    IDelegationManager public constant delegationManager =
-        IDelegationManager(0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A); // DelegationManager for Eigenlayer
-    IStrategy public constant stEthStrategy = IStrategy(0x93c4b944D05dfe6df7645A86cd2206016c51564D); // stETH strategy on Eigenlayer
     UltraLRT public vault;
-    IStEth public stETH;
-    uint256 public queuedShares;
-    bool public isDelegated;
+    ERC20 public asset;
 
     modifier onlyVaultOrHarvester() {
         require(
@@ -57,79 +42,26 @@ contract AffineDelegator is Initializable, AffineGovernable {
      * @dev Delegate & restake stETH to operator on Eigenlayer
      */
     function delegate(uint256 amount) external onlyVaultOrHarvester {
-        uint256 balance = stETH.balanceOf(address(this));
-        // take stETH from vault
-        stETH.transferFrom(address(vault), address(this), amount);
-        uint256 transferred = stETH.balanceOf(address(this)) - balance;
-        // deposit into strategy
-        strategyManager.depositIntoStrategy(address(stEthStrategy), address(stETH), transferred);
-
-        // delegate to operator if not already
-        if (!isDelegated) {
-            _delegateToOperator();
-        }
+        asset.transferFrom(address(vault), address(this), amount);
+        _delegate(amount);
     }
+
+    function _delegate(uint256 amount) internal virtual {}
 
     /**
      * @dev Request withdrawal from eigenlayer
      */
     function requestWithdrawal(uint256 assets) external onlyVaultOrHarvester {
-        // request withdrawal
-        QueuedWithdrawalParams[] memory params = new QueuedWithdrawalParams[](1);
-
-        uint256[] memory shares = new uint256[](1);
-        shares[0] = Math.min(stEthStrategy.underlyingToShares(assets), stEthStrategy.shares(address(this)));
-
-        // in any case if converted shares is zero will revert the ops.
-        if (shares[0] > 0) {
-            queuedShares += shares[0];
-            address[] memory strategies = new address[](1);
-            strategies[0] = address(stEthStrategy);
-            params[0] = QueuedWithdrawalParams(strategies, shares, address(this));
-
-            delegationManager.queueWithdrawals(params);
-        }
+        _requestWithdrawal(assets);
     }
 
-    /**
-     * @dev Complete withdrawal request from eigenlayer
-     */
-    function completeWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo) external onlyVaultOrHarvester {
-        // complete withdrawal request
-        _processWithdrawalRequest(withdrawalInfo, true);
-    }
-
-    function completeExternalWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo)
-        external
-        onlyVaultOrHarvester
-    {
-        // complete withdrawal request
-        _processWithdrawalRequest(withdrawalInfo, false);
-    }
-
-    function _processWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo, bool isQueuedShares) internal {
-        address[][] memory stEthAddresses = new address[][](1);
-        address[] memory subAddresses = new address[](1);
-        subAddresses[0] = address(stETH);
-        stEthAddresses[0] = subAddresses;
-
-        uint256[] memory timeIndex = new uint256[](1);
-        timeIndex[0] = 0;
-
-        bool[] memory receiveAsTokens = new bool[](1);
-        receiveAsTokens[0] = true;
-        delegationManager.completeQueuedWithdrawals(withdrawalInfo, stEthAddresses, timeIndex, receiveAsTokens);
-
-        if (isQueuedShares) {
-            queuedShares -= withdrawalInfo[0].shares[0];
-        }
-    }
+    function _requestWithdrawal(uint256 assets) internal virtual {}
 
     /**
      * @dev Withdraw stETH from delegator to vault
      */
-    function withdraw() external onlyVaultOrHarvester {
-        stETH.transferShares(address(vault), stETH.sharesOf(address(this)));
+    function withdraw() external virtual onlyVaultOrHarvester {
+        asset.safeTransfer(address(vault), asset.balanceOf(address(this)));
     }
 
     // view functions
@@ -137,23 +69,7 @@ contract AffineDelegator is Initializable, AffineGovernable {
         return withdrawableAssets() + queuedAssets();
     }
 
-    function withdrawableAssets() public view returns (uint256) {
-        return stEthStrategy.userUnderlyingView(address(this));
-    }
+    function withdrawableAssets() public view virtual returns (uint256) {}
 
-    function queuedAssets() public view returns (uint256) {
-        return stEthStrategy.sharesToUnderlyingView(queuedShares) + stETH.balanceOf(address(this));
-    }
-
-    /**
-     * @dev Delegate to operator
-     */
-    function _delegateToOperator() internal {
-        // delegate to operator
-        ApproverSignatureAndExpiryParams memory params = ApproverSignatureAndExpiryParams("", 0);
-        delegationManager.delegateTo(
-            currentOperator, params, 0x0000000000000000000000000000000000000000000000000000000000000000
-        );
-        isDelegated = true;
-    }
+    function queuedAssets() public view virtual returns (uint256) {}
 }

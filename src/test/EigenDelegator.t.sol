@@ -8,7 +8,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {LevMaticXLoopStrategy, AffineVault, FixedPointMathLib} from "src/strategies/LevMaticXLoopStrategy.sol";
-import {AffineDelegator, WithdrawalInfo, IStrategy} from "src/vaults/restaking/AffineDelegator.sol";
+import {EigenDelegator, WithdrawalInfo, IStrategy} from "src/vaults/restaking/EigenDelegator.sol";
 import {IStEth} from "src/interfaces/lido/IStEth.sol";
 import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
 import {DelegatorBeacon} from "src/vaults/restaking/DelegatorBeacon.sol";
@@ -16,10 +16,10 @@ import {DelegatorBeacon} from "src/vaults/restaking/DelegatorBeacon.sol";
 import {console2} from "forge-std/console2.sol";
 import {Vm} from "forge-std/Vm.sol";
 
-contract AffineDelegatorTest is TestPlus {
+contract EigenDelegatorTest is TestPlus {
     uint256 init_assets = 10e18; // 10 stETH
     address vault;
-    AffineDelegator delegator;
+    EigenDelegator delegator;
     address operator = 0xDbEd88D83176316fc46797B43aDeE927Dc2ff2F5;
 
     event OperatorSharesIncreased(address indexed operator, address staker, address strategy, uint256 shares);
@@ -34,13 +34,13 @@ contract AffineDelegatorTest is TestPlus {
 
         UltraLRT tmpVault = new UltraLRT();
 
-        AffineDelegator delImpl = new AffineDelegator();
+        EigenDelegator delImpl = new EigenDelegator();
 
         DelegatorBeacon beacon = new DelegatorBeacon(address(delImpl), governance);
 
         tmpVault.initialize(governance, address(asset), address(beacon), "uLRT", "uLRT");
         alice = address(tmpVault);
-        delegator = new AffineDelegator();
+        delegator = new EigenDelegator();
         delegator.initialize(alice, operator);
     }
 

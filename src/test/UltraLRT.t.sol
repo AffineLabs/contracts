@@ -18,15 +18,15 @@ import {TestStrategy} from "./mocks/TestStrategy.sol";
 import {UltraLRT, Math} from "src/vaults/restaking/UltraLRT.sol";
 import {DelegatorBeacon} from "src/vaults/restaking/DelegatorBeacon.sol";
 import {IStEth} from "src/interfaces/lido/IStEth.sol";
-import {AffineDelegator} from "src/vaults/restaking/AffineDelegator.sol";
+import {EigenDelegator} from "src/vaults/restaking/EigenDelegator.sol";
 import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
 import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
-import {AffineDelegator, WithdrawalInfo, IStrategy} from "src/vaults/restaking/AffineDelegator.sol";
+import {EigenDelegator, WithdrawalInfo, IStrategy} from "src/vaults/restaking/EigenDelegator.sol";
 import {DelegatorFactory} from "src/vaults/restaking/DelegatorFactory.sol";
 
 import {console2} from "forge-std/console2.sol";
 
-contract TmpDelegator is AffineDelegator {
+contract TmpDelegator is EigenDelegator {
     function version() public pure returns (uint256) {
         return 100;
     }
@@ -51,7 +51,7 @@ contract UltraLRTTest is TestPlus {
         // ultra LRT impl
         UltraLRT impl = new UltraLRT();
         // delegator implementation
-        AffineDelegator delegatorImpl = new AffineDelegator();
+        EigenDelegator delegatorImpl = new EigenDelegator();
 
         DelegatorBeacon beacon = new DelegatorBeacon(address(delegatorImpl), governance);
         // initialization data
@@ -299,7 +299,7 @@ contract UltraLRTTest is TestPlus {
         vm.expectRevert();
         vault.dropDelegator(_del);
 
-        AffineDelegator del = new AffineDelegator();
+        EigenDelegator del = new EigenDelegator();
 
         vm.prank(governance);
         vm.expectRevert();
@@ -439,7 +439,7 @@ contract UltraLRTTest is TestPlus {
             shares: shares
         });
         vm.prank(governance);
-        AffineDelegator(address(delegator)).completeWithdrawalRequest(params);
+        EigenDelegator(address(delegator)).completeWithdrawalRequest(params);
 
         vm.prank(governance);
         vault.collectDelegatorDebt();
@@ -598,14 +598,14 @@ contract UltraLRTTest is TestPlus {
         });
         // withdraw from delegator 0
         vm.prank(governance);
-        AffineDelegator(address(d1)).completeWithdrawalRequest(params);
+        EigenDelegator(address(d1)).completeWithdrawalRequest(params);
 
         // withdraw from delegator 1
         params[0].staker = address(d2);
         params[0].withdrawer = address(d2);
 
         vm.prank(governance);
-        AffineDelegator(address(d2)).completeWithdrawalRequest(params);
+        EigenDelegator(address(d2)).completeWithdrawalRequest(params);
 
         console2.log(asset.balanceOf(address(d1)));
         console2.log(asset.balanceOf(address(d2)));
@@ -684,7 +684,7 @@ contract UltraLRTTest is TestPlus {
             shares: shares
         });
         vm.prank(governance);
-        AffineDelegator(address(delegator)).completeWithdrawalRequest(params);
+        EigenDelegator(address(delegator)).completeWithdrawalRequest(params);
 
         vm.prank(governance);
         vault.collectDelegatorDebt();
@@ -916,7 +916,7 @@ contract UltraLRTTest is TestPlus {
             shares: shares
         });
         vm.prank(governance);
-        AffineDelegator(address(delegator)).completeWithdrawalRequest(params);
+        EigenDelegator(address(delegator)).completeWithdrawalRequest(params);
 
         // no assets
         vm.prank(governance);
@@ -945,7 +945,7 @@ contract UltraLRTTest is TestPlus {
     function testInitializeVaultWithInvalidBeacon() public {
         UltraLRT dummyVault = new UltraLRT();
 
-        AffineDelegator delegatorImpl = new AffineDelegator();
+        EigenDelegator delegatorImpl = new EigenDelegator();
 
         DelegatorBeacon beacon = new DelegatorBeacon(address(delegatorImpl), address(this));
         // initialization data

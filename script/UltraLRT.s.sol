@@ -9,10 +9,10 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
 import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
 import {IStEth} from "src/interfaces/lido/IStEth.sol";
-import {AffineDelegator} from "src/vaults/restaking/AffineDelegator.sol";
+import {EigenDelegator} from "src/vaults/restaking/EigenDelegator.sol";
 import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
 import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
-import {AffineDelegator, WithdrawalInfo, IStrategy} from "src/vaults/restaking/AffineDelegator.sol";
+import {EigenDelegator, WithdrawalInfo, IStrategy} from "src/vaults/restaking/EigenDelegator.sol";
 import {DelegatorBeacon} from "src/vaults/restaking/DelegatorBeacon.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {DelegatorFactory} from "src/vaults/restaking/DelegatorFactory.sol";
@@ -30,7 +30,7 @@ contract Deploy is Script {
 
         UltraLRT impl = new UltraLRT();
         // delegator implementation
-        AffineDelegator delegatorImpl = new AffineDelegator();
+        EigenDelegator delegatorImpl = new EigenDelegator();
 
         DelegatorBeacon beacon = new DelegatorBeacon(address(delegatorImpl), deployer);
         // initialization data
