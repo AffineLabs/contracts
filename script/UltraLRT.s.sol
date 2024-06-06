@@ -16,6 +16,8 @@ import {AffineDelegator, WithdrawalInfo, IStrategy} from "src/vaults/restaking/A
 import {DelegatorBeacon} from "src/vaults/restaking/DelegatorBeacon.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {DelegatorFactory} from "src/vaults/restaking/DelegatorFactory.sol";
+import {SymbioticDelegator} from "src/vaults/restaking/SymbioticDelegator.sol";
+import {SymDelegatorFactory} from "src/vaults/restaking/SymDelegatorFactory.sol";
 
 contract Deploy is Script {
     function run() external {
@@ -116,5 +118,53 @@ contract Deploy is Script {
         // asset.approve(address(vault), assets);
         console2.log("assets %s", assets);
         vault.delegateToDelegator(address(vault.delegatorQueue(0)), asset.balanceOf(address(vault)));
+    }
+
+    function runSymHoleSky() public {
+        address deployer = _start();
+
+        ERC20 asset = ERC20(0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034);
+
+        // delegator impl
+        SymbioticDelegator delImpl = new SymbioticDelegator();
+
+        // del beacon
+        DelegatorBeacon beacon = new DelegatorBeacon(address(delImpl), deployer);
+
+        UltraLRT impl = new UltraLRT();
+
+        // initialization data
+        bytes memory initData = abi.encodeCall(
+            UltraLRT.initialize, (deployer, address(asset), address(beacon), "Symbiotic uLRT", "uLRT-Sym")
+        );
+        // proxy
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        // upgradeable vault
+        UltraLRT vault = UltraLRT(address(proxy));
+
+        console2.log("Beacon %s", address(beacon));
+        console2.log("Vault %s", address(vault));
+    }
+
+    function runHoleSkyWEscrowSymbiotic() public {
+        // add withdrawal escrow
+        _start();
+        UltraLRT vault = UltraLRT(0x9BA3f0899E9272d85E6D380fc2C735b60EC5f4bB); // holesky vault for sym
+        WithdrawalEscrowV2 escrow = new WithdrawalEscrowV2(vault);
+        vault.setWithdrawalEscrow(escrow);
+
+        console2.log("escrow address %s", address(escrow));
+    }
+
+    function runHoleSkyDFactorySymbiotic() public {
+        // add withdrawal escrow
+        _start();
+        UltraLRT vault = UltraLRT(0x9BA3f0899E9272d85E6D380fc2C735b60EC5f4bB); // holesky vault for sym
+
+        // delegator factory
+        SymDelegatorFactory dFactory = new SymDelegatorFactory(address(vault));
+        vault.setDelegatorFactory(address(dFactory));
+
+        console2.log("Factory add %s", address(dFactory));
     }
 }
