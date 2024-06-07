@@ -13,6 +13,19 @@
     "type": "event"
   },
   {
+    "inputs": [],
+    "name": "asset",
+    "outputs": [
+      {
+        "internalType": "contract ERC20",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "components": [
@@ -291,7 +304,7 @@
     "name": "vault",
     "outputs": [
       {
-        "internalType": "contract UltraLRT",
+        "internalType": "address",
         "name": "",
         "type": "address"
       }

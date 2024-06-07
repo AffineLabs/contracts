@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
+import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
+
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
-
+import {AffineDelegator} from "src/vaults/restaking/AffineDelegator.sol";
 import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
-import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
 import {IStEth} from "src/interfaces/lido/IStEth.sol";
 
 import {
@@ -24,14 +25,15 @@ import {
  * @title AffineDelegator
  * @dev Delegator contract for stETH on Eigenlayer
  */
-contract EigenDelegator is Initializable, AffineGovernable {
+contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
     using SafeTransferLib for ERC20;
 
     function initialize(address _vault, address _operator) external initializer {
-        vault = UltraLRT(_vault);
-        governance = vault.governance();
+        vault = _vault;
+        asset = ERC20(UltraLRT(vault).asset());
+        governance = UltraLRT(vault).governance();
         currentOperator = _operator; // P2P operator
-        stETH = IStEth(vault.asset());
+        stETH = IStEth(address(asset));
         stETH.approve(address(strategyManager), type(uint256).max);
     }
 
@@ -40,29 +42,17 @@ contract EigenDelegator is Initializable, AffineGovernable {
     IDelegationManager public constant delegationManager =
         IDelegationManager(0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A); // DelegationManager for Eigenlayer
     IStrategy public constant stEthStrategy = IStrategy(0x93c4b944D05dfe6df7645A86cd2206016c51564D); // stETH strategy on Eigenlayer
-    UltraLRT public vault;
+    // UltraLRT public vault;
     IStEth public stETH;
     uint256 public queuedShares;
     bool public isDelegated;
 
-    modifier onlyVaultOrHarvester() {
-        require(
-            vault.hasRole(vault.HARVESTER(), msg.sender) || msg.sender == address(vault),
-            "AffineDelegator: Not a vault or harvester"
-        );
-        _;
-    }
-
     /**
      * @dev Delegate & restake stETH to operator on Eigenlayer
      */
-    function delegate(uint256 amount) external onlyVaultOrHarvester {
-        uint256 balance = stETH.balanceOf(address(this));
-        // take stETH from vault
-        stETH.transferFrom(address(vault), address(this), amount);
-        uint256 transferred = stETH.balanceOf(address(this)) - balance;
+    function _delegate(uint256 amount) internal override {
         // deposit into strategy
-        strategyManager.depositIntoStrategy(address(stEthStrategy), address(stETH), transferred);
+        strategyManager.depositIntoStrategy(address(stEthStrategy), address(asset), amount);
 
         // delegate to operator if not already
         if (!isDelegated) {
@@ -73,7 +63,7 @@ contract EigenDelegator is Initializable, AffineGovernable {
     /**
      * @dev Request withdrawal from eigenlayer
      */
-    function requestWithdrawal(uint256 assets) external onlyVaultOrHarvester {
+    function _requestWithdrawal(uint256 assets) internal override {
         // request withdrawal
         QueuedWithdrawalParams[] memory params = new QueuedWithdrawalParams[](1);
 
@@ -128,20 +118,15 @@ contract EigenDelegator is Initializable, AffineGovernable {
     /**
      * @dev Withdraw stETH from delegator to vault
      */
-    function withdraw() external onlyVaultOrHarvester {
+    function withdraw() external override onlyVaultOrHarvester {
         stETH.transferShares(address(vault), stETH.sharesOf(address(this)));
     }
 
-    // view functions
-    function totalLockedValue() public view returns (uint256) {
-        return withdrawableAssets() + queuedAssets();
-    }
-
-    function withdrawableAssets() public view returns (uint256) {
+    function withdrawableAssets() public view override returns (uint256) {
         return stEthStrategy.userUnderlyingView(address(this));
     }
 
-    function queuedAssets() public view returns (uint256) {
+    function queuedAssets() public view override returns (uint256) {
         return stEthStrategy.sharesToUnderlyingView(queuedShares) + stETH.balanceOf(address(this));
     }
 

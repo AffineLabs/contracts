@@ -69,7 +69,7 @@
     "name": "vault",
     "outputs": [
       {
-        "internalType": "contract UltraLRT",
+        "internalType": "address",
         "name": "",
         "type": "address"
       }
