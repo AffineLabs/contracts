@@ -11,59 +11,37 @@ import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
 import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
 
 import {IDefaultCollateral as ISymCollateral} from "src/interfaces/symbiotic/IDefaultCollateral.sol";
+import {AffineDelegator} from "src/vaults/restaking/AffineDelegator.sol";
 
-contract SymbioticDelegator is Initializable, AffineGovernable {
+contract SymbioticDelegator is Initializable, AffineDelegator, AffineGovernable {
     using SafeTransferLib for ERC20;
 
-    UltraLRT vault;
-    ERC20 asset;
     ISymCollateral collateral;
 
     function initialize(address _vault, address _collateral) external initializer {
-        vault = UltraLRT(_vault);
-        governance = vault.governance();
-        asset = ERC20(vault.asset());
+        vault = _vault;
+        governance = UltraLRT(vault).governance();
+        asset = ERC20(UltraLRT(vault).asset());
         collateral = ISymCollateral(_collateral);
 
         // @dev check the asset
-        require(vault.asset() == collateral.asset(), "SYMD: invalid asset");
+        require(UltraLRT(vault).asset() == collateral.asset(), "SYMD: invalid asset");
         asset.safeApprove(_collateral, type(uint256).max);
     }
 
-    modifier onlyVaultOrHarvester() {
-        require(
-            vault.hasRole(vault.HARVESTER(), msg.sender) || msg.sender == address(vault),
-            "AffineDelegator: Not a vault or harvester"
-        );
-        _;
-    }
-
-    function delegate(uint256 amount) external onlyVaultOrHarvester {
-        asset.safeTransferFrom(address(vault), address(this), amount);
+    function _delegate(uint256 amount) internal override {
         collateral.deposit(address(this), amount);
     }
 
-    function requestWithdrawal(uint256 assets) external onlyVaultOrHarvester {
+    function _requestWithdrawal(uint256 assets) internal override {
         collateral.withdraw(address(this), assets);
     }
 
-    /**
-     * @dev Withdraw stETH from delegator to vault
-     */
-    function withdraw() external onlyVaultOrHarvester {
-        asset.safeTransfer(address(vault), asset.balanceOf(address(this)));
-    }
-
-    // view functions
-    function totalLockedValue() public view returns (uint256) {
-        return withdrawableAssets() + queuedAssets();
-    }
-
-    function withdrawableAssets() public view returns (uint256) {
+    function withdrawableAssets() public view override returns (uint256) {
         return collateral.balanceOf(address(this));
     }
 
-    function queuedAssets() public view returns (uint256) {
+    function queuedAssets() public view override returns (uint256) {
         return asset.balanceOf(address(this));
     }
 }
