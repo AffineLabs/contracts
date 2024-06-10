@@ -59,6 +59,9 @@ abstract contract UltraLRTStorage {
     //active delegator count
     uint256 public delegatorCount;
 
+    // last epoch time
+    uint256 lastEpochTime;
+
     modifier whenDepositNotPaused() {
         if (depositPaused != 0) revert ReStakingErrors.DepositPaused();
         _;

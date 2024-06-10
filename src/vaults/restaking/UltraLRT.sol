@@ -258,8 +258,19 @@ contract UltraLRT is
         escrow = _escrow;
     }
 
-    function endEpoch() external onlyRole(HARVESTER) {
+    function endEpoch() external {
+        if (!hasRole(HARVESTER, msg.sender) && (block.timestamp - lastEpochTime) < LOCK_INTERVAL) {
+            revert ReStakingErrors.RunningEpoch();
+        }
+        /// @dev only harvester can end and epoch after
+        uint256 closingEpoch = escrow.currentEpoch();
         escrow.endEpoch();
+        lastEpochTime = block.timestamp;
+
+        /// @request for liquidation in case called by non-harvester
+        (uint256 shares,) = escrow.epochInfo(closingEpoch);
+        uint256 assets = convertToAssets(shares);
+        _liquidationRequest(assets);
     }
 
     function liquidationRequest(uint256 assets) external onlyRole(HARVESTER) {
@@ -282,15 +293,21 @@ contract UltraLRT is
         delegator.requestWithdrawal(assets);
     }
 
-    function resolveDebt() external onlyRole(HARVESTER) {
-        if (escrow.resolvingEpoch() < escrow.currentEpoch()) {
-            uint256 assets = previewRedeem(escrow.getDebtToResolve());
-
-            if ((vaultAssets() + ST_ETH_TRANSFER_BUFFER) < assets) {
-                revert ReStakingErrors.InsufficientLiquidAssets();
-            }
-            escrow.resolveDebtShares();
+    function resolveDebt() external {
+        if (escrow.resolvingEpoch() == escrow.currentEpoch()) {
+            revert ReStakingErrors.NoResolvingEpoch();
         }
+        uint256 assets = previewRedeem(escrow.getDebtToResolve());
+
+        // try liquidating assets
+        if ((vaultAssets() + ST_ETH_TRANSFER_BUFFER) < assets) {
+            _getDelegatorLiquidAssets(assets);
+        }
+
+        if ((vaultAssets() + ST_ETH_TRANSFER_BUFFER) < assets) {
+            revert ReStakingErrors.InsufficientLiquidAssets();
+        }
+        escrow.resolveDebtShares();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -355,15 +372,28 @@ contract UltraLRT is
     }
 
     function collectDelegatorDebt() external onlyRole(HARVESTER) {
+        _getDelegatorLiquidAssets(totalAssets());
+    }
+
+    function _getDelegatorLiquidAssets(uint256 assets) internal {
         uint256 currentDelegatorAssets = delegatorAssets;
 
-        for (uint8 i = 0; i < delegatorCount; i++) {
+        for (uint8 i = 0; i < delegatorCount && assets > 0; i++) {
             IDelegator delegator = delegatorQueue[i];
+            // check for zero assets
+            if (IERC20MetadataUpgradeable(asset()).balanceOf(address(delegator)) < 2) {
+                /// @dev taking into account transfer 1 steth has issue.
+                continue;
+            }
             uint256 prevTVL = delegatorMap[address(delegator)].balance;
             delegator.withdraw();
             uint256 newTVL = delegator.totalLockedValue();
             delegatorMap[address(delegator)].balance = uint248(newTVL);
             currentDelegatorAssets -= (prevTVL > newTVL ? prevTVL - newTVL : 0);
+
+            if ((vaultAssets() + ST_ETH_TRANSFER_BUFFER) < assets) {
+                break;
+            }
         }
 
         delegatorAssets = currentDelegatorAssets;

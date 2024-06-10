@@ -84,7 +84,7 @@ contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
     /**
      * @dev Complete withdrawal request from eigenlayer
      */
-    function completeWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo) external onlyVaultOrHarvester {
+    function completeWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo) external {
         // complete withdrawal request
         _processWithdrawalRequest(withdrawalInfo, true);
     }

@@ -24,4 +24,6 @@ library ReStakingErrors {
     error ProfitUnlocking();
     error DepositPaused();
     error InvalidDelegatorFactory();
+    error RunningEpoch();
+    error NoResolvingEpoch();
 }

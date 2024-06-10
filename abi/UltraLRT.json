@@ -61,6 +61,11 @@
   },
   {
     "inputs": [],
+    "name": "NoResolvingEpoch",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "NonZeroEmptyDelegatorTVL",
     "type": "error"
   },
@@ -72,6 +77,11 @@
   {
     "inputs": [],
     "name": "RequireHarvest",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "RunningEpoch",
     "type": "error"
   },
   {
