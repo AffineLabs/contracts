@@ -15,6 +15,7 @@ contract TestSymbioticDelegator is TestPlus {
     DefaultCollateral collateral;
     SymbioticDelegator delegator;
     UltraLRT vault;
+    uint256 initialAmount;
 
     function setUp() public {
         vm.createSelectFork("ethereum", 19_771_000);
@@ -32,10 +33,35 @@ contract TestSymbioticDelegator is TestPlus {
 
         delegator = new SymbioticDelegator();
         delegator.initialize(address(vault), address(collateral));
+
+        initialAmount = 100 * (10 ** asset.decimals());
     }
 
-    function testTemp() public {
-        console2.log("===> test");
-        assertTrue(true);
+    function _getAsset(address token, address to, uint256 amount) internal {
+        deal(token, to, amount);
+    }
+
+    function testDeposit() public {
+        _getAsset(address(asset), address(vault), initialAmount);
+
+        vm.startPrank(address(vault));
+        asset.approve(address(delegator), initialAmount);
+
+        delegator.delegate(initialAmount);
+
+        assertEq(delegator.totalLockedValue(), initialAmount);
+        assertEq(delegator.withdrawableAssets(), initialAmount);
+        assertEq(delegator.queuedAssets(), 0);
+    }
+
+    function testWithdrawal() public {
+        testDeposit();
+
+        delegator.requestWithdrawal(initialAmount);
+
+        assertEq(delegator.queuedAssets(), initialAmount);
+        delegator.withdraw();
+
+        assertEq(asset.balanceOf(address(vault)), initialAmount);
     }
 }

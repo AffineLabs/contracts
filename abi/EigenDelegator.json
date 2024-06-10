@@ -14,6 +14,45 @@
   },
   {
     "inputs": [],
+    "name": "DELEGATION_MANAGER",
+    "outputs": [
+      {
+        "internalType": "contract IDelegationManager",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "STAKED_ETH_STRATEGY",
+    "outputs": [
+      {
+        "internalType": "contract IStrategy",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "STRATEGY_MANAGER",
+    "outputs": [
+      {
+        "internalType": "contract IStrategyManager",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "asset",
     "outputs": [
       {
@@ -153,19 +192,6 @@
   },
   {
     "inputs": [],
-    "name": "delegationManager",
-    "outputs": [
-      {
-        "internalType": "contract IDelegationManager",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "governance",
     "outputs": [
       {
@@ -253,32 +279,6 @@
     "outputs": [
       {
         "internalType": "contract IStEth",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "stEthStrategy",
-    "outputs": [
-      {
-        "internalType": "contract IStrategy",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "strategyManager",
-    "outputs": [
-      {
-        "internalType": "contract IStrategyManager",
         "name": "",
         "type": "address"
       }
