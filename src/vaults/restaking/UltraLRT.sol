@@ -456,4 +456,15 @@ contract UltraLRT is
     function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
         withdrawalFee = feeBps;
     }
+
+    /*//////////////////////////////////////////////////////////////
+                                  Balancer Interface for pice
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice returns the per share assets
+     */
+    function getRate() external view returns (uint256) {
+        return convertToAssets(10 ** decimals());
+    }
 }
