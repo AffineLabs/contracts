@@ -123,7 +123,7 @@ contract Deploy is Script {
     function runSymHoleSky() public {
         address deployer = _start();
 
-        ERC20 asset = ERC20(0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034);
+        ERC20 asset = ERC20(0x8d09a4502Cc8Cf1547aD300E066060D043f6982D); //wstEth
 
         // delegator impl
         SymbioticDelegator delImpl = new SymbioticDelegator();
@@ -135,7 +135,7 @@ contract Deploy is Script {
 
         // initialization data
         bytes memory initData = abi.encodeCall(
-            UltraLRT.initialize, (deployer, address(asset), address(beacon), "Symbiotic uLRT", "uLRT-Sym")
+            UltraLRT.initialize, (deployer, address(asset), address(beacon), "Symbiotic Ultra LRT", "SYM-uLRT")
         );
         // proxy
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
@@ -149,7 +149,7 @@ contract Deploy is Script {
     function runHoleSkyWEscrowSymbiotic() public {
         // add withdrawal escrow
         _start();
-        UltraLRT vault = UltraLRT(0x9BA3f0899E9272d85E6D380fc2C735b60EC5f4bB); // holesky vault for sym
+        UltraLRT vault = UltraLRT(0x9666aB93452dC300C6b7412936D114bF1F737B1B); // holesky vault for sym
         WithdrawalEscrowV2 escrow = new WithdrawalEscrowV2(vault);
         vault.setWithdrawalEscrow(escrow);
 
@@ -159,7 +159,7 @@ contract Deploy is Script {
     function runHoleSkyDFactorySymbiotic() public {
         // add withdrawal escrow
         _start();
-        UltraLRT vault = UltraLRT(0x9BA3f0899E9272d85E6D380fc2C735b60EC5f4bB); // holesky vault for sym
+        UltraLRT vault = UltraLRT(0x9666aB93452dC300C6b7412936D114bF1F737B1B); // holesky vault for sym
 
         // delegator factory
         SymDelegatorFactory dFactory = new SymDelegatorFactory(address(vault));
