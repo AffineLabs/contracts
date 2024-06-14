@@ -40,10 +40,16 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
 
     receive() external payable {}
 
-    function depositNative(uint256 amount, address vault, address to) public payable {
-        require(msg.value != amount || amount > 0, "ULRTR: invalid amount");
-        // convert to steth
-        amount = stEth.submit{value: amount}(address(0));
+    function depositNative(address vault, address to) public payable {
+        require(msg.value > 0, "ULRTR: invalid amount");
+        _processNativeDeposit(msg.value, vault, to);
+    }
+
+    function _processNativeDeposit(uint256 amount, address vault, address to) internal {
+        require(amount > 0, "ULRTR: invalid amount");
+        uint256 prevStEthBalance = stEth.balanceOf(address(this));
+        stEth.submit{value: amount}(address(0));
+        amount = stEth.balanceOf(address(this)) - prevStEthBalance;
         _processDepositFromStEth(amount, vault, to);
     }
 
@@ -84,7 +90,7 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
         _receiveAssetFromThroughPermit2(address(weth), amount, nonce, deadline, signature);
         // weth.transferFrom(msg.sender, address(this), amount);
         weth.withdraw(amount);
-        depositNative(amount, vault, to);
+        _processNativeDeposit(amount, vault, to);
     }
 
     function depositStEth(
@@ -108,14 +114,14 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
         uint256 deadline,
         bytes calldata signature
     ) external {
-        _receiveAssetFromThroughPermit2(address(stEth), amount, nonce, deadline, signature);
+        _receiveAssetFromThroughPermit2(address(wStEth), amount, nonce, deadline, signature);
 
         // wStEth.transferFrom(msg.sender, address(this), amount);
         if (UltraLRT(vault).asset() == address(wStEth)) {
             _depositWStEthToVault(amount, vault, to);
         } else if (UltraLRT(vault).asset() == address(stEth)) {
             amount = wStEth.unwrap(amount);
-            _depositWStEthToVault(amount, vault, to);
+            _depositStEthToVault(amount, vault, to);
         } else {
             revert("Invalid vault");
         }
@@ -127,7 +133,7 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
         } else if (UltraLRT(vault).asset() == address(wStEth)) {
             stEth.approve(address(wStEth), amount);
             amount = wStEth.wrap(amount);
-            _depositStEthToVault(amount, vault, to);
+            _depositWStEthToVault(amount, vault, to);
         } else {
             revert("Invalid vault");
         }
