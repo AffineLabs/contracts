@@ -29,6 +29,7 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
         external
         initializer
     {
+        __Pausable_init();
         governance = _governance;
         weth = IWETH(_weth);
         stEth = IStEth(_stEth);
@@ -38,9 +39,19 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
+    /// @notice Pause the contract
+    function pause() external onlyGovernance {
+        _pause();
+    }
+
+    /// @notice Unpause the contract
+    function unpause() external onlyGovernance {
+        _unpause();
+    }
+
     receive() external payable {}
 
-    function depositNative(address vault, address to) public payable {
+    function depositNative(address vault, address to) public payable whenNotPaused {
         require(msg.value > 0, "ULRTR: invalid amount");
         _processNativeDeposit(msg.value, vault, to);
     }
@@ -86,7 +97,7 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
         uint256 nonce,
         uint256 deadline,
         bytes calldata signature
-    ) external {
+    ) external whenNotPaused {
         _receiveAssetFromThroughPermit2(address(weth), amount, nonce, deadline, signature);
         // weth.transferFrom(msg.sender, address(this), amount);
         weth.withdraw(amount);
@@ -100,7 +111,7 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
         uint256 nonce,
         uint256 deadline,
         bytes calldata signature
-    ) external {
+    ) external whenNotPaused {
         _receiveAssetFromThroughPermit2(address(stEth), amount, nonce, deadline, signature);
         // stEth.transferFrom(msg.sender, address(this), amount);
         _processDepositFromStEth(amount, vault, to);
@@ -113,7 +124,7 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
         uint256 nonce,
         uint256 deadline,
         bytes calldata signature
-    ) external {
+    ) external whenNotPaused {
         _receiveAssetFromThroughPermit2(address(wStEth), amount, nonce, deadline, signature);
 
         // wStEth.transferFrom(msg.sender, address(this), amount);

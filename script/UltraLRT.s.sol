@@ -18,6 +18,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {DelegatorFactory} from "src/vaults/restaking/DelegatorFactory.sol";
 import {SymbioticDelegator} from "src/vaults/restaking/SymbioticDelegator.sol";
 import {SymDelegatorFactory} from "src/vaults/restaking/SymDelegatorFactory.sol";
+import {UltraLRTRouter} from "src/vaults/restaking/UltraLRTRouter.sol";
 
 contract Deploy is Script {
     function run() external {
@@ -166,5 +167,24 @@ contract Deploy is Script {
         vault.setDelegatorFactory(address(dFactory));
 
         console2.log("Factory add %s", address(dFactory));
+    }
+
+    function runHoleSkyUltraLRTRouter() public {
+        address deployer = _start();
+
+        address hStEth = 0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034;
+        address hWStEth = 0x8d09a4502Cc8Cf1547aD300E066060D043f6982D;
+        address wEth = 0x94373a4919B3240D86eA41593D5eBa789FEF3848;
+
+        address permit2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
+
+        UltraLRTRouter impl = new UltraLRTRouter();
+
+        bytes memory initData = abi.encodeCall(UltraLRTRouter.initialize, (deployer, wEth, hStEth, hWStEth, permit2));
+
+        console2.logBytes(initData);
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        UltraLRTRouter router = UltraLRTRouter(payable(address(proxy)));
+        console2.log("router Add %s", address(router));
     }
 }
