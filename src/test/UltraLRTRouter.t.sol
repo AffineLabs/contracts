@@ -178,7 +178,7 @@ contract TestUltraLRTRouter is TestPlus {
         // get signature for approval of vault
         // get user nonce
         (,, uint48 nonce) = permit2.allowance(user1, address(curAsset), address(router));
-
+        console2.log("==> %s", nonce);
         uint256 assetsToDeposit = 1e18;
 
         ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
@@ -201,6 +201,24 @@ contract TestUltraLRTRouter is TestPlus {
         // // check vault shares
         assertApproxEqAbs(vault.balanceOf(user1), depositedStEth * (1e8), 100);
         // console2.log("B %s", vault.balanceOf(user1));
+
+        // get signature for approval of vault
+        // get user nonce
+        vm.roll(block.number + 10);
+        vm.warp(block.timestamp + 100);
+        (,, nonce) = permit2.allowance(user1, address(curAsset), address(router));
+
+        nonce = nonce + 1;
+        permit = ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({token: address(curAsset), amount: assetsToDeposit}),
+            nonce: nonce,
+            deadline: block.timestamp + 100
+        });
+
+        signature = getPermitTransferSignature(permit, privateKey1, PERMIT2_DOMAIN_SEPARATOR, address(router));
+
+        vm.prank(user1);
+        router.depositWStEth(assetsToDeposit, address(vault), user1, nonce, block.timestamp + 100, signature);
     }
 
     function testWEthToVault1Deposit() public {
