@@ -9,6 +9,10 @@ import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC2
 
 import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
 
+/**
+ * @title WithdrawalEscrowV2
+ * @dev Escrow contract for withdrawal requests
+ */
 contract WithdrawalEscrowV2 {
     using SafeTransferLib for ERC20;
 
@@ -33,16 +37,25 @@ contract WithdrawalEscrowV2 {
     // map per epoch debt share
     mapping(uint256 => EpochInfo) public epochInfo;
 
+    /**
+     * @param _vault UltraLRT vault address
+     */
     constructor(UltraLRT _vault) {
         asset = ERC20(_vault.asset());
         vault = _vault;
     }
 
+    /**
+     * @notice Modifier to allow function calls only from the vault
+     */
     modifier onlyVault() {
         require(msg.sender == address(vault), "WE: must be vault");
         _;
     }
 
+    /**
+     * @notice Modifier to allow function calls only from the governance
+     */
     modifier onlyGovernance() {
         require(msg.sender == address(vault.governance()), "WE: Must be gov");
         _;
@@ -73,6 +86,10 @@ contract WithdrawalEscrowV2 {
         emit WithdrawalRequest(user, currentEpoch, shares);
     }
 
+    /**
+     * @notice End the epoch
+     * @dev will be called by the vault after closing a position
+     */
     function endEpoch() external onlyVault {
         require(epochInfo[currentEpoch].shares > 0, "WEV2: No Debt.");
 
@@ -80,6 +97,10 @@ contract WithdrawalEscrowV2 {
         // TODO: epoch end event
     }
 
+    /**
+     * @notice Get the debt to resolve
+     * @return amount of debt to resolve
+     */
     function getDebtToResolve() external view returns (uint256) {
         return resolvingEpoch < currentEpoch ? epochInfo[resolvingEpoch].shares : 0;
     }
@@ -103,6 +124,12 @@ contract WithdrawalEscrowV2 {
         resolvingEpoch += 1;
     }
 
+    /**
+     * @notice Redeem multiple epochs
+     * @param user user address
+     * @param epochs withdrawal request epochs
+     * @return totalAssets received
+     */
     function redeemMultiEpoch(address user, uint256[] calldata epochs) public returns (uint256 totalAssets) {
         for (uint8 i = 0; i < epochs.length; i++) {
             totalAssets += redeem(user, epochs[i]);
@@ -178,6 +205,12 @@ contract WithdrawalEscrowV2 {
         return userDebtShare[epoch][user];
     }
 
+    /**
+     * @notice Get total withdrawable assets of a user for multiple epochs
+     * @param user User address
+     * @param epochs withdrawal request epochs
+     * @return assets total withdrawable assets
+     */
     function getAssets(address user, uint256[] calldata epochs) public view returns (uint256 assets) {
         for (uint256 i = 0; i < epochs.length; i++) {
             assets += withdrawableAssets(user, epochs[i]);
@@ -185,6 +218,11 @@ contract WithdrawalEscrowV2 {
         return assets;
     }
 
+    /**
+     * @notice sweep the assets to governance
+     * @param _asset Asset address
+     * @dev only use case in case of emergency
+     */
     function sweep(address _asset) external onlyGovernance {
         ERC20(_asset).safeTransfer(vault.governance(), ERC20(_asset).balanceOf(address(this)));
     }

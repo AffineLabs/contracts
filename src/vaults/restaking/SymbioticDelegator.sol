@@ -13,11 +13,20 @@ import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
 import {IDefaultCollateral as ISymCollateral} from "src/interfaces/symbiotic/IDefaultCollateral.sol";
 import {AffineDelegator} from "src/vaults/restaking/AffineDelegator.sol";
 
+/**
+ * @title SymbioticDelegator
+ * @dev Delegator contract for wStETH on Symbiotic
+ */
 contract SymbioticDelegator is Initializable, AffineDelegator, AffineGovernable {
     using SafeTransferLib for ERC20;
 
     ISymCollateral collateral;
 
+    /**
+     * @dev Initialize the contract
+     * @param _vault Vault address
+     * @param _collateral Collateral address
+     */
     function initialize(address _vault, address _collateral) external initializer {
         vault = _vault;
         governance = UltraLRT(vault).governance();
@@ -29,18 +38,34 @@ contract SymbioticDelegator is Initializable, AffineDelegator, AffineGovernable 
         asset.safeApprove(_collateral, type(uint256).max);
     }
 
+    /**
+     * @notice Delegate & restake wStETH to operator on Symbiotic
+     * @param amount Amount to delegate
+     */
     function _delegate(uint256 amount) internal override {
         collateral.deposit(address(this), amount);
     }
 
+    /**
+     * @notice Request withdrawal from Symbiotic
+     * @param assets Amount to withdraw
+     */
     function _requestWithdrawal(uint256 assets) internal override {
         collateral.withdraw(address(this), assets);
     }
 
+    /**
+     * @notice Get the withdrawable assets
+     * @return withdrawable assets
+     */
     function withdrawableAssets() public view override returns (uint256) {
         return collateral.balanceOf(address(this));
     }
 
+    /**
+     * @notice Get the queued assets
+     * @return queued assets
+     */
     function queuedAssets() public view override returns (uint256) {
         return asset.balanceOf(address(this));
     }

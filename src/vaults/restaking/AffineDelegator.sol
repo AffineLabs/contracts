@@ -18,6 +18,9 @@ abstract contract AffineDelegator {
 
     address public vault;
     ERC20 public asset;
+    /**
+     * @notice Modifier to allow function calls only from the vault or harvester
+     */
 
     modifier onlyVaultOrHarvester() {
         require(
@@ -28,22 +31,30 @@ abstract contract AffineDelegator {
     }
 
     /**
-     * @dev Delegate & restake stETH to operator on Eigenlayer
+     * @dev Delegate & restake stETH to operator
      */
     function delegate(uint256 amount) external onlyVaultOrHarvester {
         asset.transferFrom(address(vault), address(this), amount);
         _delegate(amount);
     }
 
+    /**
+     * @dev Delegate stETH to operator
+     */
     function _delegate(uint256 amount) internal virtual {}
 
     /**
+     * @notice Request withdrawal from eigenlayer
+     * @param assets Amount to withdraw
      * @dev Request withdrawal from eigenlayer
      */
     function requestWithdrawal(uint256 assets) external onlyVaultOrHarvester {
         _requestWithdrawal(assets);
     }
 
+    /**
+     * @dev Request withdrawal from eigenlayer
+     */
     function _requestWithdrawal(uint256 assets) internal virtual {}
 
     /**
@@ -53,12 +64,23 @@ abstract contract AffineDelegator {
         asset.safeTransfer(vault, asset.balanceOf(address(this)));
     }
 
-    // view functions
+    /**
+     * @notice Get total locked value
+     * @return Total locked value
+     */
     function totalLockedValue() public view virtual returns (uint256) {
         return withdrawableAssets() + queuedAssets();
     }
 
+    /**
+     * @notice Get withdrawable assets
+     * @return Amount of withdrawable assets
+     */
     function withdrawableAssets() public view virtual returns (uint256) {}
 
+    /**
+     * @notice Get queued assets
+     * @return Amount of queued assets
+     */
     function queuedAssets() public view virtual returns (uint256) {}
 }

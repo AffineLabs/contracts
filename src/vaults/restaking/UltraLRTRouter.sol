@@ -19,12 +19,24 @@ import {ISignatureTransfer} from "src/interfaces/permit2/ISignatureTransfer.sol"
 
 import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
 
+/**
+ * @title UltraLRTRouter
+ * @dev handle deposits from native, weth, stEth, wStEth to vaults
+ */
 contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernable {
     IWETH public weth;
     IStEth public stEth;
     IWSTETH public wStEth;
     IPermit2 public permit2;
 
+    /**
+     * @dev Initialize the contract
+     * @param _governance Governance address
+     * @param _weth WETH address
+     * @param _stEth stETH address
+     * @param _wStEth wstETH address
+     * @param _permit2 Permit2 address
+     */
     function initialize(address _governance, address _weth, address _stEth, address _wStEth, address _permit2)
         external
         initializer
@@ -37,6 +49,10 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
         permit2 = IPermit2(_permit2);
     }
 
+    /**
+     * @dev Upgrade the contract
+     * @param newImplementation New implementation address
+     */
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
     /// @notice Pause the contract
@@ -49,13 +65,25 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
         _unpause();
     }
 
+    /// @notice Fallback function to receive native tokens
     receive() external payable {}
 
+    /**
+     * @notice Deposit native tokens to vault
+     * @param vault Vault address
+     * @param to Receiver address
+     */
     function depositNative(address vault, address to) public payable whenNotPaused {
         require(msg.value > 0, "ULRTR: invalid amount");
         _processNativeDeposit(msg.value, vault, to);
     }
 
+    /**
+     * @notice Deposit native tokens to vault
+     * @param amount Amount to deposit
+     * @param vault Vault address
+     * @param to Receiver address
+     */
     function _processNativeDeposit(uint256 amount, address vault, address to) internal {
         require(amount > 0, "ULRTR: invalid amount");
         uint256 prevStEthBalance = stEth.balanceOf(address(this));
@@ -64,6 +92,14 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
         _processDepositFromStEth(amount, vault, to);
     }
 
+    /**
+     * @notice Receive asset from user through permit2
+     * @param token Token address
+     * @param amount Amount to receive
+     * @param nonce Nonce
+     * @param deadline Deadline of the permit2 approval
+     * @param signature Signature of the permit2 approval
+     */
     function _receiveAssetFromThroughPermit2(
         address token,
         uint256 amount,
@@ -90,6 +126,15 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
         );
     }
 
+    /**
+     * @notice Deposit WETH to vault
+     * @param amount Amount to deposit
+     * @param vault Vault address
+     * @param to Receiver address
+     * @param nonce Nonce
+     * @param deadline Deadline of the permit2 approval
+     * @param signature Signature of the permit2 approval
+     */
     function depositWeth(
         uint256 amount,
         address vault,
@@ -104,6 +149,15 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
         _processNativeDeposit(amount, vault, to);
     }
 
+    /**
+     * @notice Deposit stETH to vault
+     * @param amount Amount to deposit
+     * @param vault Vault address
+     * @param to Receiver address
+     * @param nonce Nonce
+     * @param deadline Deadline of the permit2 approval
+     * @param signature Signature of the permit2 approval
+     */
     function depositStEth(
         uint256 amount,
         address vault,
@@ -117,6 +171,15 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
         _processDepositFromStEth(amount, vault, to);
     }
 
+    /**
+     * @notice Deposit wStETH to vault
+     * @param amount Amount to deposit
+     * @param vault Vault address
+     * @param to Receiver address
+     * @param nonce Nonce
+     * @param deadline Deadline of the permit2 approval
+     * @param signature Signature of the permit2 approval
+     */
     function depositWStEth(
         uint256 amount,
         address vault,
@@ -138,6 +201,12 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
         }
     }
 
+    /**
+     * @notice Process deposit from stEth
+     * @param amount Amount to deposit
+     * @param vault Vault address
+     * @param to Receiver address
+     */
     function _processDepositFromStEth(uint256 amount, address vault, address to) internal {
         if (UltraLRT(vault).asset() == address(stEth)) {
             _depositStEthToVault(amount, vault, to);
@@ -150,11 +219,23 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
         }
     }
 
+    /**
+     * @notice Deposit stEth to vault
+     * @param amount Amount to deposit
+     * @param vault Vault address
+     * @param to Receiver address
+     */
     function _depositStEthToVault(uint256 amount, address vault, address to) internal {
         stEth.approve(vault, amount);
         UltraLRT(vault).deposit(amount, to);
     }
 
+    /**
+     * @notice Deposit wStEth to vault
+     * @param amount Amount to deposit
+     * @param vault Vault address
+     * @param to Receiver address
+     */
     function _depositWStEthToVault(uint256 amount, address vault, address to) internal {
         wStEth.approve(vault, amount);
         UltraLRT(vault).deposit(amount, to);

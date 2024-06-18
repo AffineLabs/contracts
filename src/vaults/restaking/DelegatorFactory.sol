@@ -11,17 +11,33 @@ interface IDelegatorFactory {
     function vault() external returns (address);
 }
 
+/**
+ * @title DelegatorFactory
+ * @dev Delegator Factory contract
+ */
 contract DelegatorFactory {
     address public vault;
 
+    /**
+     * @dev Modifier to allow function calls only from the vault
+     */
     modifier onlyVault() {
         require(msg.sender == vault, "DF: only vault");
         _;
     }
+    /**
+     * @dev Constructor
+     * @param _vault Vault address
+     */
 
     constructor(address _vault) {
         vault = _vault;
     }
+    /**
+     * @notice Create a new delegator
+     * @param _operator Operator address
+     * @return Delegator address
+     */
 
     function createDelegator(address _operator) external onlyVault returns (address) {
         BeaconProxy bProxy = new BeaconProxy(

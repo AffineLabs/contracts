@@ -49,6 +49,8 @@ contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
     bool public isDelegated;
 
     /**
+     * @notice Modifier to allow function calls only from the vault or harvester
+     * @param amount Amount to delegate
      * @dev Delegate & restake stETH to operator on Eigenlayer
      */
     function _delegate(uint256 amount) internal override {
@@ -62,7 +64,8 @@ contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
     }
 
     /**
-     * @dev Request withdrawal from eigenlayer
+     * @notice Request withdrawal from eigenlayer
+     * @param assets Amount to withdraw
      */
     function _requestWithdrawal(uint256 assets) internal override {
         // request withdrawal
@@ -83,13 +86,19 @@ contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
     }
 
     /**
-     * @dev Complete withdrawal request from eigenlayer
+     * @notice Complete withdrawal request
+     * @param withdrawalInfo Withdrawal info
      */
     function completeWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo) external {
         // complete withdrawal request
         _processWithdrawalRequest(withdrawalInfo, true);
     }
 
+    /**
+     * @notice Complete external withdrawal request
+     * @param withdrawalInfo Withdrawal info
+     * @dev process request invoked by eigenlayer or operator
+     */
     function completeExternalWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo)
         external
         onlyVaultOrHarvester
@@ -98,6 +107,9 @@ contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
         _processWithdrawalRequest(withdrawalInfo, false);
     }
 
+    /**
+     * @dev Process withdrawal request
+     */
     function _processWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo, bool isQueuedShares) internal {
         address[][] memory stEthAddresses = new address[][](1);
         address[] memory subAddresses = new address[](1);
