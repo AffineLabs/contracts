@@ -26,4 +26,6 @@ library ReStakingErrors {
     error InvalidDelegatorFactory();
     error RunningEpoch();
     error NoResolvingEpoch();
+    error MaxUnresolvedEpochReached();
+    error InvalidEscrow();
 }

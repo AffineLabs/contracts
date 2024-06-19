@@ -81,6 +81,9 @@ contract UltraLRTTest is TestPlus {
             vm.prank(governance);
             vault.createDelegator(operator);
         }
+
+        vm.prank(governance);
+        vault.setMaxUnresolvedEpochs(10);
     }
 
     function _getAsset(address to, uint256 amount) internal returns (uint256) {

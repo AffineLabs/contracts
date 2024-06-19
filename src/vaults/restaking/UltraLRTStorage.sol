@@ -54,13 +54,17 @@ abstract contract UltraLRTStorage {
 
     // delegator array
     IDelegator[MAX_DELEGATOR] public delegatorQueue;
+
     mapping(address => DelegatorInfo) public delegatorMap;
 
     //active delegator count
     uint256 public delegatorCount;
 
     // last epoch time
-    uint256 lastEpochTime;
+    uint256 public lastEpochTime;
+
+    // max unresolved epochs
+    uint256 public maxUnresolvedEpochs;
 
     modifier whenDepositNotPaused() {
         if (depositPaused != 0) revert ReStakingErrors.DepositPaused();

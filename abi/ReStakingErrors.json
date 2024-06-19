@@ -71,12 +71,22 @@
   },
   {
     "inputs": [],
+    "name": "InvalidEscrow",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidEscrowVault",
     "type": "error"
   },
   {
     "inputs": [],
     "name": "InvalidWithdrawalAmount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MaxUnresolvedEpochReached",
     "type": "error"
   },
   {

@@ -56,7 +56,17 @@
   },
   {
     "inputs": [],
+    "name": "InvalidEscrow",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidEscrowVault",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MaxUnresolvedEpochReached",
     "type": "error"
   },
   {
@@ -1026,6 +1036,19 @@
   },
   {
     "inputs": [],
+    "name": "lastEpochTime",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "lastHarvest",
     "outputs": [
       {
@@ -1136,6 +1159,19 @@
       }
     ],
     "name": "maxRedeem",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "maxUnresolvedEpochs",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1412,6 +1448,19 @@
       }
     ],
     "name": "setManagementFee",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_maxUnresolvedEpochs",
+        "type": "uint256"
+      }
+    ],
+    "name": "setMaxUnresolvedEpochs",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

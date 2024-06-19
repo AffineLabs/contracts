@@ -213,6 +213,19 @@
   },
   {
     "inputs": [],
+    "name": "lastEpochTime",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "lastHarvest",
     "outputs": [
       {
@@ -240,6 +253,19 @@
   {
     "inputs": [],
     "name": "maxLockedProfit",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "maxUnresolvedEpochs",
     "outputs": [
       {
         "internalType": "uint256",

@@ -111,6 +111,15 @@ contract UltraLRT is
         delegatorFactory = _factory;
     }
 
+    /**
+     * @notice set max unresolved epoch
+     * @param _maxUnresolvedEpochs The maximum unresolved epoch
+     * @dev delegation of assets will be stopped if the unresolved epoch is greater than the max unresolved epoch
+     */
+    function setMaxUnresolvedEpochs(uint256 _maxUnresolvedEpochs) external onlyGovernance {
+        maxUnresolvedEpochs = _maxUnresolvedEpochs;
+    }
+
     /// @notice Pause the contract
     function pause() external onlyRole(GUARDIAN_ROLE) {
         _pause();
@@ -541,6 +550,14 @@ contract UltraLRT is
      * @param amount The amount of assets to delegate
      */
     function delegateToDelegator(address _delegator, uint256 amount) external onlyRole(HARVESTER) {
+        if (address(escrow) == address(0)) {
+            revert ReStakingErrors.InvalidEscrow();
+        }
+
+        if (maxUnresolvedEpochs < (escrow.currentEpoch() - escrow.resolvingEpoch())) {
+            revert ReStakingErrors.MaxUnresolvedEpochReached();
+        }
+
         IDelegator delegator = IDelegator(_delegator);
 
         DelegatorInfo memory info = delegatorMap[_delegator];
