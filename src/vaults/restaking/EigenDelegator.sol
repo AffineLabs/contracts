@@ -146,11 +146,6 @@ contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
     }
 
     /**
-     * @dev Process withdrawal request
-     */
-    function _processWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo, bool isQueuedShares) internal {}
-
-    /**
      * @dev Withdraw stETH from delegator to vault
      */
     function withdraw() external override onlyVault {
