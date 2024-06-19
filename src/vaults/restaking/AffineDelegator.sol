@@ -51,7 +51,7 @@ abstract contract AffineDelegator {
      */
     function delegate(uint256 amount) external {
         // Transfer assets from vault to delegator
-        asset.transferFrom(msg.sender, address(this), amount);
+        asset.safeTransferFrom(msg.sender, address(this), amount);
         _delegate(amount);
     }
 

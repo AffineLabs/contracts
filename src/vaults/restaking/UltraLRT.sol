@@ -12,6 +12,10 @@ import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
+// safeTransfer
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+
 // storage contract
 import {UltraLRTStorage} from "src/vaults/restaking/UltraLRTStorage.sol";
 import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
@@ -39,6 +43,7 @@ contract UltraLRT is
     ReentrancyGuard,
     UltraLRTStorage
 {
+    using SafeTransferLib for ERC20;
     /**
      * @notice Initialize the UltraLRT contract
      * @param _governance The address of the governance contract
@@ -47,6 +52,7 @@ contract UltraLRT is
      * @param _name The name of the token
      * @param _symbol The symbol of the token
      */
+
     function initialize(
         address _governance,
         address _asset,
@@ -301,7 +307,7 @@ contract UltraLRT is
 
         if (assetsToReceive + ST_ETH_TRANSFER_BUFFER < assets) revert ReStakingErrors.InsufficientLiquidAssets();
 
-        IERC20MetadataUpgradeable(asset()).transfer(receiver, assetsToReceive);
+        ERC20(asset()).safeTransfer(receiver, assetsToReceive);
 
         emit Withdraw(caller, receiver, owner, assetsToReceive, shares);
     }
@@ -566,7 +572,7 @@ contract UltraLRT is
         if (vaultAssets() < amount) revert ReStakingErrors.InsufficientLiquidAssets();
 
         // delegate
-        IERC20MetadataUpgradeable(asset()).approve(_delegator, amount);
+        ERC20(asset()).safeApprove(_delegator, amount);
         delegator.delegate(amount);
 
         info.balance += uint248(amount);

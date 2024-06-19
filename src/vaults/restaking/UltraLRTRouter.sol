@@ -5,6 +5,10 @@ pragma solidity =0.8.16;
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
+// safeTransfer
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+
 // governance contract
 import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
 
@@ -15,8 +19,6 @@ import {IWSTETH} from "src/interfaces/lido/IWSTETH.sol";
 import {IPermit2} from "src/interfaces/permit2/IPermit2.sol";
 import {ISignatureTransfer} from "src/interfaces/permit2/ISignatureTransfer.sol";
 
-// import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
-
 import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
 
 /**
@@ -24,6 +26,8 @@ import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
  * @dev handle deposits from native, weth, stEth, wStEth to vaults
  */
 contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernable {
+    using SafeTransferLib for ERC20;
+
     IWETH public weth;
     IStEth public stEth;
     IWSTETH public wStEth;
@@ -211,7 +215,7 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
         if (UltraLRT(vault).asset() == address(stEth)) {
             _depositStEthToVault(amount, vault, to);
         } else if (UltraLRT(vault).asset() == address(wStEth)) {
-            stEth.approve(address(wStEth), amount);
+            ERC20(address(stEth)).safeApprove(address(wStEth), amount);
             amount = wStEth.wrap(amount);
             _depositWStEthToVault(amount, vault, to);
         } else {
@@ -226,7 +230,7 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
      * @param to Receiver address
      */
     function _depositStEthToVault(uint256 amount, address vault, address to) internal {
-        stEth.approve(vault, amount);
+        ERC20(address(stEth)).safeApprove(vault, amount);
         UltraLRT(vault).deposit(amount, to);
     }
 
@@ -237,7 +241,7 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
      * @param to Receiver address
      */
     function _depositWStEthToVault(uint256 amount, address vault, address to) internal {
-        wStEth.approve(vault, amount);
+        ERC20(address(wStEth)).safeApprove(vault, amount);
         UltraLRT(vault).deposit(amount, to);
     }
 }
