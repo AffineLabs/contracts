@@ -36,6 +36,9 @@ contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
     /// @notice stETH strategy on Eigenlayer
     IStrategy public constant STAKED_ETH_STRATEGY = IStrategy(0x93c4b944D05dfe6df7645A86cd2206016c51564D);
 
+    // withdrawals record
+    mapping(bytes32 => uint256) public withdrawals;
+
     /**
      * @dev Initialize the contract
      * @param _vault Vault address
@@ -54,7 +57,6 @@ contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
     // UltraLRT public vault;
     IStEth public stETH;
     uint256 public queuedShares;
-    bool public isDelegated;
 
     /**
      * @notice Modifier to allow function calls only from the vault or harvester
@@ -66,7 +68,7 @@ contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
         STRATEGY_MANAGER.depositIntoStrategy(address(STAKED_ETH_STRATEGY), address(asset), amount);
 
         // delegate to operator if not already
-        if (!isDelegated) {
+        if (DELEGATION_MANAGER.delegatedTo(address(this)) != currentOperator) {
             _delegateToOperator();
         }
     }
@@ -89,7 +91,8 @@ contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
             strategies[0] = address(STAKED_ETH_STRATEGY);
             params[0] = QueuedWithdrawalParams(strategies, shares, address(this));
 
-            DELEGATION_MANAGER.queueWithdrawals(params);
+            bytes32[] memory withdrawalRoots = DELEGATION_MANAGER.queueWithdrawals(params);
+            withdrawals[withdrawalRoots[0]] = shares[0];
         }
     }
 
@@ -98,27 +101,13 @@ contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
      * @param withdrawalInfo Withdrawal info
      */
     function completeWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo) external {
-        // complete withdrawal request
-        _processWithdrawalRequest(withdrawalInfo, true);
-    }
+        require(withdrawalInfo.length == 1, "ED: Invalid info length");
 
-    /**
-     * @notice Complete external withdrawal request
-     * @param withdrawalInfo Withdrawal info
-     * @dev process request invoked by eigenlayer or operator
-     */
-    function completeExternalWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo)
-        external
-        onlyVaultOrHarvester
-    {
-        // complete withdrawal request
-        _processWithdrawalRequest(withdrawalInfo, false);
-    }
+        bytes32 root = DELEGATION_MANAGER.calculateWithdrawalRoot(withdrawalInfo[0]);
 
-    /**
-     * @dev Process withdrawal request
-     */
-    function _processWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo, bool isQueuedShares) internal {
+        require(DELEGATION_MANAGER.pendingWithdrawals(root), "ED: Invalid withdrawal root");
+        require(withdrawals[root] > 0, "ED: Withdrawal not recorded");
+
         address[][] memory stEthAddresses = new address[][](1);
         address[] memory subAddresses = new address[](1);
         subAddresses[0] = address(stETH);
@@ -131,10 +120,35 @@ contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
         receiveAsTokens[0] = true;
         DELEGATION_MANAGER.completeQueuedWithdrawals(withdrawalInfo, stEthAddresses, timeIndex, receiveAsTokens);
 
-        if (isQueuedShares) {
-            queuedShares -= withdrawalInfo[0].shares[0];
+        queuedShares -= withdrawalInfo[0].shares[0];
+    }
+
+    /**
+     * @notice Record withdrawal request from External requests
+     * @param withdrawal Withdrawal info
+     */
+    function recordWithdrawalsRequest(WithdrawalInfo calldata withdrawal) external onlyHarvester {
+        require(
+            withdrawal.staker == address(this) && withdrawal.delegatedTo == currentOperator,
+            "ED: Invalid staker or operator"
+        );
+
+        bytes32 root = DELEGATION_MANAGER.calculateWithdrawalRoot(withdrawal);
+
+        require(DELEGATION_MANAGER.pendingWithdrawals(root), "ED: Invalid withdrawal root");
+
+        require(withdrawals[root] == 0, "ED: Withdrawal already recorded");
+
+        if (withdrawals[root] == 0) {
+            withdrawals[root] = withdrawal.shares[0];
+            queuedShares += withdrawal.shares[0];
         }
     }
+
+    /**
+     * @dev Process withdrawal request
+     */
+    function _processWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo, bool isQueuedShares) internal {}
 
     /**
      * @dev Withdraw stETH from delegator to vault
@@ -168,6 +182,5 @@ contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
         DELEGATION_MANAGER.delegateTo(
             currentOperator, params, 0x0000000000000000000000000000000000000000000000000000000000000000
         );
-        isDelegated = true;
     }
 }

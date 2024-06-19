@@ -16,6 +16,8 @@ import {DelegatorBeacon} from "src/vaults/restaking/DelegatorBeacon.sol";
 import {console2} from "forge-std/console2.sol";
 import {Vm} from "forge-std/Vm.sol";
 
+//TODO: Add tests for external withdrawal records and completion
+
 contract EigenDelegatorTest is TestPlus {
     uint256 init_assets = 10e18; // 10 stETH
     address vault;

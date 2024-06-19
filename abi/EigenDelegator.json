@@ -109,56 +109,6 @@
         "type": "tuple[]"
       }
     ],
-    "name": "completeExternalWithdrawalRequest",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "staker",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "delegatedTo",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "withdrawer",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "nonce",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint32",
-            "name": "startBlock",
-            "type": "uint32"
-          },
-          {
-            "internalType": "address[]",
-            "name": "strategies",
-            "type": "address[]"
-          },
-          {
-            "internalType": "uint256[]",
-            "name": "shares",
-            "type": "uint256[]"
-          }
-        ],
-        "internalType": "struct WithdrawalInfo[]",
-        "name": "withdrawalInfo",
-        "type": "tuple[]"
-      }
-    ],
     "name": "completeWithdrawalRequest",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -223,19 +173,6 @@
   },
   {
     "inputs": [],
-    "name": "isDelegated",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "queuedAssets",
     "outputs": [
       {
@@ -258,6 +195,56 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "staker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "delegatedTo",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "withdrawer",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "nonce",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint32",
+            "name": "startBlock",
+            "type": "uint32"
+          },
+          {
+            "internalType": "address[]",
+            "name": "strategies",
+            "type": "address[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "shares",
+            "type": "uint256[]"
+          }
+        ],
+        "internalType": "struct WithdrawalInfo",
+        "name": "withdrawal",
+        "type": "tuple"
+      }
+    ],
+    "name": "recordWithdrawalsRequest",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -322,6 +309,25 @@
   {
     "inputs": [],
     "name": "withdrawableAssets",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "withdrawals",
     "outputs": [
       {
         "internalType": "uint256",
