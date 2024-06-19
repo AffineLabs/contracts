@@ -28,11 +28,19 @@ import {
 contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
     using SafeTransferLib for ERC20;
 
-    IStrategyManager public constant STRATEGY_MANAGER = IStrategyManager(0x858646372CC42E1A627fcE94aa7A7033e7CF075A); // StrategyManager for Eigenlayer
+    /// @notice StrategyManager for Eigenlayer
+    IStrategyManager public constant STRATEGY_MANAGER = IStrategyManager(0x858646372CC42E1A627fcE94aa7A7033e7CF075A);
+    /// @notice DelegationManager for Eigenlayer
     IDelegationManager public constant DELEGATION_MANAGER =
-        IDelegationManager(0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A); // DelegationManager for Eigenlayer
-    IStrategy public constant STAKED_ETH_STRATEGY = IStrategy(0x93c4b944D05dfe6df7645A86cd2206016c51564D); // stETH strategy on Eigenlayer
+        IDelegationManager(0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A);
+    /// @notice stETH strategy on Eigenlayer
+    IStrategy public constant STAKED_ETH_STRATEGY = IStrategy(0x93c4b944D05dfe6df7645A86cd2206016c51564D);
 
+    /**
+     * @dev Initialize the contract
+     * @param _vault Vault address
+     * @param _operator Operator address
+     */
     function initialize(address _vault, address _operator) external initializer {
         vault = _vault;
         asset = ERC20(UltraLRT(vault).asset());
@@ -131,14 +139,22 @@ contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
     /**
      * @dev Withdraw stETH from delegator to vault
      */
-    function withdraw() external override onlyVaultOrHarvester {
+    function withdraw() external override onlyVault {
         stETH.transferShares(address(vault), stETH.sharesOf(address(this)));
     }
 
+    /**
+     * @notice Get withdrawable assets
+     * @return withdrawable assets
+     */
     function withdrawableAssets() public view override returns (uint256) {
         return STAKED_ETH_STRATEGY.userUnderlyingView(address(this));
     }
 
+    /**
+     * @notice Get queued assets
+     * @return queued assets
+     */
     function queuedAssets() public view override returns (uint256) {
         return STAKED_ETH_STRATEGY.sharesToUnderlyingView(queuedShares) + stETH.balanceOf(address(this));
     }

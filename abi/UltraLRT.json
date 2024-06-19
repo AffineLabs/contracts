@@ -1641,6 +1641,19 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_delegator",
+        "type": "address"
+      }
+    ],
+    "name": "withdrawFromDelegator",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "withdrawalFee",
     "outputs": [

@@ -488,6 +488,26 @@ contract UltraLRT is
     }
 
     /**
+     * @notice Collect liquid assets from the delegator
+     * @dev make sure to update the delegator assets
+     */
+
+    ///TODO check for price change on profit and loss
+    function withdrawFromDelegator(address _delegator) external onlyRole(HARVESTER) {
+        IDelegator delegator = IDelegator(_delegator);
+
+        uint256 prevTVL = delegatorMap[_delegator].balance;
+        delegator.withdraw();
+        uint256 newTVL = delegator.totalLockedValue();
+        uint256 TVLReduced = prevTVL > newTVL ? prevTVL - newTVL : 0;
+        delegatorMap[_delegator].balance = uint248(newTVL);
+        // update the delegator assets
+        if (TVLReduced > 0) {
+            delegatorAssets -= TVLReduced;
+        }
+    }
+
+    /**
      * @notice Get the delegator liquid assets
      * @param assets The amount of assets to get
      */

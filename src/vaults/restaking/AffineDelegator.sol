@@ -31,10 +31,27 @@ abstract contract AffineDelegator {
     }
 
     /**
+     * @notice Modifier to allow function calls only from the vault
+     */
+    modifier onlyVault() {
+        require(msg.sender == vault, "AffineDelegator: Not a vault");
+        _;
+    }
+
+    /**
+     * @notice Modifier to allow function calls only from the harvester
+     */
+    modifier onlyHarvester() {
+        require(IUltraLRT(vault).hasRole(IUltraLRT(vault).HARVESTER(), msg.sender), "AffineDelegator: Not a harvester");
+        _;
+    }
+
+    /**
      * @dev Delegate & restake stETH to operator
      */
-    function delegate(uint256 amount) external onlyVaultOrHarvester {
-        asset.transferFrom(address(vault), address(this), amount);
+    function delegate(uint256 amount) external {
+        // Transfer assets from vault to delegator
+        asset.transferFrom(msg.sender, address(this), amount);
         _delegate(amount);
     }
 
@@ -60,7 +77,7 @@ abstract contract AffineDelegator {
     /**
      * @dev Withdraw stETH from delegator to vault
      */
-    function withdraw() external virtual onlyVaultOrHarvester {
+    function withdraw() external virtual onlyVault {
         asset.safeTransfer(vault, asset.balanceOf(address(this)));
     }
 
