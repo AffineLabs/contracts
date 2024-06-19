@@ -70,4 +70,9 @@ abstract contract UltraLRTStorage {
         if (depositPaused != 0) revert ReStakingErrors.DepositPaused();
         _;
     }
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     */
+
+    uint256[100] private __gap;
 }

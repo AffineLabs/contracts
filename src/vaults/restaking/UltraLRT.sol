@@ -10,7 +10,7 @@ import {IERC20MetadataUpgradeable} from
     "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 // safeTransfer
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
@@ -40,7 +40,7 @@ contract UltraLRT is
     AccessControlUpgradeable,
     PausableUpgradeable,
     AffineGovernable,
-    ReentrancyGuard,
+    ReentrancyGuardUpgradeable,
     UltraLRTStorage
 {
     using SafeTransferLib for ERC20;
@@ -69,6 +69,7 @@ contract UltraLRT is
         // init control
         __AccessControl_init();
         __Pausable_init();
+        __ReentrancyGuard_init();
         // All roles use the default admin role
         // Governance has the admin role and all roles
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
