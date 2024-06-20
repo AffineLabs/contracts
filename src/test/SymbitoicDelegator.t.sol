@@ -64,4 +64,14 @@ contract TestSymbioticDelegator is TestPlus {
 
         assertEq(asset.balanceOf(address(vault)), initialAmount);
     }
+
+    function testInvalidCollateral() public {
+        DefaultCollateral tmpCol = new DefaultCollateral();
+        tmpCol.initialize(address(vault), type(uint128).max, governance);
+
+        SymbioticDelegator delImpl = new SymbioticDelegator();
+
+        vm.expectRevert();
+        delImpl.initialize(address(vault), address(tmpCol));
+    }
 }

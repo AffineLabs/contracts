@@ -6,6 +6,10 @@ import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol"
 import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
 import {SymbioticDelegator} from "src/vaults/restaking/SymbioticDelegator.sol";
 
+/**
+ * @title SymDelegatorFactory
+ * @dev SymDelegator Factory contract
+ */
 contract SymDelegatorFactory {
     address public vault;
 
@@ -13,7 +17,7 @@ contract SymDelegatorFactory {
      * @dev Modifier to allow function calls only from the vault
      */
     modifier onlyVault() {
-        require(msg.sender == vault, "DF: only vault");
+        require(msg.sender == vault, "SDF: only vault");
         _;
     }
 
@@ -28,12 +32,14 @@ contract SymDelegatorFactory {
     /**
      * @notice Create a new delegator
      * @param _collateral Collateral address
-     * @return Delegator address
+     * @return proxy Delegator address
      */
-    function createDelegator(address _collateral) external onlyVault returns (address) {
-        BeaconProxy bProxy = new BeaconProxy(
-            UltraLRT(vault).beacon(), abi.encodeWithSelector(SymbioticDelegator.initialize.selector, vault, _collateral)
+    function createDelegator(address _collateral) external onlyVault returns (address proxy) {
+        proxy = address(
+            new BeaconProxy(
+                UltraLRT(vault).beacon(),
+                abi.encodeWithSelector(SymbioticDelegator.initialize.selector, vault, _collateral)
+            )
         );
-        return address(bProxy);
     }
 }
