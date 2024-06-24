@@ -525,12 +525,13 @@ contract UltraLRT is
 
     /**
      * @notice Get the delegator liquid assets
-     * @param assets The amount of assets to get
+     * @param requiredVaultAssets The amount of liquid assets required in vault
+     * @dev Each time this will check the vault assets, if it meets required assets then it will stop
      */
-    function _getDelegatorLiquidAssets(uint256 assets) internal {
+    function _getDelegatorLiquidAssets(uint256 requiredVaultAssets) internal {
         uint256 currentDelegatorAssets = delegatorAssets;
 
-        for (uint8 i = 0; i < delegatorCount && assets > 0; i++) {
+        for (uint8 i = 0; i < delegatorCount && requiredVaultAssets > 0; i++) {
             IDelegator delegator = delegatorQueue[i];
             // check for zero assets
             if (IERC20MetadataUpgradeable(asset()).balanceOf(address(delegator)) < 2) {
@@ -543,7 +544,7 @@ contract UltraLRT is
             delegatorMap[address(delegator)].balance = uint248(newTVL);
             currentDelegatorAssets -= (prevTVL > newTVL ? prevTVL - newTVL : 0);
 
-            if ((vaultAssets() + ST_ETH_TRANSFER_BUFFER) < assets) {
+            if ((vaultAssets() + ST_ETH_TRANSFER_BUFFER) < requiredVaultAssets) {
                 break;
             }
         }
