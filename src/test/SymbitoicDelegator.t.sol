@@ -44,9 +44,14 @@ contract TestSymbioticDelegator is TestPlus {
     function testDeposit() public {
         _getAsset(address(asset), address(vault), initialAmount);
 
-        vm.startPrank(address(vault));
+        vm.prank(address(vault));
         asset.approve(address(delegator), initialAmount);
 
+        // revert
+        vm.expectRevert();
+        delegator.delegate(initialAmount);
+
+        vm.prank(address(vault));
         delegator.delegate(initialAmount);
 
         assertEq(delegator.totalLockedValue(), initialAmount);
@@ -56,10 +61,19 @@ contract TestSymbioticDelegator is TestPlus {
 
     function testWithdrawal() public {
         testDeposit();
+        // withdraw without harvester
+        vm.expectRevert();
+        delegator.requestWithdrawal(initialAmount);
 
+        vm.prank(address(vault));
         delegator.requestWithdrawal(initialAmount);
 
         assertEq(delegator.queuedAssets(), initialAmount);
+        // not a vault
+        vm.expectRevert();
+        delegator.withdraw();
+
+        vm.prank(address(vault));
         delegator.withdraw();
 
         assertEq(asset.balanceOf(address(vault)), initialAmount);

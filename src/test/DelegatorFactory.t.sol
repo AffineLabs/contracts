@@ -43,6 +43,15 @@ contract TestDelegatorFactory is TestPlus {
         vault.initialize(governance, address(asset), address(beacon), "uLRT", "uLRT");
     }
 
+    function testFactoryConstructor() public {
+        // deploy DelegatorFactory
+        DelegatorFactory df = new DelegatorFactory(address(vault));
+        assertTrue(df.vault() == address(vault));
+
+        SymDelegatorFactory sdf = new SymDelegatorFactory(address(vault));
+        assertTrue(sdf.vault() == address(vault));
+    }
+
     function testEigenDelegatorFactory() public {
         _initWithEigenDelegator();
         // set
