@@ -419,6 +419,10 @@ contract UltraLRTTest is TestPlus {
         vm.prank(governance);
         vault.endEpoch();
 
+        // anyone can call end epoch but should be after 24 hours
+        vm.expectRevert();
+        vault.endEpoch();
+
         vm.prank(governance);
         vault.liquidationRequest(assets);
 

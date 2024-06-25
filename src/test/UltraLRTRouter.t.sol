@@ -267,6 +267,10 @@ contract TestUltraLRTRouter is TestPlus {
         uint256 assetsToDeposit = 1e18;
 
         vm.prank(user1);
+        vm.expectRevert(); // zero amount
+        router.depositNative{value: 0}(address(vault), user1);
+
+        vm.prank(user1);
         router.depositNative{value: assetsToDeposit}(address(vault), user1);
         // check user balance
         assertApproxEqAbs(user1.balance, beginAmount - assetsToDeposit, 10);
