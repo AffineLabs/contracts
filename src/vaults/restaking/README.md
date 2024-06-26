@@ -62,4 +62,5 @@ This codebase implements a liquid staking protocol that allows users to stake th
 1. To learn how to compile and run this code base read this [repo home documentation](../../../README.md)
 2. Auto-generated [technical documentations](./RestakingTechnicalDocs.md)
 3. [General user facing documentation](https://affinedefi.gitbook.io/affine-ultraeth)
-4. 
+
+Report any issues or bug on [Affine discord](https://discord.com/invite/RvSFFfUdvX)
