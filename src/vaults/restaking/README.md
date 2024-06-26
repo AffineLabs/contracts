@@ -57,3 +57,9 @@ The [UltraLRTRouter](./RestakingTechnicalDocs.md#1249%2C4-1249%2C4) contract fac
 - **IDelegatorFactory**: Interface for the delegator factory contract.
 
 This codebase implements a liquid staking protocol that allows users to stake their Ethereum and receive liquid shares in return. The protocol leverages various liquid staking protocols like Eigenlayer and Symbiotic to delegate and restake the staked assets. It provides a unified interface for users to deposit, withdraw, and manage their liquid staking positions.
+
+## Additional Resources
+1. To learn how to compile and run this code base read this [repo home documentation](../../../README.md)
+2. Auto-generated [technical documentations](./RestakingTechnicalDocs.md)
+3. [General user facing documentation](https://affinedefi.gitbook.io/affine-ultraeth)
+4. 
