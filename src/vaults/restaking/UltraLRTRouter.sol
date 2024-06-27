@@ -33,6 +33,8 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
     IWSTETH public wStEth;
     IPermit2 public permit2;
 
+    // @dev add gap for upgradeability
+    uint256[50] private __gap;
     /**
      * @dev Initialize the contract
      * @param _governance Governance address
@@ -41,6 +43,7 @@ contract UltraLRTRouter is UUPSUpgradeable, PausableUpgradeable, AffineGovernabl
      * @param _wStEth wstETH address
      * @param _permit2 Permit2 address
      */
+
     function initialize(address _governance, address _weth, address _stEth, address _wStEth, address _permit2)
         external
         initializer

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.16;
 
-/* solhint-disable reason-string, no-console */
+/* solhint-disable reason-string, no-console, no-unused-vars */
 
 import {Script, console2} from "forge-std/Script.sol";
 
@@ -183,6 +183,156 @@ contract Deploy is Script {
         bytes memory initData = abi.encodeCall(UltraLRTRouter.initialize, (deployer, wEth, hStEth, hWStEth, permit2));
 
         console2.logBytes(initData);
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        UltraLRTRouter router = UltraLRTRouter(payable(address(proxy)));
+        console2.log("router Add %s", address(router));
+    }
+
+    /////////////////////////////////////////////////////////////////
+    ///                          Mainnet                          ///
+    ///                        EigenLayer                         ///
+    /////////////////////////////////////////////////////////////////
+
+    function runMainnetEigenBeacon() public {
+        address deployer = _start();
+        address governance = 0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e;
+
+        // delegator implementation
+        EigenDelegator delegatorImpl = new EigenDelegator();
+        // beacon
+        DelegatorBeacon beacon = new DelegatorBeacon(address(delegatorImpl), governance);
+
+        console2.log("Main-net eigen delegator beacon Add %s", address(beacon));
+    }
+
+    function runMainnetEigenVault() public {
+        address deployer = _start();
+        // eth time lock contract
+        address governance = 0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e;
+        // staked eth token
+        address stEth = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84; // mainnet staked eth
+
+        address beacon = 0x4EF63302E9156cFE545dac761AB8D84B786A985F; // mainnet delegator beacon
+
+        UltraLRT vaultImpl = new UltraLRT();
+
+        bytes memory initData = abi.encodeCall(
+            UltraLRT.initialize, (governance, stEth, address(beacon), "Liquid ReStaked stEth", "ultraETH")
+        );
+
+        console2.logBytes(initData);
+
+        ERC1967Proxy proxy = new ERC1967Proxy(address(vaultImpl), initData);
+        UltraLRT vault = UltraLRT(address(proxy));
+
+        console2.log("vault Add %s", address(vault));
+    }
+
+    function runMainnetEigenDelegatorFactory() public {
+        _start();
+        UltraLRT vault = UltraLRT(0x5cfD50De188a36d2089927c5a14E143DC65Af780);
+
+        // delegator factory
+        DelegatorFactory dFactory = new DelegatorFactory(address(vault));
+        // vault.setDelegatorFactory(address(dFactory)); // need to set this by governance
+
+        console2.log("Factory add %s", address(dFactory));
+    }
+
+    function runMainnetEigenEscrow() public {
+        _start();
+        UltraLRT vault = UltraLRT(0x5cfD50De188a36d2089927c5a14E143DC65Af780);
+
+        // add withdrawal escrow
+        WithdrawalEscrowV2 escrow = new WithdrawalEscrowV2(vault);
+        // vault.setWithdrawalEscrow(escrow); // need to set this by governance
+
+        console2.log("escrow address %s", address(escrow));
+    }
+
+    /////////////////////////////////////////////////////////////////
+    ///                          Mainnet                          ///
+    ///                       SymbioticLayer                      ///
+    /////////////////////////////////////////////////////////////////
+
+    function runMainnetSymBeacon() public {
+        address deployer = _start();
+        address governance = 0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e;
+
+        // delegator implementation
+        SymbioticDelegator delegatorImpl = new SymbioticDelegator();
+        // beacon
+        DelegatorBeacon beacon = new DelegatorBeacon(address(delegatorImpl), governance);
+
+        console2.log("Main-net Symbiotic delegator beacon Add %s", address(beacon));
+    }
+
+    function runMainnetSymbioticVault() public {
+        address deployer = _start();
+        // eth time lock contract
+        address governance = 0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e;
+        // staked eth token
+        address wstEth = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
+
+        address beacon = 0x0162B837686DA0c75D323f2071da670b232cBfcc; // mainnet beacon
+
+        UltraLRT vaultImpl = new UltraLRT();
+
+        bytes memory initData = abi.encodeCall(
+            UltraLRT.initialize, (governance, wstEth, address(beacon), "Liquid ReStaked wstEth", "ultraETHs")
+        );
+
+        console2.logBytes(initData);
+
+        ERC1967Proxy proxy = new ERC1967Proxy(address(vaultImpl), initData);
+        UltraLRT vault = UltraLRT(address(proxy));
+
+        console2.log("vault Add %s", address(vault));
+    }
+
+    function runMainnetSymbioticDelegatorFactory() public {
+        _start();
+        UltraLRT vault = UltraLRT(0x33795E56250d50065a20E923707fD7396cd938C9); // mainnet vault
+
+        // delegator factory
+        SymDelegatorFactory dFactory = new SymDelegatorFactory(address(vault));
+        // vault.setDelegatorFactory(address(dFactory)); // need to set this by governance
+
+        console2.log("Factory add %s", address(dFactory));
+    }
+
+    function runMainnetSymbioticEscrow() public {
+        _start();
+        UltraLRT vault = UltraLRT(0x33795E56250d50065a20E923707fD7396cd938C9); // mainnet vault
+
+        // add withdrawal escrow
+        WithdrawalEscrowV2 escrow = new WithdrawalEscrowV2(vault);
+        // vault.setWithdrawalEscrow(escrow); // need to set this by governance
+
+        console2.log("escrow address %s", address(escrow));
+    }
+
+    //////////////////////////////////////////////////////////
+    ///                     Mainnet                        ///
+    ///                   UltraLRTRouter                   ///
+    //////////////////////////////////////////////////////////
+
+    function runMainetUltraLRTRouter() public {
+        address deployer = _start();
+
+        address governance = 0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e;
+        address StEth = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
+        address WStEth = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
+        address wEth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
+        address permit2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
+
+        UltraLRTRouter impl = new UltraLRTRouter();
+
+        bytes memory initData = abi.encodeCall(UltraLRTRouter.initialize, (governance, wEth, StEth, WStEth, permit2));
+
+        console2.logBytes(initData);
+
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
         UltraLRTRouter router = UltraLRTRouter(payable(address(proxy)));
         console2.log("router Add %s", address(router));
