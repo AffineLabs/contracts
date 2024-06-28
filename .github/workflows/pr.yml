@@ -38,7 +38,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly-ca67d15f4abd46394b324c50e21e66f306a1162d
+          profile: nightly-c4a984fbf2c48b793c8cd53af84f56009dd1070c
 
       - name: Install yarn dependencies, and compile contracts
         run: yarn --frozen-lockfile && yarn build
