@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-import {ReentrancyGuard} from "@openzeppelin/contracts/Security/ReentrancyGuard.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract DefaultCollateral is ERC20Upgradeable, ReentrancyGuard {
+contract DefaultCollateral is ERC20Upgradeable {
     using SafeERC20 for IERC20;
 
     uint8 private DECIMALS;
@@ -97,7 +96,7 @@ contract DefaultCollateral is ERC20Upgradeable, ReentrancyGuard {
     /**
      * @dev IDefaultCollateral
      */
-    function deposit(address recipient, uint256 amount) public nonReentrant returns (uint256) {
+    function deposit(address recipient, uint256 amount) public returns (uint256) {
         uint256 balanceBefore = IERC20(asset).balanceOf(address(this));
         IERC20(asset).transferFrom(msg.sender, address(this), amount);
         amount = IERC20(asset).balanceOf(address(this)) - balanceBefore;
