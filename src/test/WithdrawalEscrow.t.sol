@@ -25,6 +25,11 @@ contract WithdrawalEscrowTest is TestPlus {
 
     uint256 initialWithdrawAmount;
 
+    function _getEscrow(address _vault) internal virtual returns (address) {
+        WithdrawalEscrow _escrow = new WithdrawalEscrow(StrategyVault(_vault));
+        return address(_escrow);
+    }
+
     function setUp() public {
         initialAssets = 100e6;
         asset = new MockERC20("Mock", "MT", 6);
@@ -36,7 +41,7 @@ contract WithdrawalEscrowTest is TestPlus {
         vault.setTvlCap(type(uint256).max);
         vault.grantRole(vault.HARVESTER(), address(this));
         vm.stopPrank();
-        withdrawalEscrow = new WithdrawalEscrow(vault);
+        withdrawalEscrow = WithdrawalEscrow(_getEscrow(address(vault)));
 
         // assign assets to alice & bob
         asset.mint(alice, initialAssets);

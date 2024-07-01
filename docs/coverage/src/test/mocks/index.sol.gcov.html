@@ -10,91 +10,115 @@
 
 <body>
 
-  <table width="100%" border=0 cellspacing=0 cellpadding=0>
-    <tr><td class="title">LCOV - code coverage report</td></tr>
-    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
 
-    <tr>
-      <td width="100%">
-        <table cellpadding=1 border=0 width="100%">
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
           <tr>
             <td width="10%" class="headerItem">Current view:</td>
-            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">src/test/mocks</a> - index.sol<span style="font-size: 80%;"> (source / <a href="index.sol.func-sort-c.html">functions</a>)</span></td>
+            <td width="10%" class="headerValue"><a href="../../../index.html" title="Click to go to top-level">top level</a> - <a href="index.html" title="Click to go to directory src/test/mocks">src/test/mocks</a> - index.sol<span style="font-size: 80%;"> (source / <a href="index.sol.func-c.html" title="Click to go to function table">functions</a>)</span></td>
             <td width="5%"></td>
-            <td width="15%"></td>
-            <td width="10%" class="headerCovTableHead">Hit</td>
-            <td width="10%" class="headerCovTableHead">Total</td>
-            <td width="15%" class="headerCovTableHead">Coverage</td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
           </tr>
           <tr>
             <td class="headerItem">Test:</td>
             <td class="headerValue">lcov.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntry">3</td>
-            <td class="headerCovTableEntry">3</td>
-            <td class="headerCovTableEntryHi">100.0 %</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">6</td>
+            <td class="headerCovTableEntry">6</td>
           </tr>
           <tr>
-            <td class="headerItem">Date:</td>
-            <td class="headerValue">2022-12-15 13:03:49</td>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2024-06-26 09:26:24</td>
             <td></td>
             <td class="headerItem">Functions:</td>
-            <td class="headerCovTableEntry">3</td>
-            <td class="headerCovTableEntry">3</td>
-            <td class="headerCovTableEntryHi">100.0 %</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">6</td>
+            <td class="headerCovTableEntry">6</td>
           </tr>
-          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
-        </table>
-      </td>
-    </tr>
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td class="headerItem">Branches:</td>
+            <td class="headerCovTableEntryHi">-</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
 
-    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
-  </table>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
 
-  <table cellpadding=0 cellspacing=0 border=0>
-    <tr>
-      <td><br></td>
-    </tr>
-    <tr>
-      <td>
-<pre class="sourceHeading">          Line data    Source code</pre>
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">             Branch data     Line data    Source code</pre>
 <pre class="source">
-<a name="1"><span class="lineNum">       1 </span>            : // SPDX-License-Identifier: BUSL-1.1</a>
-<a name="2"><span class="lineNum">       2 </span>            : pragma solidity =0.8.16;</a>
-<a name="3"><span class="lineNum">       3 </span>            : </a>
-<a name="4"><span class="lineNum">       4 </span>            : import {L1Vault} from &quot;../../ethereum/L1Vault.sol&quot;;</a>
-<a name="5"><span class="lineNum">       5 </span>            : import {L2Vault} from &quot;../../polygon/L2Vault.sol&quot;;</a>
-<a name="6"><span class="lineNum">       6 </span>            : import {BridgeEscrow} from &quot;../../BridgeEscrow.sol&quot;;</a>
-<a name="7"><span class="lineNum">       7 </span>            : import &quot;../../polygon/TwoAssetBasket.sol&quot;;</a>
-<a name="8"><span class="lineNum">       8 </span>            : </a>
-<a name="9"><span class="lineNum">       9 </span>            : // Mocks needed to update variables that are in packed slots (forge-std cannot write to packed slots yet)</a>
-<a name="10"><span class="lineNum">      10 </span>            : contract MockL2Vault is L2Vault {</a>
-<a name="11"><span class="lineNum">      11 </span>            :     function setCanTransferToL1(bool _can) external {</a>
-<a name="12"><span class="lineNum">      12 </span><span class="lineCov">          5 :         canTransferToL1 = _can;</span></a>
-<a name="13"><span class="lineNum">      13 </span>            :     }</a>
-<a name="14"><span class="lineNum">      14 </span>            : </a>
-<a name="15"><span class="lineNum">      15 </span>            :     function setCanRequestFromL1(bool _can) external {</a>
-<a name="16"><span class="lineNum">      16 </span><span class="lineCov">          4 :         canRequestFromL1 = _can;</span></a>
-<a name="17"><span class="lineNum">      17 </span>            :     }</a>
-<a name="18"><span class="lineNum">      18 </span>            : </a>
-<a name="19"><span class="lineNum">      19 </span>            :     function setMockRebalanceDelta(uint256 _rebalanceDelta) external {</a>
-<a name="20"><span class="lineNum">      20 </span><span class="lineCov">          2 :         rebalanceDelta = uint224(_rebalanceDelta);</span></a>
-<a name="21"><span class="lineNum">      21 </span>            :     }</a>
-<a name="22"><span class="lineNum">      22 </span>            : }</a>
-<a name="23"><span class="lineNum">      23 </span>            : </a>
-<a name="24"><span class="lineNum">      24 </span>            : contract MockL1Vault is L1Vault {}</a>
-</pre>
-      </td>
-    </tr>
-  </table>
-  <br>
+<span id="L1"><span class="lineNum">       1</span>                 :             : // SPDX-License-Identifier: BUSL-1.1</span>
+<span id="L2"><span class="lineNum">       2</span>                 :             : pragma solidity =0.8.16;</span>
+<span id="L3"><span class="lineNum">       3</span>                 :             : </span>
+<span id="L4"><span class="lineNum">       4</span>                 :             : import {L1Vault} from &quot;src/vaults/cross-chain-vault/audited/L1Vault.sol&quot;;</span>
+<span id="L5"><span class="lineNum">       5</span>                 :             : import {L2Vault} from &quot;src/vaults/cross-chain-vault/audited/L2Vault.sol&quot;;</span>
+<span id="L6"><span class="lineNum">       6</span>                 :             : import {L2VaultV2} from &quot;src/vaults/cross-chain-vault/L2VaultV2.sol&quot;;</span>
+<span id="L7"><span class="lineNum">       7</span>                 :             : import {BridgeEscrow} from &quot;src/vaults/cross-chain-vault/escrow/audited/BridgeEscrow.sol&quot;;</span>
+<span id="L8"><span class="lineNum">       8</span>                 :             : import &quot;src/vaults/TwoAssetBasket.sol&quot;;</span>
+<span id="L9"><span class="lineNum">       9</span>                 :             : </span>
+<span id="L10"><span class="lineNum">      10</span>                 :             : // Mocks needed to update variables that are in packed slots (forge-std cannot write to packed slots yet)</span>
+<span id="L11"><span class="lineNum">      11</span>                 :             : contract MockL2Vault is L2Vault {</span>
+<span id="L12"><span class="lineNum">      12</span>                 :             :     function setCanTransferToL1(bool _can) external {</span>
+<span id="L13"><span class="lineNum">      13</span>                 :<span class="tlaGNC tlaBgGNC">          10 :         canTransferToL1 = _can;</span></span>
+<span id="L14"><span class="lineNum">      14</span>                 :             :     }</span>
+<span id="L15"><span class="lineNum">      15</span>                 :             : </span>
+<span id="L16"><span class="lineNum">      16</span>                 :             :     function setCanRequestFromL1(bool _can) external {</span>
+<span id="L17"><span class="lineNum">      17</span>                 :<span class="tlaGNC">           8 :         canRequestFromL1 = _can;</span></span>
+<span id="L18"><span class="lineNum">      18</span>                 :             :     }</span>
+<span id="L19"><span class="lineNum">      19</span>                 :             : </span>
+<span id="L20"><span class="lineNum">      20</span>                 :             :     function setMockRebalanceDelta(uint256 _rebalanceDelta) external {</span>
+<span id="L21"><span class="lineNum">      21</span>                 :<span class="tlaGNC">          62 :         rebalanceDelta = uint224(_rebalanceDelta);</span></span>
+<span id="L22"><span class="lineNum">      22</span>                 :             :     }</span>
+<span id="L23"><span class="lineNum">      23</span>                 :             : }</span>
+<span id="L24"><span class="lineNum">      24</span>                 :             : </span>
+<span id="L25"><span class="lineNum">      25</span>                 :             : contract MockL2VaultV2 is L2VaultV2 {</span>
+<span id="L26"><span class="lineNum">      26</span>                 :             :     function setCanTransferToL1(bool _can) external {</span>
+<span id="L27"><span class="lineNum">      27</span>                 :<span class="tlaGNC">          10 :         canTransferToL1 = _can;</span></span>
+<span id="L28"><span class="lineNum">      28</span>                 :             :     }</span>
+<span id="L29"><span class="lineNum">      29</span>                 :             : </span>
+<span id="L30"><span class="lineNum">      30</span>                 :             :     function setCanRequestFromL1(bool _can) external {</span>
+<span id="L31"><span class="lineNum">      31</span>                 :<span class="tlaGNC">           8 :         canRequestFromL1 = _can;</span></span>
+<span id="L32"><span class="lineNum">      32</span>                 :             :     }</span>
+<span id="L33"><span class="lineNum">      33</span>                 :             : </span>
+<span id="L34"><span class="lineNum">      34</span>                 :             :     function setMockRebalanceDelta(uint256 _rebalanceDelta) external {</span>
+<span id="L35"><span class="lineNum">      35</span>                 :<span class="tlaGNC">          64 :         rebalanceDelta = uint224(_rebalanceDelta);</span></span>
+<span id="L36"><span class="lineNum">      36</span>                 :             :     }</span>
+<span id="L37"><span class="lineNum">      37</span>                 :             : }</span>
+<span id="L38"><span class="lineNum">      38</span>                 :             : </span>
+<span id="L39"><span class="lineNum">      39</span>                 :             : contract MockL1Vault is L1Vault {}</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
 
-  <table width="100%" border=0 cellspacing=0 cellpadding=0>
-    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
-    <tr><td class="versionInfo">Generated by: <a href="https://github.com/linux-test-project/lcov" target="_parent">LCOV version 1.16</a></td></tr>
-  </table>
-  <br>
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.1-1</a></td></tr>
+          </table>
+          <br>
 
 </body>
 </html>

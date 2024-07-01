@@ -3,6 +3,7 @@ dist
 yarn-error.log
 .env
 
+
 #Hardhat files
 artifacts
 typechain
@@ -15,6 +16,7 @@ cache
 lcov.info
 broadcast
 *.salt
+coverage/
 
 # Address Book
 addressbook.json

@@ -419,7 +419,7 @@ contract L2VaultTest is TestPlus {
         assertEq(asset.balanceOf(vault.governance()), (amountAsset * 50) / 10_000);
     }
 
-    /// @notice Test that goveranance can modify management fees.
+    /// @notice Test that governance can modify management fees.
     function testCanSetManagementAndWithdrawalFees() public {
         vm.startPrank(governance);
         vault.setManagementFee(300);
@@ -434,7 +434,7 @@ contract L2VaultTest is TestPlus {
         vault.setWithdrawalFee(10);
     }
 
-    /// @notice Test that goveranance can pause the vault.
+    /// @notice Test that governance can pause the vault.
     function testVaultPause() public {
         vm.startPrank(governance);
         vault.pause();
