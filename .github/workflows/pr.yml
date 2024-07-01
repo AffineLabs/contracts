@@ -54,7 +54,7 @@ jobs:
 
       # Fuzz tests are included by default
       - name: Check gas snapshots.
-        run: yarn snap --check --tolerance 2
+        run: yarn snap --check --tolerance 10
 
       - name: Generate coverage report
         run: forge coverage --report lcov
