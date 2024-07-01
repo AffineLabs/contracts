@@ -16,6 +16,11 @@
   },
   {
     "inputs": [],
+    "name": "DepositPaused",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "ExceedsDelegatorWithdrawableAssets",
     "type": "error"
   },
@@ -61,12 +66,32 @@
   },
   {
     "inputs": [],
+    "name": "InvalidDelegatorFactory",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidEscrow",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidEscrowVault",
     "type": "error"
   },
   {
     "inputs": [],
     "name": "InvalidWithdrawalAmount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MaxUnresolvedEpochReached",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NoResolvingEpoch",
     "type": "error"
   },
   {
@@ -87,6 +112,11 @@
   {
     "inputs": [],
     "name": "RequireHarvest",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "RunningEpoch",
     "type": "error"
   },
   {

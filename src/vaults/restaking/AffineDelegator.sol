@@ -1,148 +1,108 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
-import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
-import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
-import {IStEth} from "src/interfaces/lido/IStEth.sol";
-
-import {
-    WithdrawalInfo,
-    QueuedWithdrawalParams,
-    ApproverSignatureAndExpiryParams,
-    IDelegationManager,
-    IStrategyManager,
-    IStrategy
-} from "src/interfaces/eigenlayer/eigen.sol";
+interface IUltraLRT {
+    function hasRole(bytes32 role, address user) external view returns (bool);
+    function HARVESTER() external view returns (bytes32);
+}
 
 /**
  * @title AffineDelegator
  * @dev Delegator contract for stETH on Eigenlayer
  */
-contract AffineDelegator is Initializable, AffineGovernable {
+abstract contract AffineDelegator {
     using SafeTransferLib for ERC20;
 
-    function initialize(address _vault, address _operator) external initializer {
-        vault = UltraLRT(_vault);
-        governance = vault.governance();
-        currentOperator = _operator; // P2P operator
-        stETH = IStEth(vault.asset());
-        stETH.approve(address(strategyManager), type(uint256).max);
-    }
+    address public vault;
+    ERC20 public asset;
+    /**
+     * @notice Modifier to allow function calls only from the vault or harvester
+     */
 
-    address public currentOperator;
-    IStrategyManager public constant strategyManager = IStrategyManager(0x858646372CC42E1A627fcE94aa7A7033e7CF075A); // StrategyManager for Eigenlayer
-    IDelegationManager public constant delegationManager =
-        IDelegationManager(0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A); // DelegationManager for Eigenlayer
-    IStrategy public constant stEthStrategy = IStrategy(0x93c4b944D05dfe6df7645A86cd2206016c51564D); // stETH strategy on Eigenlayer
-    UltraLRT public vault;
-    IStEth public stETH;
-    uint256 public queuedShares;
-    bool public isDelegated;
-
-    modifier onlyHarvester() {
-        require(vault.hasRole(vault.HARVESTER(), msg.sender), "AffineDelegator: Not a harvester");
-        _;
-    }
-
-    modifier onlyVault() {
-        require(msg.sender == address(vault), "AffineDelegator: Not vault");
+    modifier onlyVaultOrHarvester() {
+        require(
+            IUltraLRT(vault).hasRole(IUltraLRT(vault).HARVESTER(), msg.sender) || msg.sender == vault,
+            "AffineDelegator: Not a vault or harvester"
+        );
         _;
     }
 
     /**
-     * @dev Delegate & restake stETH to operator on Eigenlayer
+     * @notice Modifier to allow function calls only from the vault
      */
-    function delegate(uint256 amount) external onlyVault {
-        uint256 balance = stETH.balanceOf(address(this));
-        // take stETH from vault
-        stETH.transferFrom(address(vault), address(this), amount);
-        uint256 transferred = stETH.balanceOf(address(this)) - balance;
-        // deposit into strategy
-        strategyManager.depositIntoStrategy(address(stEthStrategy), address(stETH), transferred);
+    modifier onlyVault() {
+        require(msg.sender == vault, "AffineDelegator: Not a vault");
+        _;
+    }
 
-        // delegate to operator if not already
-        if (!isDelegated) {
-            _delegateToOperator();
-        }
+    /**
+     * @notice Modifier to allow function calls only from the harvester
+     */
+    modifier onlyHarvester() {
+        require(IUltraLRT(vault).hasRole(IUltraLRT(vault).HARVESTER(), msg.sender), "AffineDelegator: Not a harvester");
+        _;
+    }
+
+    /**
+     * @dev Delegate & restake stETH to operator
+     */
+    function delegate(uint256 amount) external {
+        // Transfer assets from vault to delegator
+        asset.safeTransferFrom(msg.sender, address(this), amount);
+        _delegate(amount);
+    }
+
+    /**
+     * @dev Delegate stETH to operator
+     */
+    function _delegate(uint256 amount) internal virtual {}
+
+    /**
+     * @notice Request withdrawal from eigenlayer
+     * @param assets Amount to withdraw
+     * @dev Request withdrawal from eigenlayer
+     */
+    function requestWithdrawal(uint256 assets) external onlyVaultOrHarvester {
+        _requestWithdrawal(assets);
     }
 
     /**
      * @dev Request withdrawal from eigenlayer
      */
-    function requestWithdrawal(uint256 assets) external onlyVault {
-        // request withdrawal
-        QueuedWithdrawalParams[] memory params = new QueuedWithdrawalParams[](1);
-
-        uint256[] memory shares = new uint256[](1);
-        shares[0] = Math.min(stEthStrategy.underlyingToShares(assets), stEthStrategy.shares(address(this)));
-
-        // in any case if converted shares is zero will revert the ops.
-        if (shares[0] > 0) {
-            queuedShares += shares[0];
-            address[] memory strategies = new address[](1);
-            strategies[0] = address(stEthStrategy);
-            params[0] = QueuedWithdrawalParams(strategies, shares, address(this));
-
-            delegationManager.queueWithdrawals(params);
-        }
-    }
-
-    /**
-     * @dev Complete withdrawal request from eigenlayer
-     */
-    function completeWithdrawalRequest(WithdrawalInfo[] calldata withdrawalInfo) external onlyHarvester {
-        // complete withdrawal request
-        address[][] memory stEthAddresses = new address[][](1);
-        address[] memory subAddresses = new address[](1);
-        subAddresses[0] = address(stETH);
-        stEthAddresses[0] = subAddresses;
-
-        uint256[] memory timeIndex = new uint256[](1);
-        timeIndex[0] = 0;
-
-        bool[] memory receiveAsTokens = new bool[](1);
-        receiveAsTokens[0] = true;
-        delegationManager.completeQueuedWithdrawals(withdrawalInfo, stEthAddresses, timeIndex, receiveAsTokens);
-
-        queuedShares -= withdrawalInfo[0].shares[0];
-    }
+    function _requestWithdrawal(uint256 assets) internal virtual {}
 
     /**
      * @dev Withdraw stETH from delegator to vault
      */
-    function withdraw() external onlyVault {
-        stETH.transferShares(address(vault), stETH.sharesOf(address(this)));
-    }
-
-    // view functions
-    function totalLockedValue() public view returns (uint256) {
-        return withdrawableAssets() + queuedAssets();
-    }
-
-    function withdrawableAssets() public view returns (uint256) {
-        return stEthStrategy.userUnderlyingView(address(this));
-    }
-
-    function queuedAssets() public view returns (uint256) {
-        return stEthStrategy.sharesToUnderlyingView(queuedShares) + stETH.balanceOf(address(this));
+    function withdraw() external virtual onlyVault {
+        asset.safeTransfer(vault, asset.balanceOf(address(this)));
     }
 
     /**
-     * @dev Delegate to operator
+     * @notice Get total locked value
+     * @return Total locked value
      */
-    function _delegateToOperator() internal {
-        // delegate to operator
-        ApproverSignatureAndExpiryParams memory params = ApproverSignatureAndExpiryParams("", 0);
-        delegationManager.delegateTo(
-            currentOperator, params, 0x0000000000000000000000000000000000000000000000000000000000000000
-        );
-        isDelegated = true;
+    function totalLockedValue() public view virtual returns (uint256) {
+        return withdrawableAssets() + queuedAssets();
     }
+
+    /**
+     * @notice Get withdrawable assets
+     * @return Amount of withdrawable assets
+     */
+    function withdrawableAssets() public view virtual returns (uint256) {}
+
+    /**
+     * @notice Get queued assets
+     * @return Amount of queued assets
+     */
+    function queuedAssets() public view virtual returns (uint256) {}
+
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     */
+    uint256[50] private __gap;
 }

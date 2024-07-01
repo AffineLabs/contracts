@@ -64,4 +64,13 @@ contract Deploy is Script, Base {
         Router router = new Router("affine-router-v2", IWETH(weth));
         console2.log("router weth: %s", address(router.weth()));
     }
+
+    function routerHoleSky() external {
+        address weth = 0x94373a4919B3240D86eA41593D5eBa789FEF3848;
+        console2.log("weth: %s", weth);
+
+        _start();
+        Router router = new Router("affine-router-v2", IWETH(weth));
+        console2.log("router weth: %s", address(router.weth()));
+    }
 }

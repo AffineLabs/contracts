@@ -2,7 +2,6 @@
 pragma solidity =0.8.16;
 
 // upgrading contracts
-import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
@@ -11,7 +10,11 @@ import {IERC20MetadataUpgradeable} from
     "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+
+// safeTransfer
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
 // storage contract
 import {UltraLRTStorage} from "src/vaults/restaking/UltraLRTStorage.sol";
@@ -20,29 +23,40 @@ import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
 // governance contract
 import {AffineGovernable} from "src/utils/audited/AffineGovernable.sol";
 
-import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
-
 import {ReStakingErrors} from "src/libs/ReStakingErrors.sol";
 import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
-import {AffineDelegator} from "src/vaults/restaking/AffineDelegator.sol";
-import {DelegatorBeacon} from "src/vaults/restaking/DelegatorBeacon.sol";
+import {IDelegatorFactory} from "src/vaults/restaking/DelegatorFactory.sol";
+import {IDelegatorBeacon} from "src/vaults/restaking/DelegatorBeacon.sol";
 
+/**
+ * @title UltraLRT
+ * @notice UltraLRT is a liquid staking vault that allows users to deposit staked assets and receive shares in return.
+ * The shares can be redeemed for the underlying assets at any time. Vault will delegate the assets to the delegators and harvest the profit.
+ * The vault will also distribute the profits to the holders.
+ */
 contract UltraLRT is
     ERC4626Upgradeable,
     UUPSUpgradeable,
     AccessControlUpgradeable,
     PausableUpgradeable,
     AffineGovernable,
-    ReentrancyGuard,
+    ReentrancyGuardUpgradeable,
     UltraLRTStorage
 {
     using SafeTransferLib for ERC20;
+    /**
+     * @notice Initialize the UltraLRT contract
+     * @param _governance The address of the governance contract
+     * @param _asset The address of the asset token
+     * @param _delegatorBeacon The address of the delegator beacon
+     * @param _name The name of the token
+     * @param _symbol The symbol of the token
+     */
 
     function initialize(
         address _governance,
         address _asset,
-        address _delegatorImpl,
+        address _delegatorBeacon,
         string memory _name,
         string memory _symbol
     ) external initializer {
@@ -55,6 +69,7 @@ contract UltraLRT is
         // init control
         __AccessControl_init();
         __Pausable_init();
+        __ReentrancyGuard_init();
         // All roles use the default admin role
         // Governance has the admin role and all roles
         _grantRole(DEFAULT_ADMIN_ROLE, governance);
@@ -62,10 +77,55 @@ contract UltraLRT is
         _grantRole(HARVESTER, governance);
 
         // beacon proxy
-        beacon = new DelegatorBeacon(_delegatorImpl, governance);
+        /// @dev check for the owner of the beacon: Invalid beacon
+        require(IDelegatorBeacon(_delegatorBeacon).owner() == governance, "ULRT: IB");
+        beacon = _delegatorBeacon;
     }
+    /**
+     * @notice Upgrade the UltraLRT contract
+     * @param newImplementation The address of the new implementation contract
+     */
 
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
+
+    /**
+     * @notice The maximum amount of assets that can be deposited into the vault
+     * @return The maximum amount of assets that can be deposited
+     * @dev See {IERC4262-maxDeposit}.
+     */
+    function maxDeposit(address) public view virtual override returns (uint256) {
+        bool isCollateralized = totalAssets() > 0 || totalSupply() == 0;
+        return isCollateralized ? type(uint128).max : 0;
+    }
+
+    /**
+     * @notice The maximum amount of shares that can be minted
+     * @return The maximum amount of shares that can be minted
+     * @dev See {IERC4262-maxMint}.
+     */
+    function maxMint(address) public view virtual override returns (uint256) {
+        return type(uint128).max;
+    }
+
+    /**
+     * @notice set the delegator factory
+     * @param _factory The address of the delegator factory
+     * @dev factory must have the vault set to this vault
+     */
+    function setDelegatorFactory(address _factory) external onlyGovernance {
+        if (IDelegatorFactory(_factory).vault() != address(this)) revert ReStakingErrors.InvalidDelegatorFactory();
+
+        delegatorFactory = _factory;
+    }
+
+    /**
+     * @notice set max unresolved epoch
+     * @param _maxUnresolvedEpochs The maximum unresolved epoch
+     * @dev delegation of assets will be stopped if the unresolved epoch is greater than the max unresolved epoch
+     */
+    function setMaxUnresolvedEpochs(uint256 _maxUnresolvedEpochs) external onlyGovernance {
+        maxUnresolvedEpochs = _maxUnresolvedEpochs;
+    }
 
     /// @notice Pause the contract
     function pause() external onlyRole(GUARDIAN_ROLE) {
@@ -77,10 +137,6 @@ contract UltraLRT is
         _unpause();
     }
 
-    function maxDeposit(address) public view virtual override returns (uint256) {
-        return type(uint256).max;
-    }
-
     /*//////////////////////////////////////////////////////////////
                             DECIMALS
     //////////////////////////////////////////////////////////////*/
@@ -88,7 +144,7 @@ contract UltraLRT is
     /// @dev E.g. if the asset has 18 decimals, and initialSharesPerAsset is 1e8, then the vault has 26 decimals. And
     /// "one" `asset` will be worth "one" share (where "one" means 10 ** token.decimals()).
     function decimals() public view virtual override(ERC20Upgradeable, IERC20MetadataUpgradeable) returns (uint8) {
-        return ERC20(asset()).decimals() + _initialShareDecimals();
+        return IERC20MetadataUpgradeable(asset()).decimals() + _initialShareDecimals();
     }
 
     /// @notice The amount of shares to mint per wei of `asset` at genesis.
@@ -105,42 +161,25 @@ contract UltraLRT is
                             DEPOSIT ETH
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Pause the deposit
+     */
     function pauseDeposit() external onlyGovernance {
         depositPaused = 1;
     }
 
+    /**
+     * @notice Unpause the deposit
+     */
     function unpauseDeposit() external onlyGovernance {
         depositPaused = 0;
     }
 
-    event Referral(address indexed depositor, uint256 referralId);
-
-    function depositETH(address receiver, uint256 _referrerId)
-        external
-        payable
-        whenNotPaused
-        whenDepositNotPaused
-        nonReentrant
-        returns (uint256)
-    {
-        if (msg.value == 0) revert ReStakingErrors.DepositAmountCannotBeZero();
-
-        uint256 assets = STETH.submit{value: msg.value}(address(this)); //TODO check for referral
-
-        uint256 shares = previewDeposit(assets);
-
-        _mint(receiver, shares);
-
-        emit Deposit(_msgSender(), receiver, assets, shares);
-        emit Referral(receiver, _referrerId);
-        return shares;
-    }
-
-    function deposit(uint256 assets, address receiver, uint256 _referrerId) public returns (uint256 shares) {
-        shares = deposit(assets, receiver);
-        emit Referral(receiver, _referrerId);
-    }
-
+    /**
+     * @notice Deposit assets into the vault
+     * @param receiver The address of the receiver
+     * @return The amount of shares minted
+     */
     function deposit(uint256 assets, address receiver)
         public
         override
@@ -157,11 +196,12 @@ contract UltraLRT is
         return shares;
     }
 
-    function mint(uint256 shares, address receiver, uint256 _referrerId) public returns (uint256 assets) {
-        assets = mint(shares, receiver);
-        emit Referral(receiver, _referrerId);
-    }
-
+    /**
+     * @notice mint specific amount of shares
+     * @param shares The amount of shares to mint
+     * @param receiver The address of the receiver
+     * @return The amount of assets minted
+     */
     function mint(uint256 shares, address receiver)
         public
         override
@@ -183,6 +223,11 @@ contract UltraLRT is
     //////////////////////////////////////////////////////////////*/
 
     /**
+     * @notice Withdraw assets from the vault
+     * @param assets The amount of assets to withdraw
+     * @param receiver The address of the receiver
+     * @param owner The address of the owner
+     * @return The amount of shares burned
      * @dev See {IERC4262-withdraw}.
      */
     function withdraw(uint256 assets, address receiver, address owner)
@@ -201,6 +246,11 @@ contract UltraLRT is
     }
 
     /**
+     * @notice Redeem shares from the vault
+     * @param shares The amount of shares to redeem
+     * @param receiver The address of the receiver
+     * @param owner The address of the owner
+     * @return The amount of assets redeemed
      * @dev See {IERC4262-redeem}.
      */
     function redeem(uint256 shares, address receiver, address owner)
@@ -219,7 +269,12 @@ contract UltraLRT is
     }
 
     /**
-     * @dev Withdraw/redeem common workflow.
+     * @notice withdraw from the vault
+     * @param caller The address of the caller
+     * @param receiver The address of the receiver
+     * @param owner The address of the owner
+     * @param assets The amount of assets to withdraw
+     * @param shares The amount of shares to burn
      */
     function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
         internal
@@ -243,7 +298,7 @@ contract UltraLRT is
             _transfer(_msgSender(), address(escrow), shares);
             escrow.registerWithdrawalRequest(receiver, shares);
             // do immediate withdrawal request for user
-            _liquidationRequest(assets);
+            // _liquidationRequest(assets);
             emit Withdraw(caller, receiver, owner, assets, shares);
             return;
         }
@@ -258,6 +313,11 @@ contract UltraLRT is
         emit Withdraw(caller, receiver, owner, assetsToReceive, shares);
     }
 
+    /**
+     * @notice Check if the withdrawal can be done
+     * @param assets The amount of assets to withdraw
+     * @return True if the withdrawal can be done
+     */
     function canWithdraw(uint256 assets) public view returns (bool) {
         if (_msgSender() == address(escrow)) {
             return true;
@@ -270,6 +330,12 @@ contract UltraLRT is
                             ESCROW 
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Set the withdrawal escrow
+     * @param _escrow The address of the withdrawal escrow
+     * @dev The escrow must have the vault set to this vault
+     *     @dev existing escrow debt must be zero
+     */
     function setWithdrawalEscrow(WithdrawalEscrowV2 _escrow) external onlyGovernance {
         if (address(escrow) != address(0) && escrow.totalDebt() > 0) revert ReStakingErrors.ExistingEscrowDebt();
 
@@ -278,14 +344,43 @@ contract UltraLRT is
         escrow = _escrow;
     }
 
-    function endEpoch() external onlyRole(HARVESTER) {
+    /*//////////////////////////////////////////////////////////////
+                            EPOCH
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice End the current epoch
+     * @dev Only the harvester can end the epoch anytime
+     * @dev for other The epoch can only be ended if the last epoch was ended at least `LOCK_INTERVAL` seconds ago
+     */
+    function endEpoch() external {
+        if (!hasRole(HARVESTER, msg.sender) && (block.timestamp - lastEpochTime) < LOCK_INTERVAL) {
+            revert ReStakingErrors.RunningEpoch();
+        }
+        /// @dev only harvester can end and epoch after
+        uint256 closingEpoch = escrow.currentEpoch();
         escrow.endEpoch();
+        lastEpochTime = block.timestamp;
+
+        /// @request for liquidation in case called by non-harvester
+        (uint256 shares,) = escrow.epochInfo(closingEpoch);
+        uint256 assets = convertToAssets(shares);
+        _liquidationRequest(assets);
     }
 
+    /**
+     * @notice Do liquidation request to delegators
+     * @param assets The amount of assets to liquidate
+     * @dev Only the harvester can do the liquidation request
+     */
     function liquidationRequest(uint256 assets) external onlyRole(HARVESTER) {
         _liquidationRequest(assets);
     }
 
+    /**
+     * @notice Do liquidation request to delegators
+     * @param assets The amount of assets to liquidate
+     */
     function _liquidationRequest(uint256 assets) internal {
         for (uint256 i = 0; i < delegatorCount && assets > 0; i++) {
             IDelegator delegator = delegatorQueue[i];
@@ -297,41 +392,64 @@ contract UltraLRT is
         }
     }
 
+    /**
+     * @notice Withdraw from speicific delegator
+     * @param delegator The address of the delegator
+     * @param assets The amount of assets to withdraw
+     */
     function delegatorWithdrawRequest(IDelegator delegator, uint256 assets) external onlyRole(HARVESTER) {
         if (assets > delegator.withdrawableAssets()) revert ReStakingErrors.ExceedsDelegatorWithdrawableAssets();
         delegator.requestWithdrawal(assets);
     }
 
-    function resolveDebt() external onlyRole(HARVESTER) {
-        if (escrow.resolvingEpoch() < escrow.currentEpoch()) {
-            uint256 assets = previewRedeem(escrow.getDebtToResolve());
-
-            if ((vaultAssets() + ST_ETH_TRANSFER_BUFFER) < assets) {
-                revert ReStakingErrors.InsufficientLiquidAssets();
-            }
-            escrow.resolveDebtShares();
+    /**
+     * @notice Resolve the debt
+     */
+    function resolveDebt() external {
+        if (escrow.resolvingEpoch() == escrow.currentEpoch()) {
+            revert ReStakingErrors.NoResolvingEpoch();
         }
+        uint256 assets = previewRedeem(escrow.getDebtToResolve());
+
+        // try liquidating assets
+        if ((vaultAssets() + ST_ETH_TRANSFER_BUFFER) < assets) {
+            _getDelegatorLiquidAssets(assets);
+        }
+
+        if ((vaultAssets() + ST_ETH_TRANSFER_BUFFER) < assets) {
+            revert ReStakingErrors.InsufficientLiquidAssets();
+        }
+        escrow.resolveDebtShares();
     }
 
     /*//////////////////////////////////////////////////////////////
                             DELEGATOR 
     //////////////////////////////////////////////////////////////*/
     // todo check a valid operator address
+
+    /**
+     * @notice Create a new delegator
+     * @param _operator The address of the operator
+     */
     function createDelegator(address _operator) external onlyGovernance {
         if (delegatorCount >= MAX_DELEGATOR) revert ReStakingErrors.ExceedsMaxDelegatorLimit();
+        if (delegatorFactory == address(0)) revert ReStakingErrors.InvalidDelegatorFactory();
 
-        BeaconProxy bProxy = new BeaconProxy(
-            address(beacon), abi.encodeWithSelector(AffineDelegator.initialize.selector, address(this), _operator)
-        );
-        delegatorQueue[delegatorCount] = IDelegator(address(bProxy));
+        address newDelegator = IDelegatorFactory(delegatorFactory).createDelegator(_operator);
+
+        delegatorQueue[delegatorCount] = IDelegator(newDelegator);
 
         DelegatorInfo memory info;
         info.balance = 0;
         info.isActive = true;
-        delegatorMap[address(bProxy)] = info;
+        delegatorMap[newDelegator] = info;
         delegatorCount = delegatorCount + 1;
     }
 
+    /**
+     * @notice Drop a delegator
+     * @param _delegator The address of the delegator
+     */
     function dropDelegator(address _delegator) external onlyGovernance {
         if (IDelegator(_delegator).totalLockedValue() > 0) revert ReStakingErrors.NonZeroEmptyDelegatorTVL();
 
@@ -353,6 +471,9 @@ contract UltraLRT is
         }
     }
 
+    /**
+     * @notice Harvest the profit
+     */
     function harvest() external onlyRole(HARVESTER) {
         if (block.timestamp <= lastHarvest + LOCK_INTERVAL) revert ReStakingErrors.ProfitUnlocking();
 
@@ -374,22 +495,77 @@ contract UltraLRT is
         delegatorAssets = newDelegatorAssets;
     }
 
+    /**
+     * @notice Collect the delegator debt
+     * @dev will withdraw the liquid assets from the delegators
+     */
     function collectDelegatorDebt() external onlyRole(HARVESTER) {
+        _getDelegatorLiquidAssets(totalAssets());
+    }
+
+    /**
+     * @notice Collect liquid assets from the delegator
+     * @dev make sure to update the delegator assets
+     */
+
+    ///TODO check for price change on profit and loss
+    function withdrawFromDelegator(address _delegator) external onlyRole(HARVESTER) {
+        IDelegator delegator = IDelegator(_delegator);
+
+        uint256 prevTVL = delegatorMap[_delegator].balance;
+        delegator.withdraw();
+        uint256 newTVL = delegator.totalLockedValue();
+        uint256 TVLReduced = prevTVL > newTVL ? prevTVL - newTVL : 0;
+        delegatorMap[_delegator].balance = uint248(newTVL);
+        // update the delegator assets
+        if (TVLReduced > 0) {
+            delegatorAssets -= TVLReduced;
+        }
+    }
+
+    /**
+     * @notice Get the delegator liquid assets
+     * @param requiredVaultAssets The amount of liquid assets required in vault
+     * @dev Each time this will check the vault assets, if it meets required assets then it will stop
+     */
+    function _getDelegatorLiquidAssets(uint256 requiredVaultAssets) internal {
         uint256 currentDelegatorAssets = delegatorAssets;
 
-        for (uint8 i = 0; i < delegatorCount; i++) {
+        for (uint8 i = 0; i < delegatorCount && requiredVaultAssets > 0; i++) {
             IDelegator delegator = delegatorQueue[i];
+            // check for zero assets
+            if (IERC20MetadataUpgradeable(asset()).balanceOf(address(delegator)) < 2) {
+                /// @dev taking into account transfer 1 steth has issue.
+                continue;
+            }
             uint256 prevTVL = delegatorMap[address(delegator)].balance;
             delegator.withdraw();
             uint256 newTVL = delegator.totalLockedValue();
             delegatorMap[address(delegator)].balance = uint248(newTVL);
             currentDelegatorAssets -= (prevTVL > newTVL ? prevTVL - newTVL : 0);
+
+            if ((vaultAssets() + ST_ETH_TRANSFER_BUFFER) < requiredVaultAssets) {
+                break;
+            }
         }
 
         delegatorAssets = currentDelegatorAssets;
     }
 
+    /**
+     * @notice Delegate the assets to the delegator
+     * @param _delegator The address of the delegator
+     * @param amount The amount of assets to delegate
+     */
     function delegateToDelegator(address _delegator, uint256 amount) external onlyRole(HARVESTER) {
+        if (address(escrow) == address(0)) {
+            revert ReStakingErrors.InvalidEscrow();
+        }
+
+        if (maxUnresolvedEpochs < (escrow.currentEpoch() - escrow.resolvingEpoch())) {
+            revert ReStakingErrors.MaxUnresolvedEpochReached();
+        }
+
         IDelegator delegator = IDelegator(_delegator);
 
         DelegatorInfo memory info = delegatorMap[_delegator];
@@ -398,7 +574,7 @@ contract UltraLRT is
         if (vaultAssets() < amount) revert ReStakingErrors.InsufficientLiquidAssets();
 
         // delegate
-        ERC20(asset()).approve(_delegator, amount);
+        ERC20(asset()).safeApprove(_delegator, amount);
         delegator.delegate(amount);
 
         info.balance += uint248(amount);
@@ -427,28 +603,46 @@ contract UltraLRT is
     // get assets
     // get shares
 
+    /**
+     * @notice Get the total assets
+     */
     function totalAssets() public view override returns (uint256) {
         return vaultAssets() + delegatorAssets - lockedProfit();
     }
 
+    /**
+     * @notice Get the vault liquid assets
+     */
     function vaultAssets() public view returns (uint256) {
-        return ERC20(asset()).balanceOf(address(this));
+        return IERC20MetadataUpgradeable(asset()).balanceOf(address(this));
     }
 
     /*//////////////////////////////////////////////////////////////
                                   FEES
     //////////////////////////////////////////////////////////////*/
 
-    event ManagementFeeSet(uint256 oldFee, uint256 newFee);
-    event WithdrawalFeeSet(uint256 oldFee, uint256 newFee);
-
+    /**
+     * @notice Set the management fee
+     */
     function setManagementFee(uint256 feeBps) external onlyGovernance {
-        emit ManagementFeeSet({oldFee: managementFee, newFee: feeBps});
         managementFee = feeBps;
     }
 
+    /**
+     * @notice Set the withdrawal fee
+     */
     function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
-        emit WithdrawalFeeSet({oldFee: withdrawalFee, newFee: feeBps});
         withdrawalFee = feeBps;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                                  Balancer Interface for pice
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice returns the per share assets
+     */
+    function getRate() external view returns (uint256) {
+        return convertToAssets(10 ** decimals());
     }
 }

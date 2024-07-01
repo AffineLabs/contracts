@@ -8,7 +8,7 @@
     "snap": "forge snapshot",
     "cov": "forge coverage",
     "test-hh": "ts-node scripts/fork.ts test",
-    "clean": "forge clean",
+    "clean": "hardhat clean",
     "script": "ts-node scripts/fork.ts script",
     "build": "hardhat compile && forge install",
     "build-hh": "hardhat compile",

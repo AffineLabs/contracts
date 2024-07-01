@@ -1,7 +1,7 @@
 [
   {
     "inputs": [],
-    "name": "DepositAmountCannotBeZero",
+    "name": "DepositPaused",
     "type": "error"
   },
   {
@@ -51,7 +51,27 @@
   },
   {
     "inputs": [],
+    "name": "InvalidDelegatorFactory",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidEscrow",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidEscrowVault",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MaxUnresolvedEpochReached",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NoResolvingEpoch",
     "type": "error"
   },
   {
@@ -67,6 +87,11 @@
   {
     "inputs": [],
     "name": "RequireHarvest",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "RunningEpoch",
     "type": "error"
   },
   {
@@ -175,50 +200,12 @@
     "inputs": [
       {
         "indexed": false,
-        "internalType": "uint256",
-        "name": "oldFee",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "newFee",
-        "type": "uint256"
-      }
-    ],
-    "name": "ManagementFeeSet",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
         "internalType": "address",
         "name": "account",
         "type": "address"
       }
     ],
     "name": "Paused",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "depositor",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "referralId",
-        "type": "uint256"
-      }
-    ],
-    "name": "Referral",
     "type": "event"
   },
   {
@@ -382,25 +369,6 @@
       }
     ],
     "name": "Withdraw",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "oldFee",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "newFee",
-        "type": "uint256"
-      }
-    ],
-    "name": "WithdrawalFeeSet",
     "type": "event"
   },
   {
@@ -592,7 +560,7 @@
     "name": "beacon",
     "outputs": [
       {
-        "internalType": "contract DelegatorBeacon",
+        "internalType": "address",
         "name": "",
         "type": "address"
       }
@@ -759,6 +727,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "delegatorFactory",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -844,59 +825,6 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "assets",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "receiver",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_referrerId",
-        "type": "uint256"
-      }
-    ],
-    "name": "deposit",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "shares",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "receiver",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_referrerId",
-        "type": "uint256"
-      }
-    ],
-    "name": "depositETH",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
     "inputs": [],
     "name": "depositPaused",
     "outputs": [
@@ -937,6 +865,19 @@
         "internalType": "contract WithdrawalEscrowV2",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getRate",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -1074,7 +1015,7 @@
       },
       {
         "internalType": "address",
-        "name": "_delegatorImpl",
+        "name": "_delegatorBeacon",
         "type": "address"
       },
       {
@@ -1091,6 +1032,19 @@
     "name": "initialize",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "lastEpochTime",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -1216,6 +1170,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "maxUnresolvedEpochs",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -1232,35 +1199,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "shares",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "receiver",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_referrerId",
-        "type": "uint256"
-      }
-    ],
-    "name": "mint",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "assets",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -1491,12 +1429,38 @@
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "_factory",
+        "type": "address"
+      }
+    ],
+    "name": "setDelegatorFactory",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint256",
         "name": "feeBps",
         "type": "uint256"
       }
     ],
     "name": "setManagementFee",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_maxUnresolvedEpochs",
+        "type": "uint256"
+      }
+    ],
+    "name": "setMaxUnresolvedEpochs",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1722,6 +1686,19 @@
         "type": "uint256"
       }
     ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_delegator",
+        "type": "address"
+      }
+    ],
+    "name": "withdrawFromDelegator",
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },

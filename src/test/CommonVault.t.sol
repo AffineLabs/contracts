@@ -198,7 +198,7 @@ contract CommonVaultTest is TestPlus {
         assertApproxEqAbs(asset.balanceOf(vault.governance()) - govBalBefore, (amountAsset * 50) / 10_000, 10);
     }
 
-    /// @notice Test that goveranance can modify management fees.
+    /// @notice Test that governance can modify management fees.
     function testCanSetManagementAndWithdrawalFees() public {
         vm.startPrank(governance);
         vault.setManagementFee(300);
@@ -213,7 +213,7 @@ contract CommonVaultTest is TestPlus {
         vault.setWithdrawalFee(10);
     }
 
-    /// @notice Test that goveranance can pause the vault.
+    /// @notice Test that governance can pause the vault.
     function testVaultPause() public {
         vm.startPrank(governance);
         vault.pause();

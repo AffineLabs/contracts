@@ -22,4 +22,10 @@ library ReStakingErrors {
     error InactiveDelegator();
     error RequireHarvest();
     error ProfitUnlocking();
+    error DepositPaused();
+    error InvalidDelegatorFactory();
+    error RunningEpoch();
+    error NoResolvingEpoch();
+    error MaxUnresolvedEpochReached();
+    error InvalidEscrow();
 }

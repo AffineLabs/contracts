@@ -4,7 +4,7 @@ pragma solidity =0.8.16;
 import {IStEth} from "src/interfaces/lido/IStEth.sol";
 import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
 import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
-import {DelegatorBeacon} from "src/vaults/restaking/DelegatorBeacon.sol";
+import {ReStakingErrors} from "src/libs/ReStakingErrors.sol";
 
 abstract contract UltraLRTStorage {
     struct DelegatorInfo {
@@ -23,13 +23,16 @@ abstract contract UltraLRTStorage {
     // buffer we ignore while resolving shares due to transfer glitch in steth
     uint256 public constant ST_ETH_TRANSFER_BUFFER = 1000;
 
+    // only pausing the deposits in case of limit reached
     uint256 public depositPaused;
 
     IStEth public constant STETH = IStEth(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
 
     WithdrawalEscrowV2 public escrow;
 
-    DelegatorBeacon public beacon;
+    address public beacon;
+
+    address public delegatorFactory;
 
     uint256 public delegatorAssets;
 
@@ -51,13 +54,25 @@ abstract contract UltraLRTStorage {
 
     // delegator array
     IDelegator[MAX_DELEGATOR] public delegatorQueue;
+
     mapping(address => DelegatorInfo) public delegatorMap;
 
     //active delegator count
     uint256 public delegatorCount;
 
+    // last epoch time
+    uint256 public lastEpochTime;
+
+    // max unresolved epochs
+    uint256 public maxUnresolvedEpochs;
+
     modifier whenDepositNotPaused() {
-        require(depositPaused == 0, "Deposit Paused.");
+        if (depositPaused != 0) revert ReStakingErrors.DepositPaused();
         _;
     }
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     */
+
+    uint256[100] private __gap;
 }

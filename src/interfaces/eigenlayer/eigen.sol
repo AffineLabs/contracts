@@ -24,13 +24,21 @@ struct ApproverSignatureAndExpiryParams {
 
 interface IDelegationManager {
     function delegateTo(address, ApproverSignatureAndExpiryParams calldata, bytes32) external;
-    function queueWithdrawals(QueuedWithdrawalParams[] calldata) external;
+    function queueWithdrawals(QueuedWithdrawalParams[] calldata) external returns (bytes32[] memory);
     function completeQueuedWithdrawals(
         WithdrawalInfo[] calldata,
         address[][] calldata,
         uint256[] calldata,
         bool[] calldata
     ) external;
+    function calculateWithdrawalRoot(WithdrawalInfo memory withdrawal) external pure returns (bytes32);
+    function pendingWithdrawals(bytes32) external view returns (bool);
+    /**
+     * @notice returns the address of the operator that `staker` is delegated to.
+     * @notice Mapping: staker => operator whom the staker is currently delegated to.
+     * @dev Note that returning address(0) indicates that the staker is not actively delegated to any operator.
+     */
+    function delegatedTo(address staker) external view returns (address);
 }
 
 interface IStrategyManager {

@@ -95,7 +95,7 @@
     "name": "beacon",
     "outputs": [
       {
-        "internalType": "contract DelegatorBeacon",
+        "internalType": "address",
         "name": "",
         "type": "address"
       }
@@ -124,6 +124,19 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "delegatorFactory",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -200,6 +213,19 @@
   },
   {
     "inputs": [],
+    "name": "lastEpochTime",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "lastHarvest",
     "outputs": [
       {
@@ -227,6 +253,19 @@
   {
     "inputs": [],
     "name": "maxLockedProfit",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "maxUnresolvedEpochs",
     "outputs": [
       {
         "internalType": "uint256",
