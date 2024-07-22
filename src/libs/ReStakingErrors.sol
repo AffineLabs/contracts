@@ -33,4 +33,6 @@ library ReStakingErrors {
     error InvalidAsset();
     error InvalidDataLength();
     error InvalidDelegatorCount();
+    error InvalidMigrationVault();
+    error MissingHarvesterRole();
 }

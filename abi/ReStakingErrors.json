@@ -106,12 +106,22 @@
   },
   {
     "inputs": [],
+    "name": "InvalidMigrationVault",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidWithdrawalAmount",
     "type": "error"
   },
   {
     "inputs": [],
     "name": "MaxUnresolvedEpochReached",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MissingHarvesterRole",
     "type": "error"
   },
   {
