@@ -66,6 +66,26 @@
   },
   {
     "inputs": [],
+    "name": "InvalidAsset",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidDataLength",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidDecimal",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidDelegatorCount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidDelegatorFactory",
     "type": "error"
   },
@@ -77,6 +97,11 @@
   {
     "inputs": [],
     "name": "InvalidEscrowVault",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidGovernance",
     "type": "error"
   },
   {

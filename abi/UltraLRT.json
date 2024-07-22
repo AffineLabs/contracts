@@ -51,6 +51,26 @@
   },
   {
     "inputs": [],
+    "name": "InvalidAsset",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidDataLength",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidDecimal",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidDelegatorCount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidDelegatorFactory",
     "type": "error"
   },
@@ -62,6 +82,11 @@
   {
     "inputs": [],
     "name": "InvalidEscrowVault",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidGovernance",
     "type": "error"
   },
   {
@@ -1199,6 +1224,24 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract UltraLRT",
+        "name": "_newVault",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "users",
+        "type": "bytes"
+      }
+    ],
+    "name": "migrateToV2",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

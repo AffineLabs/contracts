@@ -645,4 +645,51 @@ contract UltraLRT is
     function getRate() external view returns (uint256) {
         return convertToAssets(10 ** decimals());
     }
+
+    function migrateToV2(UltraLRT _newVault, bytes calldata users) external onlyGovernance {
+        // check the governance
+        if (governance != _newVault.governance()) revert ReStakingErrors.InvalidGovernance();
+        // new vault should have 18 decimals
+        if (_newVault.decimals() != 18) revert ReStakingErrors.InvalidDecimal();
+        // check the asset
+        if (asset() != _newVault.asset()) revert ReStakingErrors.InvalidAsset();
+        // check user address list
+        if (users.length % 20 != 0) revert ReStakingErrors.InvalidDataLength();
+
+        uint256 userCount = users.length / 20;
+
+        // totalShares and assets check
+        uint256 sharesToBurn;
+        for (uint256 i = 0; i < userCount; i++) {
+            address user = abi.decode(users[(i * 20):((i + 1) * 20)], (address));
+            uint256 userShares = balanceOf(user);
+            sharesToBurn = sharesToBurn + userShares;
+        }
+
+        // assets to burn
+        uint256 requiredAssets = convertToAssets(sharesToBurn);
+
+        // check available assets
+        if (requiredAssets > (vaultAssets() + ST_ETH_TRANSFER_BUFFER)) {
+            revert ReStakingErrors.InsufficientLiquidAssets();
+        }
+
+        ERC20(asset()).safeApprove(address(_newVault), requiredAssets);
+
+        for (uint256 i = 0; i < userCount; i++) {
+            address user = abi.decode(users[(i * 20):((i + 1) * 20)], (address));
+            uint256 userShares = balanceOf(user);
+            uint256 userAssets = convertToAssets(userShares);
+            _burn(user, userShares);
+            _newVault.deposit(userAssets, user);
+        }
+
+        // check valid delegator
+        if (_newVault.delegatorCount() == 0) revert ReStakingErrors.InvalidDelegatorCount();
+        // delegate to delegator
+        IDelegator _delegator = _newVault.delegatorQueue(0);
+
+        // delegate
+        _newVault.delegateToDelegator(address(_delegator), _newVault.vaultAssets());
+    }
 }
