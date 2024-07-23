@@ -16,6 +16,17 @@ import {SymbioticDelegator} from "src/vaults/restaking/SymbioticDelegator.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
+import "forge-std/console2.sol";
+
+import {
+    WithdrawalInfo,
+    QueuedWithdrawalParams,
+    ApproverSignatureAndExpiryParams,
+    IDelegationManager,
+    IStrategyManager,
+    IStrategy
+} from "src/interfaces/eigenlayer/eigen.sol";
+
 contract UltraLRTV2 is UltraLRT {
     // will have the same decimals as asset
     function _initialShareDecimals() internal pure override returns (uint8) {
@@ -65,7 +76,12 @@ contract UltraLRT_Int_Test is TestPlus {
 
         vm.prank(governance);
         vault.setMaxUnresolvedEpochs(10);
-        eigenVault = UltraLRT(address(vault));
+        newEigenVault = UltraLRT(address(vault));
+
+        // set old vault as harvester role
+        bytes32 role = vault.HARVESTER();
+        vm.prank(governance);
+        vault.grantRole(role, address(eigenVault));
     }
 
     function _deployNewSymVault() internal {
@@ -146,5 +162,94 @@ contract UltraLRT_Int_Test is TestPlus {
         // migrate
         vm.prank(governance);
         symVault.migrateToV2(userParam);
+
+        // TODO checks for the assets and shares
+    }
+
+    function testWithdrawalFromEigenLayer() public {
+        address operator = 0xDbEd88D83176316fc46797B43aDeE927Dc2ff2F5;
+        EigenDelegator delegator = EigenDelegator(address(eigenVault.delegatorQueue(0)));
+        console2.log("==> delegator address %s", address(delegator));
+
+        // eigen layer contracts
+        IStrategy stEthStrategy = IStrategy(delegator.STAKED_ETH_STRATEGY());
+        IStrategyManager strategyManager = IStrategyManager(delegator.STRATEGY_MANAGER());
+        IDelegationManager delegationManager = IDelegationManager(delegator.DELEGATION_MANAGER());
+
+        // withdrawable assets
+        uint256 delegatorTVL = delegator.totalLockedValue();
+        uint256 withdrawableAssets = delegator.withdrawableAssets();
+
+        uint256 withdrawableStEthShares =
+            Math.min(stEthStrategy.underlyingToShares(withdrawableAssets), stEthStrategy.shares(address(delegator)));
+        // // request withdrawal
+        uint256 requestedAssets = eigenVault.totalAssets();
+        vm.prank(governance);
+        eigenVault.liquidationRequest(requestedAssets);
+
+        uint256 blockNum = block.number;
+        // console2.log("====> %s", delegator.totalLockedValue());
+        assertApproxEqAbs(delegator.totalLockedValue(), delegatorTVL, 10);
+
+        vm.roll(block.number + 1_000_000);
+
+        // complete withdrawal
+        WithdrawalInfo[] memory params = new WithdrawalInfo[](1);
+        uint256[] memory shares = new uint256[](1);
+        shares[0] = withdrawableStEthShares;
+        address[] memory strategies = new address[](1);
+        strategies[0] = address(stEthStrategy);
+
+        params[0] = WithdrawalInfo({
+            staker: address(delegator),
+            delegatedTo: operator,
+            withdrawer: address(delegator),
+            nonce: 1, // invalid nonce
+            startBlock: uint32(blockNum),
+            strategies: strategies,
+            shares: shares
+        });
+        // complete withdrawal
+        vm.prank(governance);
+        delegator.completeWithdrawalRequest(params);
+        // withdraw assets
+        vm.prank(governance);
+        eigenVault.collectDelegatorDebt();
+    }
+
+    function testEigenMigration() public {
+        testWithdrawalFromEigenLayer();
+
+        address[5] memory users = [
+            0x1688325FEf3B02143bA44880a43DccE339f004c0,
+            0x7BFEe91193d9Df2Ac0bFe90191D40F23c773C060,
+            0x10F983E2b26Cb9F0732486A5c184ECf6602a52f6,
+            0x9482C72Cb018eE03d8c23395038B510ED4e6040C,
+            0xA6C1c5C0092eA16bdaBad3cEE36e8BF7967e8C20
+        ];
+
+        // make dynamic
+        address[] memory userParam = new address[](users.length);
+        for (uint256 i = 0; i < users.length; i++) {
+            userParam[i] = users[i];
+        }
+        // upgrade current eigen vault
+        UltraLRT newImpl = new UltraLRT();
+        vm.prank(governance);
+        eigenVault.upgradeTo(address(newImpl));
+
+        // setup migration vault
+        vm.prank(governance);
+        eigenVault.setMigrationVault(newEigenVault);
+
+        // pause the old vault
+        vm.prank(governance);
+        eigenVault.pause();
+
+        // migrate
+        vm.prank(governance);
+        eigenVault.migrateToV2(userParam);
+
+        // TODO checks for the assets and shares
     }
 }

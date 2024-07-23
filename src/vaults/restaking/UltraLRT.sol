@@ -739,6 +739,8 @@ contract UltraLRT is
         IDelegator _delegator = UltraLRT(migrationVault).delegatorQueue(0);
 
         // delegate
-        UltraLRT(migrationVault).delegateToDelegator(address(_delegator), liquidatedAssets);
+        if (liquidatedAssets > 0) {
+            UltraLRT(migrationVault).delegateToDelegator(address(_delegator), liquidatedAssets);
+        }
     }
 }
