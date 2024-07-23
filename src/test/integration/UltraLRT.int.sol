@@ -143,8 +143,14 @@ contract UltraLRT_Int_Test is TestPlus {
 
         // make dynamic
         address[] memory userParam = new address[](users.length);
+        // user shares list
+        uint256[] memory shares = new uint256[](users.length);
+        // assets
+        uint256[] memory assets = new uint256[](users.length);
         for (uint256 i = 0; i < users.length; i++) {
             userParam[i] = users[i];
+            shares[i] = symVault.balanceOf(users[i]);
+            assets[i] = symVault.convertToAssets(shares[i]);
         }
         // upgrade current sym vault
         UltraLRT newImpl = new UltraLRT();
@@ -164,6 +170,11 @@ contract UltraLRT_Int_Test is TestPlus {
         symVault.migrateToV2(userParam);
 
         // TODO checks for the assets and shares
+
+        for (uint256 i = 0; i < users.length; i++) {
+            assertEq(symVault.balanceOf(users[i]), 0);
+            assertApproxEqAbs(newSymVault.convertToAssets(newSymVault.balanceOf(users[i])), assets[i], 10);
+        }
     }
 
     function testWithdrawalFromEigenLayer() public {
@@ -230,9 +241,18 @@ contract UltraLRT_Int_Test is TestPlus {
 
         // make dynamic
         address[] memory userParam = new address[](users.length);
+        // user shares list
+        uint256[] memory shares = new uint256[](users.length);
+        // assets
+        uint256[] memory assets = new uint256[](users.length);
+
         for (uint256 i = 0; i < users.length; i++) {
             userParam[i] = users[i];
+            shares[i] = eigenVault.balanceOf(users[i]);
+            assets[i] = eigenVault.convertToAssets(shares[i]);
+            console2.log("==> user %s shares %s assets %s", users[i], shares[i], assets[i]);
         }
+
         // upgrade current eigen vault
         UltraLRT newImpl = new UltraLRT();
         vm.prank(governance);
@@ -251,5 +271,10 @@ contract UltraLRT_Int_Test is TestPlus {
         eigenVault.migrateToV2(userParam);
 
         // TODO checks for the assets and shares
+
+        for (uint256 i = 0; i < users.length; i++) {
+            assertEq(eigenVault.balanceOf(users[i]), 0);
+            assertApproxEqAbs(newEigenVault.convertToAssets(newEigenVault.balanceOf(users[i])), assets[i], 10);
+        }
     }
 }
