@@ -674,6 +674,10 @@ contract UltraLRT is
         migrationVault = address(0);
     }
 
+    /**
+     * @notice Migrate to a new vault
+     * @param users The address of the users
+     */
     function migrateToV2(address[] memory users) external whenPaused onlyRole(HARVESTER) {
         // check the migration vault
         if (migrationVault == address(0)) revert ReStakingErrors.InvalidMigrationVault();
@@ -689,13 +693,30 @@ contract UltraLRT is
 
         // assets to burn
         uint256 requiredAssets = convertToAssets(sharesToBurn);
+        // amount of assets to re-delegate
+        uint256 liquidatedAssets;
+        // try to liquidate in case of symbiotic vault
+        if (requiredAssets > (vaultAssets() + ST_ETH_TRANSFER_BUFFER)) {
+            uint256 assetsToLiquidate = requiredAssets - vaultAssets();
+            uint256 _preAssets = vaultAssets();
+            _liquidationRequest(assetsToLiquidate);
+            _getDelegatorLiquidAssets(assetsToLiquidate);
+            liquidatedAssets = vaultAssets() - _preAssets;
+            // in case delegator already has some idle assets
+            // liquidation will get those too
+            liquidatedAssets = Math.min(liquidatedAssets, assetsToLiquidate);
+        }
 
         // check available assets
         if (requiredAssets > (vaultAssets() + ST_ETH_TRANSFER_BUFFER)) {
             revert ReStakingErrors.InsufficientLiquidAssets();
         }
+
+        // available assets to transfer
+        uint256 availableAssets = Math.min(vaultAssets(), requiredAssets);
+
         // approve the new vault
-        ERC20(asset()).safeApprove(address(migrationVault), requiredAssets);
+        ERC20(asset()).safeApprove(address(migrationVault), availableAssets);
 
         // record vault assets
         uint256 preVaultAssets = vaultAssets();
@@ -704,7 +725,7 @@ contract UltraLRT is
         for (uint256 i = 0; i < userCount; i++) {
             address user = users[i];
             uint256 userShares = balanceOf(user);
-            uint256 userAssets = convertToAssets(userShares);
+            uint256 userAssets = (availableAssets * userShares) / sharesToBurn;
             _burn(user, userShares);
             UltraLRT(migrationVault).deposit(userAssets, user);
         }
@@ -718,6 +739,6 @@ contract UltraLRT is
         IDelegator _delegator = UltraLRT(migrationVault).delegatorQueue(0);
 
         // delegate
-        UltraLRT(migrationVault).delegateToDelegator(address(_delegator), UltraLRT(migrationVault).vaultAssets());
+        UltraLRT(migrationVault).delegateToDelegator(address(_delegator), liquidatedAssets);
     }
 }

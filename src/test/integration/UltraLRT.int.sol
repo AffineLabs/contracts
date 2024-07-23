@@ -102,6 +102,11 @@ contract UltraLRT_Int_Test is TestPlus {
         vault.setWithdrawalEscrow(escrow);
 
         newSymVault = UltraLRT(address(vault));
+
+        // set old vault as harvester role
+        bytes32 role = vault.HARVESTER();
+        vm.prank(governance);
+        vault.grantRole(role, address(symVault));
     }
 
     function setUp() public {
@@ -112,6 +117,34 @@ contract UltraLRT_Int_Test is TestPlus {
     }
 
     function testSymMigration() public {
-        assertTrue(true);
+        address[5] memory users = [
+            0x90153be2aC32633fC9A7Cc53cdF01D348E875555,
+            0x23E0E9D8B87920440204369B35c566017F2bAeC9,
+            0x05A13DCf55Ea6D532f15284F39e02811FC183a8a,
+            0xB2185c92a4eAF0Dd1BF6a5476363444dE9831EAC,
+            0x1688325FEf3B02143bA44880a43DccE339f004c0
+        ];
+
+        // make dynamic
+        address[] memory userParam = new address[](users.length);
+        for (uint256 i = 0; i < users.length; i++) {
+            userParam[i] = users[i];
+        }
+        // upgrade current sym vault
+        UltraLRT newImpl = new UltraLRT();
+        vm.prank(governance);
+        symVault.upgradeTo(address(newImpl));
+
+        // setup migration vault
+        vm.prank(governance);
+        symVault.setMigrationVault(newSymVault);
+
+        // pause the old vault
+        vm.prank(governance);
+        symVault.pause();
+
+        // migrate
+        vm.prank(governance);
+        symVault.migrateToV2(userParam);
     }
 }
