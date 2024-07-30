@@ -28,4 +28,11 @@ library ReStakingErrors {
     error NoResolvingEpoch();
     error MaxUnresolvedEpochReached();
     error InvalidEscrow();
+    error InvalidGovernance();
+    error InvalidDecimal();
+    error InvalidAsset();
+    error InvalidDataLength();
+    error InvalidDelegatorCount();
+    error InvalidMigrationVault();
+    error MissingHarvesterRole();
 }

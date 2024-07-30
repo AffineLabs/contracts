@@ -51,6 +51,21 @@
   },
   {
     "inputs": [],
+    "name": "InvalidAsset",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidDecimal",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidDelegatorCount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidDelegatorFactory",
     "type": "error"
   },
@@ -66,7 +81,22 @@
   },
   {
     "inputs": [],
+    "name": "InvalidGovernance",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidMigrationVault",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "MaxUnresolvedEpochReached",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MissingHarvesterRole",
     "type": "error"
   },
   {
@@ -1204,6 +1234,32 @@
   {
     "inputs": [
       {
+        "internalType": "address[]",
+        "name": "users",
+        "type": "address[]"
+      }
+    ],
+    "name": "migrateToV2",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "migrationVault",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint256",
         "name": "shares",
         "type": "uint256"
@@ -1403,6 +1459,13 @@
   },
   {
     "inputs": [],
+    "name": "resetMigrationVault",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "resolveDebt",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -1461,6 +1524,19 @@
       }
     ],
     "name": "setMaxUnresolvedEpochs",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract UltraLRT",
+        "name": "_newVault",
+        "type": "address"
+      }
+    ],
+    "name": "setMigrationVault",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

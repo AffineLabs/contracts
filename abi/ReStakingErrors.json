@@ -66,6 +66,26 @@
   },
   {
     "inputs": [],
+    "name": "InvalidAsset",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidDataLength",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidDecimal",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidDelegatorCount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidDelegatorFactory",
     "type": "error"
   },
@@ -81,12 +101,27 @@
   },
   {
     "inputs": [],
+    "name": "InvalidGovernance",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidMigrationVault",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidWithdrawalAmount",
     "type": "error"
   },
   {
     "inputs": [],
     "name": "MaxUnresolvedEpochReached",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MissingHarvesterRole",
     "type": "error"
   },
   {

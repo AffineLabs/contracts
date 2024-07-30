@@ -73,6 +73,11 @@ abstract contract UltraLRTStorage {
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      */
+    /// total storage 100
+    // 1st slot
 
-    uint256[100] private __gap;
+    address public migrationVault;
+    // have unused 12 bytes in this slot
+    // rem 99 slots
+    uint256[99] private __gap;
 }
