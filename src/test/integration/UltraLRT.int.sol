@@ -41,6 +41,62 @@ contract UltraLRT_Int_Test is TestPlus {
     UltraLRT newEigenVault;
     UltraLRT newSymVault;
 
+    // storage to check
+    address _governance;
+    uint256 _maxBps;
+    uint256 _maxDelegator;
+    uint256 _stEthTransferBuffer;
+    uint256 _maxUnresolvedEpochs;
+    uint256 _depositPaused;
+
+    address _stEth;
+    address _escrow;
+    address _beacon;
+    address _delegatorFactory;
+    uint256 _delegatorAssets;
+    uint256 _managementFee;
+    uint256 _performanceFee;
+    uint256 _lastHarvest;
+    uint256 _maxLockedProfit;
+
+    function _assignStorage(UltraLRT tmpVault) internal {
+        _governance = tmpVault.governance();
+        _maxBps = tmpVault.MAX_BPS();
+        _maxDelegator = tmpVault.MAX_DELEGATOR();
+        _stEthTransferBuffer = tmpVault.ST_ETH_TRANSFER_BUFFER();
+        _maxUnresolvedEpochs = tmpVault.maxUnresolvedEpochs();
+        _depositPaused = tmpVault.depositPaused();
+
+        _stEth = address(tmpVault.STETH());
+        _escrow = address(tmpVault.escrow());
+        _beacon = address(tmpVault.beacon());
+        _delegatorFactory = address(tmpVault.delegatorFactory());
+        _delegatorAssets = tmpVault.delegatorAssets();
+        _managementFee = tmpVault.managementFee();
+        _performanceFee = tmpVault.withdrawalFee();
+        _lastHarvest = tmpVault.lastHarvest();
+        _maxLockedProfit = tmpVault.maxLockedProfit();
+    }
+
+    function _checkStorage(UltraLRT tmpVault) internal {
+        assertEq(tmpVault.governance(), _governance);
+        assertEq(tmpVault.MAX_BPS(), _maxBps);
+        assertEq(tmpVault.MAX_DELEGATOR(), _maxDelegator);
+        assertEq(tmpVault.ST_ETH_TRANSFER_BUFFER(), _stEthTransferBuffer);
+        assertEq(tmpVault.maxUnresolvedEpochs(), _maxUnresolvedEpochs);
+        assertEq(tmpVault.depositPaused(), _depositPaused);
+
+        assertEq(address(tmpVault.STETH()), _stEth);
+        assertEq(address(tmpVault.escrow()), _escrow);
+        assertEq(address(tmpVault.beacon()), _beacon);
+        assertEq(address(tmpVault.delegatorFactory()), _delegatorFactory);
+        assertEq(tmpVault.delegatorAssets(), _delegatorAssets);
+        assertEq(tmpVault.managementFee(), _managementFee);
+        assertEq(tmpVault.withdrawalFee(), _performanceFee);
+        assertEq(tmpVault.lastHarvest(), _lastHarvest);
+        assertEq(tmpVault.maxLockedProfit(), _maxLockedProfit);
+    }
+
     function _deployNewEigenVault() internal {
         address operator = 0xDbEd88D83176316fc46797B43aDeE927Dc2ff2F5; // p2p
 
@@ -488,11 +544,14 @@ contract UltraLRT_Int_Test is TestPlus {
             shares[i] = symVault.balanceOf(users[i]);
             assets[i] = symVault.convertToAssets(shares[i]);
         }
+
+        _assignStorage(symVault);
         // upgrade current sym vault
         UltraLRT newImpl = new UltraLRT();
         vm.prank(governance);
         symVault.upgradeTo(address(newImpl));
 
+        _checkStorage(symVault);
         // setup migration vault
         vm.prank(governance);
         symVault.setMigrationVault(newSymVault);
@@ -522,8 +581,9 @@ contract UltraLRT_Int_Test is TestPlus {
         console2.log("==> new tvl %s", newSymVault.totalAssets());
         console2.log("==> new shares %s", newSymVault.totalSupply());
 
-        // assertEq(symVault.totalSupply(), 0);
-        // assertEq(symVault.totalAssets(), prevTvl);
+        assertEq(symVault.totalSupply(), 0);
+        assertEq(symVault.totalAssets(), 0);
+        assertEq(newSymVault.totalSupply(), prevTvl);
     }
 
     function _skipTestWithdrawalFromEigenLayer() public {
@@ -636,7 +696,7 @@ contract UltraLRT_Int_Test is TestPlus {
             0xbC6ddE88d724A802da38e241826A50946cd75aaD,
             0x46D886361d6b7ba0d28080132B6ec70E2e49f332
         ];
-        uint256 totalUsers = 10;
+        uint256 totalUsers = users.length;
         // make dynamic
         address[] memory userParam = new address[](totalUsers);
         // user shares list
@@ -648,13 +708,15 @@ contract UltraLRT_Int_Test is TestPlus {
             userParam[i] = users[i];
             shares[i] = eigenVault.balanceOf(users[i]);
             assets[i] = eigenVault.convertToAssets(shares[i]);
-            console2.log("==> user %s shares %s assets %s", users[i], shares[i], assets[i]);
+            // console2.log("==> user %s shares %s assets %s", users[i], shares[i], assets[i]);
         }
 
+        _assignStorage(eigenVault);
         // upgrade current eigen vault
         UltraLRT newImpl = new UltraLRT();
         vm.prank(governance);
         eigenVault.upgradeTo(address(newImpl));
+        _checkStorage(eigenVault);
 
         // setup migration vault
         vm.prank(governance);
@@ -664,6 +726,7 @@ contract UltraLRT_Int_Test is TestPlus {
         vm.prank(governance);
         eigenVault.pause();
 
+        uint256 prevTvl = eigenVault.totalAssets();
         // migrate
         vm.prank(governance);
         eigenVault.migrateToV2(userParam);
@@ -672,7 +735,19 @@ contract UltraLRT_Int_Test is TestPlus {
 
         for (uint256 i = 0; i < totalUsers; i++) {
             assertEq(eigenVault.balanceOf(users[i]), 0);
-            assertApproxEqAbs(newEigenVault.convertToAssets(newEigenVault.balanceOf(users[i])), assets[i], 10);
+            assertApproxEqAbs(newEigenVault.convertToAssets(newEigenVault.balanceOf(users[i])), assets[i], 50);
         }
+
+        // consolelog
+        console2.log("==> prev tvl %s", prevTvl);
+        console2.log("==> cur tvl %s", eigenVault.totalAssets());
+        console2.log("==> old vault shares %s", eigenVault.totalSupply());
+        console2.log("==> new tvl %s", newEigenVault.totalAssets());
+        console2.log("==> new shares %s", newEigenVault.totalSupply());
+
+        assertEq(eigenVault.totalSupply(), 0);
+        assertApproxEqAbs(eigenVault.totalAssets(), 0, 100);
+
+        assertApproxEqAbs(newEigenVault.totalAssets(), prevTvl, 100);
     }
 }

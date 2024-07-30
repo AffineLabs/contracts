@@ -78,11 +78,6 @@ abstract contract UltraLRTStorage {
 
     address public migrationVault;
     // have unused 12 bytes in this slot
-    // slot 2
-    // performance fee charged on profit
-    uint256 public performanceFeeBps;
-    //  slot 3
-    // end epoch interval for withdrawal request
-    uint256 public endEpochInterval = LOCK_INTERVAL;
-    uint256[97] private __gap;
+    // rem 99 slots
+    uint256[99] private __gap;
 }
