@@ -875,7 +875,6 @@ contract UltraLRTTest is TestPlus {
     function testViewOnlyFunctions() public {
         assertEq(vault.maxDeposit(alice), type(uint128).max);
         assertEq(vault.decimals(), asset.decimals());
-        assertEq(vault.initialSharesPerAsset(), 1); // 1:1
     }
 
     function testResolveDebt() public {

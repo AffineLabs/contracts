@@ -331,6 +331,19 @@
   },
   {
     "inputs": [],
+    "name": "accruedPerformanceFee",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "beacon",
     "outputs": [
       {
@@ -518,19 +531,6 @@
   {
     "inputs": [],
     "name": "maxUnresolvedEpochs",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "performanceFee",
     "outputs": [
       {
         "internalType": "uint256",

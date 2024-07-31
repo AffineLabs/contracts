@@ -140,27 +140,6 @@ contract UltraLRT is
     }
 
     /*//////////////////////////////////////////////////////////////
-                            DECIMALS
-    //////////////////////////////////////////////////////////////*/
-
-    /// @dev E.g. if the asset has 18 decimals, and initialSharesPerAsset is 1e8, then the vault has 26 decimals. And
-    /// "one" `asset` will be worth "one" share (where "one" means 10 ** token.decimals()).
-    function decimals() public view virtual override(ERC20Upgradeable, IERC20MetadataUpgradeable) returns (uint8) {
-        return IERC20MetadataUpgradeable(asset()).decimals() + _initialShareDecimals();
-    }
-
-    /// @notice The amount of shares to mint per wei of `asset` at genesis.
-    function initialSharesPerAsset() public pure virtual returns (uint256) {
-        return 10 ** _initialShareDecimals();
-    }
-
-    /// @notice Each wei of `asset` at genesis is worth 10 ** (initialShareDecimals) shares.
-    /// @dev zero decimals means 1:1 ratio
-    function _initialShareDecimals() internal pure virtual returns (uint8) {
-        return 0;
-    }
-
-    /*//////////////////////////////////////////////////////////////
                             DEPOSIT ETH
     //////////////////////////////////////////////////////////////*/
 
@@ -194,6 +173,7 @@ contract UltraLRT is
         if (assets > maxDeposit(receiver)) revert ReStakingErrors.ExceedsDepositLimit();
 
         uint256 shares = previewDeposit(assets);
+
         _deposit(_msgSender(), receiver, assets, shares);
 
         return shares;
