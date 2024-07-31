@@ -7,6 +7,19 @@ import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
 import {ReStakingErrors} from "src/libs/ReStakingErrors.sol";
 
 abstract contract UltraLRTStorage {
+    // events
+    event ManagementFeeChanged(uint256 oldFee, uint256 newFee);
+    event WithdrawalFeeChanged(uint256 oldFee, uint256 newFee);
+    event PerformanceFeeChanged(uint256 oldFee, uint256 newFee);
+    event MaxEndEpochIntervalChanged(uint256 oldInterval, uint256 newInterval);
+    event DelegatorAdded(address delegator, address operator, uint256 delegatorCount);
+    event DelegatorRemoved(address delegator, uint256 delegatorCount);
+    event DelegatorTVLChanged(address delegator, uint256 oldBalance, uint256 newBalance);
+    event MaxUnresolvedEpochChanged(uint256 oldEpochs, uint256 newEpochs);
+    event WithdrawalQueued(uint256 indexed epoch, address receiver, address owner, uint256 shares);
+    event EndEpoch(uint256 epoch, uint256 shares, uint256 assets);
+    event Harvest(uint256 profit, uint256 performanceFee);
+
     struct DelegatorInfo {
         bool isActive;
         uint248 balance;
@@ -65,6 +78,13 @@ abstract contract UltraLRTStorage {
 
     // max unresolved epochs
     uint256 public maxUnresolvedEpochs;
+
+    // performance fee charged on profit
+    uint256 public performanceFeeBps;
+    uint256 public performanceFee;
+
+    // max end epoch interval, default 24 hours same as lock interval
+    uint256 public maxEndEpochInterval = 24 hours;
 
     modifier whenDepositNotPaused() {
         if (depositPaused != 0) revert ReStakingErrors.DepositPaused();

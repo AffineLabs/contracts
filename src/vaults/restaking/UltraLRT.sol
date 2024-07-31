@@ -124,7 +124,9 @@ contract UltraLRT is
      * @dev delegation of assets will be stopped if the unresolved epoch is greater than the max unresolved epoch
      */
     function setMaxUnresolvedEpochs(uint256 _maxUnresolvedEpochs) external onlyGovernance {
+        uint256 _preMaxUnresolvedEpoch = maxUnresolvedEpochs;
         maxUnresolvedEpochs = _maxUnresolvedEpochs;
+        emit MaxEndEpochIntervalChanged(_preMaxUnresolvedEpoch, _maxUnresolvedEpochs);
     }
 
     /// @notice Pause the contract
@@ -153,8 +155,9 @@ contract UltraLRT is
     }
 
     /// @notice Each wei of `asset` at genesis is worth 10 ** (initialShareDecimals) shares.
+    /// @dev zero decimals means 1:1 ratio
     function _initialShareDecimals() internal pure virtual returns (uint8) {
-        return 8;
+        return 0;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -300,6 +303,7 @@ contract UltraLRT is
             // do immediate withdrawal request for user
             // _liquidationRequest(assets);
             emit Withdraw(caller, receiver, owner, assets, shares);
+            emit WithdrawalQueued(escrow.currentEpoch(), receiver, owner, shares);
             return;
         }
         _burn(owner, shares);
@@ -366,6 +370,8 @@ contract UltraLRT is
         (uint256 shares,) = escrow.epochInfo(closingEpoch);
         uint256 assets = convertToAssets(shares);
         _liquidationRequest(assets);
+        // emit event
+        emit EndEpoch(closingEpoch, shares, assets);
     }
 
     /**
@@ -444,6 +450,7 @@ contract UltraLRT is
         info.isActive = true;
         delegatorMap[newDelegator] = info;
         delegatorCount = delegatorCount + 1;
+        emit DelegatorAdded(newDelegator, _operator, delegatorCount);
     }
 
     /**
@@ -466,6 +473,7 @@ contract UltraLRT is
                 delegatorCount = delegatorCount - 1;
 
                 delegatorMap[_delegator] = info;
+                emit DelegatorRemoved(_delegator, delegatorCount);
                 break;
             }
         }
@@ -493,6 +501,7 @@ contract UltraLRT is
         }
         lastHarvest = block.timestamp;
         delegatorAssets = newDelegatorAssets;
+        emit Harvest(maxLockedProfit, 0);
     }
 
     /**
@@ -521,6 +530,7 @@ contract UltraLRT is
         if (TVLReduced > 0) {
             delegatorAssets -= TVLReduced;
         }
+        emit DelegatorTVLChanged(_delegator, prevTVL, newTVL);
     }
 
     /**
@@ -577,9 +587,13 @@ contract UltraLRT is
         ERC20(asset()).safeApprove(_delegator, amount);
         delegator.delegate(amount);
 
+        uint256 prevTVL = info.balance;
+
         info.balance += uint248(amount);
         delegatorMap[_delegator] = info;
         delegatorAssets += amount;
+
+        emit DelegatorTVLChanged(_delegator, prevTVL, info.balance);
     }
 
     /**
@@ -625,14 +639,18 @@ contract UltraLRT is
      * @notice Set the management fee
      */
     function setManagementFee(uint256 feeBps) external onlyGovernance {
+        uint256 _preManagementFee = managementFee;
         managementFee = feeBps;
+        emit ManagementFeeChanged(_preManagementFee, feeBps);
     }
 
     /**
      * @notice Set the withdrawal fee
      */
     function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
+        uint256 _preWithdrawalFee = withdrawalFee;
         withdrawalFee = feeBps;
+        emit WithdrawalFeeChanged(_preWithdrawalFee, feeBps);
     }
 
     /*//////////////////////////////////////////////////////////////
