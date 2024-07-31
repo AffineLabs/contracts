@@ -101,8 +101,8 @@ contract UltraLRTTest is TestPlus {
         vault.deposit(stEth, alice);
 
         console2.log("vault balance %s", vault.balanceOf(alice));
-
-        assertEq(vault.balanceOf(alice), stEth * 1e8);
+        // should be 1:1
+        assertEq(vault.balanceOf(alice), stEth);
     }
 
     function testMint() public {
@@ -337,7 +337,7 @@ contract UltraLRTTest is TestPlus {
         // Test deposit when unpaused
         vm.prank(alice);
         vault.deposit(stEth, alice);
-        assertEq(vault.balanceOf(alice), stEth * 1e8, "Deposit failed after unpausing");
+        assertEq(vault.balanceOf(alice), stEth, "Deposit failed after unpausing");
 
         // Test withdraw when unpaused
         uint256 shares = vault.balanceOf(alice);
@@ -874,8 +874,7 @@ contract UltraLRTTest is TestPlus {
 
     function testViewOnlyFunctions() public {
         assertEq(vault.maxDeposit(alice), type(uint128).max);
-        assertEq(vault.decimals(), 26);
-        assertEq(vault.initialSharesPerAsset(), 10 ** 8);
+        assertEq(vault.decimals(), asset.decimals());
     }
 
     function testResolveDebt() public {

@@ -124,7 +124,9 @@ contract UltraLRT is
      * @dev delegation of assets will be stopped if the unresolved epoch is greater than the max unresolved epoch
      */
     function setMaxUnresolvedEpochs(uint256 _maxUnresolvedEpochs) external onlyGovernance {
+        uint256 _preMaxUnresolvedEpoch = maxUnresolvedEpochs;
         maxUnresolvedEpochs = _maxUnresolvedEpochs;
+        emit MaxEndEpochIntervalChanged(_preMaxUnresolvedEpoch, _maxUnresolvedEpochs);
     }
 
     /// @notice Pause the contract
@@ -135,26 +137,6 @@ contract UltraLRT is
     /// @notice Unpause the contract
     function unpause() external onlyRole(GUARDIAN_ROLE) {
         _unpause();
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                            DECIMALS
-    //////////////////////////////////////////////////////////////*/
-
-    /// @dev E.g. if the asset has 18 decimals, and initialSharesPerAsset is 1e8, then the vault has 26 decimals. And
-    /// "one" `asset` will be worth "one" share (where "one" means 10 ** token.decimals()).
-    function decimals() public view virtual override(ERC20Upgradeable, IERC20MetadataUpgradeable) returns (uint8) {
-        return IERC20MetadataUpgradeable(asset()).decimals() + _initialShareDecimals();
-    }
-
-    /// @notice The amount of shares to mint per wei of `asset` at genesis.
-    function initialSharesPerAsset() public pure virtual returns (uint256) {
-        return 10 ** _initialShareDecimals();
-    }
-
-    /// @notice Each wei of `asset` at genesis is worth 10 ** (initialShareDecimals) shares.
-    function _initialShareDecimals() internal pure virtual returns (uint8) {
-        return 8;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -191,6 +173,7 @@ contract UltraLRT is
         if (assets > maxDeposit(receiver)) revert ReStakingErrors.ExceedsDepositLimit();
 
         uint256 shares = previewDeposit(assets);
+
         _deposit(_msgSender(), receiver, assets, shares);
 
         return shares;
@@ -300,6 +283,7 @@ contract UltraLRT is
             // do immediate withdrawal request for user
             // _liquidationRequest(assets);
             emit Withdraw(caller, receiver, owner, assets, shares);
+            emit WithdrawalQueued(escrow.currentEpoch(), receiver, owner, shares);
             return;
         }
         _burn(owner, shares);
@@ -366,6 +350,8 @@ contract UltraLRT is
         (uint256 shares,) = escrow.epochInfo(closingEpoch);
         uint256 assets = convertToAssets(shares);
         _liquidationRequest(assets);
+        // emit event
+        emit EndEpoch(closingEpoch, shares, assets);
     }
 
     /**
@@ -444,6 +430,7 @@ contract UltraLRT is
         info.isActive = true;
         delegatorMap[newDelegator] = info;
         delegatorCount = delegatorCount + 1;
+        emit DelegatorAdded(newDelegator, _operator, delegatorCount);
     }
 
     /**
@@ -466,6 +453,7 @@ contract UltraLRT is
                 delegatorCount = delegatorCount - 1;
 
                 delegatorMap[_delegator] = info;
+                emit DelegatorRemoved(_delegator, delegatorCount);
                 break;
             }
         }
@@ -493,6 +481,7 @@ contract UltraLRT is
         }
         lastHarvest = block.timestamp;
         delegatorAssets = newDelegatorAssets;
+        emit Harvest(maxLockedProfit, 0);
     }
 
     /**
@@ -521,6 +510,7 @@ contract UltraLRT is
         if (TVLReduced > 0) {
             delegatorAssets -= TVLReduced;
         }
+        emit DelegatorTVLChanged(_delegator, prevTVL, newTVL);
     }
 
     /**
@@ -577,9 +567,13 @@ contract UltraLRT is
         ERC20(asset()).safeApprove(_delegator, amount);
         delegator.delegate(amount);
 
+        uint256 prevTVL = info.balance;
+
         info.balance += uint248(amount);
         delegatorMap[_delegator] = info;
         delegatorAssets += amount;
+
+        emit DelegatorTVLChanged(_delegator, prevTVL, info.balance);
     }
 
     /**
@@ -625,14 +619,18 @@ contract UltraLRT is
      * @notice Set the management fee
      */
     function setManagementFee(uint256 feeBps) external onlyGovernance {
+        uint256 _preManagementFee = managementFee;
         managementFee = feeBps;
+        emit ManagementFeeChanged(_preManagementFee, feeBps);
     }
 
     /**
      * @notice Set the withdrawal fee
      */
     function setWithdrawalFee(uint256 feeBps) external onlyGovernance {
+        uint256 _preWithdrawalFee = withdrawalFee;
         withdrawalFee = feeBps;
+        emit WithdrawalFeeChanged(_preWithdrawalFee, feeBps);
     }
 
     /*//////////////////////////////////////////////////////////////

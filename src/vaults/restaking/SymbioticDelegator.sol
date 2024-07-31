@@ -20,7 +20,7 @@ import {AffineDelegator} from "src/vaults/restaking/AffineDelegator.sol";
 contract SymbioticDelegator is Initializable, AffineDelegator, AffineGovernable {
     using SafeTransferLib for ERC20;
 
-    ISymCollateral collateral;
+    ISymCollateral public collateral;
 
     /**
      * @dev Initialize the contract
