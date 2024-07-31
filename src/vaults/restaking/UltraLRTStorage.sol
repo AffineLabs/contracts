@@ -144,6 +144,8 @@ abstract contract UltraLRTStorage {
 
     // performance fee charged on profit
     uint256 public performanceFeeBps;
+    // accrued performance fee
+    // this is the profit that has been harvested but not yet withdrawn
     uint256 public accruedPerformanceFee;
 
     // max end epoch interval, default 24 hours same as lock interval
