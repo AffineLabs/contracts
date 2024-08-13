@@ -55,7 +55,7 @@ contract Deploy is Script {
         (address deployer,) = deriveRememberKey(vm.envString("MNEMONIC"), 0);
         vm.startBroadcast(deployer);
 
-        console2.log("deployer gov %s", deployer);
+        console2.log("deployer %s", deployer);
         return deployer;
     }
 
@@ -212,13 +212,15 @@ contract Deploy is Script {
         // staked eth token
         address stEth = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84; // mainnet staked eth
 
-        address beacon = 0x4EF63302E9156cFE545dac761AB8D84B786A985F; // mainnet delegator beacon
+        address beacon = 0x523895c24602538a949f58F595BB2896FDa82528; // mainnet delegator beacon
 
-        // UltraLRT vaultImpl = new UltraLRT(); // impl: 0x0b75F2B048CA8517f6476316F872903920DCC8ef
-        UltraLRT vaultImpl = UltraLRT(0x0b75F2B048CA8517f6476316F872903920DCC8ef);
+        UltraLRT vaultImpl = new UltraLRT(); // impl: 0x0b75F2B048CA8517f6476316F872903920DCC8ef
+        // UltraLRT vaultImpl = UltraLRT(0x0b75F2B048CA8517f6476316F872903920DCC8ef);
+        // 18 decimal vault: 0xcbC632833687DacDcc7DfaC96F6c5989381f4B47
+        // 18 decimal impl: 0xCee23c4724D70Ad9F327Cc86947f690494c15D48
 
         bytes memory initData =
-            abi.encodeCall(UltraLRT.initialize, (governance, stEth, address(beacon), "Affine ultraETH", "ultraETH"));
+            abi.encodeCall(UltraLRT.initialize, (governance, stEth, address(beacon), "Affine ultraETH 2.0", "ultraETH"));
 
         console2.logBytes(initData);
 
@@ -230,7 +232,7 @@ contract Deploy is Script {
 
     function runMainnetEigenDelegatorFactory() public {
         _start();
-        UltraLRT vault = UltraLRT(0x47657094e3AF11c47d5eF4D3598A1536B394EEc4);
+        UltraLRT vault = UltraLRT(0xcbC632833687DacDcc7DfaC96F6c5989381f4B47);
 
         // delegator factory
         DelegatorFactory dFactory = new DelegatorFactory(address(vault));
@@ -241,7 +243,7 @@ contract Deploy is Script {
 
     function runMainnetEigenEscrow() public {
         _start();
-        UltraLRT vault = UltraLRT(0x47657094e3AF11c47d5eF4D3598A1536B394EEc4);
+        UltraLRT vault = UltraLRT(0xcbC632833687DacDcc7DfaC96F6c5989381f4B47);
 
         // add withdrawal escrow
         WithdrawalEscrowV2 escrow = new WithdrawalEscrowV2(vault);
@@ -274,13 +276,14 @@ contract Deploy is Script {
         // staked eth token
         address wstEth = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
 
-        address beacon = 0x0162B837686DA0c75D323f2071da670b232cBfcc; // mainnet beacon
+        address beacon = 0x5eA0719B473A4Cb4A98706770703693719D2E7D0; // mainnet beacon
 
         // UltraLRT vaultImpl = new UltraLRT(); impl: 0x0b75F2B048CA8517f6476316F872903920DCC8ef
-        UltraLRT vaultImpl = UltraLRT(0x0b75F2B048CA8517f6476316F872903920DCC8ef);
+        UltraLRT vaultImpl = UltraLRT(0xCee23c4724D70Ad9F327Cc86947f690494c15D48);
 
-        bytes memory initData =
-            abi.encodeCall(UltraLRT.initialize, (governance, wstEth, address(beacon), "Affine ultraETHs", "ultraETHs"));
+        bytes memory initData = abi.encodeCall(
+            UltraLRT.initialize, (governance, wstEth, address(beacon), "Affine ultraETHs 2.0", "ultraETHs")
+        );
 
         console2.logBytes(initData);
 
@@ -292,7 +295,7 @@ contract Deploy is Script {
 
     function runMainnetSymbioticDelegatorFactory() public {
         _start();
-        UltraLRT vault = UltraLRT(0x0D53bc2BA508dFdf47084d511F13Bb2eb3f8317B); // mainnet vault
+        UltraLRT vault = UltraLRT(0xF0a949B935e367A94cDFe0F2A54892C2BC7b2131); // mainnet vault
 
         // delegator factory
         SymDelegatorFactory dFactory = new SymDelegatorFactory(address(vault));
@@ -303,7 +306,7 @@ contract Deploy is Script {
 
     function runMainnetSymbioticEscrow() public {
         _start();
-        UltraLRT vault = UltraLRT(0x0D53bc2BA508dFdf47084d511F13Bb2eb3f8317B); // mainnet vault
+        UltraLRT vault = UltraLRT(0xF0a949B935e367A94cDFe0F2A54892C2BC7b2131); // mainnet vault
 
         // add withdrawal escrow
         WithdrawalEscrowV2 escrow = new WithdrawalEscrowV2(vault);

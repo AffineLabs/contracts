@@ -162,7 +162,7 @@ contract TestUltraLRTRouter is TestPlus {
         // check vault assets
         assertApproxEqAbs(vault.vaultAssets(), assetsToDeposit, 10);
         // check vault shares
-        assertApproxEqAbs(vault.balanceOf(user1), assetsToDeposit * (1e8), 10);
+        assertApproxEqAbs(vault.balanceOf(user1), assetsToDeposit, 10);
     }
 
     function testWStEthToVault1Deposit() public {
@@ -199,7 +199,7 @@ contract TestUltraLRTRouter is TestPlus {
         // check vault assets
         assertApproxEqAbs(vault.vaultAssets(), depositedStEth, 100);
         // // check vault shares
-        assertApproxEqAbs(vault.balanceOf(user1), depositedStEth * (1e8), 100);
+        assertApproxEqAbs(vault.balanceOf(user1), depositedStEth, 100);
         // console2.log("B %s", vault.balanceOf(user1));
 
         // get signature for approval of vault
@@ -257,7 +257,7 @@ contract TestUltraLRTRouter is TestPlus {
         // check vault assets
         assertApproxEqAbs(vault.vaultAssets(), depositedStEth, 100);
         // // check vault shares
-        assertApproxEqAbs(vault.balanceOf(user1), depositedStEth * (1e8), 100 * (1e8));
+        assertApproxEqAbs(vault.balanceOf(user1), depositedStEth, 100);
         // console2.log("B %s", vault.balanceOf(user1));
     }
 
@@ -282,7 +282,7 @@ contract TestUltraLRTRouter is TestPlus {
         // check vault assets
         assertApproxEqAbs(vault.vaultAssets(), depositedStEth, 10);
         // // check vault shares
-        assertApproxEqAbs(vault.balanceOf(user1), depositedStEth * (1e8), 10 * (1e8));
+        assertApproxEqAbs(vault.balanceOf(user1), depositedStEth, 10);
         // console2.log("B %s", vault.balanceOf(user1));
     }
 
@@ -303,7 +303,7 @@ contract TestUltraLRTRouter is TestPlus {
         // check vault assets
         assertApproxEqAbs(wStEthVault.vaultAssets(), depositedStEth, 10);
         // // check vault shares
-        assertApproxEqAbs(wStEthVault.balanceOf(user1), depositedStEth * (1e8), 10 * (1e8));
+        assertApproxEqAbs(wStEthVault.balanceOf(user1), depositedStEth, 10);
         // console2.log("B %s", vault.balanceOf(user1));
     }
 
@@ -343,7 +343,7 @@ contract TestUltraLRTRouter is TestPlus {
         // check vault assets
         assertApproxEqAbs(wStEthVault.vaultAssets(), depositedWStEth, 100);
         // // check vault shares
-        assertApproxEqAbs(wStEthVault.balanceOf(user1), depositedWStEth * (1e8), 100 * (1e8));
+        assertApproxEqAbs(wStEthVault.balanceOf(user1), depositedWStEth, 100);
         // console2.log("B %s", vault.balanceOf(user1));
     }
 
@@ -381,7 +381,7 @@ contract TestUltraLRTRouter is TestPlus {
         // check vault assets
         assertApproxEqAbs(wStEthVault.vaultAssets(), depositedWStEth, 100);
         // // check vault shares
-        assertApproxEqAbs(wStEthVault.balanceOf(user1), depositedWStEth * (1e8), 100);
+        assertApproxEqAbs(wStEthVault.balanceOf(user1), depositedWStEth, 100);
         // console2.log("B %s", vault.balanceOf(user1));
     }
 
@@ -416,6 +416,6 @@ contract TestUltraLRTRouter is TestPlus {
         // check vault assets
         assertApproxEqAbs(wStEthVault.vaultAssets(), depositedWStEth, 10);
         // check vault shares
-        assertApproxEqAbs(wStEthVault.balanceOf(user1), depositedWStEth * (1e8), 10);
+        assertApproxEqAbs(wStEthVault.balanceOf(user1), depositedWStEth, 10);
     }
 }

@@ -73,10 +73,12 @@ contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
         }
     }
 
+    event WithdrawalRequested(bytes32 indexed root, uint256 shares, uint256 assets);
     /**
      * @notice Request withdrawal from eigenlayer
      * @param assets Amount to withdraw
      */
+
     function _requestWithdrawal(uint256 assets) internal override {
         // request withdrawal
         QueuedWithdrawalParams[] memory params = new QueuedWithdrawalParams[](1);
@@ -93,6 +95,7 @@ contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
 
             bytes32[] memory withdrawalRoots = DELEGATION_MANAGER.queueWithdrawals(params);
             withdrawals[withdrawalRoots[0]] = shares[0];
+            emit WithdrawalRequested(withdrawalRoots[0], shares[0], assets);
         }
     }
 
@@ -142,6 +145,7 @@ contract EigenDelegator is Initializable, AffineDelegator, AffineGovernable {
         if (withdrawals[root] == 0) {
             withdrawals[root] = withdrawal.shares[0];
             queuedShares += withdrawal.shares[0];
+            emit WithdrawalRequested(root, withdrawal.shares[0], 0);
         }
     }
 

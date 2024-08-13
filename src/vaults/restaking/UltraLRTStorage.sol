@@ -7,6 +7,82 @@ import {IDelegator} from "src/vaults/restaking/IDelegator.sol";
 import {ReStakingErrors} from "src/libs/ReStakingErrors.sol";
 
 abstract contract UltraLRTStorage {
+    // events
+    /**
+     * @notice An event emitted when the management fee is changed
+     * @param oldFee The old management fee
+     * @param newFee The new management fee
+     */
+    event ManagementFeeChanged(uint256 oldFee, uint256 newFee);
+    /**
+     * @notice An event emitted when the withdrawal fee is changed
+     * @param oldFee The old withdrawal fee
+     * @param newFee The new withdrawal fee
+     */
+    event WithdrawalFeeChanged(uint256 oldFee, uint256 newFee);
+
+    /**
+     * @notice An event emitted when the performance fee is changed
+     * @param oldFee The old performance fee
+     * @param newFee The new performance fee
+     */
+    event PerformanceFeeChanged(uint256 oldFee, uint256 newFee);
+
+    /**
+     * @notice An event emitted when the max end epoch interval is changed
+     * @param oldInterval The old max end epoch interval
+     * @param newInterval The new max end epoch interval
+     */
+    event MaxEndEpochIntervalChanged(uint256 oldInterval, uint256 newInterval);
+
+    /**
+     * @notice An event emitted when the delegator is added
+     * @param delegator The delegator address
+     * @param operator The operator address
+     * @param delegatorCount The total delegator count
+     */
+    event DelegatorAdded(address delegator, address operator, uint256 delegatorCount);
+    /**
+     * @notice An event emitted when the delegator is removed
+     * @param delegator The delegator address
+     * @param delegatorCount The total delegator count
+     */
+    event DelegatorRemoved(address delegator, uint256 delegatorCount);
+    /**
+     * @notice An event emitted when the delegator TVL is changed
+     * @param delegator The delegator address
+     * @param oldBalance The old balance
+     * @param newBalance The new balance
+     */
+    event DelegatorTVLChanged(address delegator, uint256 oldBalance, uint256 newBalance);
+    /**
+     * @notice An event emitted when the max unresolved epochs is changed
+     * @param oldEpochs The old max unresolved epochs
+     * @param newEpochs The new max unresolved epochs
+     */
+    event MaxUnresolvedEpochChanged(uint256 oldEpochs, uint256 newEpochs);
+    /**
+     * @notice An event emitted when withdrawal is queued
+     * @param epoch The epoch number
+     * @param receiver The receiver address
+     * @param owner The owner address
+     * @param shares The shares
+     */
+    event WithdrawalQueued(uint256 indexed epoch, address receiver, address owner, uint256 shares);
+    /**
+     * @notice An event emitted when epoch ended
+     * @param epoch The epoch number
+     * @param shares The shares
+     * @param assets The assets
+     */
+    event EndEpoch(uint256 epoch, uint256 shares, uint256 assets);
+    /**
+     * @notice An event emitted when the profit is harvested
+     * @param profit The profit
+     * @param performanceFee Accrued performance fee
+     */
+    event Harvest(uint256 profit, uint256 performanceFee);
+
     struct DelegatorInfo {
         bool isActive;
         uint248 balance;
@@ -65,6 +141,15 @@ abstract contract UltraLRTStorage {
 
     // max unresolved epochs
     uint256 public maxUnresolvedEpochs;
+
+    // performance fee charged on profit
+    uint256 public performanceFeeBps;
+    // accrued performance fee
+    // this is the profit that has been harvested but not yet withdrawn
+    uint256 public accruedPerformanceFee;
+
+    // max end epoch interval, default 24 hours same as lock interval
+    uint256 public maxEndEpochInterval = 24 hours;
 
     modifier whenDepositNotPaused() {
         if (depositPaused != 0) revert ReStakingErrors.DepositPaused();
