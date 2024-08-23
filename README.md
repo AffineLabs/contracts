@@ -28,9 +28,10 @@ Update the version with `foundryup -v nightly-ca67d15f4abd46394b324c50e21e66f306
 ### Hardhat
 
 - Install nvm with these [instructions](https://github.com/nvm-sh/nvm#install--update-script). Then run
+need npm 16
 
 ```sh
-nvm use
+nvm use 16
 ```
 
 - Install yarn with
