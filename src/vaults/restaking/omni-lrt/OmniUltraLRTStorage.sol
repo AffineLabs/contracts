@@ -13,6 +13,10 @@ abstract contract OmniUltraLRTStorage {
     // can pause specific assets too
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
+    // base asset, everything is priced in this asset
+    // for eth
+    address public baseAsset;
+
     // assets list
     address[50] public assets;
     // asset count

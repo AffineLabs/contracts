@@ -24,6 +24,10 @@ import {OmniUltraLRTStorage} from "./OmniUltraLRTStorage.sol";
 
 // IPriceFeed
 import {IPriceFeed} from "../price-feed/IPriceFeed.sol";
+// withdrawal escrow
+import {OmniWithdrawalEscrow} from "./OmniWithdrawalEscrow.sol";
+
+import {UltraLRT} from "../UltraLRT.sol";
 
 contract OmniUltraLRT is
     Initializable,
@@ -34,7 +38,10 @@ contract OmniUltraLRT is
     ReentrancyGuardUpgradeable,
     OmniUltraLRTStorage
 {
+    using SafeTransferLib for ERC20;
+    using MathUpgradeable for uint256;
     // Constructor
+
     constructor() {
         // disable initializer
         _disableInitializers();
@@ -115,33 +122,104 @@ contract OmniUltraLRT is
 
     // deposit and withdraw functions
     function deposit(address token, uint256 amount, address receiver) external nonReentrant whenNotPaused {
-        //todo deposit
+        require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
+        require(!pausedAssets[token], "ASSET_PAUSED");
+        require(amount > 0, "ZERO_AMOUNT");
+        require(receiver != address(0), "INVALID_RECEIVER");
+
+        // convert to base asset
+        uint256 baseAssetAmount = convertTokenToBaseAsset(token, amount);
+
+        uint256 sharesToMint = _convertToShares(baseAssetAmount, MathUpgradeable.Rounding.Down);
+
+        // transfer token
+        ERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+
+        // mint shares
+        _mint(receiver, sharesToMint);
+
+        //TODO emit event
     }
 
-    function withdraw(uint256 shares, address token, address receiver) external nonReentrant whenNotPaused {
-        //todo withdraw
+    function withdraw(uint256 amount, address token, address receiver) external nonReentrant whenNotPaused {
+        require(token != address(0), "INVALID ASSET");
+        require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
+        require(!pausedAssets[token], "ASSET_PAUSED");
+        require(amount > 0, "ZERO_AMOUNT");
+        require(receiver != address(0), "INVALID_RECEIVER");
+
+        if (canWithdraw(amount, token, receiver)) {
+            // send to withdrawal queue
+            uint256 tokenAmountInBaseAsset = convertTokenToBaseAsset(token, amount);
+
+            uint256 sharesToBurn = _convertToShares(tokenAmountInBaseAsset, MathUpgradeable.Rounding.Up);
+
+            // transfer shares to escrow
+            _transfer(msg.sender, wQueues[token], sharesToBurn);
+
+            OmniWithdrawalEscrow(wQueues[token]).registerWithdrawalRequest(receiver, sharesToBurn);
+
+            // TODO: emit event
+        }
+    }
+
+    function canWithdraw(uint256 amount, address token, address receiver) public view returns (bool) {
+        // check if user can withdraw
+        uint256 _tokenTVL = tokenTVL(token);
+
+        uint256 debtShare = OmniWithdrawalEscrow(wQueues[token]).totalDebt();
+
+        uint256 debtAssetAmount = _convertToAssets(debtShare, MathUpgradeable.Rounding.Up);
+
+        uint256 availableAssets = _tokenTVL - debtAssetAmount;
+        return _convertToAssets(amount, MathUpgradeable.Rounding.Up) <= availableAssets;
     }
 
     // todo implement
-    function tvl() external view returns (uint256) {
-        // tvl
+    function totalAssets() public view returns (uint256 amount) {
         for (uint256 i = 0; i < assetCount; i++) {
-            // get price feed
-            // get balance
-            // get price
-            // calculate tvl
+            amount += tokenTVL(assets[i]);
         }
-        return 0;
+        return amount;
+    }
+
+    function tokenTVL(address token) public view returns (uint256 amount) {
+        require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
+
+        uint256 vaultShares = UltraLRT(vaults[token]).balanceOf(address(this));
+        uint256 vaultAssets =
+            UltraLRT(vaults[token]).convertToAssets(vaultShares) + ERC20(token).balanceOf(address(this));
+
+        // convert to base asset
+        if (token != baseAsset) {
+            (uint256 rate,) = IPriceFeed(priceFeeds[token]).getPrice();
+            amount = ((vaultAssets * rate) / 10 ** ERC20(token).decimals());
+        } else {
+            amount = vaultAssets;
+        }
+        return amount;
+    }
+
+    function convertTokenToBaseAsset(address token, uint256 tokenAmount) public view returns (uint256) {
+        require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
+        (uint256 rate,) = IPriceFeed(priceFeeds[token]).getPrice();
+        uint256 amount = ((tokenAmount * rate) / 10 ** ERC20(token).decimals());
+        return amount;
+    }
+
+    function convertBaseAssetToToken(address token, uint256 baseAssetAmount) public view returns (uint256) {
+        require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
+        (uint256 rate,) = IPriceFeed(priceFeeds[token]).getPrice();
+        uint256 amount = ((baseAssetAmount * 10 ** ERC20(token).decimals()) / rate);
+        return amount;
     }
 
     function convertToShares(uint256 amount) external view returns (uint256) {
-        // convert to shares
-        return 0;
+        return _convertToShares(amount, MathUpgradeable.Rounding.Down);
     }
 
     function convertToAssets(uint256 shares) external view returns (uint256) {
-        // convert to assets
-        return 0;
+        return _convertToAssets(shares, MathUpgradeable.Rounding.Down);
     }
 
     function _convertToShares(uint256 _assets, MathUpgradeable.Rounding rounding)
@@ -150,12 +228,10 @@ contract OmniUltraLRT is
         virtual
         returns (uint256 shares)
     {
-        // uint256 supply = totalSupply();
-        // return
-        //     (_assets == 0 || supply == 0)
-        //         ? _assets.mulDiv(10**decimals(), 10**_asset.decimals(), rounding)
-        //         : _assets.mulDiv(supply, totalAssets(), rounding);
-        return 0;
+        uint256 supply = totalSupply();
+        return (_assets == 0 || supply == 0)
+            ? _assets.mulDiv(10 ** decimals(), 10 ** ERC20(baseAsset).decimals(), rounding)
+            : _assets.mulDiv(supply, totalAssets(), rounding);
     }
 
     /**
@@ -167,12 +243,10 @@ contract OmniUltraLRT is
         virtual
         returns (uint256 assets)
     {
-        // uint256 supply = totalSupply();
-        // return
-        //     (supply == 0)
-        //         ? shares.mulDiv(10**_asset.decimals(), 10**decimals(), rounding)
-        //         : shares.mulDiv(totalAssets(), supply, rounding);
-        return 0;
+        uint256 supply = totalSupply();
+        return (supply == 0)
+            ? shares.mulDiv(10 ** ERC20(baseAsset).decimals(), 10 ** decimals(), rounding)
+            : shares.mulDiv(totalAssets(), supply, rounding);
     }
 
     // set fees
@@ -221,7 +295,18 @@ contract OmniUltraLRT is
 
     // resolve debt for asset
     // collect asset from vault and resolve debt for user
-    function resolveDebt(address[] memory assets) external onlyRole(HARVESTER_ROLE) {
-        // resolve debt
+    function resolveDebt(address[] memory token) external onlyRole(HARVESTER_ROLE) {
+        for (uint256 i = 0; i < token.length; i++) {
+            require(vaults[token[i]] != address(0), "ASSET_NOT_SUPPORTED");
+
+            // debt share for asset
+            uint256 debtShare = OmniWithdrawalEscrow(wQueues[token[i]]).totalDebt();
+
+            // convert shares to asset
+            uint256 debtAssetAmount = _convertToAssets(debtShare, MathUpgradeable.Rounding.Down);
+
+            // convert debt asset amount to token amount
+            uint256 debtTokenAmount = convertBaseAssetToToken(token[i], debtAssetAmount);
+        }
     }
 }
