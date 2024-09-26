@@ -33,6 +33,7 @@ contract OmniWithdrawalEscrow {
     uint256 public currentEpoch;
     uint256 public resolvingEpoch;
     uint256 public totalDebt;
+    uint256 public totalAssets;
 
     // map per epoch debt share
     mapping(uint256 => EpochInfo) public epochInfo;
@@ -113,15 +114,14 @@ contract OmniWithdrawalEscrow {
      * @dev will check for available shares to burn
      * @dev after resolving vault will send the assets to escrow and burn the share
      */
-    function resolveDebtShares() external onlyVault {
+    function resolveDebtShares(uint256 amount) external onlyVault {
         require(resolvingEpoch < currentEpoch, "WEV2: No debt.");
 
-        uint256 preAssets = asset.balanceOf(address(this));
-        vault.redeem({shares: epochInfo[resolvingEpoch].shares, receiver: address(this), owner: address(this)});
+        // receive token from vault
+        asset.safeTransferFrom(address(vault), address(this), amount);
 
-        uint256 currentAssets = asset.balanceOf(address(this));
         totalDebt -= epochInfo[resolvingEpoch].shares;
-        epochInfo[resolvingEpoch].assets = uint128(currentAssets - preAssets);
+        epochInfo[resolvingEpoch].assets = uint128(amount);
 
         resolvingEpoch += 1;
     }
@@ -130,11 +130,11 @@ contract OmniWithdrawalEscrow {
      * @notice Redeem multiple epochs
      * @param user user address
      * @param epochs withdrawal request epochs
-     * @return totalAssets received
+     * @return assets received
      */
-    function redeemMultiEpoch(address user, uint256[] calldata epochs) public returns (uint256 totalAssets) {
+    function redeemMultiEpoch(address user, uint256[] calldata epochs) public returns (uint256 assets) {
         for (uint8 i = 0; i < epochs.length; i++) {
-            totalAssets += redeem(user, epochs[i]);
+            assets += redeem(user, epochs[i]);
         }
     }
     /**

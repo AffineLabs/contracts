@@ -148,7 +148,7 @@ contract OmniUltraLRT is
         require(amount > 0, "ZERO_AMOUNT");
         require(receiver != address(0), "INVALID_RECEIVER");
 
-        if (canWithdraw(amount, token, receiver)) {
+        if (canWithdraw(amount, token)) {
             // send to withdrawal queue
             uint256 tokenAmountInBaseAsset = convertTokenToBaseAsset(token, amount);
 
@@ -163,7 +163,17 @@ contract OmniUltraLRT is
         }
     }
 
-    function canWithdraw(uint256 amount, address token, address receiver) public view returns (bool) {
+    // function to check if withdrawal can be resolved now
+
+    function canResolveWithdrawal(uint256 amount, address token) public view returns (bool) {
+        uint256 tokenBalance = ERC20(token).balanceOf(address(this));
+        if (tokenBalance >= amount && OmniWithdrawalEscrow(wQueues[token]).totalDebt() == 0) {
+            return true;
+        }
+        return false;
+    }
+
+    function canWithdraw(uint256 amount, address token) public view returns (bool) {
         // check if user can withdraw
         uint256 _tokenTVL = tokenTVL(token);
 
@@ -299,14 +309,28 @@ contract OmniUltraLRT is
         for (uint256 i = 0; i < token.length; i++) {
             require(vaults[token[i]] != address(0), "ASSET_NOT_SUPPORTED");
 
-            // debt share for asset
-            uint256 debtShare = OmniWithdrawalEscrow(wQueues[token[i]]).totalDebt();
+            uint256 debtShare = OmniWithdrawalEscrow(wQueues[token[i]]).getDebtToResolve();
 
-            // convert shares to asset
-            uint256 debtAssetAmount = _convertToAssets(debtShare, MathUpgradeable.Rounding.Down);
+            if (debtShare == 0) {
+                continue;
+            }
 
-            // convert debt asset amount to token amount
-            uint256 debtTokenAmount = convertBaseAssetToToken(token[i], debtAssetAmount);
+            uint256 debtAssetAmount = _convertToAssets(debtShare, MathUpgradeable.Rounding.Up);
+
+            uint256 tokenAmount = convertBaseAssetToToken(token[i], debtAssetAmount);
+
+            if (tokenAmount > ERC20(token[i]).balanceOf(address(this))) {
+                continue;
+            }
+
+            // burn shares
+            _burn(wQueues[token[i]], debtShare);
+
+            // approve withdrawal escrow
+            ERC20(token[i]).safeApprove(wQueues[token[i]], tokenAmount);
+
+            // resolve debt
+            OmniWithdrawalEscrow(wQueues[token[i]]).resolveDebtShares(tokenAmount);
         }
     }
 }
