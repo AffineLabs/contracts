@@ -13,6 +13,9 @@ abstract contract OmniUltraLRTStorage {
     // can pause specific assets too
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
+    // max wei tolerance,
+    // due to lot of calculations and rounding errors
+    uint256 public constant WEI_TOLERANCE = 1000;
     // base asset, everything is priced in this asset
     // for eth
     address public baseAsset;

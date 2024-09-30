@@ -96,7 +96,9 @@ contract OmniWithdrawalEscrow {
      * @dev will be called by the vault after closing a position
      */
     function endEpoch() external onlyVault {
-        require(epochInfo[currentEpoch].shares > 0, "WEV2: No Debt.");
+        if (epochInfo[currentEpoch].shares == 0) {
+            return;
+        }
 
         currentEpoch = currentEpoch + 1;
         // TODO: epoch end event
