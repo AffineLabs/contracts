@@ -322,6 +322,7 @@ contract OmniUltraLRT is
             if (tokenAmount > ERC20(token[i]).balanceOf(address(this))) {
                 continue;
             }
+            // TODO: pay partial debt
 
             // burn shares
             _burn(wQueues[token[i]], debtShare);
@@ -330,7 +331,7 @@ contract OmniUltraLRT is
             ERC20(token[i]).safeApprove(wQueues[token[i]], tokenAmount);
 
             // resolve debt
-            OmniWithdrawalEscrow(wQueues[token[i]]).resolveDebtShares(tokenAmount);
+            OmniWithdrawalEscrow(wQueues[token[i]]).resolveDebtShares(debtShare, tokenAmount);
         }
     }
 }

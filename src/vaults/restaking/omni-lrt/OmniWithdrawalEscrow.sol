@@ -28,12 +28,14 @@ contract OmniWithdrawalEscrow {
     struct EpochInfo {
         uint128 shares;
         uint128 assets;
+        uint128 resolvedShares;
     }
 
     uint256 public currentEpoch;
     uint256 public resolvingEpoch;
     uint256 public totalDebt;
     uint256 public totalAssets;
+    bool public shareWithdrawable;
 
     // map per epoch debt share
     mapping(uint256 => EpochInfo) public epochInfo;
@@ -105,7 +107,9 @@ contract OmniWithdrawalEscrow {
      * @return amount of debt to resolve
      */
     function getDebtToResolve() external view returns (uint256) {
-        return resolvingEpoch < currentEpoch ? epochInfo[resolvingEpoch].shares : 0;
+        return resolvingEpoch < currentEpoch
+            ? epochInfo[resolvingEpoch].shares - epochInfo[resolvingEpoch].resolvedShares
+            : 0;
     }
 
     /**
@@ -114,16 +118,41 @@ contract OmniWithdrawalEscrow {
      * @dev will check for available shares to burn
      * @dev after resolving vault will send the assets to escrow and burn the share
      */
-    function resolveDebtShares(uint256 amount) external onlyVault {
+    function resolveDebtShares(uint256 shares, uint256 amount) external onlyVault {
         require(resolvingEpoch < currentEpoch, "WEV2: No debt.");
+
+        EpochInfo memory data = epochInfo[resolvingEpoch];
+
+        require(data.shares >= (shares + data.resolvedShares), "WEV2: Invalid shares.");
 
         // receive token from vault
         asset.safeTransferFrom(address(vault), address(this), amount);
 
-        totalDebt -= epochInfo[resolvingEpoch].shares;
-        epochInfo[resolvingEpoch].assets = uint128(amount);
+        totalDebt -= shares;
+        epochInfo[resolvingEpoch].assets += uint128(amount);
 
-        resolvingEpoch += 1;
+        // update the resolved shares
+        epochInfo[resolvingEpoch].resolvedShares += uint128(shares);
+
+        if (data.shares == data.resolvedShares) {
+            resolvingEpoch += 1;
+        }
+    }
+
+    // enable share withdrawal
+
+    /**
+     * @notice Enable share withdrawal
+     */
+    function enableShareWithdrawal() external onlyVault {
+        shareWithdrawable = true;
+    }
+
+    /**
+     * @notice Disable share withdrawal
+     */
+    function disableShareWithdrawal() external onlyGovernance {
+        shareWithdrawable = false;
     }
 
     /**
@@ -149,27 +178,63 @@ contract OmniWithdrawalEscrow {
         require(canWithdraw(epoch), "WE: epoch not resolved.");
 
         // total assets for user
-        uint256 assets = _epochSharesToAssets(user, epoch);
+        (uint256 shares, uint256 assets) = _epochSharesToAssets(user, epoch);
         require(assets > 0, "WE: no assets to redeem");
 
         // reset the user debt share
-        userDebtShare[epoch][user] = 0;
+        userDebtShare[epoch][user] -= shares;
 
         // Transfer asset to user
         asset.safeTransfer(user, assets);
+
+        // update epoch info
+        EpochInfo storage data = epochInfo[epoch];
+
+        data.shares -= uint128(shares);
+        data.assets -= uint128(assets);
+        data.resolvedShares -= uint128(shares);
+
+        epochInfo[epoch] = data;
+
         return assets;
+    }
+
+    function redeemShares(address user, uint256 epoch) public returns (uint256) {
+        require(shareWithdrawable, "WE: share withdrawal disabled");
+
+        // max share amount can withdraw
+        uint256 shares = Math.min(userDebtShare[epoch][user], epochInfo[epoch].shares - epochInfo[epoch].resolvedShares);
+
+        require(shares > 0, "WE: no shares to redeem");
+
+        // reset the user debt share
+        userDebtShare[epoch][user] -= shares;
+
+        // transfer assets to user
+        ERC20(address(vault)).safeTransfer(user, shares);
+
+        // update epoch info
+        epochInfo[epoch].shares -= uint128(shares);
+
+        if (epochInfo[epoch].resolvedShares == epochInfo[epoch].shares) {
+            resolvingEpoch += 1;
+        }
+        return shares;
     }
 
     /**
      * @notice Convert epoch shares to assets
      * @param user User address
      * @param epoch withdrawal request epoch
-     * @return converted assets
+     * @return shares
+     * @return assets
      */
-    function _epochSharesToAssets(address user, uint256 epoch) internal view returns (uint256) {
+    function _epochSharesToAssets(address user, uint256 epoch) internal view returns (uint256 shares, uint256 assets) {
         uint256 userShares = userDebtShare[epoch][user];
         EpochInfo memory data = epochInfo[epoch];
-        return (userShares * data.assets) / data.shares;
+
+        shares = Math.min(userShares, data.resolvedShares);
+        assets = ((shares * data.assets) / data.resolvedShares);
     }
 
     /**
@@ -178,7 +243,7 @@ contract OmniWithdrawalEscrow {
      * @return True if epoch is completed
      */
     function canWithdraw(uint256 epoch) public view returns (bool) {
-        return epoch < resolvingEpoch;
+        return epoch < resolvingEpoch || (epoch == resolvingEpoch && epochInfo[epoch].resolvedShares > 0);
     }
     /**
      * @notice Get withdrawable assets of a user
@@ -191,7 +256,8 @@ contract OmniWithdrawalEscrow {
         if (!canWithdraw(epoch)) {
             return 0;
         }
-        return _epochSharesToAssets(user, epoch);
+        (, uint256 assets) = _epochSharesToAssets(user, epoch);
+        return assets;
     }
 
     /**
@@ -203,6 +269,9 @@ contract OmniWithdrawalEscrow {
     function withdrawableShares(address user, uint256 epoch) public view returns (uint256) {
         if (!canWithdraw(epoch)) {
             return 0;
+        }
+        if (epoch == resolvingEpoch && epochInfo[epoch].resolvedShares < epochInfo[epoch].shares) {
+            return Math.min(userDebtShare[epoch][user], epochInfo[epoch].resolvedShares);
         }
         return userDebtShare[epoch][user];
     }
