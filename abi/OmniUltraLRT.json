@@ -307,6 +307,11 @@
         "internalType": "address",
         "name": "priceFeed",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "escrow",
+        "type": "address"
       }
     ],
     "name": "addAsset",
@@ -383,7 +388,7 @@
         "type": "uint256"
       }
     ],
-    "name": "assets",
+    "name": "assetList",
     "outputs": [
       {
         "internalType": "address",
@@ -686,6 +691,30 @@
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "getVaultWqTVL",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "shares",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "assets",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "bytes32",
         "name": "role",
         "type": "bytes32"
@@ -763,6 +792,11 @@
       },
       {
         "internalType": "address",
+        "name": "baseAsset",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
         "name": "_governance",
         "type": "address"
       },
@@ -818,6 +852,25 @@
   {
     "inputs": [],
     "name": "managementFeeBps",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "minVaultWqEpoch",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1200,6 +1253,19 @@
   {
     "inputs": [],
     "name": "unpause",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "updateMinVaultWqEpoch",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

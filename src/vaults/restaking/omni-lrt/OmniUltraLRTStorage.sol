@@ -21,7 +21,7 @@ abstract contract OmniUltraLRTStorage {
     address public baseAsset;
 
     // assets list
-    address[50] public assets;
+    address[50] public assetList;
     // asset count
     uint256 public assetCount;
 
@@ -31,6 +31,9 @@ abstract contract OmniUltraLRTStorage {
     mapping(address => address) public wQueues;
     // per asset price feed
     mapping(address => address) public priceFeeds;
+
+    // locked shares in vaults wqs
+    mapping(address => uint256) public minVaultWqEpoch;
 
     // pause asset
     mapping(address => bool) public pausedAssets;

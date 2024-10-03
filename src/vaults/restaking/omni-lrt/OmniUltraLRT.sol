@@ -27,6 +27,8 @@ import {IPriceFeed} from "../price-feed/IPriceFeed.sol";
 // withdrawal escrow
 import {OmniWithdrawalEscrow} from "./OmniWithdrawalEscrow.sol";
 
+import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
+
 import {UltraLRT} from "../UltraLRT.sol";
 
 contract OmniUltraLRT is
@@ -51,6 +53,7 @@ contract OmniUltraLRT is
     function initialize(
         string memory name_,
         string memory symbol_,
+        address baseAsset,
         address _governance,
         address _harvester,
         address _manager,
@@ -96,14 +99,17 @@ contract OmniUltraLRT is
     }
 
     // add new asset to the vault
-    function addAsset(address asset, address vault, address priceFeed) external onlyRole(GOVERNANCE_ROLE) {
+    function addAsset(address asset, address vault, address priceFeed, address escrow)
+        external
+        onlyRole(GOVERNANCE_ROLE)
+    {
         // add asset
         require(assetCount < 50, "MAX_ASSETS_REACHED");
         require(vaults[asset] == address(0), "ASSET_EXISTS");
 
-        assets[assetCount] = asset;
+        assetList[assetCount] = asset;
         vaults[asset] = vault;
-        wQueues[asset] = address(0); // todo set withdrawal queue
+        wQueues[asset] = escrow; // todo set withdrawal queue
         priceFeeds[asset] = priceFeed;
         assetCount++;
     }
@@ -118,6 +124,14 @@ contract OmniUltraLRT is
     // todo implement
     function removeAsset(address asset) external onlyRole(GOVERNANCE_ROLE) {
         // remove asset
+        require(vaults[asset] != address(0), "ASSET_NOT_EXISTS");
+        require(tokenTVL(asset) < WEI_TOLERANCE, "ASSET_NOT_EMPTY");
+
+        // remove asset
+        vaults[asset] = address(0);
+        wQueues[asset] = address(0);
+        priceFeeds[asset] = address(0);
+        pausedAssets[asset] = false;
     }
 
     // deposit and withdraw functions
@@ -222,10 +236,31 @@ contract OmniUltraLRT is
         UltraLRT(vaults[token]).withdraw(amount, address(this), address(this));
     }
 
+    // update min vault wq epoch
+    function updateMinVaultWqEpoch(address token) external onlyRole(HARVESTER_ROLE) {
+        _updateMinVaultWqEpoch(token);
+    }
+
+    function _updateMinVaultWqEpoch(address token) internal {
+        require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
+
+        WithdrawalEscrowV2 wq = WithdrawalEscrowV2(UltraLRT(vaults[token]).escrow());
+        uint256 currentEpoch = wq.currentEpoch();
+        uint256 minEpoch = minVaultWqEpoch[token];
+
+        while (minEpoch < currentEpoch) {
+            if (wq.userDebtShare(minEpoch, address(this)) > 0) {
+                break;
+            }
+            minEpoch++;
+        }
+        minVaultWqEpoch[token] = minEpoch;
+    }
+
     // todo implement
     function totalAssets() public view returns (uint256 amount) {
         for (uint256 i = 0; i < assetCount; i++) {
-            amount += tokenTVL(assets[i]);
+            amount += tokenTVL(assetList[i]);
         }
         return amount;
     }
@@ -234,8 +269,12 @@ contract OmniUltraLRT is
         require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
 
         uint256 vaultShares = UltraLRT(vaults[token]).balanceOf(address(this));
-        uint256 vaultAssets =
-            UltraLRT(vaults[token]).convertToAssets(vaultShares) + ERC20(token).balanceOf(address(this));
+
+        // get vault wq assets and shares
+        (uint256 wqShares, uint256 wqAssets) = getVaultWqTVL(token);
+
+        uint256 vaultAssets = UltraLRT(vaults[token]).convertToAssets(vaultShares + wqShares)
+            + ERC20(token).balanceOf(address(this)) + wqAssets;
 
         // convert to base asset
         if (token != baseAsset) {
@@ -245,6 +284,24 @@ contract OmniUltraLRT is
             amount = vaultAssets;
         }
         return amount;
+    }
+
+    function getVaultWqTVL(address token) public view returns (uint256 shares, uint256 assets) {
+        require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
+
+        WithdrawalEscrowV2 wq = WithdrawalEscrowV2(UltraLRT(vaults[token]).escrow());
+
+        uint256 currentEpoch = wq.currentEpoch();
+
+        for (uint256 i = minVaultWqEpoch[token]; i <= currentEpoch; i++) {
+            if (wq.canWithdraw(i)) {
+                assets += wq.withdrawableAssets(address(this), i);
+            } else {
+                shares += wq.userDebtShare(i, address(this));
+            }
+        }
+
+        return (shares, assets);
     }
 
     function convertTokenToBaseAsset(address token, uint256 tokenAmount) public view returns (uint256) {
