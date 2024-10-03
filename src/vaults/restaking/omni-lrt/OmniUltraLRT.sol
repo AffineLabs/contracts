@@ -53,7 +53,7 @@ contract OmniUltraLRT is
     function initialize(
         string memory name_,
         string memory symbol_,
-        address baseAsset,
+        address _baseAsset,
         address _governance,
         address _harvester,
         address _manager,
@@ -70,6 +70,11 @@ contract OmniUltraLRT is
         // Initialize ReentrancyGuard
         __ReentrancyGuard_init();
 
+        // set base asset
+        baseAsset = _baseAsset;
+
+        // set governance
+        governance = _governance;
         // Set roles
         _setupRole(DEFAULT_ADMIN_ROLE, _governance);
         _setupRole(GOVERNANCE_ROLE, _governance);

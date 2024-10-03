@@ -7,7 +7,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 
-import {UltraLRT} from "src/vaults/restaking/UltraLRT.sol";
+import {OmniUltraLRT} from "src/vaults/restaking/omni-lrt/OmniUltraLRT.sol";
 
 /**
  * @title WithdrawalEscrowV2
@@ -20,7 +20,7 @@ contract OmniWithdrawalEscrow {
     ERC20 public immutable asset;
 
     /// @notice The vault this escrow attached to.
-    UltraLRT public immutable vault;
+    OmniUltraLRT public immutable vault;
 
     // per epoch per user debt shares
     mapping(uint256 => mapping(address => uint256)) public userDebtShare;
@@ -43,7 +43,7 @@ contract OmniWithdrawalEscrow {
     /**
      * @param _vault UltraLRT vault address
      */
-    constructor(UltraLRT _vault, address _asset) {
+    constructor(OmniUltraLRT _vault, address _asset) {
         vault = _vault;
         asset = ERC20(_asset);
 

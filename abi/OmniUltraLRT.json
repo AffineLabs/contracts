@@ -713,6 +713,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "governance",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -792,7 +805,7 @@
       },
       {
         "internalType": "address",
-        "name": "baseAsset",
+        "name": "_baseAsset",
         "type": "address"
       },
       {
