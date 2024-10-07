@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2024-06-26 09:26:24</td>
+            <td class="headerValue">2024-10-07 15:43:40</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
@@ -76,11 +76,11 @@
 <span id="L5"><span class="lineNum">       5</span>                 :             : </span>
 <span id="L6"><span class="lineNum">       6</span>                 :             : contract Create3Deployer {</span>
 <span id="L7"><span class="lineNum">       7</span>                 :             :     function deploy(bytes32 salt, bytes memory creationCode, uint256 value) external returns (address deployed) {</span>
-<span id="L8"><span class="lineNum">       8</span>                 :<span class="tlaGNC tlaBgGNC">         540 :         deployed = CREATE3.deploy(salt, creationCode, value);</span></span>
+<span id="L8"><span class="lineNum">       8</span>                 :<span class="tlaGNC tlaBgGNC">         266 :         deployed = CREATE3.deploy(salt, creationCode, value);</span></span>
 <span id="L9"><span class="lineNum">       9</span>                 :             :     }</span>
 <span id="L10"><span class="lineNum">      10</span>                 :             : </span>
 <span id="L11"><span class="lineNum">      11</span>                 :             :     function getDeployed(bytes32 salt) external view returns (address) {</span>
-<span id="L12"><span class="lineNum">      12</span>                 :<span class="tlaGNC">         810 :         return CREATE3.getDeployed(salt);</span></span>
+<span id="L12"><span class="lineNum">      12</span>                 :<span class="tlaGNC">         266 :         return CREATE3.getDeployed(salt);</span></span>
 <span id="L13"><span class="lineNum">      13</span>                 :             :     }</span>
 <span id="L14"><span class="lineNum">      14</span>                 :             : }</span>
         </pre>

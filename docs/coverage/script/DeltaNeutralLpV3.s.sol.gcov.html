@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2024-06-26 09:26:24</td>
+            <td class="headerValue">2024-10-07 15:43:40</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryLo">40.0&nbsp;%</td>
@@ -90,7 +90,7 @@
 <span id="L19"><span class="lineNum">      19</span>                 :             : </span>
 <span id="L20"><span class="lineNum">      20</span>                 :             : library SslpV3 {</span>
 <span id="L21"><span class="lineNum">      21</span>                 :             :     function deployPoly(AffineVault vault) internal returns (DeltaNeutralLpV3 strategy) {</span>
-<span id="L22"><span class="lineNum">      22</span>                 :<span class="tlaGNC tlaBgGNC">          16 :         strategy = new DeltaNeutralLpV3(</span></span>
+<span id="L22"><span class="lineNum">      22</span>                 :<span class="tlaGNC tlaBgGNC">           7 :         strategy = new DeltaNeutralLpV3(</span></span>
 <span id="L23"><span class="lineNum">      23</span>                 :             :             vault,</span>
 <span id="L24"><span class="lineNum">      24</span>                 :             :             ILendingPool(0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf),</span>
 <span id="L25"><span class="lineNum">      25</span>                 :             :             ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619), // weth</span>
@@ -103,7 +103,7 @@
 <span id="L32"><span class="lineNum">      32</span>                 :             :             5714, // ~4/7</span>
 <span id="L33"><span class="lineNum">      33</span>                 :             :             7500 // =3/4</span>
 <span id="L34"><span class="lineNum">      34</span>                 :             :         );</span>
-<span id="L35"><span class="lineNum">      35</span>         [<span class="tlaUNC" title="Branch 0 was not executed"> # </span><span class="tlaGBC" title="Branch 1 was taken 8 times"> + </span>]:<span class="tlaGNC">          16 :         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));</span></span>
+<span id="L35"><span class="lineNum">      35</span>         [<span class="tlaUNC" title="Branch 0 was not executed"> # </span><span class="tlaGBC" title="Branch 1 was taken 7 times"> + </span>]:<span class="tlaGNC">           7 :         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));</span></span>
 <span id="L36"><span class="lineNum">      36</span>                 :             :     }</span>
 <span id="L37"><span class="lineNum">      37</span>                 :             : </span>
 <span id="L38"><span class="lineNum">      38</span>                 :             :     /// @notice Deploy the strategy on polygon using the WMATIC/USDC pool</span>
@@ -125,7 +125,7 @@
 <span id="L54"><span class="lineNum">      54</span>                 :             :     }</span>
 <span id="L55"><span class="lineNum">      55</span>                 :             : </span>
 <span id="L56"><span class="lineNum">      56</span>                 :             :     function deployEth(AffineVault vault) internal returns (DeltaNeutralLpV3 strategy) {</span>
-<span id="L57"><span class="lineNum">      57</span>                 :<span class="tlaGNC tlaBgGNC">          16 :         strategy = new DeltaNeutralLpV3(</span></span>
+<span id="L57"><span class="lineNum">      57</span>                 :<span class="tlaGNC tlaBgGNC">           7 :         strategy = new DeltaNeutralLpV3(</span></span>
 <span id="L58"><span class="lineNum">      58</span>                 :             :             vault,</span>
 <span id="L59"><span class="lineNum">      59</span>                 :             :             ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9),</span>
 <span id="L60"><span class="lineNum">      60</span>                 :             :             ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), // weth</span>
@@ -138,11 +138,11 @@
 <span id="L67"><span class="lineNum">      67</span>                 :             :             5714, // ~4/7</span>
 <span id="L68"><span class="lineNum">      68</span>                 :             :             7500 // =3/4</span>
 <span id="L69"><span class="lineNum">      69</span>                 :             :         );</span>
-<span id="L70"><span class="lineNum">      70</span>         [<span class="tlaUNC" title="Branch 0 was not executed"> # </span><span class="tlaGBC" title="Branch 1 was taken 8 times"> + </span>]:<span class="tlaGNC">          16 :         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));</span></span>
+<span id="L70"><span class="lineNum">      70</span>         [<span class="tlaUNC" title="Branch 0 was not executed"> # </span><span class="tlaGBC" title="Branch 1 was taken 7 times"> + </span>]:<span class="tlaGNC">           7 :         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));</span></span>
 <span id="L71"><span class="lineNum">      71</span>                 :             :     }</span>
 <span id="L72"><span class="lineNum">      72</span>                 :             : </span>
 <span id="L73"><span class="lineNum">      73</span>                 :             :     function deployEthWeth(AffineVault vault) internal returns (DeltaNeutralLpV3 strategy) {</span>
-<span id="L74"><span class="lineNum">      74</span>                 :<span class="tlaGNC">          16 :         strategy = new DeltaNeutralLpV3(</span></span>
+<span id="L74"><span class="lineNum">      74</span>                 :<span class="tlaGNC">           7 :         strategy = new DeltaNeutralLpV3(</span></span>
 <span id="L75"><span class="lineNum">      75</span>                 :             :             vault,</span>
 <span id="L76"><span class="lineNum">      76</span>                 :             :             ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9),</span>
 <span id="L77"><span class="lineNum">      77</span>                 :             :             ERC20(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599), // wbtc</span>
@@ -155,12 +155,12 @@
 <span id="L84"><span class="lineNum">      84</span>                 :             :             5952, // ~25/42</span>
 <span id="L85"><span class="lineNum">      85</span>                 :             :             6800 // =17/25</span>
 <span id="L86"><span class="lineNum">      86</span>                 :             :         );</span>
-<span id="L87"><span class="lineNum">      87</span>         [<span class="tlaUNC" title="Branch 0 was not executed"> # </span><span class="tlaGBC" title="Branch 1 was taken 8 times"> + </span>]:<span class="tlaGNC">          16 :         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));</span></span>
+<span id="L87"><span class="lineNum">      87</span>         [<span class="tlaUNC" title="Branch 0 was not executed"> # </span><span class="tlaGBC" title="Branch 1 was taken 7 times"> + </span>]:<span class="tlaGNC">           7 :         require(strategy.hasRole(strategy.STRATEGIST_ROLE(), 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d));</span></span>
 <span id="L88"><span class="lineNum">      88</span>                 :             :     }</span>
 <span id="L89"><span class="lineNum">      89</span>                 :             : </span>
 <span id="L90"><span class="lineNum">      90</span>                 :             :     function _getStrategists() internal pure returns (address[] memory strategists) {</span>
-<span id="L91"><span class="lineNum">      91</span>                 :<span class="tlaGNC">          48 :         strategists = new address[](1);</span></span>
-<span id="L92"><span class="lineNum">      92</span>                 :<span class="tlaGNC">          48 :         strategists[0] = 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d;</span></span>
+<span id="L91"><span class="lineNum">      91</span>                 :<span class="tlaGNC">          21 :         strategists = new address[](1);</span></span>
+<span id="L92"><span class="lineNum">      92</span>                 :<span class="tlaGNC">          21 :         strategists[0] = 0x47fD0834DD8b435BbbD7115bB7d3b3120dD0946d;</span></span>
 <span id="L93"><span class="lineNum">      93</span>                 :             :     }</span>
 <span id="L94"><span class="lineNum">      94</span>                 :             : }</span>
 <span id="L95"><span class="lineNum">      95</span>                 :             : </span>
