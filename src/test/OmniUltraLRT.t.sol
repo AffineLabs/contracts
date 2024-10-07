@@ -19,9 +19,11 @@ import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
 import {OmniWithdrawalEscrow} from "src/vaults/restaking/omni-lrt/OmniWithdrawalEscrow.sol";
 import {SymDelegatorFactory} from "src/vaults/restaking/SymDelegatorFactory.sol";
 
+import {console2} from "forge-std/console2.sol";
+
 contract TmpPriceFeed is IPriceFeed {
     function getPrice() external view returns (uint256, uint256) {
-        (1e18, block.timestamp);
+        return (1e8, block.timestamp);
     }
 }
 
@@ -34,7 +36,7 @@ contract OmniUltraLRTTest is TestPlus {
 
     function setUp() public {
         // choose latest fork
-        vm.createSelectFork("ethereum");
+        vm.createSelectFork("ethereum", 20_914_174); // has 4 eth limit in the symbiotic vault
 
         // deploy vault
         vault = OmniUltraLRT(_setupVault());
@@ -74,6 +76,9 @@ contract OmniUltraLRTTest is TestPlus {
         OmniWithdrawalEscrow escrow = new OmniWithdrawalEscrow(vault, wbtc);
         TmpPriceFeed priceFeed = new TmpPriceFeed();
 
+        (uint256 _ps, uint256 _ts) = priceFeed.getPrice();
+        console2.log("wbtc price %s %s", _ps, _ts);
+
         address wbtcVault = _setupWbtcUltraLRT();
         vault.addAsset(wbtc, wbtcVault, address(priceFeed), address(escrow));
     }
@@ -94,5 +99,184 @@ contract OmniUltraLRTTest is TestPlus {
 
     function test() public {
         assertTrue(true); // test
+    }
+
+    function _getAsset(address token, address to, uint256 amount) internal {
+        deal(token, to, amount);
+    }
+
+    function testDeposit() public {
+        uint256 amount = 1e8;
+        // get wbtc
+        _getAsset(wbtc, address(alice), amount);
+
+        // approve
+        vm.prank(alice);
+        ERC20(wbtc).approve(address(vault), amount);
+
+        // deposit
+        vm.prank(alice);
+        vault.deposit(wbtc, amount, alice);
+
+        // check balance
+        uint256 balance = ERC20(wbtc).balanceOf(address(vault));
+        console2.log("balance %s", balance.toString());
+        assertEq(balance, amount, "balance not match");
+
+        // check user vault share
+        uint256 share = vault.balanceOf(alice);
+        console2.log("share %s", share);
+        assertEq(share, (10 ** vault.decimals()), "share not match");
+    }
+
+    function testWithdraw() public {
+        testDeposit();
+
+        // test withdraw all
+        uint256 shares = vault.balanceOf(alice);
+        uint256 tokenAmount = vault.convertToAssets(shares);
+
+        console2.log("shares %s, tokenAmount %s", shares, tokenAmount);
+
+        // withdraw
+        vm.prank(alice);
+        vault.withdraw(tokenAmount, wbtc, alice);
+
+        shares = vault.balanceOf(alice);
+        tokenAmount = vault.convertToAssets(shares);
+
+        console2.log("shares %s, tokenAmount %s", shares, tokenAmount);
+
+        OmniWithdrawalEscrow tokenWQ = OmniWithdrawalEscrow(vault.wQueues(wbtc));
+
+        uint256 balanceWq = vault.balanceOf(address(tokenWQ));
+
+        console2.log("balance wq %s", balanceWq);
+
+        // resolve debt share
+
+        address[] memory tokens = new address[](1);
+        tokens[0] = wbtc;
+
+        // end epoch
+        vault.endEpoch(tokens);
+
+        // resolve debt
+
+        vault.resolveDebt(tokens);
+
+        // check balance
+        uint256 wqTokenBalance = ERC20(wbtc).balanceOf(address(tokenWQ));
+
+        console2.log("wq token balance %s", wqTokenBalance);
+
+        // check user balance
+        tokenWQ.redeem(alice, 0);
+
+        uint256 userBalance = ERC20(wbtc).balanceOf(alice);
+        console2.log("user balance %s", userBalance);
+
+        assertEq(userBalance, 1e8, "user balance not match");
+    }
+
+    function _checkVaultTVL(uint256 amount) internal {
+        uint256 totalAssets = vault.totalAssets();
+        assertEq(totalAssets, amount, "total assets not match");
+    }
+
+    function testWithdrawAfterInvest() public {
+        uint256 initialAssets = 1e8;
+        testDeposit();
+
+        // invest
+        address[] memory tokens = new address[](1);
+        tokens[0] = wbtc;
+
+        // amounts
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 1e8;
+
+        vault.investAssets(tokens, amounts);
+
+        // test total assets
+
+        _checkVaultTVL(initialAssets);
+
+        assertEq(ERC20(wbtc).balanceOf(address(vault)), 0, "vault balance not match");
+
+        // deposit into sym btc vault
+
+        assertEq(ERC20(wbtc).balanceOf(vault.vaults(wbtc)), initialAssets, "symbiotic vault balance not match");
+
+        // invest into sym btc vault
+
+        UltraLRT symWbtcVault = UltraLRT(vault.vaults(wbtc));
+
+        address delegator = address(symWbtcVault.delegatorQueue(0));
+
+        // delegate to delegator
+        symWbtcVault.delegateToDelegator(address(delegator), initialAssets);
+
+        // check vault tvl
+        _checkVaultTVL(initialAssets);
+
+        // withdraw
+        vm.prank(alice);
+        vault.withdraw(initialAssets, wbtc, alice);
+
+        _checkVaultTVL(initialAssets);
+
+        // end epochs
+
+        vault.endEpoch(tokens);
+
+        // divide assets
+
+        vault.divestAssets(tokens, amounts);
+
+        // check tvl
+        _checkVaultTVL(initialAssets);
+
+        // end epoch for symbiotic btc vault
+        // this will also do liquidation request
+        symWbtcVault.endEpoch();
+
+        // resolve debt
+        symWbtcVault.resolveDebt();
+
+        // check tvl
+        _checkVaultTVL(initialAssets);
+
+        WithdrawalEscrowV2 wq = WithdrawalEscrowV2(symWbtcVault.escrow());
+
+        // check wq balance
+
+        uint256 wqBalance = ERC20(wbtc).balanceOf(address(wq));
+
+        console2.log("wq balance %s", wqBalance);
+
+        // resolve debt
+        wq.redeem(address(vault), 0);
+
+        // check tvl
+        _checkVaultTVL(initialAssets);
+
+        // resolve debt
+        vault.resolveDebt(tokens);
+
+        // reedem from omni withdrawal queue
+        OmniWithdrawalEscrow tokenWQ = OmniWithdrawalEscrow(vault.wQueues(wbtc));
+
+        tokenWQ.redeem(alice, 0);
+
+        // check user balance
+        uint256 userBalance = ERC20(wbtc).balanceOf(alice);
+
+        console2.log("user balance %s", userBalance);
+
+        assertEq(userBalance, initialAssets, "user balance not match");
+        _checkVaultTVL(0);
+
+        assertEq(vault.totalSupply(), 0);
     }
 }

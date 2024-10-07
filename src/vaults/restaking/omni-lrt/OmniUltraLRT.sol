@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
-/* solhint-disable */
-
 // upgrading contracts
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -409,13 +407,11 @@ contract OmniUltraLRT is
             require(vaults[token[i]] != address(0), "ASSET_NOT_SUPPORTED");
 
             uint256 debtShare = OmniWithdrawalEscrow(wQueues[token[i]]).getDebtToResolve();
-
             if (debtShare == 0) {
                 continue;
             }
             // convert to base asset amount
             uint256 debtAssetAmount = _convertToAssets(debtShare, MathUpgradeable.Rounding.Up);
-
             // convert to token amount
             uint256 tokenAmount = convertBaseAssetToToken(token[i], debtAssetAmount);
 
@@ -440,7 +436,6 @@ contract OmniUltraLRT is
                 // enable share withdrawal from wq
                 OmniWithdrawalEscrow(wQueues[token[i]]).enableShareWithdrawal();
             }
-
             // burn shares
             _burn(wQueues[token[i]], debtShare);
 
