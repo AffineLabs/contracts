@@ -402,48 +402,50 @@ contract OmniUltraLRT is
 
     // resolve debt for asset
     // collect asset from vault and resolve debt for user
-    function resolveDebt(address[] memory token) external onlyRole(HARVESTER_ROLE) {
-        for (uint256 i = 0; i < token.length; i++) {
-            require(vaults[token[i]] != address(0), "ASSET_NOT_SUPPORTED");
+    function resolveDebt(address[] memory tokens) external onlyRole(HARVESTER_ROLE) {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            require(vaults[tokens[i]] != address(0), "ASSET_NOT_SUPPORTED");
 
-            uint256 debtShare = OmniWithdrawalEscrow(wQueues[token[i]]).getDebtToResolve();
+            uint256 debtShare = OmniWithdrawalEscrow(wQueues[tokens[i]]).getDebtToResolve();
             if (debtShare == 0) {
                 continue;
             }
             // convert to base asset amount
             uint256 debtAssetAmount = _convertToAssets(debtShare, MathUpgradeable.Rounding.Up);
             // convert to token amount
-            uint256 tokenAmount = convertBaseAssetToToken(token[i], debtAssetAmount);
+            uint256 tokenAmount = convertBaseAssetToToken(tokens[i], debtAssetAmount);
 
             // check token valt share
             uint256 investedTokenAmount =
-                UltraLRT(vaults[token[i]]).convertToAssets(UltraLRT(vaults[token[i]]).balanceOf(address(this)));
+                UltraLRT(vaults[tokens[i]]).convertToAssets(UltraLRT(vaults[tokens[i]]).balanceOf(address(this)));
             bool payPartialDebt;
             // if we have less token now and have token invested
-            if (tokenAmount > ERC20(token[i]).balanceOf(address(this))) {
-                if (investedTokenAmount > WEI_TOLERANCE) {
+            if (tokenAmount > ERC20(tokens[i]).balanceOf(address(this))) {
+                if (investedTokenAmount < WEI_TOLERANCE) {
+                    // out of assets so pay partial debt
                     payPartialDebt = true;
                 } else {
                     continue;
                 }
             }
-            // TODO: pay partial debt
+            // TODO: event pay partial debt
 
             if (payPartialDebt) {
                 // get debt shares for token amount
-                debtAssetAmount = convertTokenToBaseAsset(token[i], ERC20(token[i]).balanceOf(address(this)));
+                debtAssetAmount = convertTokenToBaseAsset(tokens[i], ERC20(tokens[i]).balanceOf(address(this)));
+                tokenAmount = ERC20(tokens[i]).balanceOf(address(this));
                 debtShare = _convertToShares(debtAssetAmount, MathUpgradeable.Rounding.Up);
                 // enable share withdrawal from wq
-                OmniWithdrawalEscrow(wQueues[token[i]]).enableShareWithdrawal();
+                OmniWithdrawalEscrow(wQueues[tokens[i]]).enableShareWithdrawal();
             }
             // burn shares
-            _burn(wQueues[token[i]], debtShare);
+            _burn(wQueues[tokens[i]], debtShare);
 
             // approve withdrawal escrow
-            ERC20(token[i]).safeApprove(wQueues[token[i]], tokenAmount);
+            ERC20(tokens[i]).safeApprove(wQueues[tokens[i]], tokenAmount);
 
             // resolve debt
-            OmniWithdrawalEscrow(wQueues[token[i]]).resolveDebtShares(debtShare, tokenAmount);
+            OmniWithdrawalEscrow(wQueues[tokens[i]]).resolveDebtShares(debtShare, tokenAmount);
         }
     }
 
@@ -456,10 +458,32 @@ contract OmniUltraLRT is
     }
 
     // end epoch
-    function endEpoch(address[] memory token) external onlyRole(HARVESTER_ROLE) {
-        for (uint256 i = 0; i < token.length; i++) {
-            require(vaults[token[i]] != address(0), "ASSET_NOT_SUPPORTED");
-            OmniWithdrawalEscrow(wQueues[token[i]]).endEpoch();
+    function endEpoch(address[] memory tokens, bool doWithdrawalRequest) external onlyRole(HARVESTER_ROLE) {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            require(vaults[tokens[i]] != address(0), "ASSET_NOT_SUPPORTED");
+
+            uint256 closingEpoch = OmniWithdrawalEscrow(wQueues[tokens[i]]).currentEpoch();
+
+            OmniWithdrawalEscrow(wQueues[tokens[i]]).endEpoch();
+
+            if (OmniWithdrawalEscrow(wQueues[tokens[i]]).currentEpoch() == closingEpoch) {
+                // nothing to close
+                continue;
+            }
+
+            if (doWithdrawalRequest) {
+                (uint256 shares,,) = OmniWithdrawalEscrow(wQueues[tokens[i]]).epochInfo(closingEpoch);
+                uint256 debtAssets = _convertToAssets(shares, MathUpgradeable.Rounding.Down);
+                uint256 debtTokenAmount = convertBaseAssetToToken(tokens[i], debtAssets);
+                // check vault has that amount of shares
+                uint256 vaultShares = UltraLRT(vaults[tokens[i]]).balanceOf(address(this));
+                // convert to assets
+                uint256 vaultAssets = UltraLRT(vaults[tokens[i]]).convertToAssets(vaultShares);
+
+                uint256 maxWithdrawalAmount = MathUpgradeable.min(debtTokenAmount, vaultAssets);
+                // withdraw
+                UltraLRT(vaults[tokens[i]]).withdraw(maxWithdrawalAmount, address(this), address(this));
+            }
         }
     }
 }

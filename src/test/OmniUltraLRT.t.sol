@@ -159,7 +159,7 @@ contract OmniUltraLRTTest is TestPlus {
         tokens[0] = wbtc;
 
         // end epoch
-        vault.endEpoch(tokens);
+        vault.endEpoch(tokens, true);
 
         // resolve debt
 
@@ -228,11 +228,11 @@ contract OmniUltraLRTTest is TestPlus {
 
         // end epochs
 
-        vault.endEpoch(tokens);
+        vault.endEpoch(tokens, true);
 
         // divide assets
 
-        vault.divestAssets(tokens, amounts);
+        // vault.divestAssets(tokens, amounts);
 
         // check tvl
         _checkVaultTVL(initialAssets);
@@ -278,5 +278,99 @@ contract OmniUltraLRTTest is TestPlus {
         _checkVaultTVL(0);
 
         assertEq(vault.totalSupply(), 0);
+    }
+
+    function testPartialWithdrawal() public {
+        uint256 initialAssets = 1e8;
+        testDeposit();
+
+        // invest
+        address[] memory tokens = new address[](1);
+        tokens[0] = wbtc;
+
+        // amounts
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 1e8;
+
+        vault.investAssets(tokens, amounts);
+
+        // test total assets
+
+        _checkVaultTVL(initialAssets);
+
+        assertEq(ERC20(wbtc).balanceOf(address(vault)), 0, "vault balance not match");
+
+        // deposit into sym btc vault
+
+        assertEq(ERC20(wbtc).balanceOf(vault.vaults(wbtc)), initialAssets, "symbiotic vault balance not match");
+
+        // invest into sym btc vault
+
+        UltraLRT symWbtcVault = UltraLRT(vault.vaults(wbtc));
+
+        address delegator = address(symWbtcVault.delegatorQueue(0));
+
+        // delegate to delegator
+        symWbtcVault.delegateToDelegator(address(delegator), initialAssets);
+
+        // check vault tvl
+        _checkVaultTVL(initialAssets);
+
+        // withdraw
+
+        vm.prank(alice);
+        vault.withdraw(initialAssets, wbtc, alice);
+
+        _checkVaultTVL(initialAssets);
+
+        // end epochs
+
+        vault.endEpoch(tokens, false);
+
+        // divide assets
+        // withdraw 50%
+        amounts[0] = initialAssets / 2;
+        vault.divestAssets(tokens, amounts);
+
+        // check tvl
+        _checkVaultTVL(initialAssets);
+
+        // end epoch for symbiotic btc vault
+        // this will also do liquidation request
+        symWbtcVault.endEpoch();
+
+        // resolve debt
+        symWbtcVault.resolveDebt();
+
+        // check tvl
+        _checkVaultTVL(initialAssets);
+
+        WithdrawalEscrowV2 wq = WithdrawalEscrowV2(symWbtcVault.escrow());
+
+        // check wq balance
+
+        uint256 wqBalance = ERC20(wbtc).balanceOf(address(wq));
+
+        console2.log("wq balance %s", wqBalance);
+
+        // resolve debt
+        wq.redeem(address(vault), 0);
+
+        // check tvl
+        _checkVaultTVL(initialAssets);
+
+        uint256 prevDebtShares = vault.balanceOf(vault.wQueues(wbtc));
+
+        // resolve debt
+        vault.resolveDebt(tokens);
+
+        // reedem from om
+
+        _checkVaultTVL(initialAssets);
+
+        // reedem from omni withdrawal queue
+        OmniWithdrawalEscrow tokenWQ = OmniWithdrawalEscrow(vault.wQueues(wbtc));
+
+        assertEq(vault.balanceOf(address(tokenWQ)), prevDebtShares, "wq balance not match");
     }
 }

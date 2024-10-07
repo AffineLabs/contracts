@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2024-06-26 09:26:24</td>
+            <td class="headerValue">2024-10-07 15:43:40</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
@@ -88,7 +88,7 @@
 <span id="L17"><span class="lineNum">      17</span>                 :             : </span>
 <span id="L18"><span class="lineNum">      18</span>                 :             : contract BaseVaultLiquidate is BaseVault {</span>
 <span id="L19"><span class="lineNum">      19</span>                 :             :     function liquidate(uint256 amount) public returns (uint256) {</span>
-<span id="L20"><span class="lineNum">      20</span>                 :<span class="tlaGNC tlaBgGNC">           3 :         return _liquidate(amount);</span></span>
+<span id="L20"><span class="lineNum">      20</span>                 :<span class="tlaGNC tlaBgGNC">           1 :         return _liquidate(amount);</span></span>
 <span id="L21"><span class="lineNum">      21</span>                 :             :     }</span>
 <span id="L22"><span class="lineNum">      22</span>                 :             : </span>
 <span id="L23"><span class="lineNum">      23</span>                 :             :     // We override this function and remove the &quot;onlyInitializing&quot; modifier so</span>
@@ -103,17 +103,17 @@
 <span id="L32"><span class="lineNum">      32</span>                 :             :         address _wormholeRouter,</span>
 <span id="L33"><span class="lineNum">      33</span>                 :             :         BridgeEscrow _bridgeEscrow</span>
 <span id="L34"><span class="lineNum">      34</span>                 :             :     ) external {</span>
-<span id="L35"><span class="lineNum">      35</span>                 :<span class="tlaGNC">          24 :         baseInitialize(_governance, vaultAsset, _wormholeRouter, _bridgeEscrow);</span></span>
+<span id="L35"><span class="lineNum">      35</span>                 :<span class="tlaGNC">          12 :         baseInitialize(_governance, vaultAsset, _wormholeRouter, _bridgeEscrow);</span></span>
 <span id="L36"><span class="lineNum">      36</span>                 :             :     }</span>
 <span id="L37"><span class="lineNum">      37</span>                 :             : }</span>
 <span id="L38"><span class="lineNum">      38</span>                 :             : </span>
 <span id="L39"><span class="lineNum">      39</span>                 :             : contract AffineVaultLiquidate is AffineVault {</span>
 <span id="L40"><span class="lineNum">      40</span>                 :             :     function liquidate(uint256 amount) public returns (uint256) {</span>
-<span id="L41"><span class="lineNum">      41</span>                 :<span class="tlaGNC">           3 :         return _liquidate(amount);</span></span>
+<span id="L41"><span class="lineNum">      41</span>                 :<span class="tlaGNC">           1 :         return _liquidate(amount);</span></span>
 <span id="L42"><span class="lineNum">      42</span>                 :             :     }</span>
 <span id="L43"><span class="lineNum">      43</span>                 :             : </span>
 <span id="L44"><span class="lineNum">      44</span>                 :             :     function initialize(address _governance, ERC20 vaultAsset) external initializer {</span>
-<span id="L45"><span class="lineNum">      45</span>                 :<span class="tlaGNC">          20 :         baseInitialize(_governance, vaultAsset);</span></span>
+<span id="L45"><span class="lineNum">      45</span>                 :<span class="tlaGNC">          10 :         baseInitialize(_governance, vaultAsset);</span></span>
 <span id="L46"><span class="lineNum">      46</span>                 :             :     }</span>
 <span id="L47"><span class="lineNum">      47</span>                 :             : }</span>
 <span id="L48"><span class="lineNum">      48</span>                 :             : </span>
@@ -348,13 +348,13 @@
 <span id="L277"><span class="lineNum">     277</span>                 :             : </span>
 <span id="L278"><span class="lineNum">     278</span>                 :             : contract AffineVaultTest is CommonVaultTestSuite {</span>
 <span id="L279"><span class="lineNum">     279</span>                 :             :     function setUp() public {</span>
-<span id="L280"><span class="lineNum">     280</span>                 :<span class="tlaGNC">          20 :         token = new MockERC20(&quot;Mock&quot;, &quot;MT&quot;, 18);</span></span>
-<span id="L281"><span class="lineNum">     281</span>                 :<span class="tlaGNC">          30 :         AffineVaultLiquidate affineVault = new AffineVaultLiquidate();</span></span>
-<span id="L282"><span class="lineNum">     282</span>                 :<span class="tlaGNC">          20 :         affineVault.initialize(</span></span>
+<span id="L280"><span class="lineNum">     280</span>                 :<span class="tlaGNC">          10 :         token = new MockERC20(&quot;Mock&quot;, &quot;MT&quot;, 18);</span></span>
+<span id="L281"><span class="lineNum">     281</span>                 :<span class="tlaGNC">          10 :         AffineVaultLiquidate affineVault = new AffineVaultLiquidate();</span></span>
+<span id="L282"><span class="lineNum">     282</span>                 :<span class="tlaGNC">          10 :         affineVault.initialize(</span></span>
 <span id="L283"><span class="lineNum">     283</span>                 :             :             address(this), // governance</span>
 <span id="L284"><span class="lineNum">     284</span>                 :             :             token // token</span>
 <span id="L285"><span class="lineNum">     285</span>                 :             :         );</span>
-<span id="L286"><span class="lineNum">     286</span>                 :<span class="tlaGNC">          20 :         vault = BaseVaultLiquidate(address(affineVault));</span></span>
+<span id="L286"><span class="lineNum">     286</span>                 :<span class="tlaGNC">          10 :         vault = BaseVaultLiquidate(address(affineVault));</span></span>
 <span id="L287"><span class="lineNum">     287</span>                 :             :     }</span>
 <span id="L288"><span class="lineNum">     288</span>                 :             : }</span>
         </pre>

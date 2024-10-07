@@ -660,8 +660,13 @@
     "inputs": [
       {
         "internalType": "address[]",
-        "name": "token",
+        "name": "tokens",
         "type": "address[]"
+      },
+      {
+        "internalType": "bool",
+        "name": "doWithdrawalRequest",
+        "type": "bool"
       }
     ],
     "name": "endEpoch",
@@ -1026,7 +1031,7 @@
     "inputs": [
       {
         "internalType": "address[]",
-        "name": "token",
+        "name": "tokens",
         "type": "address[]"
       }
     ],
