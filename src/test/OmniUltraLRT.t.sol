@@ -439,4 +439,176 @@ contract OmniUltraLRTTest is TestPlus {
         assertEq(vault.balanceOf(alice), prevUserShare + wqShares, "user balance not match");
         assertEq(ERC20(lbtc).balanceOf(alice), wqAssets, "user balance not match");
     }
+
+    function testPauseNUnPause() public {
+        // pause
+        uint256 amount = 1e8;
+
+        // get wbtc
+        _getAsset(wbtc, address(alice), amount);
+
+        // approve
+        vm.prank(alice);
+        ERC20(wbtc).approve(address(vault), amount);
+
+        // pause vault
+        vault.pause();
+        // deposit
+        vm.prank(alice);
+        vm.expectRevert();
+        vault.deposit(wbtc, amount, alice);
+
+        // unpause
+        vault.unpause();
+
+        vm.prank(alice);
+        vault.deposit(wbtc, amount, alice);
+    }
+
+    function testAddAssetNRemove() public {
+        vm.expectRevert();
+        vault.addAsset(wbtc, address(this), address(this), address(this));
+
+        // adding max asset
+        for (uint256 i = 2; i < 50; i++) {
+            vault.addAsset(address(uint160(i)), address(this), address(this), address(this));
+        }
+
+        vm.expectRevert();
+        vault.addAsset(address(uint160(50)), address(this), address(this), address(this));
+
+        // remove zero address asset
+        vm.expectRevert();
+        vault.removeAsset(address(0));
+
+        // remove asset
+        vault.removeAsset(lbtc);
+
+        testDeposit();
+
+        vm.expectRevert();
+
+        vault.removeAsset(wbtc);
+    }
+
+    function testDepositNWithdrawWithFailCondition() public {
+        uint256 amount = 1e8;
+
+        // get wbtc
+        _getAsset(wbtc, address(alice), amount);
+        // approve
+        vm.prank(alice);
+        ERC20(wbtc).approve(address(vault), amount);
+
+        // deposit with zero address token
+        vm.expectRevert();
+        vault.deposit(address(0), amount, alice);
+
+        // deposit with nonzero address invalid token
+        vm.expectRevert();
+        vault.deposit(address(uint160(50)), amount, alice);
+
+        // deposit with zero amount
+        vm.expectRevert();
+        vault.deposit(wbtc, 0, alice);
+
+        // deposit with zero receiver
+        vm.expectRevert();
+        vault.deposit(wbtc, amount, address(0));
+
+        // deposit
+        vm.prank(alice);
+        vault.deposit(wbtc, amount, alice);
+
+        // withdraw with zero address token
+        vm.expectRevert();
+        vault.withdraw(amount, address(0), alice);
+
+        // withdraw with nonzero address invalid token
+        vm.expectRevert();
+        vault.withdraw(amount, address(uint160(50)), alice);
+
+        // withdraw with zero amount
+        vm.expectRevert();
+        vault.withdraw(0, wbtc, alice);
+
+        // withdraw with zero receiver
+        vm.expectRevert();
+        vault.withdraw(amount, wbtc, address(0));
+    }
+
+    function testInvestNDivestWithFailCases() public {
+        uint256 amount = 1e8;
+
+        // get wbtc
+        _getAsset(wbtc, address(alice), amount);
+        // approve
+        vm.prank(alice);
+        ERC20(wbtc).approve(address(vault), amount);
+
+        // deposit
+        vm.prank(alice);
+        vault.deposit(wbtc, amount, alice);
+
+        address[] memory tokens = new address[](1);
+        uint256[] memory amounts = new uint256[](1);
+        uint256[] memory invalidAmounts = new uint256[](2);
+
+        // invest with invalid length
+        vm.expectRevert();
+        vault.investAssets(tokens, invalidAmounts);
+
+        // invest with zero address
+        vm.expectRevert();
+        vault.investAssets(tokens, amounts);
+
+        // invest with invalid token
+        tokens[0] = address(this);
+        vm.expectRevert();
+        vault.investAssets(tokens, amounts);
+
+        // invest with zero amount
+        tokens[0] = wbtc;
+        vm.expectRevert();
+        vault.investAssets(tokens, amounts);
+
+        // invest with invalid balance
+        amounts[0] = 2 * amount;
+        vm.expectRevert();
+        vault.investAssets(tokens, amounts);
+
+        // invest
+        amounts[0] = amount;
+        vault.investAssets(tokens, amounts);
+
+        // test divest
+        // divest with invalid length
+        vm.expectRevert();
+        vault.divestAssets(tokens, invalidAmounts);
+
+        // divest with zero address
+        tokens[0] = address(0);
+        vm.expectRevert();
+        vault.divestAssets(tokens, amounts);
+
+        // divest with invalid token
+        tokens[0] = address(this);
+        vm.expectRevert();
+        vault.divestAssets(tokens, amounts);
+
+        // // divest with zero amount
+        tokens[0] = wbtc;
+        amounts[0] = 0;
+        vm.expectRevert();
+        vault.divestAssets(tokens, amounts);
+
+        // divest with invalid balance
+        amounts[0] = 2 * amount;
+        vm.expectRevert();
+        vault.divestAssets(tokens, amounts);
+
+        // divest
+        amounts[0] = amount;
+        vault.divestAssets(tokens, amounts);
+    }
 }

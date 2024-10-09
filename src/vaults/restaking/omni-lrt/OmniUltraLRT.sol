@@ -139,6 +139,7 @@ contract OmniUltraLRT is
 
     // deposit and withdraw functions
     function deposit(address token, uint256 amount, address receiver) external nonReentrant whenNotPaused {
+        require(token != address(0), "INVALID ASSET");
         require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
         require(!pausedAssets[token], "ASSET_PAUSED");
         require(amount > 0, "ZERO_AMOUNT");
@@ -203,6 +204,7 @@ contract OmniUltraLRT is
     }
 
     function investAssets(address[] memory tokens, uint256[] memory amounts) external onlyRole(HARVESTER_ROLE) {
+        require(tokens.length == amounts.length, "INVALID_INPUT");
         for (uint256 i = 0; i < tokens.length; i++) {
             _invest(tokens[i], amounts[i]);
         }
@@ -210,6 +212,7 @@ contract OmniUltraLRT is
 
     /// invest assets
     function _invest(address token, uint256 amount) internal {
+        require(token != address(0), "INVALID ASSET");
         require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
         require(amount > 0, "ZERO_AMOUNT");
         require(amount <= ERC20(token).balanceOf(address(this)), "INSUFFICIENT_BALANCE");
@@ -220,13 +223,15 @@ contract OmniUltraLRT is
     }
 
     // divest assets
-    function divestAssets(address[] memory token, uint256[] memory amount) external onlyRole(HARVESTER_ROLE) {
-        for (uint256 i = 0; i < token.length; i++) {
-            _divest(token[i], amount[i]);
+    function divestAssets(address[] memory tokens, uint256[] memory amounts) external onlyRole(HARVESTER_ROLE) {
+        require(tokens.length == amounts.length, "INVALID_INPUT");
+        for (uint256 i = 0; i < tokens.length; i++) {
+            _divest(tokens[i], amounts[i]);
         }
     }
 
     function _divest(address token, uint256 amount) internal {
+        require(token != address(0), "INVALID ASSET");
         require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
         require(amount > 0, "ZERO_AMOUNT");
 
