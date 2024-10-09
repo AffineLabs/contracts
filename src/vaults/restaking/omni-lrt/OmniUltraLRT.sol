@@ -202,9 +202,9 @@ contract OmniUltraLRT is
         return _convertToAssets(amount, MathUpgradeable.Rounding.Up) <= availableAssets;
     }
 
-    function investAssets(address[] memory token, uint256[] memory amount) external onlyRole(HARVESTER_ROLE) {
-        for (uint256 i = 0; i < token.length; i++) {
-            _invest(token[i], amount[i]);
+    function investAssets(address[] memory tokens, uint256[] memory amounts) external onlyRole(HARVESTER_ROLE) {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            _invest(tokens[i], amounts[i]);
         }
     }
 

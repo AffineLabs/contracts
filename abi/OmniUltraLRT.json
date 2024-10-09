@@ -853,12 +853,12 @@
     "inputs": [
       {
         "internalType": "address[]",
-        "name": "token",
+        "name": "tokens",
         "type": "address[]"
       },
       {
         "internalType": "uint256[]",
-        "name": "amount",
+        "name": "amounts",
         "type": "uint256[]"
       }
     ],

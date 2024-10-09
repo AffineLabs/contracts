@@ -269,11 +269,8 @@ contract OmniWithdrawalEscrow {
      * @return amount of shares to withdraw
      */
     function withdrawableShares(address user, uint256 epoch) public view returns (uint256) {
-        if (!canWithdraw(epoch)) {
-            return 0;
-        }
-        if (epoch == resolvingEpoch && epochInfo[epoch].resolvedShares < epochInfo[epoch].shares) {
-            return Math.min(userDebtShare[epoch][user], epochInfo[epoch].resolvedShares);
+        if (epoch <= resolvingEpoch) {
+            return Math.min(userDebtShare[epoch][user], epochInfo[epoch].shares - epochInfo[epoch].resolvedShares);
         }
         return userDebtShare[epoch][user];
     }
