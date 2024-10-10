@@ -121,6 +121,10 @@ contract OmniUltraLRT is
     // set a new price feed in case of old one is not working
     function setPriceFeed(address asset, address priceFeed) external onlyRole(GOVERNANCE_ROLE) {
         // set price feed
+        require(asset != address(0), "INVALID_ASSET");
+        require(vaults[asset] != address(0), "ASSET_NOT_EXISTS");
+        require(priceFeed != address(0), "INVALID_PRICE_FEED");
+
         priceFeeds[asset] = priceFeed;
     }
 
@@ -245,11 +249,14 @@ contract OmniUltraLRT is
     }
 
     // update min vault wq epoch
-    function updateMinVaultWqEpoch(address token) external onlyRole(HARVESTER_ROLE) {
-        _updateMinVaultWqEpoch(token);
+    function updateMinVaultWqEpoch(address[] memory tokens) external onlyRole(HARVESTER_ROLE) {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            _updateMinVaultWqEpoch(tokens[i]);
+        }
     }
 
     function _updateMinVaultWqEpoch(address token) internal {
+        require(token != address(0), "INVALID ASSET");
         require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
 
         WithdrawalEscrowV2 wq = WithdrawalEscrowV2(UltraLRT(vaults[token]).escrow());
@@ -270,7 +277,6 @@ contract OmniUltraLRT is
         for (uint256 i = 0; i < assetCount; i++) {
             amount += tokenTVL(assetList[i]);
         }
-        return amount;
     }
 
     function tokenTVL(address token) public view returns (uint256 amount) {
@@ -314,6 +320,11 @@ contract OmniUltraLRT is
 
     function convertTokenToBaseAsset(address token, uint256 tokenAmount) public view returns (uint256) {
         require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
+
+        if (token == baseAsset) {
+            return tokenAmount;
+        }
+
         (uint256 rate,) = IPriceFeed(priceFeeds[token]).getPrice();
         uint256 amount = ((tokenAmount * rate) / 10 ** ERC20(token).decimals());
         return amount;
@@ -321,6 +332,11 @@ contract OmniUltraLRT is
 
     function convertBaseAssetToToken(address token, uint256 baseAssetAmount) public view returns (uint256) {
         require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
+
+        if (token == baseAsset) {
+            return baseAssetAmount;
+        }
+
         (uint256 rate,) = IPriceFeed(priceFeeds[token]).getPrice();
         uint256 amount = ((baseAssetAmount * 10 ** ERC20(token).decimals()) / rate);
         return amount;
@@ -392,16 +408,19 @@ contract OmniUltraLRT is
 
     function _setManagementFeeBps(uint256 _managementFeeBps) internal {
         // set management fee
+        require(_managementFeeBps <= MAX_BPS, "INVALID_FEE");
         managementFeeBps = _managementFeeBps;
     }
 
     function _setPerformanceFeeBps(uint256 _performanceFeeBps) internal {
         // set performance fee
+        require(_performanceFeeBps <= MAX_BPS, "INVALID_FEE");
         performanceFeeBps = _performanceFeeBps;
     }
 
     function _setWithdrawalFeeBps(uint256 _withdrawalFeeBps) internal {
         // set withdrawal fee
+        require(_withdrawalFeeBps <= MAX_BPS, "INVALID_FEE");
         withdrawalFeeBps = _withdrawalFeeBps;
     }
 
@@ -457,6 +476,7 @@ contract OmniUltraLRT is
     // disable share withdrawal
     function disableShareWithdrawal(address[] memory token) external onlyRole(HARVESTER_ROLE) {
         for (uint256 i = 0; i < token.length; i++) {
+            require(token[i] != address(0), "ASSET_NOT_SUPPORTED");
             require(vaults[token[i]] != address(0), "ASSET_NOT_SUPPORTED");
             OmniWithdrawalEscrow(wQueues[token[i]]).disableShareWithdrawal();
         }

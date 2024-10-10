@@ -1278,9 +1278,9 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "token",
-        "type": "address"
+        "internalType": "address[]",
+        "name": "tokens",
+        "type": "address[]"
       }
     ],
     "name": "updateMinVaultWqEpoch",

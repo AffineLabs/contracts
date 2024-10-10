@@ -611,4 +611,163 @@ contract OmniUltraLRTTest is TestPlus {
         amounts[0] = amount;
         vault.divestAssets(tokens, amounts);
     }
+
+    function testSetFees() public {
+        // set withdrawal fees
+        uint256 feeBps = 10;
+
+        // withdrawal fee
+        vault.setWithdrawalFeeBps(feeBps);
+        assertEq(vault.withdrawalFeeBps(), feeBps, "withdrawal fee not match");
+        vm.expectRevert();
+        vault.setWithdrawalFeeBps(10_001);
+
+        // management fee
+        vault.setManagementFeeBps(feeBps);
+        assertEq(vault.managementFeeBps(), feeBps, "management fee not match");
+        vm.expectRevert();
+        vault.setManagementFeeBps(10_001);
+
+        // performance fee
+        vault.setPerformanceFeeBps(feeBps);
+        assertEq(vault.performanceFeeBps(), feeBps, "performance fee not match");
+        vm.expectRevert();
+        vault.setPerformanceFeeBps(10_001);
+
+        // set all fees at once
+        feeBps = 100;
+        vault.setFees(feeBps, feeBps + 1, feeBps + 2);
+        assertEq(vault.performanceFeeBps(), feeBps, "performance fee not match");
+        assertEq(vault.managementFeeBps(), feeBps + 1, "management fee not match");
+        assertEq(vault.withdrawalFeeBps(), feeBps + 2, "withdrawal fee not match");
+    }
+
+    function testUpdateMinVaultWQ() public {
+        assertEq(vault.minVaultWqEpoch(wbtc), 0, "min vault wq epoch not match");
+        testPartialWithdrawal();
+        address[] memory tokens = new address[](1);
+        tokens[0] = wbtc;
+
+        vault.updateMinVaultWqEpoch(tokens);
+
+        assertEq(vault.minVaultWqEpoch(wbtc), 2, "min vault wq epoch not match");
+
+        // check with zero tokens
+        tokens[0] = address(0);
+        vm.expectRevert();
+        vault.updateMinVaultWqEpoch(tokens);
+
+        // check with invalid token
+        tokens[0] = address(this);
+        vm.expectRevert();
+        vault.updateMinVaultWqEpoch(tokens);
+    }
+
+    function testDisablePartialShareWithdrawal() public {
+        // disable partial share withdrawal
+        OmniWithdrawalEscrow tokenWQ = OmniWithdrawalEscrow(vault.wQueues(lbtc));
+        assertEq(tokenWQ.shareWithdrawable(), false, "share withdrawal enabled");
+        testPartialWithdrawalQueueResolve();
+        assertEq(tokenWQ.shareWithdrawable(), true, "share withdrawal disabled");
+
+        // disable share withdrawal
+        address[] memory tokens = new address[](1);
+        tokens[0] = lbtc;
+        vault.disableShareWithdrawal(tokens);
+
+        assertEq(tokenWQ.shareWithdrawable(), false, "share withdrawal enabled");
+
+        // test with zero address
+        tokens[0] = address(0);
+        vm.expectRevert();
+        vault.disableShareWithdrawal(tokens);
+
+        // test with invalid token
+        tokens[0] = address(this);
+        vm.expectRevert();
+        vault.disableShareWithdrawal(tokens);
+    }
+
+    function testSetPriceFeed() public {
+        // set price feed
+
+        uint256 amount = 1e8;
+
+        testDepositWithMultiAsset();
+
+        assertEq(vault.convertTokenToBaseAsset(lbtc, amount), amount / 2, "assets not match");
+        assertEq(vault.convertTokenToBaseAsset(wbtc, amount), amount, "assets not match");
+        assertEq(vault.convertBaseAssetToToken(lbtc, amount), amount * 2, "assets not match");
+
+        // set new price feed
+
+        TmpPriceFeed priceFeed = new TmpPriceFeed();
+
+        vault.setPriceFeed(lbtc, address(priceFeed));
+
+        assertEq(vault.totalAssets(), 3 * amount, "total assets not match");
+
+        // test with fail cases
+
+        // set zero token
+        vm.expectRevert();
+        vault.setPriceFeed(address(0), address(priceFeed));
+
+        // set price feed with invalid token
+        vm.expectRevert();
+        vault.setPriceFeed(address(this), address(priceFeed));
+
+        // set price feed with zero address
+        vm.expectRevert();
+        vault.setPriceFeed(lbtc, address(0));
+
+        // test asset conversion
+
+        assertEq(vault.convertTokenToBaseAsset(lbtc, amount), amount, "assets not match");
+        assertEq(vault.convertTokenToBaseAsset(wbtc, amount), amount, "assets not match");
+        assertEq(vault.convertBaseAssetToToken(lbtc, amount), amount, "assets not match");
+
+        // set price feed with invalid token
+        vm.expectRevert();
+        vault.convertTokenToBaseAsset(address(this), amount);
+
+        vm.expectRevert();
+        vault.convertBaseAssetToToken(address(this), amount);
+    }
+
+    function testVaultShareAndAssetConversion() public {
+        uint256 amount = 1e8;
+        uint256 share = 10 ** vault.decimals();
+
+        // when empty
+        assertEq(vault.convertToAssets(share), amount, "assets not match");
+        assertEq(vault.convertToShares(amount), share, "share not match");
+
+        // test token tvl
+        assertEq(vault.tokenTVL(wbtc), 0, "total assets not match");
+        assertEq(vault.tokenTVL(lbtc), 0, "total assets not match");
+
+        // do mutli asset deposit
+
+        testDepositWithMultiAsset();
+
+        // test token tvl
+        assertEq(vault.tokenTVL(wbtc), amount, "total assets not match");
+        assertEq(vault.tokenTVL(lbtc), amount, "total assets not match");
+
+        assertEq(vault.convertToAssets(share), amount, "assets not match");
+        assertEq(vault.convertToShares(amount), share, "share not match");
+
+        // remove half of the assets from vault which is 1e8 wbtc
+        vm.prank(address(vault));
+        ERC20(wbtc).transfer(address(bob), amount);
+
+        assertEq(vault.convertToAssets(share), amount / 2, "assets not match");
+        assertEq(vault.convertToShares(amount), share * 2, "share not match");
+
+        // check token tvl with zero address
+        vm.expectRevert();
+        vault.tokenTVL(address(0));
+    }
+    // TODO test on collateralize vault and liquidation
 }

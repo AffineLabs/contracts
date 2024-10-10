@@ -101,7 +101,6 @@ contract OmniWithdrawalEscrow {
         }
 
         currentEpoch = currentEpoch + 1;
-        // TODO: epoch end event
     }
 
     /**
@@ -136,7 +135,7 @@ contract OmniWithdrawalEscrow {
         // update the resolved shares
         epochInfo[resolvingEpoch].resolvedShares += uint128(shares);
 
-        if (data.shares == data.resolvedShares) {
+        if (data.shares == epochInfo[resolvingEpoch].resolvedShares) {
             resolvingEpoch += 1;
         }
     }
@@ -153,7 +152,7 @@ contract OmniWithdrawalEscrow {
     /**
      * @notice Disable share withdrawal
      */
-    function disableShareWithdrawal() external onlyGovernance {
+    function disableShareWithdrawal() external onlyVault {
         shareWithdrawable = false;
     }
 
@@ -218,7 +217,10 @@ contract OmniWithdrawalEscrow {
         // update epoch info
         epochInfo[epoch].shares -= uint128(shares);
 
-        if (epochInfo[epoch].resolvedShares == epochInfo[epoch].shares) {
+        if (
+            resolvingEpoch < currentEpoch && epoch == resolvingEpoch
+                && epochInfo[epoch].resolvedShares == epochInfo[epoch].shares
+        ) {
             resolvingEpoch += 1;
         }
         return shares;
@@ -269,6 +271,9 @@ contract OmniWithdrawalEscrow {
      * @return amount of shares to withdraw
      */
     function withdrawableShares(address user, uint256 epoch) public view returns (uint256) {
+        if (!shareWithdrawable) {
+            return 0;
+        }
         if (epoch <= resolvingEpoch) {
             return Math.min(userDebtShare[epoch][user], epochInfo[epoch].shares - epochInfo[epoch].resolvedShares);
         }
