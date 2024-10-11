@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.16;
 
+import {ReStakingErrors} from "src/libs/ReStakingErrors.sol";
+
 abstract contract OmniUltraLRTStorage {
     // gov role
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GUARDIAN_ROLE");
@@ -22,8 +24,9 @@ abstract contract OmniUltraLRTStorage {
     // for eth
     address public baseAsset;
 
+    uint256 public constant MAX_ALLOWED_ASSET = 50;
     // assets list
-    address[50] public assetList;
+    address[MAX_ALLOWED_ASSET] public assetList;
     // asset count
     uint256 public assetCount;
 
@@ -48,4 +51,30 @@ abstract contract OmniUltraLRTStorage {
 
     // storage gap
     uint256[50] private __gap;
+
+    // modifier check for valid token
+    function _isValidToken(address _token) internal view {
+        _isNonZeroAddress(_token);
+        if (vaults[_token] == address(0)) {
+            revert ReStakingErrors.InvalidToken();
+        }
+    }
+
+    function _isNonZeroAmount(uint256 _amount) internal pure {
+        if (_amount == 0) {
+            revert ReStakingErrors.ZeroAmount();
+        }
+    }
+
+    function _isNonZeroAddress(address _address) internal pure {
+        if (_address == address(0)) {
+            revert ReStakingErrors.ZeroAddress();
+        }
+    }
+
+    function _isValidBps(uint256 _bps) internal pure {
+        if (_bps > MAX_BPS) {
+            revert ReStakingErrors.InvalidFeeBps();
+        }
+    }
 }

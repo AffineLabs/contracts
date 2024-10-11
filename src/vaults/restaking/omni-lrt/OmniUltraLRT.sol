@@ -28,6 +28,7 @@ import {OmniWithdrawalEscrow} from "./OmniWithdrawalEscrow.sol";
 import {WithdrawalEscrowV2} from "src/vaults/restaking/WithdrawalEscrowV2.sol";
 
 import {UltraLRT} from "../UltraLRT.sol";
+import {ReStakingErrors} from "src/libs/ReStakingErrors.sol";
 
 contract OmniUltraLRT is
     Initializable,
@@ -82,9 +83,9 @@ contract OmniUltraLRT is
         _setupRole(MANAGER_ROLE, _manager);
 
         // Set fees
-        performanceFeeBps = _performanceFeeBps;
-        managementFeeBps = _managementFeeBps;
-        withdrawalFeeBps = _withdrawalFeeBps;
+        _setPerformanceFeeBps(_performanceFeeBps);
+        _setManagementFeeBps(_managementFeeBps);
+        _setWithdrawalFeeBps(_withdrawalFeeBps);
     }
     // Declare functions and modifiers here
 
@@ -101,18 +102,35 @@ contract OmniUltraLRT is
         _unpause();
     }
 
+    // pause assets
+    function pauseAsset(address token) external onlyRole(MANAGER_ROLE) {
+        _isValidToken(token);
+        pausedAssets[token] = true;
+    }
+
+    // unpause assets
+    function unpauseAsset(address token) external onlyRole(MANAGER_ROLE) {
+        _isValidToken(token);
+        pausedAssets[token] = false;
+    }
+
     // add new asset to the vault
     function addAsset(address asset, address vault, address priceFeed, address escrow)
         external
         onlyRole(GOVERNANCE_ROLE)
     {
+        _isNonZeroAddress(asset);
         // add asset
-        require(assetCount < 50, "MAX_ASSETS_REACHED");
-        require(vaults[asset] == address(0), "ASSET_EXISTS");
+        if (assetCount == MAX_ALLOWED_ASSET) {
+            revert ReStakingErrors.MaxLimitReached();
+        }
+        if (vaults[asset] != address(0)) {
+            revert ReStakingErrors.AssetExists();
+        }
 
         assetList[assetCount] = asset;
         vaults[asset] = vault;
-        wQueues[asset] = escrow; // todo set withdrawal queue
+        wQueues[asset] = escrow;
         priceFeeds[asset] = priceFeed;
         assetCount++;
     }
@@ -120,10 +138,8 @@ contract OmniUltraLRT is
     // set price feed
     // set a new price feed in case of old one is not working
     function setPriceFeed(address asset, address priceFeed) external onlyRole(GOVERNANCE_ROLE) {
-        // set price feed
-        require(asset != address(0), "INVALID_ASSET");
-        require(vaults[asset] != address(0), "ASSET_NOT_EXISTS");
-        require(priceFeed != address(0), "INVALID_PRICE_FEED");
+        _isValidToken(asset);
+        _isNonZeroAddress(priceFeed);
 
         priceFeeds[asset] = priceFeed;
     }
@@ -131,8 +147,10 @@ contract OmniUltraLRT is
     // todo implement
     function removeAsset(address asset) external onlyRole(GOVERNANCE_ROLE) {
         // remove asset
-        require(vaults[asset] != address(0), "ASSET_NOT_EXISTS");
-        require(tokenTVL(asset) < WEI_TOLERANCE, "ASSET_NOT_EMPTY");
+        _isValidToken(asset);
+        if (tokenTVL(asset) > WEI_TOLERANCE) {
+            revert ReStakingErrors.NonZeroTVL();
+        }
 
         // remove asset
         vaults[asset] = address(0);
@@ -143,11 +161,12 @@ contract OmniUltraLRT is
 
     // deposit and withdraw functions
     function deposit(address token, uint256 amount, address receiver) external nonReentrant whenNotPaused {
-        require(token != address(0), "INVALID ASSET");
-        require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
-        require(!pausedAssets[token], "ASSET_PAUSED");
-        require(amount > 0, "ZERO_AMOUNT");
-        require(receiver != address(0), "INVALID_RECEIVER");
+        _isValidToken(token);
+        if (pausedAssets[token]) {
+            revert ReStakingErrors.AssetPaused();
+        }
+        _isNonZeroAmount(amount);
+        _isNonZeroAddress(receiver);
 
         // convert to base asset
         uint256 baseAssetAmount = convertTokenToBaseAsset(token, amount);
@@ -164,11 +183,12 @@ contract OmniUltraLRT is
     }
 
     function withdraw(uint256 amount, address token, address receiver) external nonReentrant whenNotPaused {
-        require(token != address(0), "INVALID ASSET");
-        require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
-        require(!pausedAssets[token], "ASSET_PAUSED");
-        require(amount > 0, "ZERO_AMOUNT");
-        require(receiver != address(0), "INVALID_RECEIVER");
+        _isValidToken(token);
+        if (pausedAssets[token]) {
+            revert ReStakingErrors.AssetPaused();
+        }
+        _isNonZeroAmount(amount);
+        _isNonZeroAddress(receiver);
 
         if (canWithdraw(amount, token)) {
             // send to withdrawal queue
@@ -188,6 +208,7 @@ contract OmniUltraLRT is
     // function to check if withdrawal can be resolved now
 
     function canResolveWithdrawal(uint256 amount, address token) public view returns (bool) {
+        _isValidToken(token);
         uint256 tokenBalance = ERC20(token).balanceOf(address(this));
         if (tokenBalance >= amount && OmniWithdrawalEscrow(wQueues[token]).totalDebt() == 0) {
             return true;
@@ -197,6 +218,8 @@ contract OmniUltraLRT is
 
     function canWithdraw(uint256 amount, address token) public view returns (bool) {
         // check if user can withdraw
+        _isValidToken(token);
+
         uint256 _tokenTVL = tokenTVL(token);
 
         uint256 debtShare = OmniWithdrawalEscrow(wQueues[token]).totalDebt();
@@ -208,7 +231,9 @@ contract OmniUltraLRT is
     }
 
     function investAssets(address[] memory tokens, uint256[] memory amounts) external onlyRole(HARVESTER_ROLE) {
-        require(tokens.length == amounts.length, "INVALID_INPUT");
+        if (tokens.length != amounts.length) {
+            revert ReStakingErrors.InvalidDataLength();
+        }
         for (uint256 i = 0; i < tokens.length; i++) {
             _invest(tokens[i], amounts[i]);
         }
@@ -216,10 +241,11 @@ contract OmniUltraLRT is
 
     /// invest assets
     function _invest(address token, uint256 amount) internal {
-        require(token != address(0), "INVALID ASSET");
-        require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
-        require(amount > 0, "ZERO_AMOUNT");
-        require(amount <= ERC20(token).balanceOf(address(this)), "INSUFFICIENT_BALANCE");
+        _isValidToken(token);
+        _isNonZeroAmount(amount);
+        if (amount > ERC20(token).balanceOf(address(this))) {
+            revert ReStakingErrors.InsufficientLiquidAssets();
+        }
         // approve token
         ERC20(token).safeApprove(vaults[token], amount);
         // deposit
@@ -228,22 +254,25 @@ contract OmniUltraLRT is
 
     // divest assets
     function divestAssets(address[] memory tokens, uint256[] memory amounts) external onlyRole(HARVESTER_ROLE) {
-        require(tokens.length == amounts.length, "INVALID_INPUT");
+        if (tokens.length != amounts.length) {
+            revert ReStakingErrors.InvalidDataLength();
+        }
         for (uint256 i = 0; i < tokens.length; i++) {
             _divest(tokens[i], amounts[i]);
         }
     }
 
     function _divest(address token, uint256 amount) internal {
-        require(token != address(0), "INVALID ASSET");
-        require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
-        require(amount > 0, "ZERO_AMOUNT");
+        _isValidToken(token);
+        _isNonZeroAmount(amount);
 
         // check vault has that amount of shares
         uint256 vaultShares = UltraLRT(vaults[token]).balanceOf(address(this));
         // convert to assets
         uint256 vaultAssets = UltraLRT(vaults[token]).convertToAssets(vaultShares);
-        require(vaultAssets >= amount, "INSUFFICIENT_BALANCE");
+        if (vaultAssets < amount) {
+            revert ReStakingErrors.InsufficientAssets();
+        }
         // withdraw
         UltraLRT(vaults[token]).withdraw(amount, address(this), address(this));
     }
@@ -256,8 +285,7 @@ contract OmniUltraLRT is
     }
 
     function _updateMinVaultWqEpoch(address token) internal {
-        require(token != address(0), "INVALID ASSET");
-        require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
+        _isValidToken(token);
 
         WithdrawalEscrowV2 wq = WithdrawalEscrowV2(UltraLRT(vaults[token]).escrow());
         uint256 currentEpoch = wq.currentEpoch();
@@ -280,7 +308,7 @@ contract OmniUltraLRT is
     }
 
     function tokenTVL(address token) public view returns (uint256 amount) {
-        require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
+        _isValidToken(token);
 
         uint256 vaultShares = UltraLRT(vaults[token]).balanceOf(address(this));
 
@@ -301,7 +329,7 @@ contract OmniUltraLRT is
     }
 
     function getVaultWqTVL(address token) public view returns (uint256 shares, uint256 assets) {
-        require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
+        _isValidToken(token);
 
         WithdrawalEscrowV2 wq = WithdrawalEscrowV2(UltraLRT(vaults[token]).escrow());
 
@@ -319,7 +347,7 @@ contract OmniUltraLRT is
     }
 
     function convertTokenToBaseAsset(address token, uint256 tokenAmount) public view returns (uint256) {
-        require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
+        _isValidToken(token);
 
         if (token == baseAsset) {
             return tokenAmount;
@@ -331,7 +359,7 @@ contract OmniUltraLRT is
     }
 
     function convertBaseAssetToToken(address token, uint256 baseAssetAmount) public view returns (uint256) {
-        require(vaults[token] != address(0), "ASSET_NOT_SUPPORTED");
+        _isValidToken(token);
 
         if (token == baseAsset) {
             return baseAssetAmount;
@@ -383,9 +411,9 @@ contract OmniUltraLRT is
         onlyRole(GOVERNANCE_ROLE)
     {
         // set fees
-        performanceFeeBps = _performanceFeeBps;
-        managementFeeBps = _managementFeeBps;
-        withdrawalFeeBps = _withdrawalFeeBps;
+        _setManagementFeeBps(_managementFeeBps);
+        _setPerformanceFeeBps(_performanceFeeBps);
+        _setWithdrawalFeeBps(_withdrawalFeeBps);
     }
 
     // set management fee
@@ -408,19 +436,19 @@ contract OmniUltraLRT is
 
     function _setManagementFeeBps(uint256 _managementFeeBps) internal {
         // set management fee
-        require(_managementFeeBps <= MAX_BPS, "INVALID_FEE");
+        _isValidBps(_managementFeeBps);
         managementFeeBps = _managementFeeBps;
     }
 
     function _setPerformanceFeeBps(uint256 _performanceFeeBps) internal {
         // set performance fee
-        require(_performanceFeeBps <= MAX_BPS, "INVALID_FEE");
+        _isValidBps(_performanceFeeBps);
         performanceFeeBps = _performanceFeeBps;
     }
 
     function _setWithdrawalFeeBps(uint256 _withdrawalFeeBps) internal {
         // set withdrawal fee
-        require(_withdrawalFeeBps <= MAX_BPS, "INVALID_FEE");
+        _isValidBps(_withdrawalFeeBps);
         withdrawalFeeBps = _withdrawalFeeBps;
     }
 
@@ -428,87 +456,93 @@ contract OmniUltraLRT is
     // collect asset from vault and resolve debt for user
     function resolveDebt(address[] memory tokens) external onlyRole(HARVESTER_ROLE) {
         for (uint256 i = 0; i < tokens.length; i++) {
-            require(vaults[tokens[i]] != address(0), "ASSET_NOT_SUPPORTED");
-
-            uint256 debtShare = OmniWithdrawalEscrow(wQueues[tokens[i]]).getDebtToResolve();
-            if (debtShare == 0) {
-                continue;
-            }
-            // convert to base asset amount
-            uint256 debtAssetAmount = _convertToAssets(debtShare, MathUpgradeable.Rounding.Up);
-            // convert to token amount
-            uint256 tokenAmount = convertBaseAssetToToken(tokens[i], debtAssetAmount);
-
-            // check token valt share
-            uint256 investedTokenAmount =
-                UltraLRT(vaults[tokens[i]]).convertToAssets(UltraLRT(vaults[tokens[i]]).balanceOf(address(this)));
-            bool payPartialDebt;
-            // if we have less token now and have token invested
-            if (tokenAmount > ERC20(tokens[i]).balanceOf(address(this))) {
-                if (investedTokenAmount < WEI_TOLERANCE) {
-                    // out of assets so pay partial debt
-                    payPartialDebt = true;
-                } else {
-                    continue;
-                }
-            }
-            // TODO: event pay partial debt
-
-            if (payPartialDebt) {
-                // get debt shares for token amount
-                debtAssetAmount = convertTokenToBaseAsset(tokens[i], ERC20(tokens[i]).balanceOf(address(this)));
-                tokenAmount = ERC20(tokens[i]).balanceOf(address(this));
-                debtShare = _convertToShares(debtAssetAmount, MathUpgradeable.Rounding.Up);
-                // enable share withdrawal from wq
-                OmniWithdrawalEscrow(wQueues[tokens[i]]).enableShareWithdrawal();
-            }
-            // burn shares
-            _burn(wQueues[tokens[i]], debtShare);
-
-            // approve withdrawal escrow
-            ERC20(tokens[i]).safeApprove(wQueues[tokens[i]], tokenAmount);
-
-            // resolve debt
-            OmniWithdrawalEscrow(wQueues[tokens[i]]).resolveDebtShares(debtShare, tokenAmount);
+            _resolveDebtForAsset(tokens[i]);
         }
     }
 
+    function _resolveDebtForAsset(address token) internal {
+        _isValidToken(token);
+
+        uint256 debtShare = OmniWithdrawalEscrow(wQueues[token]).getDebtToResolve();
+        if (debtShare == 0) {
+            return;
+        }
+        // convert to base asset amount
+        uint256 debtAssetAmount = _convertToAssets(debtShare, MathUpgradeable.Rounding.Up);
+        // convert to token amount
+        uint256 tokenAmount = convertBaseAssetToToken(token, debtAssetAmount);
+
+        // check token vault share
+        uint256 investedTokenAmount =
+            UltraLRT(vaults[token]).convertToAssets(UltraLRT(vaults[token]).balanceOf(address(this)));
+        bool payPartialDebt;
+        // if we have less token now and have token invested
+        if (tokenAmount > ERC20(token).balanceOf(address(this))) {
+            if (investedTokenAmount < WEI_TOLERANCE) {
+                // out of assets so pay partial debt
+                payPartialDebt = true;
+            } else {
+                return;
+            }
+        }
+
+        if (payPartialDebt) {
+            // get debt shares for token amount
+            debtAssetAmount = convertTokenToBaseAsset(token, ERC20(token).balanceOf(address(this)));
+            tokenAmount = ERC20(token).balanceOf(address(this));
+            debtShare = _convertToShares(debtAssetAmount, MathUpgradeable.Rounding.Up);
+            // enable share withdrawal from wq
+            OmniWithdrawalEscrow(wQueues[token]).enableShareWithdrawal();
+        }
+        // burn shares
+        _burn(wQueues[token], debtShare);
+
+        // approve withdrawal escrow
+        ERC20(token).safeApprove(wQueues[token], tokenAmount);
+
+        // resolve debt
+        OmniWithdrawalEscrow(wQueues[token]).resolveDebtShares(debtShare, tokenAmount);
+    }
+
     // disable share withdrawal
-    function disableShareWithdrawal(address[] memory token) external onlyRole(HARVESTER_ROLE) {
-        for (uint256 i = 0; i < token.length; i++) {
-            require(token[i] != address(0), "ASSET_NOT_SUPPORTED");
-            require(vaults[token[i]] != address(0), "ASSET_NOT_SUPPORTED");
-            OmniWithdrawalEscrow(wQueues[token[i]]).disableShareWithdrawal();
+    function disableShareWithdrawal(address[] memory tokens) external onlyRole(HARVESTER_ROLE) {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            _isValidToken(tokens[i]);
+            OmniWithdrawalEscrow(wQueues[tokens[i]]).disableShareWithdrawal();
         }
     }
 
     // end epoch
     function endEpoch(address[] memory tokens, bool doWithdrawalRequest) external onlyRole(HARVESTER_ROLE) {
         for (uint256 i = 0; i < tokens.length; i++) {
-            require(vaults[tokens[i]] != address(0), "ASSET_NOT_SUPPORTED");
+            _endEpochAsset(tokens[i], doWithdrawalRequest);
+        }
+    }
 
-            uint256 closingEpoch = OmniWithdrawalEscrow(wQueues[tokens[i]]).currentEpoch();
+    function _endEpochAsset(address token, bool doWithdrawalRequest) internal {
+        _isValidToken(token);
 
-            OmniWithdrawalEscrow(wQueues[tokens[i]]).endEpoch();
+        uint256 closingEpoch = OmniWithdrawalEscrow(wQueues[token]).currentEpoch();
 
-            if (OmniWithdrawalEscrow(wQueues[tokens[i]]).currentEpoch() == closingEpoch) {
-                // nothing to close
-                continue;
-            }
+        OmniWithdrawalEscrow(wQueues[token]).endEpoch();
 
-            if (doWithdrawalRequest) {
-                (uint256 shares,,) = OmniWithdrawalEscrow(wQueues[tokens[i]]).epochInfo(closingEpoch);
-                uint256 debtAssets = _convertToAssets(shares, MathUpgradeable.Rounding.Down);
-                uint256 debtTokenAmount = convertBaseAssetToToken(tokens[i], debtAssets);
-                // check vault has that amount of shares
-                uint256 vaultShares = UltraLRT(vaults[tokens[i]]).balanceOf(address(this));
-                // convert to assets
-                uint256 vaultAssets = UltraLRT(vaults[tokens[i]]).convertToAssets(vaultShares);
+        if (OmniWithdrawalEscrow(wQueues[token]).currentEpoch() == closingEpoch) {
+            // nothing to close
+            return;
+        }
 
-                uint256 maxWithdrawalAmount = MathUpgradeable.min(debtTokenAmount, vaultAssets);
-                // withdraw
-                UltraLRT(vaults[tokens[i]]).withdraw(maxWithdrawalAmount, address(this), address(this));
-            }
+        if (doWithdrawalRequest) {
+            (uint256 shares,,) = OmniWithdrawalEscrow(wQueues[token]).epochInfo(closingEpoch);
+            uint256 debtAssets = _convertToAssets(shares, MathUpgradeable.Rounding.Down);
+            uint256 debtTokenAmount = convertBaseAssetToToken(token, debtAssets);
+            // check vault has that amount of shares
+            uint256 vaultShares = UltraLRT(vaults[token]).balanceOf(address(this));
+            // convert to assets
+            uint256 vaultAssets = UltraLRT(vaults[token]).convertToAssets(vaultShares);
+
+            uint256 maxWithdrawalAmount = MathUpgradeable.min(debtTokenAmount, vaultAssets);
+            // withdraw
+            UltraLRT(vaults[token]).withdraw(maxWithdrawalAmount, address(this), address(this));
         }
     }
 }

@@ -28,4 +28,14 @@ library ReStakingErrors {
     error NoResolvingEpoch();
     error MaxUnresolvedEpochReached();
     error InvalidEscrow();
+    error ZeroAmount();
+    error ZeroAddress();
+    error InvalidToken();
+    error InvalidFeeBps();
+    error MaxLimitReached();
+    error AssetExists();
+    error NonZeroTVL();
+    error AssetPaused();
+    error InvalidDataLength();
+    error InsufficientAssets();
 }

@@ -5,6 +5,61 @@
     "type": "constructor"
   },
   {
+    "inputs": [],
+    "name": "AssetExists",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "AssetPaused",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InsufficientAssets",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InsufficientLiquidAssets",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidDataLength",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidFeeBps",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidToken",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MaxLimitReached",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NonZeroTVL",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroAddress",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroAmount",
+    "type": "error"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
@@ -260,6 +315,19 @@
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_ALLOWED_ASSET",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -629,7 +697,7 @@
     "inputs": [
       {
         "internalType": "address[]",
-        "name": "token",
+        "name": "tokens",
         "type": "address[]"
       }
     ],
@@ -915,6 +983,19 @@
   {
     "inputs": [],
     "name": "pause",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "pauseAsset",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1271,6 +1352,19 @@
   {
     "inputs": [],
     "name": "unpause",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "unpauseAsset",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

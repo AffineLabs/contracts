@@ -769,5 +769,76 @@ contract OmniUltraLRTTest is TestPlus {
         vm.expectRevert();
         vault.tokenTVL(address(0));
     }
-    // TODO test on collateralize vault and liquidation
+
+    function testCanResolveWithdrawal() public {
+        uint256 amount = 1e8;
+
+        // when empty
+        assertEq(vault.canResolveWithdrawal(amount, wbtc), false, "can resolve not match");
+
+        vm.expectRevert();
+        vault.canResolveWithdrawal(0, address(this));
+
+        // do mutli asset deposit
+
+        testDepositWithMultiAsset();
+
+        // test token tvl
+        assertEq(vault.canResolveWithdrawal(amount, wbtc), true, "can resolve not match");
+
+        assertEq(vault.canResolveWithdrawal(amount + 1, wbtc), false, "can resolve not match");
+    }
+
+    function testPauseAndUnpauseAssets() public {
+        // pause asset
+        assertEq(vault.pausedAssets(wbtc), false, "asset paused");
+
+        vm.expectRevert();
+        vault.pauseAsset(address(0));
+
+        vault.pauseAsset(wbtc);
+        assertEq(vault.pausedAssets(wbtc), true, "asset not paused");
+
+        uint256 amount = 1e8;
+        // get wbtc
+        _getAsset(wbtc, address(alice), amount);
+
+        // approve
+        vm.prank(alice);
+        ERC20(wbtc).approve(address(vault), amount);
+
+        // deposit will revert
+        vm.prank(alice);
+        vm.expectRevert();
+        vault.deposit(wbtc, amount, alice);
+
+        // unpause
+        vm.expectRevert();
+        vault.unpauseAsset(address(0));
+
+        // unpause
+        vault.unpauseAsset(wbtc);
+
+        // deposit
+        vm.prank(alice);
+        vault.deposit(wbtc, amount, alice);
+
+        // check balance
+        uint256 balance = ERC20(wbtc).balanceOf(address(vault));
+        console2.log("balance %s", balance.toString());
+        assertEq(balance, amount, "balance not match");
+
+        // check user vault share
+        uint256 share = vault.balanceOf(alice);
+        console2.log("share %s", share);
+        assertEq(share, (10 ** vault.decimals()), "share not match");
+
+        // pause asset to withdraw
+        vault.pauseAsset(wbtc);
+
+        // withdraw
+        vm.prank(alice);
+        vm.expectRevert();
+        vault.withdraw(amount, wbtc, alice);
+    }
 }
