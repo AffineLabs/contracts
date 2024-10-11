@@ -6,6 +6,16 @@
   },
   {
     "inputs": [],
+    "name": "AssetExists",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "AssetPaused",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "CannotDepositForZeroAddress",
     "type": "error"
   },
@@ -61,7 +71,17 @@
   },
   {
     "inputs": [],
+    "name": "InsufficientAssets",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InsufficientLiquidAssets",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidDataLength",
     "type": "error"
   },
   {
@@ -81,7 +101,22 @@
   },
   {
     "inputs": [],
+    "name": "InvalidFeeBps",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidToken",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidWithdrawalAmount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MaxLimitReached",
     "type": "error"
   },
   {
@@ -97,6 +132,11 @@
   {
     "inputs": [],
     "name": "NonZeroEmptyDelegatorTVL",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NonZeroTVL",
     "type": "error"
   },
   {
@@ -127,6 +167,16 @@
   {
     "inputs": [],
     "name": "WithdrawAmountCannotBeZero",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroAddress",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroAmount",
     "type": "error"
   }
 ]
