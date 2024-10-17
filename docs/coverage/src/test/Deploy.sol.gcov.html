@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2024-06-26 09:26:24</td>
+            <td class="headerValue">2024-10-17 15:23:32</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
@@ -101,17 +101,17 @@
 <span id="L30"><span class="lineNum">      30</span>                 :             :     bytes32 routerSalt = keccak256(&quot;router&quot;);</span>
 <span id="L31"><span class="lineNum">      31</span>                 :             : </span>
 <span id="L32"><span class="lineNum">      32</span>                 :             :     function deployL2Vault() internal returns (MockL2Vault vault) {</span>
-<span id="L33"><span class="lineNum">      33</span>                 :<span class="tlaGNC tlaBgGNC">         315 :         Create3Deployer create3 = new Create3Deployer();</span></span>
+<span id="L33"><span class="lineNum">      33</span>                 :<span class="tlaGNC tlaBgGNC">         103 :         Create3Deployer create3 = new Create3Deployer();</span></span>
 <span id="L34"><span class="lineNum">      34</span>                 :             : </span>
-<span id="L35"><span class="lineNum">      35</span>                 :<span class="tlaGNC">         315 :         MockERC20 asset = new MockERC20(&quot;Mock&quot;, &quot;MT&quot;, 6);</span></span>
-<span id="L36"><span class="lineNum">      36</span>                 :<span class="tlaGNC">         210 :         vault = new MockL2Vault();</span></span>
+<span id="L35"><span class="lineNum">      35</span>                 :<span class="tlaGNC">         103 :         MockERC20 asset = new MockERC20(&quot;Mock&quot;, &quot;MT&quot;, 6);</span></span>
+<span id="L36"><span class="lineNum">      36</span>                 :<span class="tlaGNC">         103 :         vault = new MockL2Vault();</span></span>
 <span id="L37"><span class="lineNum">      37</span>                 :             : </span>
 <span id="L38"><span class="lineNum">      38</span>                 :             :         // Deploy helper contracts (escrow and router)</span>
-<span id="L39"><span class="lineNum">      39</span>                 :<span class="tlaGNC">         315 :         L2BridgeEscrow escrow = L2BridgeEscrow(create3.getDeployed(escrowSalt));</span></span>
-<span id="L40"><span class="lineNum">      40</span>                 :<span class="tlaGNC">         315 :         L2WormholeRouter router = L2WormholeRouter(create3.getDeployed(routerSalt));</span></span>
-<span id="L41"><span class="lineNum">      41</span>                 :<span class="tlaGNC">         315 :         EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(vault);</span></span>
+<span id="L39"><span class="lineNum">      39</span>                 :<span class="tlaGNC">         103 :         L2BridgeEscrow escrow = L2BridgeEscrow(create3.getDeployed(escrowSalt));</span></span>
+<span id="L40"><span class="lineNum">      40</span>                 :<span class="tlaGNC">         103 :         L2WormholeRouter router = L2WormholeRouter(create3.getDeployed(routerSalt));</span></span>
+<span id="L41"><span class="lineNum">      41</span>                 :<span class="tlaGNC">         103 :         EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(vault);</span></span>
 <span id="L42"><span class="lineNum">      42</span>                 :             : </span>
-<span id="L43"><span class="lineNum">      43</span>                 :<span class="tlaGNC">         210 :         vault.initialize(</span></span>
+<span id="L43"><span class="lineNum">      43</span>                 :<span class="tlaGNC">         103 :         vault.initialize(</span></span>
 <span id="L44"><span class="lineNum">      44</span>                 :             :             governance, // governance</span>
 <span id="L45"><span class="lineNum">      45</span>                 :             :             asset, // asset</span>
 <span id="L46"><span class="lineNum">      46</span>                 :             :             address(router),</span>
@@ -122,8 +122,8 @@
 <span id="L51"><span class="lineNum">      51</span>                 :             :             [uint256(1_000_000), uint256(100_000)]</span>
 <span id="L52"><span class="lineNum">      52</span>                 :             :         );</span>
 <span id="L53"><span class="lineNum">      53</span>                 :             : </span>
-<span id="L54"><span class="lineNum">      54</span>                 :<span class="tlaGNC">         210 :         create3.deploy(escrowSalt, abi.encodePacked(type(L2BridgeEscrow).creationCode, abi.encode(address(vault))), 0);</span></span>
-<span id="L55"><span class="lineNum">      55</span>                 :<span class="tlaGNC">         210 :         create3.deploy(</span></span>
+<span id="L54"><span class="lineNum">      54</span>                 :<span class="tlaGNC">         103 :         create3.deploy(escrowSalt, abi.encodePacked(type(L2BridgeEscrow).creationCode, abi.encode(address(vault))), 0);</span></span>
+<span id="L55"><span class="lineNum">      55</span>                 :<span class="tlaGNC">         103 :         create3.deploy(</span></span>
 <span id="L56"><span class="lineNum">      56</span>                 :             :             routerSalt,</span>
 <span id="L57"><span class="lineNum">      57</span>                 :             :             abi.encodePacked(</span>
 <span id="L58"><span class="lineNum">      58</span>                 :             :                 type(L2WormholeRouter).creationCode,</span>
@@ -138,17 +138,17 @@
 <span id="L67"><span class="lineNum">      67</span>                 :             :     }</span>
 <span id="L68"><span class="lineNum">      68</span>                 :             : </span>
 <span id="L69"><span class="lineNum">      69</span>                 :             :     function deployL2VaultV2() internal returns (MockL2VaultV2 vault) {</span>
-<span id="L70"><span class="lineNum">      70</span>                 :<span class="tlaGNC">          90 :         Create3Deployer create3 = new Create3Deployer();</span></span>
+<span id="L70"><span class="lineNum">      70</span>                 :<span class="tlaGNC">          30 :         Create3Deployer create3 = new Create3Deployer();</span></span>
 <span id="L71"><span class="lineNum">      71</span>                 :             : </span>
-<span id="L72"><span class="lineNum">      72</span>                 :<span class="tlaGNC">          90 :         MockERC20 asset = new MockERC20(&quot;Mock&quot;, &quot;MT&quot;, 6);</span></span>
-<span id="L73"><span class="lineNum">      73</span>                 :<span class="tlaGNC">          60 :         vault = new MockL2VaultV2();</span></span>
+<span id="L72"><span class="lineNum">      72</span>                 :<span class="tlaGNC">          30 :         MockERC20 asset = new MockERC20(&quot;Mock&quot;, &quot;MT&quot;, 6);</span></span>
+<span id="L73"><span class="lineNum">      73</span>                 :<span class="tlaGNC">          30 :         vault = new MockL2VaultV2();</span></span>
 <span id="L74"><span class="lineNum">      74</span>                 :             : </span>
 <span id="L75"><span class="lineNum">      75</span>                 :             :         // Deploy helper contracts (escrow and router)</span>
-<span id="L76"><span class="lineNum">      76</span>                 :<span class="tlaGNC">          90 :         L2BridgeEscrow escrow = L2BridgeEscrow(create3.getDeployed(escrowSalt));</span></span>
-<span id="L77"><span class="lineNum">      77</span>                 :<span class="tlaGNC">          90 :         L2WormholeRouter router = L2WormholeRouter(create3.getDeployed(routerSalt));</span></span>
-<span id="L78"><span class="lineNum">      78</span>                 :<span class="tlaGNC">          90 :         EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(vault);</span></span>
+<span id="L76"><span class="lineNum">      76</span>                 :<span class="tlaGNC">          30 :         L2BridgeEscrow escrow = L2BridgeEscrow(create3.getDeployed(escrowSalt));</span></span>
+<span id="L77"><span class="lineNum">      77</span>                 :<span class="tlaGNC">          30 :         L2WormholeRouter router = L2WormholeRouter(create3.getDeployed(routerSalt));</span></span>
+<span id="L78"><span class="lineNum">      78</span>                 :<span class="tlaGNC">          30 :         EmergencyWithdrawalQueue emergencyWithdrawalQueue = new EmergencyWithdrawalQueue(vault);</span></span>
 <span id="L79"><span class="lineNum">      79</span>                 :             : </span>
-<span id="L80"><span class="lineNum">      80</span>                 :<span class="tlaGNC">          60 :         vault.initialize(</span></span>
+<span id="L80"><span class="lineNum">      80</span>                 :<span class="tlaGNC">          30 :         vault.initialize(</span></span>
 <span id="L81"><span class="lineNum">      81</span>                 :             :             governance, // governance</span>
 <span id="L82"><span class="lineNum">      82</span>                 :             :             asset, // asset</span>
 <span id="L83"><span class="lineNum">      83</span>                 :             :             address(router),</span>
@@ -159,8 +159,8 @@
 <span id="L88"><span class="lineNum">      88</span>                 :             :             [uint256(1_000_000), uint256(100_000)]</span>
 <span id="L89"><span class="lineNum">      89</span>                 :             :         );</span>
 <span id="L90"><span class="lineNum">      90</span>                 :             : </span>
-<span id="L91"><span class="lineNum">      91</span>                 :<span class="tlaGNC">          60 :         create3.deploy(escrowSalt, abi.encodePacked(type(L2BridgeEscrow).creationCode, abi.encode(address(vault))), 0);</span></span>
-<span id="L92"><span class="lineNum">      92</span>                 :<span class="tlaGNC">          60 :         create3.deploy(</span></span>
+<span id="L91"><span class="lineNum">      91</span>                 :<span class="tlaGNC">          30 :         create3.deploy(escrowSalt, abi.encodePacked(type(L2BridgeEscrow).creationCode, abi.encode(address(vault))), 0);</span></span>
+<span id="L92"><span class="lineNum">      92</span>                 :<span class="tlaGNC">          30 :         create3.deploy(</span></span>
 <span id="L93"><span class="lineNum">      93</span>                 :             :             routerSalt,</span>
 <span id="L94"><span class="lineNum">      94</span>                 :             :             abi.encodePacked(</span>
 <span id="L95"><span class="lineNum">      95</span>                 :             :                 type(L2WormholeRouter).creationCode,</span>
@@ -178,13 +178,13 @@
 <span id="L107"><span class="lineNum">     107</span>                 :             :         // For polygon addresses, see</span>
 <span id="L108"><span class="lineNum">     108</span>                 :             :         // solhint-disable-next-line max-line-length</span>
 <span id="L109"><span class="lineNum">     109</span>                 :             :         // https://docs.polygon.technology/docs/develop/ethereum-polygon/pos/deploymenthttps://docs.polygon.technology/docs/develop/ethereum-polygon/pos/deployment</span>
-<span id="L110"><span class="lineNum">     110</span>                 :<span class="tlaGNC">         300 :         MockERC20 asset = new MockERC20(&quot;Mock&quot;, &quot;MT&quot;, 6);</span></span>
-<span id="L111"><span class="lineNum">     111</span>                 :<span class="tlaGNC">         200 :         vault = new MockL1Vault();</span></span>
+<span id="L110"><span class="lineNum">     110</span>                 :<span class="tlaGNC">         100 :         MockERC20 asset = new MockERC20(&quot;Mock&quot;, &quot;MT&quot;, 6);</span></span>
+<span id="L111"><span class="lineNum">     111</span>                 :<span class="tlaGNC">         100 :         vault = new MockL1Vault();</span></span>
 <span id="L112"><span class="lineNum">     112</span>                 :             : </span>
-<span id="L113"><span class="lineNum">     113</span>                 :<span class="tlaGNC">         300 :         IRootChainManager manager = IRootChainManager(0xA0c68C638235ee32657e8f720a23ceC1bFc77C77);</span></span>
-<span id="L114"><span class="lineNum">     114</span>                 :<span class="tlaGNC">         300 :         L1BridgeEscrow escrow = new L1BridgeEscrow(vault, manager);</span></span>
+<span id="L113"><span class="lineNum">     113</span>                 :<span class="tlaGNC">         100 :         IRootChainManager manager = IRootChainManager(0xA0c68C638235ee32657e8f720a23ceC1bFc77C77);</span></span>
+<span id="L114"><span class="lineNum">     114</span>                 :<span class="tlaGNC">         100 :         L1BridgeEscrow escrow = new L1BridgeEscrow(vault, manager);</span></span>
 <span id="L115"><span class="lineNum">     115</span>                 :             : </span>
-<span id="L116"><span class="lineNum">     116</span>                 :<span class="tlaGNC">         200 :         vault.initialize(</span></span>
+<span id="L116"><span class="lineNum">     116</span>                 :<span class="tlaGNC">         100 :         vault.initialize(</span></span>
 <span id="L117"><span class="lineNum">     117</span>                 :             :             governance, // governance</span>
 <span id="L118"><span class="lineNum">     118</span>                 :             :             asset, // asset</span>
 <span id="L119"><span class="lineNum">     119</span>                 :             :             address(new L1WormholeRouter(vault, IWormhole(0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B))),</span>
@@ -195,10 +195,10 @@
 <span id="L124"><span class="lineNum">     124</span>                 :             :     }</span>
 <span id="L125"><span class="lineNum">     125</span>                 :             : </span>
 <span id="L126"><span class="lineNum">     126</span>                 :             :     function deployTwoAssetBasket(ERC20 usdc) internal returns (TwoAssetBasket basket) {</span>
-<span id="L127"><span class="lineNum">     127</span>                 :<span class="tlaGNC">          36 :         ERC20 btc = ERC20(0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6);</span></span>
-<span id="L128"><span class="lineNum">     128</span>                 :<span class="tlaGNC">          36 :         ERC20 weth = ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619);</span></span>
-<span id="L129"><span class="lineNum">     129</span>                 :<span class="tlaGNC">          24 :         basket = new TwoAssetBasket();</span></span>
-<span id="L130"><span class="lineNum">     130</span>                 :<span class="tlaGNC">          24 :         basket.initialize(</span></span>
+<span id="L127"><span class="lineNum">     127</span>                 :<span class="tlaGNC">          12 :         ERC20 btc = ERC20(0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6);</span></span>
+<span id="L128"><span class="lineNum">     128</span>                 :<span class="tlaGNC">          12 :         ERC20 weth = ERC20(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619);</span></span>
+<span id="L129"><span class="lineNum">     129</span>                 :<span class="tlaGNC">          12 :         basket = new TwoAssetBasket();</span></span>
+<span id="L130"><span class="lineNum">     130</span>                 :<span class="tlaGNC">          12 :         basket.initialize(</span></span>
 <span id="L131"><span class="lineNum">     131</span>                 :             :             governance, // governance,</span>
 <span id="L132"><span class="lineNum">     132</span>                 :             :             usdc, // mintable usdc</span>
 <span id="L133"><span class="lineNum">     133</span>                 :             :             // WBTC AND WETH</span>
@@ -214,8 +214,8 @@
 <span id="L143"><span class="lineNum">     143</span>                 :             :     }</span>
 <span id="L144"><span class="lineNum">     144</span>                 :             : </span>
 <span id="L145"><span class="lineNum">     145</span>                 :             :     function deployEthSSV(ERC20 asset) internal returns (StrategyVault vault) {</span>
-<span id="L146"><span class="lineNum">     146</span>                 :<span class="tlaGNC">           4 :         vault = new StrategyVault();</span></span>
-<span id="L147"><span class="lineNum">     147</span>                 :<span class="tlaGNC">           4 :         vault.initialize(governance, address(asset), &quot;Single Strategy Vault&quot;, &quot;ETH_SSV_USDC&quot;);</span></span>
+<span id="L146"><span class="lineNum">     146</span>                 :<span class="tlaGNC">           2 :         vault = new StrategyVault();</span></span>
+<span id="L147"><span class="lineNum">     147</span>                 :<span class="tlaGNC">           2 :         vault.initialize(governance, address(asset), &quot;Single Strategy Vault&quot;, &quot;ETH_SSV_USDC&quot;);</span></span>
 <span id="L148"><span class="lineNum">     148</span>                 :             :     }</span>
 <span id="L149"><span class="lineNum">     149</span>                 :             : }</span>
         </pre>

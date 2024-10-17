@@ -105,12 +105,26 @@ contract SymDelegatorV2Test is TestPlus {
     function testCompleteWithdrawal() public {
         testWithdraw();
 
+        vm.expectRevert();
+        symDelegator.completeWithdrawalRequest(1);
+
         vm.warp(block.timestamp + 2 days);
+
+        vm.expectRevert();
+        symDelegator.completeWithdrawalRequest(10);
+
+        symDelegator.completeWithdrawalRequest(1);
+
+        // rewithdrawal
+        vm.expectRevert();
         symDelegator.completeWithdrawalRequest(1);
 
         assertEq(symDelegator.totalLockedValue(), 1e18);
         assertEq(symDelegator.queuedAssets(), 1e18);
         assertEq(symDelegator.withdrawableAssets(), 0);
+
+        vm.expectRevert();
+        symDelegator.addExternalEpoch(1);
     }
 
     function testExternalWithdrawal() public {
@@ -126,7 +140,14 @@ contract SymDelegatorV2Test is TestPlus {
         console2.log("epoch count %s", symDelegator.pendingEpochCount());
 
         // add epoch to the list
+        // adding invalid epoch
+        vm.expectRevert();
+        symDelegator.addExternalEpoch(10);
 
+        symDelegator.addExternalEpoch(1);
+
+        // adding again
+        vm.expectRevert();
         symDelegator.addExternalEpoch(1);
 
         console2.log("epoch count %s", symDelegator.pendingEpochCount());
