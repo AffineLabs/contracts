@@ -24,7 +24,7 @@ mumbai = "https://polygon-mumbai.g.alchemy.com/v2/${ALCHEMY_POLYGON_MUMBAI_KEY}"
 arbitrum = "https://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_ARB_MAINNET_KEY}"
 base = "https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_BASE_MAINNET_KEY}"
 base-goerli = "https://base-goerli.g.alchemy.com/v2/${ALCHEMY_BASE_TESTNET_KEY}"
-holesky = "https://ethereum-holesky-rpc.publicnode.com"
+holesky = "https://holesky.drpc.org"
 
 [etherscan]
 ethereum = { key = "${ETHERSCAN_MAINNET_KEY}", chain = 1 }

@@ -62,10 +62,10 @@ contract SymbioticDelegatorV2 is Initializable, AffineDelegator, AffineGovernabl
     function _isValidEpoch(uint256 epoch) internal view {
         require(symVault.isWithdrawalsClaimed(epoch, address(this)) == false, "SymbioticDelegator: Withdrawal claimed");
 
-        require(symVault.withdrawalsOf(epoch, address(this)) == 0, "SymbioticDelegator: Withdrawal not completed");
+        require(symVault.withdrawalsOf(epoch, address(this)) > 0, "SymbioticDelegator: Withdrawal not completed");
     }
 
-    function completeWithdrawalRequest(uint256 epoch) external onlyHarvester {
+    function completeWithdrawalRequest(uint256 epoch) external {
         require(pendingEpochIndex[epoch] != 0, "SymbioticDelegator: No pending withdrawal request for the epoch");
 
         require(epoch < symVault.currentEpoch(), "SymbioticDelegator: Epoch is not completed");
@@ -87,7 +87,7 @@ contract SymbioticDelegatorV2 is Initializable, AffineDelegator, AffineGovernabl
         pendingEpochCount--;
     }
 
-    function addExternalEpoch(uint256 epoch) external onlyHarvester {
+    function addExternalEpoch(uint256 epoch) external {
         require(pendingEpochIndex[epoch] == 0, "SymbioticDelegator: Epoch already pending");
 
         require(epoch <= (symVault.currentEpoch() + 1), "SymbioticDelegator: Epoch is not active");
