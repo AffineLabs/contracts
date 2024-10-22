@@ -26,14 +26,12 @@ interface ISymVaultFactory {
         address depositorWhitelistRoleHolder;
     }
 
-    function create(uint64 version, address owner_, bool withInitialize, bytes calldata data)
-        external
-        returns (address);
+    function create(uint64 version, address owner_, bytes calldata data) external returns (address);
     function implementation(uint64) external view returns (address);
 }
 
 contract SymDelegatorV2Test is TestPlus {
-    ISymVaultFactory factory = ISymVaultFactory(0x5035c15F3cb4364CF2cF35ca53E3d6FC45FC8899);
+    ISymVaultFactory factory = ISymVaultFactory(0x407A039D94948484D356eFB765b3c74382A050B4);
     address weth = 0x94373a4919B3240D86eA41593D5eBa789FEF3848; // wrapped staked eth
 
     address stEth = 0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034; //
@@ -48,19 +46,21 @@ contract SymDelegatorV2Test is TestPlus {
     SymbioticDelegatorV2 symDelegator;
 
     function _deploySymVault() internal returns (address) {
-        ISymVaultFactory.InitParams memory params = ISymVaultFactory.InitParams({
+        ISymVault.InitParams memory params = ISymVault.InitParams({
             collateral: wStETH,
-            delegator: address(delegator),
-            slasher: address(0),
             burner: address(this),
             epochDuration: 1 days,
             depositWhitelist: false,
+            isDepositLimit: false,
+            depositLimit: 0,
             defaultAdminRoleHolder: address(this),
             depositWhitelistSetRoleHolder: address(this),
-            depositorWhitelistRoleHolder: address(this)
+            depositorWhitelistRoleHolder: address(this),
+            isDepositLimitSetRoleHolder: address(this),
+            depositLimitSetRoleHolder: address(this)
         });
 
-        address vault = factory.create(1, address(this), true, abi.encode(params));
+        address vault = factory.create(1, address(this), abi.encode(params));
         return vault;
     }
 
