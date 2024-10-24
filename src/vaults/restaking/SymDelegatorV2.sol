@@ -25,7 +25,7 @@ contract SymbioticDelegatorV2 is Initializable, AffineDelegator, AffineGovernabl
     uint256 public pendingEpochCount;
     mapping(uint256 => uint256) public pendingEpochIndex;
 
-    ISymVault symVault;
+    ISymVault public symVault;
 
     /**
      * @dev Initialize the contract

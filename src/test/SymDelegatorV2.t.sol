@@ -13,22 +13,7 @@ import {IVault as ISymVault} from "src/interfaces/symbiotic/IVault.sol";
 import {console2} from "forge-std/console2.sol";
 import {SymbioticDelegatorV2} from "src/vaults/restaking/SymDelegatorV2.sol";
 
-interface ISymVaultFactory {
-    struct InitParams {
-        address collateral;
-        address delegator;
-        address slasher;
-        address burner;
-        uint48 epochDuration;
-        bool depositWhitelist;
-        address defaultAdminRoleHolder;
-        address depositWhitelistSetRoleHolder;
-        address depositorWhitelistRoleHolder;
-    }
-
-    function create(uint64 version, address owner_, bytes calldata data) external returns (address);
-    function implementation(uint64) external view returns (address);
-}
+import {ISymVaultFactory} from "src/interfaces/symbiotic/ISymVaultFactory.sol";
 
 contract SymDelegatorV2Test is TestPlus {
     ISymVaultFactory factory = ISymVaultFactory(0x407A039D94948484D356eFB765b3c74382A050B4);

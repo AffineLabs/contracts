@@ -187,6 +187,19 @@
   },
   {
     "inputs": [],
+    "name": "symVault",
+    "outputs": [
+      {
+        "internalType": "contract IVault",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "totalLockedValue",
     "outputs": [
       {
