@@ -1094,7 +1094,7 @@ Do liquidation request to delegators
 function delegatorWithdrawRequest(contract IDelegator delegator, uint256 assets) external
 ```
 
-Withdraw from speicific delegator
+Withdraw from specific delegator
 
 #### Parameters
 
