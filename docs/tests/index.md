@@ -229,7 +229,7 @@
 |`testInit`|Test vault initialization.|
 
 ### L2WormholeRouterTest
-> Test L2 wormhole router functinoalities.
+> Test L2 wormhole router functionalities.
 
 | test function | description | 
 | --- | --- |
