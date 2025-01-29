@@ -235,7 +235,7 @@
 | --- | --- |
 |`testWormholeConfigUpdates`|Test that the governance can update wormhole router configurations.|
 |`testTransferReport`|Test that the L2 wormhole router sends message to L1 after funds are transferred to L2.|
-|`testMessageValidation`|Test that the message vailidation works.|
+|`testMessageValidation`|Test that the message validation works.|
 |`testRequestFunds`|Test that, the L2 wormhole router requests funds from L1 in correct message format.|
 |`testReceiveFunds`|Test that, the L2 wormhole router can receive funds sent by L1 vault.|
 |`testReceiveFundsInvariants`|Test that old messages are not received by the wormhole router.|
