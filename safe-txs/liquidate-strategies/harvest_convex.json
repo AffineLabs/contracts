@@ -1,0 +1,15 @@
+{
+  "_comment": "Direct call by a HARVESTER on the Convex vault to true-up strategy accounting (claim rewards, book P&L) BEFORE removeStrategy. Not a Safe/timelock tx: send from a HARVESTER-role holder.",
+  "chainId": "1",
+  "harvesters": [
+    "0x47fd0834dd8b435bbbd7115bb7d3b3120dd0946d (keeper EOA - instant)",
+    "0x4B21438ffff0f0B938aD64cD44B8c6ebB78ba56e (timelock - would need 24h schedule/execute)"
+  ],
+  "transaction": {
+    "to": "0x78Bb94Feab383ccEd39766a7d6CF31dED177Ad0c",
+    "value": "0",
+    "data": "0xc89d3460000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010000000000000000000000004969592b0c5a6e6827beed275fe644b2ecd3b0f3",
+    "function": "harvest(address[] strategyList)",
+    "args": { "strategyList": ["0x4969592B0C5A6e6827beED275fe644B2eCD3b0F3"] }
+  }
+}
