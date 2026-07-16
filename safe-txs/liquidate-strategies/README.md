@@ -55,10 +55,28 @@ EXECUTE batch a few seconds after the SCHEDULE batch confirms.
 2. **Stader `slippageBps`**: removal unwinds Aave leverage with slippage — confirm
    `slippageBps()` on `0x8bB3...6AeC` is sane first.
 3. **Roles**: confirm the signing Safe holds `PROPOSER_ROLE` on the Polygon timelock.
+   (Confirmed on-chain: Polygon Safe `0x47c43be6…fc00fb` and ETH Safe `0x67ec3bb2…3983fb8`
+   both hold `PROPOSER_ROLE`; executor role is open.)
+
+## Order of operations (IMPORTANT)
+
+`execute` only runs an operation that was already `schedule`d and whose delay has elapsed.
+Running the EXECUTE batch first reverts with `TimelockController: operation is not ready`
+(surfaced by the Safe as `GS013`). Always:
+
+1. Submit the **SCHEDULE** batch.
+2. Wait `>= minDelay` (Polygon 1s → next block; Ethereum 24h).
+3. Submit the **EXECUTE** batch.
+
+**Simulating on Tenderly:** a standalone EXECUTE sim always fails (nothing scheduled in live
+state). Use a Simulation Bundle [schedule, execute] and, because Polygon `minDelay = 1s`,
+override the execute tx's block timestamp to `+2s` — otherwise `isOperationReady` is false.
 
 ## Operation IDs (for tracking on the timelock)
 
-- USDC.e AaveV3: `0x78423d91ddd1f2b027dfae4f266d77a0889397a74e43f8b25b65c689ddb89447`
-- USDC.e old Aave: `0x41777e20308e9a7f75b9f78cf3d21cc2e6498199702f8c0254900a913c444171`
-- Stader-MATIC: `0x5cc1ca979abe6b9df30023d6abdb2fc69039541d237b84bfbb9357f0069b7502`
-- Convex: `0x6618696f37e2ee1a510634b0c71163c493116dbd2d8b71a3fe571b063a1ffe58`
+Computed as `keccak256(abi.encode(target, 0, data, 0x0, salt))` — matches OZ `hashOperation`.
+
+- USDC.e AaveV3: `0x1d1c08fc586f20c7cd37cbdc9ab9cb1ab8d8a48b33bb0b961d1b5daeed996032`
+- USDC.e old Aave: `0x4d85fc4e0556c11ef80dee40363e39991f4802cea0d6344ba029cfbce57fb90c`
+- Stader-MATIC: `0x2a550da7513bf4b2aa24ab1ac551a60c25f9c896b594095be51078b227a6d4ab`
+- Convex: `0x8abc91bfd74e43714f8d63f2f5daf18a70a1ddddc150be9befa3b6ed62ae8af7`
