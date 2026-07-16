@@ -50,13 +50,22 @@ EXECUTE batch a few seconds after the SCHEDULE batch confirms.
 ## Before signing
 
 1. **Convex accounting**: live `totalLockedValue()` (~$314) << vault recorded balance (~$2,237).
-   Run `harvest([0x4969...b0F3])` (HARVESTER) first to true-up shares and investigate the gap;
-   `removeStrategy` only divests the live TLV.
+   Run `harvest([0x4969...b0F3])` first to claim rewards + book P&L, then investigate the gap;
+   `removeStrategy` only divests the live TLV (it also reconciles balances, but harvest lets you
+   see the realized loss before you sign the removal). See `harvest_convex.json`. HARVESTER is
+   held by keeper EOA `0x47fd0834...0946d` (instant direct call) and by the timelock
+   `0x4B21...a56e` (24h governance route).
 2. **Stader `slippageBps`**: removal unwinds Aave leverage with slippage — confirm
    `slippageBps()` on `0x8bB3...6AeC` is sane first.
 3. **Roles**: confirm the signing Safe holds `PROPOSER_ROLE` on the Polygon timelock.
    (Confirmed on-chain: Polygon Safe `0x47c43be6…fc00fb` and ETH Safe `0x67ec3bb2…3983fb8`
    both hold `PROPOSER_ROLE`; executor role is open.)
+
+## Status
+
+As of last check, the three Polygon operations are **scheduled and ready** on the timelock
+(`isOperationReady == true`) — the EXECUTE batch (`safe_batch_EXECUTE_chain137.json`) can be
+submitted now. The Ethereum Convex op still needs scheduling (24h delay).
 
 ## Order of operations (IMPORTANT)
 
